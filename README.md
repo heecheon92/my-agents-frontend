@@ -1,36 +1,84 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# my-agents-frontend
 
-## Getting Started
+Frontend companion for the `../my-agents` FastAPI + LangGraph backend.
 
-First, run the development server:
+This app is a portfolio-grade AI service console built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, and Biome. It intentionally mirrors common GreetSchool/GreetAcademy patterns so the project owner can follow and maintain the code manually.
+
+## What this UI wires
+
+- Auth: signup, login, logout, current user restore.
+- Product chat: conversations, server-owned messages, conversation runs, run history, run events, citations.
+- Knowledge/document workflows: knowledge-base create/list, document create/list/detail, ingest, extraction runs, document permission patch.
+- Groups: create/list plus ID-based member role upsert/patch.
+
+Product chat uses `/conversations/{id}/runs`; `/assistant/chat` is legacy/dev-only and is blocked from product BFF proxy use.
+
+## Local setup
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
+pnpm install
+cp .env.example .env.local
 pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Run the backend separately, normally from `../my-agents`:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+MY_AGENTS_RESPONSE_MODE=deterministic uv run uvicorn main:app --host 127.0.0.1 --port 8000
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Required frontend environment variables are safe placeholders:
 
-## Learn More
+```bash
+MY_AGENTS_BACKEND_URL=http://127.0.0.1:8000
+MY_AGENTS_FRONTEND_ORIGIN=http://localhost:3000
+MY_AGENTS_COOKIE_SECURE=false
+```
 
-To learn more about Next.js, take a look at the following resources:
+Do not store real secrets in this repository or expose secrets with `NEXT_PUBLIC_*`.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Architecture
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```mermaid
+flowchart LR
+    Browser[Browser UI] --> Query[TanStack Query hooks]
+    Query --> Services[services/my-agents]
+    Services --> BFF[Next route handlers app/api/my-agents]
+    BFF --> Backend[FastAPI backend ../my-agents]
+```
 
-## Deploy on Vercel
+Important folders:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- `constants/` — API paths, query keys, headers, HTTP constants.
+- `model/my-agents/` — Zod schemas and TypeScript types for backend contracts.
+- `services/my-agents/` — typed service classes and safe API error handling.
+- `server/my-agents/` — BFF configuration, cookie helpers, proxy allowlist, CSRF/same-origin policy.
+- `hooks/` — TanStack Query hooks for auth, conversations, documents, knowledge, groups.
+- `components/keymesh/` — app-specific UI helpers and product surfaces.
+- `docs/implementation-log.md` — followable implementation status and verification notes.
+- `docs/backend-requests.md` — backend contract gaps discovered by frontend work.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Agent handoff docs
+
+Fresh Codex sessions should start with:
+
+- `docs/agent-onboarding.md` — goals, current status, rules, and task workflow.
+- `docs/frontend-architecture.md` — folder map, data flow, and endpoint coverage.
+- `docs/security-and-backend-boundary.md` — BFF/CSRF model and backend read-only rules.
+- `docs/verification-runbook.md` — local run commands, browser smoke, and final checks.
+
+## Backend boundary
+
+Frontend sessions may inspect `../my-agents` for contracts, schemas, and behavior, but must not edit backend files unless the user explicitly approves backend work. If a backend gap blocks a better frontend implementation, document it in `docs/backend-requests.md` first.
+
+## Verification
+
+```bash
+pnpm lint
+pnpm exec tsc --noEmit
+pnpm exec vitest run
+pnpm build
+```
+
+When backend/browser verification is needed, also run the backend and inspect the primary auth/chat journey in a browser.

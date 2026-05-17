@@ -37,7 +37,21 @@ The product is a portfolio-grade AI chat service UI: authenticated users manage 
 - Do **not** add FastAPI, Python, Alembic, SQLAlchemy, or backend migration code here.
 - Do **not** add another LLM provider integration in this repo.
 - Do **not** commit real secrets or local `.env*` files.
-- Treat backend API contracts as external service contracts. If a backend route is missing, document the needed contract or implement it in `../my-agents` only when explicitly working there.
+- Treat backend API contracts as external service contracts.
+- Frontend work may inspect `../my-agents` for contracts, schemas, and behavior, but must not modify backend files from this repo unless the user explicitly approves backend work.
+- If a backend route or behavior is missing, first record the needed contract in `docs/backend-requests.md` and report it to the user. Do not silently patch the backend from a frontend task.
+
+## Backend collaboration workflow
+
+This frontend repository may use `../my-agents` as a read-only source of truth for backend contracts, schemas, route behavior, and tests.
+
+Rules for future agents working from this frontend repo:
+
+- You may inspect backend files in `../my-agents` to understand API behavior.
+- You must not edit, format, commit, or push backend files from a frontend task.
+- If a frontend task exposes a backend gap, record it in `docs/backend-requests.md` and report it to the user before any backend implementation is attempted.
+- Backend changes require an explicit user instruction that switches scope to the backend project.
+- Keep frontend code resilient to documented backend gaps with honest loading, empty, disabled, or TODO states rather than inventing fake backend behavior.
 
 ## Backend API contract this UI targets
 
@@ -186,6 +200,9 @@ Do not expose secrets through `NEXT_PUBLIC_*`. Anything prefixed `NEXT_PUBLIC_` 
 
 - Update `README.md` when setup commands, environment variables, routes, or user-facing behavior change.
 - Add short architecture notes under a docs folder if frontend/backend integration becomes non-obvious.
+- Maintain `docs/implementation-log.md` during substantial frontend work so future manual work can follow the sequence, rationale, verification evidence, and remaining risks.
+- Maintain `docs/backend-requests.md` for frontend-discovered backend contract gaps.
+- Keep `docs/agent-onboarding.md`, `docs/frontend-architecture.md`, `docs/security-and-backend-boundary.md`, and `docs/verification-runbook.md` current when architecture, security, setup, or verification workflow changes.
 - Use Mermaid diagrams when they clarify routing, auth/session flow, or chat/run state transitions.
 - Keep docs honest: do not claim streaming, OAuth, production deployment, or advanced document upload until implemented and tested.
 
