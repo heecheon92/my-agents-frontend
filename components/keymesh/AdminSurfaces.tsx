@@ -124,125 +124,129 @@ export function DocumentsSurface() {
       title={localization.documents.title}
       description={localization.documents.description}
     >
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <form
-          onSubmit={handleCreate}
-          className="cal-card grid gap-3 rounded-xl p-4"
-        >
-          <Field label={localization.documents.titleLabel}>
-            <input
-              className={inputClassName}
-              value={title}
-              onChange={(event) => setTitle(event.target.value)}
-              required
-            />
-          </Field>
-          <Field
-            label={localization.documents.contentLabel}
-            hint={localization.documents.contentHint}
-          >
-            <textarea
-              className={`${inputClassName} min-h-40`}
-              value={content}
-              onChange={(event) => setContent(event.target.value)}
-            />
-          </Field>
-          <Button
-            type="submit"
-            disabled={createDocument.isPending || !title.trim()}
-          >
-            {localization.documents.createButton}
-          </Button>
-          {createDocument.error ? (
-            <ErrorState error={createDocument.error} />
-          ) : null}
-        </form>
-        <section className="cal-card rounded-xl p-4">
-          <h2 className="font-semibold">
-            {localization.documents.selectedActions}
-          </h2>
-          {activeDocumentId ? (
-            <p className="mt-2 text-sm leading-6 text-cal-muted">
-              {activeDocumentId}
-            </p>
-          ) : (
-            <EmptyState
-              title={localization.documents.noSelectedTitle}
-              description={localization.documents.noSelectedDescription}
-            />
-          )}
-          <Button
-            className="mt-4 w-full"
-            onClick={() => ingest.mutate()}
-            disabled={!activeDocumentId || ingest.isPending}
-          >
-            {localization.documents.runIngest}
-          </Button>
-          {ingest.error ? (
-            <div className="mt-3">
-              <ErrorState error={ingest.error} />
-            </div>
-          ) : null}
+      <div className="responsive-panel">
+        <div className="responsive-panel-grid" data-layout="form-aside">
           <form
-            onSubmit={handlePatchPermission}
-            className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
+            onSubmit={handleCreate}
+            className="cal-card grid gap-3 rounded-xl p-4"
           >
-            <Field
-              label={localization.documents.permissionLabel}
-              hint={localization.documents.permissionHint}
-            >
+            <Field label={localization.documents.titleLabel}>
               <input
                 className={inputClassName}
-                value={permissionUserId}
-                onChange={(event) => setPermissionUserId(event.target.value)}
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                required
+              />
+            </Field>
+            <Field
+              label={localization.documents.contentLabel}
+              hint={localization.documents.contentHint}
+            >
+              <textarea
+                className={`${inputClassName} min-h-40`}
+                value={content}
+                onChange={(event) => setContent(event.target.value)}
               />
             </Field>
             <Button
               type="submit"
-              variant="outline"
-              disabled={
-                !activeDocumentId ||
-                !permissionUserId.trim() ||
-                patchPermission.isPending
-              }
+              disabled={createDocument.isPending || !title.trim()}
             >
-              {localization.documents.patchPermission}
+              {localization.documents.createButton}
             </Button>
-          </form>
-          {patchPermission.error ? (
-            <div className="mt-3">
-              <ErrorState error={patchPermission.error} />
-            </div>
-          ) : null}
-          <h3 className="mt-6 font-semibold">
-            {localization.documents.extractionRuns}
-          </h3>
-          <div className="mt-3 grid gap-2">
-            {extractionRuns.data?.length === 0 ? (
-              <EmptyState
-                title={localization.documents.noExtractionRunsTitle}
-                description={localization.documents.noExtractionRunsDescription}
-              />
+            {createDocument.error ? (
+              <ErrorState error={createDocument.error} />
             ) : null}
-            {extractionRuns.data?.map((run) => (
-              <div
-                key={run.id}
-                className="rounded-lg bg-cal-surface-soft p-3 text-sm"
-              >
-                <div className="flex items-center justify-between">
-                  <Pill tone="green">{run.status}</Pill>
-                  <span>
-                    {run.chunk_count} {localization.common.chunks}
-                  </span>
-                </div>
-                <p className="mt-2 text-cal-body">
-                  {run.entity_count} {localization.common.entities} ·{" "}
-                  {run.relationship_count} {localization.common.relationships}
-                </p>
+          </form>
+          <section className="cal-card rounded-xl p-4">
+            <h2 className="font-semibold">
+              {localization.documents.selectedActions}
+            </h2>
+            {activeDocumentId ? (
+              <p className="mt-2 text-sm leading-6 text-cal-muted">
+                {activeDocumentId}
+              </p>
+            ) : (
+              <EmptyState
+                title={localization.documents.noSelectedTitle}
+                description={localization.documents.noSelectedDescription}
+              />
+            )}
+            <Button
+              className="mt-4 w-full"
+              onClick={() => ingest.mutate()}
+              disabled={!activeDocumentId || ingest.isPending}
+            >
+              {localization.documents.runIngest}
+            </Button>
+            {ingest.error ? (
+              <div className="mt-3">
+                <ErrorState error={ingest.error} />
               </div>
-            ))}
-          </div>
-        </section>
+            ) : null}
+            <form
+              onSubmit={handlePatchPermission}
+              className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
+            >
+              <Field
+                label={localization.documents.permissionLabel}
+                hint={localization.documents.permissionHint}
+              >
+                <input
+                  className={inputClassName}
+                  value={permissionUserId}
+                  onChange={(event) => setPermissionUserId(event.target.value)}
+                />
+              </Field>
+              <Button
+                type="submit"
+                variant="outline"
+                disabled={
+                  !activeDocumentId ||
+                  !permissionUserId.trim() ||
+                  patchPermission.isPending
+                }
+              >
+                {localization.documents.patchPermission}
+              </Button>
+            </form>
+            {patchPermission.error ? (
+              <div className="mt-3">
+                <ErrorState error={patchPermission.error} />
+              </div>
+            ) : null}
+            <h3 className="mt-6 font-semibold">
+              {localization.documents.extractionRuns}
+            </h3>
+            <div className="mt-3 grid gap-2">
+              {extractionRuns.data?.length === 0 ? (
+                <EmptyState
+                  title={localization.documents.noExtractionRunsTitle}
+                  description={
+                    localization.documents.noExtractionRunsDescription
+                  }
+                />
+              ) : null}
+              {extractionRuns.data?.map((run) => (
+                <div
+                  key={run.id}
+                  className="rounded-lg bg-cal-surface-soft p-3 text-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Pill tone="green">{run.status}</Pill>
+                    <span>
+                      {run.chunk_count} {localization.common.chunks}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-cal-body">
+                    {run.entity_count} {localization.common.entities} ·{" "}
+                    {run.relationship_count} {localization.common.relationships}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
       </div>
       <ResourceList
         loading={documents.isLoading}
@@ -311,108 +315,114 @@ export function GroupsSurface() {
       title={localization.groups.title}
       description={localization.groups.description}
     >
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
-        <form
-          onSubmit={handleSubmit}
-          className="cal-card grid gap-3 rounded-xl p-4"
-        >
-          <Field label={localization.groups.nameLabel}>
-            <input
-              className={inputClassName}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              required
-            />
-          </Field>
-          <Button
-            type="submit"
-            disabled={createGroup.isPending || !name.trim()}
+      <div className="responsive-panel">
+        <div className="responsive-panel-grid" data-layout="form-aside">
+          <form
+            onSubmit={handleSubmit}
+            className="cal-card grid gap-3 rounded-xl p-4"
           >
-            {localization.groups.createButton}
-          </Button>
-          {createGroup.error ? <ErrorState error={createGroup.error} /> : null}
-        </form>
-        <section className="cal-card rounded-xl p-4">
-          <h2 className="font-semibold">
-            {localization.groups.membershipActions}
-          </h2>
-          {activeGroupId ? (
-            <p className="mt-2 text-sm leading-6 text-cal-muted">
-              {localization.groups.activeGroupLabel}: {activeGroupId}
+            <Field label={localization.groups.nameLabel}>
+              <input
+                className={inputClassName}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
+              />
+            </Field>
+            <Button
+              type="submit"
+              disabled={createGroup.isPending || !name.trim()}
+            >
+              {localization.groups.createButton}
+            </Button>
+            {createGroup.error ? (
+              <ErrorState error={createGroup.error} />
+            ) : null}
+          </form>
+          <section className="cal-card rounded-xl p-4">
+            <h2 className="font-semibold">
+              {localization.groups.membershipActions}
+            </h2>
+            {activeGroupId ? (
+              <p className="mt-2 text-sm leading-6 text-cal-muted">
+                {localization.groups.activeGroupLabel}: {activeGroupId}
+              </p>
+            ) : (
+              <EmptyState
+                title={localization.groups.noSelectedTitle}
+                description={localization.groups.noSelectedDescription}
+              />
+            )}
+            <form
+              onSubmit={handleAddMember}
+              className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
+            >
+              <Field label={localization.groups.addMemberLabel}>
+                <input
+                  className={inputClassName}
+                  value={memberUserId}
+                  onChange={(event) => setMemberUserId(event.target.value)}
+                />
+              </Field>
+              <RoleSelect
+                label={localization.groups.roleLabel}
+                labels={localization.groups.roles}
+                value={memberRole}
+                onChange={setMemberRole}
+              />
+              <Button
+                type="submit"
+                disabled={
+                  !activeGroupId || !memberUserId.trim() || addMember.isPending
+                }
+              >
+                {localization.groups.upsertMember}
+              </Button>
+            </form>
+            {addMember.error ? (
+              <div className="mt-3">
+                <ErrorState error={addMember.error} />
+              </div>
+            ) : null}
+            <form
+              onSubmit={handleUpdateMember}
+              className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
+            >
+              <Field label={localization.groups.patchMemberLabel}>
+                <input
+                  className={inputClassName}
+                  value={updateUserId}
+                  onChange={(event) => setUpdateUserId(event.target.value)}
+                />
+              </Field>
+              <RoleSelect
+                label={localization.groups.roleLabel}
+                labels={localization.groups.roles}
+                value={updateRole}
+                onChange={setUpdateRole}
+              />
+              <Button
+                type="submit"
+                variant="outline"
+                disabled={
+                  !activeGroupId ||
+                  !updateUserId.trim() ||
+                  updateMember.isPending
+                }
+              >
+                {localization.groups.patchRole}
+              </Button>
+            </form>
+            {updateMember.error ? (
+              <div className="mt-3">
+                <ErrorState error={updateMember.error} />
+              </div>
+            ) : null}
+            <p className="mt-4 rounded-lg border border-cal-hairline bg-cal-surface-strong p-3 text-sm leading-6 text-cal-body">
+              {localization.groups.backendNote}
             </p>
-          ) : (
-            <EmptyState
-              title={localization.groups.noSelectedTitle}
-              description={localization.groups.noSelectedDescription}
-            />
-          )}
-          <form
-            onSubmit={handleAddMember}
-            className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
-          >
-            <Field label={localization.groups.addMemberLabel}>
-              <input
-                className={inputClassName}
-                value={memberUserId}
-                onChange={(event) => setMemberUserId(event.target.value)}
-              />
-            </Field>
-            <RoleSelect
-              label={localization.groups.roleLabel}
-              labels={localization.groups.roles}
-              value={memberRole}
-              onChange={setMemberRole}
-            />
-            <Button
-              type="submit"
-              disabled={
-                !activeGroupId || !memberUserId.trim() || addMember.isPending
-              }
-            >
-              {localization.groups.upsertMember}
-            </Button>
-          </form>
-          {addMember.error ? (
-            <div className="mt-3">
-              <ErrorState error={addMember.error} />
-            </div>
-          ) : null}
-          <form
-            onSubmit={handleUpdateMember}
-            className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
-          >
-            <Field label={localization.groups.patchMemberLabel}>
-              <input
-                className={inputClassName}
-                value={updateUserId}
-                onChange={(event) => setUpdateUserId(event.target.value)}
-              />
-            </Field>
-            <RoleSelect
-              label={localization.groups.roleLabel}
-              labels={localization.groups.roles}
-              value={updateRole}
-              onChange={setUpdateRole}
-            />
-            <Button
-              type="submit"
-              variant="outline"
-              disabled={
-                !activeGroupId || !updateUserId.trim() || updateMember.isPending
-              }
-            >
-              {localization.groups.patchRole}
-            </Button>
-          </form>
-          {updateMember.error ? (
-            <div className="mt-3">
-              <ErrorState error={updateMember.error} />
-            </div>
-          ) : null}
-          <p className="mt-4 rounded-lg border border-cal-hairline bg-cal-surface-strong p-3 text-sm leading-6 text-cal-body">
-            {localization.groups.backendNote}
-          </p>
-        </section>
+          </section>
+        </div>
       </div>
       <ResourceList
         loading={groups.isLoading}
@@ -483,7 +493,7 @@ function PageCard({
   return (
     <div className="mx-auto grid max-w-6xl gap-6">
       <header>
-        <h1 className="cal-heading text-4xl leading-tight">{title}</h1>
+        <h1 className="cal-heading cal-fluid-title">{title}</h1>
         <p className="cal-subcopy mt-3 max-w-3xl">{description}</p>
       </header>
       {children}
@@ -507,7 +517,7 @@ function ResourceList({
     ? children.length > 0
     : Boolean(children);
   return (
-    <section className="cal-card grid gap-3 rounded-xl p-4">
+    <section className="cal-card grid min-w-0 gap-3 rounded-xl p-4">
       {loading ? (
         <p className="text-sm text-cal-muted">{localization.common.loading}</p>
       ) : null}
@@ -518,7 +528,7 @@ function ResourceList({
           description={localization.common.emptyListDescription}
         />
       ) : null}
-      <div className="grid gap-2">{children}</div>
+      <div className="grid min-w-0 gap-2">{children}</div>
     </section>
   );
 }
@@ -536,14 +546,14 @@ function ResourceRow({
 }) {
   return (
     <div
-      className={`rounded-lg border p-3 ${active ? "border-cal-primary bg-cal-primary text-white" : "border-cal-hairline bg-cal-canvas"}`}
+      className={`min-w-0 rounded-lg border p-3 ${active ? "border-cal-primary bg-cal-primary text-white" : "border-cal-hairline bg-cal-canvas"}`}
     >
-      <div className="flex items-center justify-between gap-3">
-        <p className="font-medium">{title}</p>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="min-w-0 break-words font-medium">{title}</p>
         <Pill>{meta}</Pill>
       </div>
       <p
-        className={`mt-1 text-xs ${active ? "text-white/70" : "text-cal-muted"}`}
+        className={`mt-1 break-all text-xs ${active ? "text-white/70" : "text-cal-muted"}`}
       >
         {subtitle}
       </p>

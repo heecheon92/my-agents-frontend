@@ -55,7 +55,7 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <main className="flex min-h-dvh bg-cal-canvas text-cal-ink">
+    <main className="flex min-h-dvh flex-col bg-cal-canvas text-cal-ink lg:flex-row">
       <aside className="hidden w-72 flex-col border-r border-cal-hairline bg-cal-surface-soft p-5 lg:flex">
         <Link
           href="/chat"
@@ -94,18 +94,38 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <section className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-cal-hairline bg-cal-surface-soft px-4 py-3 lg:hidden">
-          <Link
-            href="/chat"
-            className="font-heading text-2xl font-semibold tracking-[-0.04em]"
+        <header className="border-b border-cal-hairline bg-cal-surface-soft px-4 py-3 lg:hidden">
+          <div className="flex items-center justify-between gap-3">
+            <Link
+              href="/chat"
+              className="font-heading text-2xl font-semibold tracking-[-0.04em]"
+            >
+              {localization.brand.name}
+            </Link>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              {localization.service.logout}
+            </Button>
+          </div>
+          <nav
+            aria-label="Primary"
+            className="responsive-scroll -mx-4 mt-3 flex gap-2 px-4 pb-1"
           >
-            {localization.brand.name}
-          </Link>
-          <Button variant="outline" size="sm" onClick={handleLogout}>
-            {localization.service.logout}
-          </Button>
+            {navRoutes.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "inline-flex min-h-10 shrink-0 items-center rounded-full border border-cal-hairline bg-cal-canvas px-4 text-sm font-medium text-cal-muted transition hover:text-cal-ink",
+                  pathname === item.href &&
+                    "border-cal-primary bg-cal-primary text-white hover:text-white",
+                )}
+              >
+                {localization.service.nav[item.key]}
+              </Link>
+            ))}
+          </nav>
         </header>
-        <div className="min-h-0 flex-1 overflow-auto p-4 lg:p-8">
+        <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
           {children}
         </div>
       </section>

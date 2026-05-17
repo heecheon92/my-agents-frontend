@@ -39,6 +39,17 @@ pnpm typecheck
 pnpm test
 ```
 
+## Responsive layout verification
+
+Use this after UI/layout changes and whenever the `responsive-design` skill applies.
+
+1. Confirm the changed surface starts from a mobile-first single-column layout and only adds columns at content-driven breakpoints.
+2. Check narrow widths around 360px and 390px for horizontal overflow, clipped IDs, pre/code blocks, and button rows that should wrap.
+3. Check tablet width around 768px for readable typography, fluid spacing, and card grids that wrap without shrinking text below comfortable body size.
+4. Check desktop width around 1280px for intended multi-column shell/chat/admin layouts and bounded content width.
+5. Confirm primary touch targets are comfortable on mobile; avoid adding tiny-only controls unless the component has a clear dense-UI reason.
+6. Prefer browser screenshots or Playwright viewport checks for substantial visual changes; record any manual viewport checks in `docs/implementation-log.md`.
+
 ## Browser smoke for auth/chat
 
 Use this after auth, BFF, chat, route, provider, or visual shell changes.

@@ -60,6 +60,8 @@ MY_AGENTS_COOKIE_SECURE=false
 
 `DESIGN.md`는 UI, theme, spacing, typography, component state를 결정할 때 읽어야 하는 활성 design contract입니다. UI 작업을 시작하기 전에 관련 섹션을 확인하고, 새 시각 값은 `DESIGN.md` token 또는 명시적인 design note로 되돌아갈 수 있어야 합니다.
 
+UI/layout 변경은 repo-local `responsive-design` skill도 함께 적용합니다. 기본 순서는 mobile-first → fluid typography/spacing token 사용 → component-level container wrapper 검토 → horizontal overflow/touch target 점검 → desktop breakpoint 보강입니다.
+
 ## 아키텍처
 
 ```mermaid
@@ -79,6 +81,7 @@ flowchart LR
 - `hooks/` — auth, conversation, document, knowledge, group용 TanStack Query hook.
 - `components/keymesh/` — 앱 전용 UI helper와 제품 화면.
 - `DESIGN.md` — UI/theme/layout 결정을 위한 활성 design contract.
+- `.agents/skills/responsive-design/SKILL.md` — UI/layout 변경 시 적용하는 responsive workflow.
 - `docs/implementation-log.md` — 구현 상태와 검증 기록.
 - `docs/backend-requests.md` — 프론트엔드 작업 중 발견한 백엔드 계약 gap.
 

@@ -32,6 +32,7 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | `tests/` | Vitest regression tests for contracts and BFF policy. |
 | `docs/` | Handoff, architecture, runbook, backend requests, and implementation log. |
 | `DESIGN.md` | Active design/theme contract for UI, layout, component states, and visual decisions. |
+| `.agents/skills/responsive-design/SKILL.md` | Required responsive workflow for UI/layout changes. |
 | `localization/` | Korean and English UI copy dictionaries; no user-visible component strings should be hardcoded. |
 
 ## Route groups and UI surfaces
@@ -109,9 +110,10 @@ Before changing UI/theme/layout code:
 
 1. Read the relevant `DESIGN.md` sections.
 2. Reuse existing `components/keymesh/` and `components/ui/` primitives first.
-3. Map new visual values back to `DESIGN.md` tokens or add/update an explicit design note.
-4. Keep user-visible strings in `localization/ko.json` and `localization/en.json`.
-5. Record substantial visual workflow changes in `docs/implementation-log.md`.
+3. Apply `.agents/skills/responsive-design/SKILL.md`: mobile-first defaults, fluid type/spacing, container-query-ready reusable panels, overflow protection, and touch-target checks.
+4. Map new visual values back to `DESIGN.md` tokens or add/update an explicit design note.
+5. Keep user-visible strings in `localization/ko.json` and `localization/en.json`.
+6. Record substantial visual workflow changes in `docs/implementation-log.md`.
 
 The UI should stay polished but not noisy:
 

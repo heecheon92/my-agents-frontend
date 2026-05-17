@@ -493,6 +493,8 @@ Avatar photos use `{rounded.full}` (perfect circles) at 36px or 40px. Product UI
 
 ## Responsive Behavior
 
+Repo workflow: whenever UI/theme/layout code changes, apply `.agents/skills/responsive-design/SKILL.md` alongside this contract. In practice, new surfaces should start mobile-first, use the shared fluid CSS tokens in `app/globals.css`, prefer reusable responsive helpers (`responsive-container`, `responsive-section`, `responsive-panel`, `responsive-panel-grid`, `responsive-card-grid`, `responsive-scroll`) before one-off breakpoint strings, and verify narrow-width overflow before desktop polish.
+
 ### Breakpoints
 
 | Name | Width | Key Changes |

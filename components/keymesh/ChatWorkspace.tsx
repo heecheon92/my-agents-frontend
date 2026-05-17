@@ -51,11 +51,11 @@ export function ChatWorkspace() {
   const sortedMessages = useMemo(() => messages.data ?? [], [messages.data]);
 
   return (
-    <div className="grid h-[calc(100dvh-4rem)] gap-4 xl:grid-cols-[320px_minmax(0,1fr)_340px]">
-      <aside className="cal-card rounded-xl p-4">
-        <div className="flex items-center justify-between gap-3">
+    <div className="grid gap-4 xl:h-[calc(100dvh-8rem)] xl:grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)_minmax(18rem,21.25rem)]">
+      <aside className="cal-card min-w-0 rounded-xl p-4 xl:overflow-auto">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h1 className="cal-heading text-3xl leading-tight">
+            <h1 className="cal-heading cal-fluid-title">
               {localization.title}
             </h1>
             <p className="mt-1 text-sm text-cal-muted">
@@ -97,7 +97,9 @@ export function ChatWorkspace() {
                   : "border-cal-hairline bg-cal-canvas",
               )}
             >
-              <span className="block font-medium">{item.title}</span>
+              <span className="block break-words font-medium">
+                {item.title}
+              </span>
               <span
                 className={cn(
                   "mt-1 block text-xs",
@@ -111,10 +113,10 @@ export function ChatWorkspace() {
         </div>
       </aside>
 
-      <section className="cal-card flex min-h-0 flex-col rounded-xl">
-        <header className="border-b border-cal-hairline p-5">
+      <section className="cal-card flex min-h-[32rem] min-w-0 flex-col rounded-xl xl:min-h-0">
+        <header className="border-b border-cal-hairline p-4 sm:p-5">
           <p className="cal-label">{localization.activeConversationLabel}</p>
-          <h2 className="mt-2 text-lg font-medium text-cal-ink">
+          <h2 className="mt-2 break-words text-lg font-medium text-cal-ink">
             {conversation.data?.title ??
               localization.selectOrCreateConversation}
           </h2>
@@ -132,7 +134,7 @@ export function ChatWorkspace() {
               <div
                 key={message.id}
                 className={cn(
-                  "max-w-[78%] rounded-xl border px-4 py-3 text-sm leading-6",
+                  "max-w-[88%] overflow-hidden rounded-xl border px-4 py-3 text-sm leading-6 sm:max-w-[78%]",
                   message.role === "user"
                     ? "ml-auto border-cal-primary bg-cal-primary text-white"
                     : "border-cal-hairline bg-cal-surface-soft text-cal-ink",
@@ -143,11 +145,13 @@ export function ChatWorkspace() {
                     message.role as keyof typeof localization.roles
                   ] ?? message.role}
                 </p>
-                <p className="whitespace-pre-wrap">{message.content}</p>
+                <p className="whitespace-pre-wrap break-words">
+                  {message.content}
+                </p>
               </div>
             ))}
             {runConversation.isPending ? (
-              <div className="max-w-[78%] rounded-xl border border-cal-hairline bg-cal-surface-soft px-4 py-3 text-sm text-cal-muted">
+              <div className="max-w-[88%] rounded-xl border border-cal-hairline bg-cal-surface-soft px-4 py-3 text-sm text-cal-muted sm:max-w-[78%]">
                 {localization.agentComposing}
               </div>
             ) : null}
@@ -157,7 +161,7 @@ export function ChatWorkspace() {
           onSubmit={handleSend}
           className="border-t border-cal-hairline p-4"
         >
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <input
               className={cn(inputClassName, "min-h-12 flex-1")}
               value={draft}
@@ -166,6 +170,7 @@ export function ChatWorkspace() {
               disabled={!activeId || runConversation.isPending}
             />
             <Button
+              className="w-full sm:w-auto"
               type="submit"
               size="lg"
               disabled={!activeId || !draft.trim() || runConversation.isPending}
@@ -184,7 +189,7 @@ export function ChatWorkspace() {
         </form>
       </section>
 
-      <aside className="grid min-h-0 gap-4 overflow-auto">
+      <aside className="grid min-h-0 min-w-0 gap-4 xl:overflow-auto">
         <section className="cal-card rounded-xl p-4">
           <h2 className="font-medium text-cal-ink">
             {localization.runHistory}
@@ -201,7 +206,7 @@ export function ChatWorkspace() {
                 key={run.run_id}
                 className="rounded-lg border border-cal-hairline p-3 text-sm"
               >
-                <div className="flex items-center justify-between gap-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <Pill tone={run.status === "completed" ? "green" : "rose"}>
                     {localization.runStatuses[
                       run.status as keyof typeof localization.runStatuses
@@ -264,7 +269,9 @@ export function ChatWorkspace() {
                   {localization.documentLabel}{" "}
                   {citation.document_id.slice(0, 8)}
                 </p>
-                <p className="mt-1 text-cal-body">{citation.snippet}</p>
+                <p className="mt-1 break-words text-cal-body">
+                  {citation.snippet}
+                </p>
               </div>
             ))}
           </div>

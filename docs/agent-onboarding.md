@@ -30,10 +30,11 @@ For chronological details, read `docs/implementation-log.md`.
 
 1. `AGENTS.md` - project rules and backend boundary.
 2. `DESIGN.md` - active design contract for UI/theme/layout decisions.
-3. `docs/frontend-architecture.md` - folder map and request/data flows.
-4. `docs/security-and-backend-boundary.md` - BFF, CSRF, and cross-repo rules.
-5. `docs/verification-runbook.md` - commands and browser smoke flow.
-6. `docs/backend-requests.md` - backend gaps already discovered or requested.
+3. `.agents/skills/responsive-design/SKILL.md` - responsive layout workflow for UI changes.
+4. `docs/frontend-architecture.md` - folder map and request/data flows.
+5. `docs/security-and-backend-boundary.md` - BFF, CSRF, and cross-repo rules.
+6. `docs/verification-runbook.md` - commands and browser smoke flow.
+7. `docs/backend-requests.md` - backend gaps already discovered or requested.
 
 If changing route handlers, cookies, headers, caching, server actions, or proxy behavior, also read the relevant local Next.js 16 docs under `node_modules/next/dist/docs/01-app/` before editing.
 
@@ -59,7 +60,8 @@ flowchart TD
     Inspect --> Design{UI/theme/layout touched?}
     Design -- yes --> Contract[Read/cite DESIGN.md]
     Design -- no --> Edit[Make focused frontend changes]
-    Contract --> Edit
+    Contract --> Responsive[Apply responsive-design skill checklist]
+    Responsive --> Edit
     Edit --> Verify[Run lint/typecheck/tests/build as appropriate]
     Verify --> Browser{UI or auth/chat touched?}
     Browser -- yes --> Smoke[Run backend + frontend browser smoke]

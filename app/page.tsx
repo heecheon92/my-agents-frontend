@@ -11,44 +11,44 @@ export default function Home() {
 
   return (
     <main className="min-h-dvh bg-cal-canvas text-cal-ink">
-      <div className="mx-auto flex min-h-dvh max-w-6xl flex-col px-6 py-6">
-        <header className="flex h-16 items-center justify-between border-b border-cal-hairline">
+      <div className="responsive-container flex min-h-dvh flex-col py-4 sm:py-6">
+        <header className="flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-cal-hairline py-3">
           <p className="font-heading text-xl font-semibold tracking-[-0.04em]">
             {brand.name}
           </p>
-          <div className="flex gap-2">
+          <div className="responsive-cluster justify-end">
             <Link
-              className="inline-flex h-10 items-center justify-center rounded-md border border-cal-hairline bg-cal-canvas px-5 text-sm font-semibold text-cal-ink transition hover:bg-cal-surface-soft"
+              className="inline-flex min-h-11 items-center justify-center rounded-md border border-cal-hairline bg-cal-canvas px-5 text-sm font-semibold text-cal-ink transition hover:bg-cal-surface-soft"
               href="/login"
             >
               {home.login}
             </Link>
             <Link
-              className="inline-flex h-10 items-center justify-center rounded-md bg-cal-primary px-5 text-sm font-semibold text-white transition hover:bg-cal-primary-active"
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-cal-primary px-5 text-sm font-semibold text-white transition hover:bg-cal-primary-active"
               href="/signup"
             >
               {home.signup}
             </Link>
           </div>
         </header>
-        <section className="grid flex-1 gap-12 py-20 lg:grid-cols-[7fr_5fr] lg:items-center lg:py-24">
+        <section className="responsive-section grid flex-1 gap-10 lg:grid-cols-[7fr_5fr] lg:items-center lg:gap-12">
           <div>
             <p className="cal-label">{home.eyebrow}</p>
-            <h1 className="cal-heading mt-5 max-w-4xl text-5xl leading-[1.05] lg:text-[64px]">
+            <h1 className="cal-heading cal-fluid-display mt-5 max-w-4xl">
               {home.title}
             </h1>
-            <p className="cal-subcopy mt-6 max-w-2xl text-lg">
+            <p className="cal-subcopy cal-fluid-subtitle mt-6 max-w-2xl">
               {home.description}
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="responsive-cluster mt-8">
               <Link
-                className="inline-flex h-10 items-center justify-center rounded-md bg-cal-primary px-5 text-sm font-semibold text-white transition hover:bg-cal-primary-active"
+                className="inline-flex min-h-11 items-center justify-center rounded-md bg-cal-primary px-5 text-sm font-semibold text-white transition hover:bg-cal-primary-active"
                 href="/signup"
               >
                 {home.signup}
               </Link>
               <Link
-                className="inline-flex h-10 items-center justify-center rounded-md border border-cal-hairline bg-cal-canvas px-5 text-sm font-semibold text-cal-ink transition hover:bg-cal-surface-soft"
+                className="inline-flex min-h-11 items-center justify-center rounded-md border border-cal-hairline bg-cal-canvas px-5 text-sm font-semibold text-cal-ink transition hover:bg-cal-surface-soft"
                 href="/login"
               >
                 {home.login}
@@ -71,7 +71,7 @@ export default function Home() {
                 ))}
               </div>
             </div>
-            <div className="mt-4 grid gap-3">
+            <div className="responsive-card-grid mt-4">
               {home.featureCards.map((item, index) => (
                 <div
                   key={item}

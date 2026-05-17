@@ -27,4 +27,4 @@ export function Field({
 }
 
 export const inputClassName =
-  "min-h-10 rounded-md border border-cal-hairline bg-cal-canvas px-3.5 py-2.5 text-base text-cal-ink outline-none transition placeholder:text-cal-muted-soft focus:border-cal-ink focus:ring-2 focus:ring-cal-ink/10 disabled:cursor-not-allowed disabled:bg-cal-surface-strong disabled:text-cal-muted";
+  "min-h-11 rounded-md border border-cal-hairline bg-cal-canvas px-3.5 py-2.5 text-base text-cal-ink outline-none transition placeholder:text-cal-muted-soft focus:border-cal-ink focus:ring-2 focus:ring-cal-ink/10 disabled:cursor-not-allowed disabled:bg-cal-surface-strong disabled:text-cal-muted";

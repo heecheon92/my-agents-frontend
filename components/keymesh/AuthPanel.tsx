@@ -32,17 +32,17 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
   }
 
   return (
-    <main className="min-h-dvh bg-cal-canvas px-6 py-8">
-      <div className="mx-auto grid min-h-[calc(100dvh-4rem)] w-full max-w-6xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
-        <section className="cal-card rounded-lg p-8 lg:p-12">
+    <main className="min-h-dvh bg-cal-canvas py-6 sm:py-8">
+      <div className="responsive-container grid min-h-[calc(100svh-3rem)] items-center gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
+        <section className="cal-card rounded-lg p-5 sm:p-8 lg:p-12">
           <p className="cal-label">{localization.brand.name}</p>
-          <h1 className="cal-heading mt-5 max-w-xl text-4xl leading-[1.08] lg:text-6xl">
+          <h1 className="cal-heading cal-fluid-display mt-5 max-w-xl">
             {localization.auth.heroTitle}
           </h1>
-          <p className="cal-subcopy mt-6 max-w-2xl text-lg">
+          <p className="cal-subcopy cal-fluid-subtitle mt-6 max-w-2xl">
             {localization.auth.heroDescription}
           </p>
-          <div className="mt-8 grid gap-3 text-sm sm:grid-cols-3">
+          <div className="responsive-card-grid mt-8 text-sm">
             {localization.auth.features.map((feature) => (
               <div
                 key={feature}
@@ -55,9 +55,9 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
         </section>
         <form
           onSubmit={handleSubmit}
-          className="cal-product-card rounded-xl p-6 lg:p-8"
+          className="cal-product-card rounded-xl p-5 sm:p-6 lg:p-8"
         >
-          <h2 className="cal-heading text-3xl leading-tight">
+          <h2 className="cal-heading cal-fluid-title">
             {isSignup
               ? localization.auth.createAccount
               : localization.auth.welcomeBack}
