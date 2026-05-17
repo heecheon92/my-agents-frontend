@@ -1,5 +1,6 @@
 import { JSON_CONTENT_TYPE } from "@/constants/header";
 import type { HTTPMethod } from "@/constants/http";
+import { defaultLocalization } from "@/utils/localization";
 
 export type ProxyDecision =
   | { allowed: true; params: Record<string, string> }
@@ -130,7 +131,7 @@ export function isAllowedBackendPath(
       allowed: false,
       status: 404,
       code: "path_not_allowed",
-      message: "Path is not allowed",
+      message: defaultLocalization.errors.pathNotAllowed,
     };
   }
   if (path === "/assistant/chat" || path.startsWith("/assistant/")) {
@@ -138,7 +139,7 @@ export function isAllowedBackendPath(
       allowed: false,
       status: 404,
       code: "legacy_chat_blocked",
-      message: "Legacy assistant chat is not a product route",
+      message: defaultLocalization.errors.legacyChatBlocked,
     };
   }
   const rule = BFF_ALLOWLIST.find(
@@ -149,7 +150,7 @@ export function isAllowedBackendPath(
       allowed: false,
       status: 404,
       code: "path_not_allowed",
-      message: "Path is not allowlisted",
+      message: defaultLocalization.errors.pathNotAllowlisted,
     };
   }
   return { allowed: true, params: { route: rule.name } };
@@ -187,7 +188,7 @@ export function validateSameOriginProof({
       allowed: false,
       status: 415,
       code: "json_required",
-      message: "Mutations must use application/json",
+      message: defaultLocalization.errors.jsonRequired,
     };
   }
 
@@ -197,7 +198,7 @@ export function validateSameOriginProof({
       allowed: false,
       status: 403,
       code: "cross_site_rejected",
-      message: "Cross-site mutation rejected",
+      message: defaultLocalization.errors.crossSiteRejected,
     };
   }
 
@@ -208,7 +209,7 @@ export function validateSameOriginProof({
       allowed: false,
       status: 403,
       code: "origin_rejected",
-      message: "Origin is not allowed",
+      message: defaultLocalization.errors.originRejected,
     };
   }
 
@@ -222,7 +223,7 @@ export function validateSameOriginProof({
         allowed: false,
         status: 403,
         code: "referer_rejected",
-        message: "Referer is invalid",
+        message: defaultLocalization.errors.refererInvalid,
       };
     }
     if (refererOrigin !== expectedOrigin) {
@@ -230,7 +231,7 @@ export function validateSameOriginProof({
         allowed: false,
         status: 403,
         code: "referer_rejected",
-        message: "Referer is not allowed",
+        message: defaultLocalization.errors.refererRejected,
       };
     }
   }

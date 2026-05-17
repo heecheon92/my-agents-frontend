@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import { defaultLocalization } from "@/utils/localization";
 
 export function EmptyState({
   title,
@@ -16,13 +17,16 @@ export function EmptyState({
 }
 
 export function ErrorState({
-  title = "Something went wrong",
+  title = defaultLocalization.status.defaultErrorTitle,
   error,
 }: {
   title?: string;
   error: unknown;
 }) {
-  const message = error instanceof Error ? error.message : "Please try again.";
+  const message =
+    error instanceof Error
+      ? error.message
+      : defaultLocalization.status.defaultErrorDescription;
   return (
     <div className="rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
       <p className="font-semibold">{title}</p>

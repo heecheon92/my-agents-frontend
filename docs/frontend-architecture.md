@@ -31,6 +31,8 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | `hooks/` | TanStack Query hooks for each product domain. |
 | `tests/` | Vitest regression tests for contracts and BFF policy. |
 | `docs/` | Handoff, architecture, runbook, backend requests, and implementation log. |
+| `DESIGN.md` | Active design/theme contract for UI, layout, component states, and visual decisions. |
+| `localization/` | Korean and English UI copy dictionaries; no user-visible component strings should be hardcoded. |
 
 ## Route groups and UI surfaces
 
@@ -100,6 +102,16 @@ The BFF allowlist currently covers:
 `POST /assistant/chat` is intentionally excluded from product BFF use.
 
 ## Design approach
+
+`DESIGN.md` is the active design/theme contract. UI work should treat it as the source of truth for brand personality, color, typography, spacing, radius, component states, accessibility, responsive behavior, and content voice.
+
+Before changing UI/theme/layout code:
+
+1. Read the relevant `DESIGN.md` sections.
+2. Reuse existing `components/keymesh/` and `components/ui/` primitives first.
+3. Map new visual values back to `DESIGN.md` tokens or add/update an explicit design note.
+4. Keep user-visible strings in `localization/ko.json` and `localization/en.json`.
+5. Record substantial visual workflow changes in `docs/implementation-log.md`.
 
 The UI should stay polished but not noisy:
 

@@ -17,13 +17,17 @@ import {
   useKnowledgeBases,
   usePatchDocumentPermission,
 } from "@/hooks/use-knowledge";
+import { useLocalization } from "@/hooks/useLocalization";
 import { Field, inputClassName } from "./Field";
 import { EmptyState, ErrorState, Pill } from "./Status";
+
+type GroupRole = "owner" | "admin" | "editor" | "viewer";
 
 export function KnowledgeSurface() {
   const knowledgeBases = useKnowledgeBases();
   const createKnowledgeBase = useCreateKnowledgeBase();
   const [name, setName] = useState("");
+  const { localization } = useLocalization((state) => state.localization.admin);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -33,14 +37,14 @@ export function KnowledgeSurface() {
 
   return (
     <PageCard
-      title="Knowledge bases"
-      description="Create and list personal or group retrieval scopes."
+      title={localization.knowledge.title}
+      description={localization.knowledge.description}
     >
       <form
         onSubmit={handleSubmit}
         className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4"
       >
-        <Field label="Knowledge base name">
+        <Field label={localization.knowledge.nameLabel}>
           <input
             className={inputClassName}
             value={name}
@@ -52,7 +56,7 @@ export function KnowledgeSurface() {
           type="submit"
           disabled={createKnowledgeBase.isPending || !name.trim()}
         >
-          Create knowledge base
+          {localization.knowledge.createButton}
         </Button>
         {createKnowledgeBase.error ? (
           <ErrorState error={createKnowledgeBase.error} />
@@ -61,14 +65,18 @@ export function KnowledgeSurface() {
       <ResourceList
         loading={knowledgeBases.isLoading}
         error={knowledgeBases.error}
-        empty="No knowledge bases yet."
+        empty={localization.knowledge.empty}
       >
         {knowledgeBases.data?.map((kb) => (
           <ResourceRow
             key={kb.id}
             title={kb.name}
             subtitle={`${kb.scope} · ${kb.id}`}
-            meta={kb.group_id ? `group ${kb.group_id.slice(0, 8)}` : "personal"}
+            meta={
+              kb.group_id
+                ? `${localization.common.groupPrefix} ${kb.group_id.slice(0, 8)}`
+                : localization.common.scopePersonal
+            }
           />
         ))}
       </ResourceList>
@@ -87,6 +95,7 @@ export function DocumentsSurface() {
   const ingest = useIngestDocument(activeDocumentId);
   const patchPermission = usePatchDocumentPermission(activeDocumentId);
   const [permissionUserId, setPermissionUserId] = useState("");
+  const { localization } = useLocalization((state) => state.localization.admin);
 
   async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -112,15 +121,15 @@ export function DocumentsSurface() {
 
   return (
     <PageCard
-      title="Documents"
-      description="Manage document metadata, ingestion, extraction runs, and direct permission patches."
+      title={localization.documents.title}
+      description={localization.documents.description}
     >
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <form
           onSubmit={handleCreate}
           className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4"
         >
-          <Field label="Title">
+          <Field label={localization.documents.titleLabel}>
             <input
               className={inputClassName}
               value={title}
@@ -129,8 +138,8 @@ export function DocumentsSurface() {
             />
           </Field>
           <Field
-            label="Content"
-            hint="The backend stores content and deterministic ingestion creates chunks/entities."
+            label={localization.documents.contentLabel}
+            hint={localization.documents.contentHint}
           >
             <textarea
               className={`${inputClassName} min-h-40`}
@@ -142,20 +151,22 @@ export function DocumentsSurface() {
             type="submit"
             disabled={createDocument.isPending || !title.trim()}
           >
-            Create document
+            {localization.documents.createButton}
           </Button>
           {createDocument.error ? (
             <ErrorState error={createDocument.error} />
           ) : null}
         </form>
         <section className="rounded-3xl border border-slate-200 bg-white p-4">
-          <h2 className="font-semibold">Selected document actions</h2>
+          <h2 className="font-semibold">
+            {localization.documents.selectedActions}
+          </h2>
           {activeDocumentId ? (
             <p className="mt-1 text-sm text-slate-500">{activeDocumentId}</p>
           ) : (
             <EmptyState
-              title="No document selected"
-              description="Create or select a document."
+              title={localization.documents.noSelectedTitle}
+              description={localization.documents.noSelectedDescription}
             />
           )}
           <Button
@@ -163,7 +174,7 @@ export function DocumentsSurface() {
             onClick={() => ingest.mutate()}
             disabled={!activeDocumentId || ingest.isPending}
           >
-            Run ingest
+            {localization.documents.runIngest}
           </Button>
           {ingest.error ? (
             <div className="mt-3">
@@ -175,8 +186,8 @@ export function DocumentsSurface() {
             className="mt-4 grid gap-3 border-t border-slate-200 pt-4"
           >
             <Field
-              label="Grant read permission to user id"
-              hint="Backend currently exposes an ID-based permission contract. User search should be a backend request if needed."
+              label={localization.documents.permissionLabel}
+              hint={localization.documents.permissionHint}
             >
               <input
                 className={inputClassName}
@@ -193,7 +204,7 @@ export function DocumentsSurface() {
                 patchPermission.isPending
               }
             >
-              Patch permission
+              {localization.documents.patchPermission}
             </Button>
           </form>
           {patchPermission.error ? (
@@ -201,23 +212,27 @@ export function DocumentsSurface() {
               <ErrorState error={patchPermission.error} />
             </div>
           ) : null}
-          <h3 className="mt-6 font-semibold">Extraction runs</h3>
+          <h3 className="mt-6 font-semibold">
+            {localization.documents.extractionRuns}
+          </h3>
           <div className="mt-3 grid gap-2">
             {extractionRuns.data?.length === 0 ? (
               <EmptyState
-                title="No extraction runs"
-                description="Run ingest to create one."
+                title={localization.documents.noExtractionRunsTitle}
+                description={localization.documents.noExtractionRunsDescription}
               />
             ) : null}
             {extractionRuns.data?.map((run) => (
               <div key={run.id} className="rounded-2xl bg-slate-50 p-3 text-sm">
                 <div className="flex items-center justify-between">
                   <Pill tone="green">{run.status}</Pill>
-                  <span>{run.chunk_count} chunks</span>
+                  <span>
+                    {run.chunk_count} {localization.common.chunks}
+                  </span>
                 </div>
                 <p className="mt-2 text-slate-600">
-                  {run.entity_count} entities · {run.relationship_count}{" "}
-                  relationships
+                  {run.entity_count} {localization.common.entities} ·{" "}
+                  {run.relationship_count} {localization.common.relationships}
                 </p>
               </div>
             ))}
@@ -227,7 +242,7 @@ export function DocumentsSurface() {
       <ResourceList
         loading={documents.isLoading}
         error={documents.error}
-        empty="No documents yet."
+        empty={localization.documents.empty}
       >
         {documents.data?.map((doc) => (
           <button
@@ -241,8 +256,8 @@ export function DocumentsSurface() {
               subtitle={doc.id}
               meta={
                 doc.knowledge_base_id
-                  ? `KB ${doc.knowledge_base_id.slice(0, 8)}`
-                  : "No KB"
+                  ? `${localization.common.knowledgeBasePrefix} ${doc.knowledge_base_id.slice(0, 8)}`
+                  : localization.common.noKnowledgeBase
               }
               active={activeDocumentId === doc.id}
             />
@@ -261,14 +276,11 @@ export function GroupsSurface() {
   const activeGroupId = selectedGroupId ?? groups.data?.[0]?.id;
   const addMember = useAddMember(activeGroupId);
   const [memberUserId, setMemberUserId] = useState("");
-  const [memberRole, setMemberRole] = useState<
-    "owner" | "admin" | "editor" | "viewer"
-  >("viewer");
+  const [memberRole, setMemberRole] = useState<GroupRole>("viewer");
   const [updateUserId, setUpdateUserId] = useState("");
-  const [updateRole, setUpdateRole] = useState<
-    "owner" | "admin" | "editor" | "viewer"
-  >("viewer");
+  const [updateRole, setUpdateRole] = useState<GroupRole>("viewer");
   const updateMember = useUpdateMember(activeGroupId, updateUserId);
+  const { localization } = useLocalization((state) => state.localization.admin);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -291,15 +303,15 @@ export function GroupsSurface() {
 
   return (
     <PageCard
-      title="Groups"
-      description="Create/list groups and manage member roles through the backend ID-based membership routes."
+      title={localization.groups.title}
+      description={localization.groups.description}
     >
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <form
           onSubmit={handleSubmit}
           className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4"
         >
-          <Field label="Group name">
+          <Field label={localization.groups.nameLabel}>
             <input
               className={inputClassName}
               value={name}
@@ -311,41 +323,48 @@ export function GroupsSurface() {
             type="submit"
             disabled={createGroup.isPending || !name.trim()}
           >
-            Create group
+            {localization.groups.createButton}
           </Button>
           {createGroup.error ? <ErrorState error={createGroup.error} /> : null}
         </form>
         <section className="rounded-3xl border border-slate-200 bg-white p-4">
-          <h2 className="font-semibold">Membership actions</h2>
+          <h2 className="font-semibold">
+            {localization.groups.membershipActions}
+          </h2>
           {activeGroupId ? (
             <p className="mt-1 text-sm text-slate-500">
-              Active group: {activeGroupId}
+              {localization.groups.activeGroupLabel}: {activeGroupId}
             </p>
           ) : (
             <EmptyState
-              title="No group selected"
-              description="Create or select a group first."
+              title={localization.groups.noSelectedTitle}
+              description={localization.groups.noSelectedDescription}
             />
           )}
           <form
             onSubmit={handleAddMember}
             className="mt-4 grid gap-3 border-t border-slate-200 pt-4"
           >
-            <Field label="Add/update member user id">
+            <Field label={localization.groups.addMemberLabel}>
               <input
                 className={inputClassName}
                 value={memberUserId}
                 onChange={(event) => setMemberUserId(event.target.value)}
               />
             </Field>
-            <RoleSelect value={memberRole} onChange={setMemberRole} />
+            <RoleSelect
+              label={localization.groups.roleLabel}
+              labels={localization.groups.roles}
+              value={memberRole}
+              onChange={setMemberRole}
+            />
             <Button
               type="submit"
               disabled={
                 !activeGroupId || !memberUserId.trim() || addMember.isPending
               }
             >
-              Upsert member
+              {localization.groups.upsertMember}
             </Button>
           </form>
           {addMember.error ? (
@@ -357,14 +376,19 @@ export function GroupsSurface() {
             onSubmit={handleUpdateMember}
             className="mt-4 grid gap-3 border-t border-slate-200 pt-4"
           >
-            <Field label="Patch existing member user id">
+            <Field label={localization.groups.patchMemberLabel}>
               <input
                 className={inputClassName}
                 value={updateUserId}
                 onChange={(event) => setUpdateUserId(event.target.value)}
               />
             </Field>
-            <RoleSelect value={updateRole} onChange={setUpdateRole} />
+            <RoleSelect
+              label={localization.groups.roleLabel}
+              labels={localization.groups.roles}
+              value={updateRole}
+              onChange={setUpdateRole}
+            />
             <Button
               type="submit"
               variant="outline"
@@ -372,7 +396,7 @@ export function GroupsSurface() {
                 !activeGroupId || !updateUserId.trim() || updateMember.isPending
               }
             >
-              Patch role
+              {localization.groups.patchRole}
             </Button>
           </form>
           {updateMember.error ? (
@@ -381,16 +405,14 @@ export function GroupsSurface() {
             </div>
           ) : null}
           <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-800">
-            Backend currently exposes ID-based member operations. If user search
-            or member listing is needed, add a backend request before changing
-            ../my-agents.
+            {localization.groups.backendNote}
           </p>
         </section>
       </div>
       <ResourceList
         loading={groups.isLoading}
         error={groups.error}
-        empty="No groups yet."
+        empty={localization.groups.empty}
       >
         {groups.data?.map((group) => (
           <button
@@ -402,7 +424,11 @@ export function GroupsSurface() {
             <ResourceRow
               title={group.name}
               subtitle={group.id}
-              meta={group.role}
+              meta={
+                localization.groups.roles[
+                  group.role as keyof typeof localization.groups.roles
+                ] ?? group.role
+              }
               active={activeGroupId === group.id}
             />
           </button>
@@ -413,23 +439,28 @@ export function GroupsSurface() {
 }
 
 function RoleSelect({
+  label,
+  labels,
   value,
   onChange,
 }: {
-  value: "owner" | "admin" | "editor" | "viewer";
-  onChange: (value: "owner" | "admin" | "editor" | "viewer") => void;
+  label: string;
+  labels: Record<GroupRole, string>;
+  value: GroupRole;
+  onChange: (value: GroupRole) => void;
 }) {
   return (
-    <Field label="Role">
+    <Field label={label}>
       <select
         className={inputClassName}
         value={value}
-        onChange={(event) => onChange(event.target.value as typeof value)}
+        onChange={(event) => onChange(event.target.value as GroupRole)}
       >
-        <option value="viewer">viewer</option>
-        <option value="editor">editor</option>
-        <option value="admin">admin</option>
-        <option value="owner">owner</option>
+        {Object.entries(labels).map(([role, roleLabel]) => (
+          <option key={role} value={role}>
+            {roleLabel}
+          </option>
+        ))}
       </select>
     </Field>
   );
@@ -468,17 +499,20 @@ function ResourceList({
   empty: string;
   children: React.ReactNode;
 }) {
+  const { localization } = useLocalization((state) => state.localization.admin);
   const hasChildren = Array.isArray(children)
     ? children.length > 0
     : Boolean(children);
   return (
     <section className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4">
-      {loading ? <p className="text-sm text-slate-500">Loading...</p> : null}
+      {loading ? (
+        <p className="text-sm text-slate-500">{localization.common.loading}</p>
+      ) : null}
       {error ? <ErrorState error={error} /> : null}
       {!loading && !error && !hasChildren ? (
         <EmptyState
           title={empty}
-          description="Create one from the form above."
+          description={localization.common.emptyListDescription}
         />
       ) : null}
       <div className="grid gap-2">{children}</div>

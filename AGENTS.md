@@ -131,6 +131,8 @@ Build in this order unless the user requests otherwise:
 
 ## Design and accessibility rules
 
+- Read `DESIGN.md` before UI/theme/layout work; treat it as the active design contract for visual language, component states, accessibility, responsive behavior, and content voice.
+- If requested UI conflicts with `DESIGN.md`, update `DESIGN.md` or add an open question before implementing the exception.
 - Build accessible, keyboard-navigable UI by default.
 - Prefer simple, readable layouts over decorative AI-dashboard noise.
 - Korean and English text should be legible; avoid tiny body text. Use at least comfortable default body sizing unless a component has a clear accessibility reason.

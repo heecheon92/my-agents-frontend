@@ -1,0 +1,175 @@
+{
+  "metadata": {
+    "title": "my-agents",
+    "description": "my-agents FastAPI + LangGraph 서비스를 위한 프론트엔드 콘솔"
+  },
+  "brand": {
+    "name": "my-agents"
+  },
+  "home": {
+    "login": "로그인",
+    "signup": "회원가입",
+    "eyebrow": "FastAPI + LangGraph 제품 프론트엔드",
+    "title": "백엔드 서비스와 연결된 실제 AI 에이전트 콘솔",
+    "description": "레거시 스모크 채팅 엔드포인트를 쓰지 않고 인증된 대화, 서버 소유 transcript, 에이전트 실행, 인용, 문서, 그룹, 지식 워크플로를 관리합니다.",
+    "featureCards": [
+      "Greet 스타일의 서비스, 쿼리 키, 모델, keymesh 컴포넌트 구조",
+      "Next BFF 라우트 핸들러로 세션과 CSRF 전달 보호",
+      "향후 수동 작업을 따라가기 쉬운 구현 로그"
+    ]
+  },
+  "auth": {
+    "heroTitle": "포트폴리오 수준의 AI 서비스 콘솔",
+    "heroDescription": "FastAPI + LangGraph 백엔드에 인증하고 실제 대화 워크플로를 실행하며 인용, 문서, 그룹, 안전한 에이전트 활동을 확인합니다.",
+    "features": [
+      "레거시 스모크 채팅이 아닌 conversation run 사용",
+      "BFF가 보호하는 세션 및 CSRF 흐름",
+      "따라가기 쉬운 Greet 스타일 구조"
+    ],
+    "createAccount": "계정 만들기",
+    "welcomeBack": "다시 오신 것을 환영합니다",
+    "signupDescription": "회원가입 후 자동으로 로그인됩니다.",
+    "loginDescription": "백엔드 인증 세션으로 콘솔에 입장합니다.",
+    "email": "이메일",
+    "password": "비밀번호",
+    "passwordHint": "8자 이상 입력하세요.",
+    "authenticationFailed": "인증에 실패했습니다",
+    "working": "처리 중...",
+    "signupSubmit": "회원가입 후 입장",
+    "loginSubmit": "로그인",
+    "alreadyHaveAccount": "이미 계정이 있나요?",
+    "needAccount": "계정이 필요하신가요?",
+    "loginLink": "로그인",
+    "signupLink": "회원가입"
+  },
+  "service": {
+    "nav": {
+      "chat": "채팅",
+      "documents": "문서",
+      "knowledge": "지식 베이스",
+      "groups": "그룹"
+    },
+    "restoringSession": "세션을 복원하는 중...",
+    "pleaseLogin": "로그인이 필요합니다",
+    "goToLogin": "로그인으로 이동",
+    "sessionRestored": "백엔드 세션이 /auth/me를 통해 복원되었습니다.",
+    "logout": "로그아웃"
+  },
+  "status": {
+    "defaultErrorTitle": "문제가 발생했습니다",
+    "defaultErrorDescription": "다시 시도해 주세요."
+  },
+  "chat": {
+    "title": "채팅",
+    "description": "Conversation run 기반 제품 화면입니다.",
+    "newButton": "새 대화",
+    "newConversationTitle": "대화",
+    "loadingConversations": "대화 목록을 불러오는 중...",
+    "noConversationsTitle": "대화가 없습니다",
+    "noConversationsDescription": "대화를 만들어 시작하세요.",
+    "activeConversationLabel": "활성 대화",
+    "selectOrCreateConversation": "대화를 선택하거나 새로 만드세요",
+    "noActiveConversationTitle": "활성 대화가 없습니다",
+    "noActiveConversationDescription": "대화를 만들면 채팅 입력창을 사용할 수 있습니다.",
+    "agentComposing": "에이전트가 응답을 작성 중입니다...",
+    "composerPlaceholder": "/conversations/{id}/runs를 통해 어시스턴트에게 질문하세요...",
+    "send": "보내기",
+    "runFailed": "실행에 실패했습니다",
+    "runHistory": "실행 기록",
+    "noRunsTitle": "실행 기록이 없습니다",
+    "noRunsDescription": "메시지를 보내 첫 실행을 만드세요.",
+    "unrouted": "라우팅 없음",
+    "activityEvents": "활동 이벤트",
+    "noEventsTitle": "이벤트가 없습니다",
+    "noEventsDescription": "최신 실행 이벤트가 여기에 표시됩니다.",
+    "latestCitations": "최신 인용",
+    "noCitationsTitle": "인용이 없습니다",
+    "noCitationsDescription": "검색 컨텍스트가 사용되면 RAG 인용이 표시됩니다.",
+    "documentLabel": "문서",
+    "roles": {
+      "user": "사용자",
+      "assistant": "어시스턴트",
+      "system": "시스템"
+    },
+    "runStatuses": {
+      "completed": "완료",
+      "failed": "실패",
+      "running": "실행 중",
+      "pending": "대기 중"
+    }
+  },
+  "admin": {
+    "common": {
+      "loading": "불러오는 중...",
+      "emptyListDescription": "위 양식에서 새 항목을 만드세요.",
+      "scopePersonal": "개인",
+      "groupPrefix": "그룹",
+      "knowledgeBasePrefix": "KB",
+      "noKnowledgeBase": "연결된 KB 없음",
+      "chunks": "청크",
+      "entities": "엔티티",
+      "relationships": "관계"
+    },
+    "knowledge": {
+      "title": "지식 베이스",
+      "description": "개인 또는 그룹 검색 범위를 만들고 확인합니다.",
+      "nameLabel": "지식 베이스 이름",
+      "createButton": "지식 베이스 만들기",
+      "empty": "아직 지식 베이스가 없습니다."
+    },
+    "documents": {
+      "title": "문서",
+      "description": "문서 메타데이터, 수집, 추출 실행, 직접 권한 패치를 관리합니다.",
+      "titleLabel": "제목",
+      "contentLabel": "내용",
+      "contentHint": "백엔드는 내용을 저장하고 deterministic ingestion으로 청크와 엔티티를 생성합니다.",
+      "createButton": "문서 만들기",
+      "selectedActions": "선택한 문서 작업",
+      "noSelectedTitle": "선택된 문서가 없습니다",
+      "noSelectedDescription": "문서를 만들거나 선택하세요.",
+      "runIngest": "수집 실행",
+      "permissionLabel": "읽기 권한을 부여할 사용자 ID",
+      "permissionHint": "현재 백엔드는 ID 기반 권한 계약을 제공합니다. 사용자 검색이 필요하면 백엔드 요청으로 기록하세요.",
+      "patchPermission": "권한 패치",
+      "extractionRuns": "추출 실행",
+      "noExtractionRunsTitle": "추출 실행이 없습니다",
+      "noExtractionRunsDescription": "수집을 실행해 생성하세요.",
+      "empty": "아직 문서가 없습니다."
+    },
+    "groups": {
+      "title": "그룹",
+      "description": "그룹을 만들고 목록을 확인하며 백엔드의 ID 기반 멤버십 라우트로 역할을 관리합니다.",
+      "nameLabel": "그룹 이름",
+      "createButton": "그룹 만들기",
+      "membershipActions": "멤버십 작업",
+      "activeGroupLabel": "활성 그룹",
+      "noSelectedTitle": "선택된 그룹이 없습니다",
+      "noSelectedDescription": "먼저 그룹을 만들거나 선택하세요.",
+      "addMemberLabel": "추가/수정할 멤버 사용자 ID",
+      "upsertMember": "멤버 업서트",
+      "patchMemberLabel": "패치할 기존 멤버 사용자 ID",
+      "patchRole": "역할 패치",
+      "backendNote": "현재 백엔드는 ID 기반 멤버 작업을 제공합니다. 사용자 검색 또는 멤버 목록이 필요하면 ../my-agents를 변경하기 전에 백엔드 요청을 추가하세요.",
+      "empty": "아직 그룹이 없습니다.",
+      "roleLabel": "역할",
+      "roles": {
+        "viewer": "뷰어",
+        "editor": "편집자",
+        "admin": "관리자",
+        "owner": "소유자"
+      }
+    }
+  },
+  "errors": {
+    "csrfMissing": "세션 증명이 없습니다. 다시 로그인해 주세요.",
+    "requestFailed": "요청에 실패했습니다",
+    "pathNotAllowed": "허용되지 않은 경로입니다",
+    "legacyChatBlocked": "레거시 assistant chat은 제품 라우트가 아닙니다",
+    "pathNotAllowlisted": "허용 목록에 없는 경로입니다",
+    "jsonRequired": "변경 요청은 application/json을 사용해야 합니다",
+    "crossSiteRejected": "교차 사이트 변경 요청이 거부되었습니다",
+    "originRejected": "허용되지 않은 Origin입니다",
+    "refererInvalid": "Referer가 유효하지 않습니다",
+    "refererRejected": "허용되지 않은 Referer입니다"
+  }
+}

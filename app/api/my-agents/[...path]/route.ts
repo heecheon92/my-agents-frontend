@@ -19,6 +19,7 @@ import {
   safeProxyError,
   validateSameOriginProof,
 } from "@/server/my-agents/proxy-policy";
+import { defaultLocalization } from "@/utils/localization";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +48,7 @@ async function proxy(request: NextRequest, context: RouteContext) {
     return Response.json(
       {
         code: "csrf_missing",
-        detail: "Session proof is missing. Please sign in again.",
+        detail: defaultLocalization.errors.csrfMissing,
       },
       { status: 409 },
     );

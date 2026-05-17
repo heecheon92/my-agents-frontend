@@ -1,7 +1,7 @@
 ---
 version: alpha
-name: ElevenLabs-design-analysis
-description: A voice-AI brand whose marketing surfaces read like a quietly editorial print magazine. The base canvas is off-white (`#f5f5f5`) holding warm near-black ink (`#292524`); the brand voltage is photographic, not chromatic — soft pastel atmospheric gradient orbs (mint → peach → lavender → sky) drift through the page as the only "color" moments. Display runs Waldenburg Light at weight 300 — the editorial signature. Inter carries body, navigation, captions. CTAs are subtle: a near-black ink pill is the primary, a transparent outline is the secondary. The brand trusts atmospheric photography and modest type weights to do all of the brand work; there is no neon accent, no saturated CTA color, no developer-tools dark canvas.
+name: my-agents-editorial-theme
+description: A portfolio AI-console theme whose marketing and product surfaces should read like a quietly editorial print magazine. The base canvas is off-white (`#f5f5f5`) holding warm near-black ink (`#292524`); the brand voltage is photographic, not chromatic — soft pastel atmospheric gradient orbs (mint → peach → lavender → sky) drift through the page as the only "color" moments. Display runs Waldenburg Light at weight 300 — the editorial signature. Inter carries body, navigation, captions. CTAs are subtle: a near-black ink pill is the primary, a transparent outline is the secondary. The brand trusts atmospheric photography and modest type weights to do all of the brand work; there is no neon accent, no saturated CTA color, no developer-tools dark canvas.
 
 colors:
   primary: "#292524"
@@ -251,6 +251,112 @@ components:
     textColor: "{colors.body}"
     typography: "{typography.body-sm}"
 ---
+
+## Source of truth
+
+- Status: Active design contract for frontend/UI work.
+- Last refreshed: 2026-05-17.
+- Primary product surfaces: landing, login/signup, service shell, chat workspace, documents, knowledge bases, groups.
+- Evidence reviewed: `app/globals.css`, `app/page.tsx`, `components/keymesh/*`, `docs/frontend-architecture.md`, `docs/agent-onboarding.md`, `README.md`, `README.en.md`.
+- Workflow role: read this file before changing UI layout, color, typography, spacing, component shape, visual hierarchy, or interaction states.
+
+## Brand
+
+- Personality: editorial, calm, credible, portfolio-grade, product-focused.
+- Trust signals: restrained palette, generous whitespace, readable body copy, explicit loading/empty/error states, visible backend honesty.
+- Avoid: neon AI dashboard visuals, saturated CTA colors, noisy developer-tool dark canvases, decorative complexity that hides backend capability gaps.
+
+## Product goals
+
+- Goals: make the `my-agents` backend feel like a real authenticated AI product; foreground chat/run history/activity/citations; keep admin surfaces understandable.
+- Non-goals: fake streaming, fake provider integrations, invented backend data, visual noise that overpromises capability.
+- Success signals: users can understand auth, chat, documents, knowledge, and groups quickly; future agents can map UI decisions back to this file.
+
+## Personas and jobs
+
+- Primary personas: portfolio/interview reviewer, project owner/maintainer, future frontend agent.
+- User jobs: evaluate product credibility, exercise backend workflows, inspect AI activity safely, maintain the code without rediscovering design intent.
+- Key contexts of use: local development with `../my-agents`, browser smoke tests, portfolio demos.
+
+## Information architecture
+
+- Primary navigation: Chat, Documents, Knowledge, Groups.
+- Core routes/screens: `/`, `/login`, `/signup`, `/chat`, `/documents`, `/knowledge`, `/groups`.
+- Content hierarchy: public landing explains product value; service shell prioritizes chat as anchor; side panels expose run history, activity, and citations.
+
+## Design principles
+
+- Principle 1: editorial restraint over AI-dashboard spectacle.
+- Principle 2: backend honesty over fake completeness.
+- Principle 3: reusable keymesh surfaces over route-level component sprawl.
+- Tradeoffs: keep current UI incremental; do not block functional integration on pixel-perfect theme migration.
+
+## Visual language
+
+- Color: off-white canvas, warm near-black ink, soft hairlines, atmospheric pastel orbs only as decoration.
+- Typography: editorial display face when available; readable sans body; never bold display copy.
+- Spacing/layout rhythm: generous section rhythm, compact component internals, clear three-panel product layouts where useful.
+- Shape/radius/elevation: pill CTAs, soft cards, hairline borders, one subtle shadow tier.
+- Motion: restrained; no required animation until explicitly designed.
+- Imagery/iconography: functional icons only; atmospheric gradients may support hero/empty states.
+
+## Components
+
+- Existing components to reuse: `components/ui/button`, `components/keymesh/Field`, `Status`, `ServiceShell`, `AuthPanel`, `ChatWorkspace`, `AdminSurfaces`.
+- New/changed components: extend `components/keymesh/` first; avoid new design-system layers without approval.
+- Variants and states: loading, empty, error, disabled, selected, active, hover/focus must be explicit.
+- Token/component ownership: this file owns design intent; `app/globals.css` and Tailwind classes own implementation.
+
+## Accessibility
+
+- Target standard: practical WCAG AA.
+- Keyboard/focus behavior: preserve native controls and visible focus states.
+- Contrast/readability: comfortable body text; Korean and English copy must remain legible.
+- Screen-reader semantics: headings, labels, buttons, and links should describe real actions.
+- Reduced motion and sensory considerations: avoid motion-dependent comprehension.
+
+## Responsive behavior
+
+- Supported breakpoints/devices: mobile, tablet, desktop, wide desktop.
+- Layout adaptations: stacked cards on mobile; service shell collapses navigation; chat panels should remain usable without horizontal scroll.
+- Touch/hover differences: keep touch targets comfortable; hover must not be the only affordance.
+
+## Interaction states
+
+- Loading: state what is being restored or fetched.
+- Empty: explain the next available action.
+- Error: show safe, redacted messages; never leak secrets, stack traces, or raw provider details.
+- Success: keep feedback concise and tied to server-owned state.
+- Disabled: disabled controls should match missing prerequisites.
+- Offline/slow network: not fully designed; prefer honest retry/error states.
+
+## Content voice
+
+- Tone: calm, direct, product-honest.
+- Terminology: use conversation, run, event, citation, document, knowledge base, group consistently.
+- Microcopy rules: all user-visible app copy lives in `localization/ko.json` and `localization/en.json`; do not hardcode UI strings in components.
+
+## Implementation constraints
+
+- Framework/styling system: Next.js 16 App Router, React 19, Tailwind CSS 4, local shadcn/Base UI-style primitives.
+- Design-token constraints: `DESIGN.md` is the source of design intent; migrate values into `app/globals.css` or component classes intentionally instead of inventing one-off tokens.
+- Performance constraints: keep pages lightweight; do not add design dependencies without explicit approval.
+- Compatibility constraints: backend remains external; frontend must not fake missing backend behavior.
+- Test/screenshot expectations: run lint/typecheck/tests/build after UI changes; run Playwright/browser smoke for meaningful visual or flow changes.
+
+## Open questions
+
+- [ ] Should the current slate/dark landing be redesigned to the off-white editorial theme in one dedicated visual pass? Owner: project owner. Impact: high visual consistency.
+- [ ] Should Waldenburg be licensed/available, or should the project standardize on EB Garamond or another open substitute? Owner: project owner. Impact: typography fidelity.
+- [ ] Should `app/globals.css` expose named CSS variables for every design token, or should Tailwind utility classes remain the implementation surface? Owner: frontend maintainer. Impact: token maintenance.
+
+## Workflow usage
+
+1. Before UI/frontend work, read `DESIGN.md` and cite the relevant section in the plan or implementation note.
+2. If a requested UI conflicts with this document, update `DESIGN.md` or add an open question before coding the exception.
+3. When introducing visual values, map them back to the token names below or document why a new token is needed.
+4. When changing localized UI copy, update `localization/ko.json` and `localization/en.json` together.
+5. After substantial visual changes, verify with browser/Playwright evidence and record the result in `docs/implementation-log.md`.
 
 ## Overview
 

@@ -33,10 +33,16 @@ yarn-error.log*
 # OMX runtime state (plans/specs may be committed intentionally)
 .omx/state/
 .omx/logs/
+.omx/metrics.json
 
 # env files (can opt-in for committing if needed)
 .env*
 !.env.example
+
+
+# playwright
+/test-results/
+/playwright-report/
 
 # vercel
 .vercel

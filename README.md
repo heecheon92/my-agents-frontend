@@ -1,19 +1,21 @@
 # my-agents-frontend
 
-Frontend companion for the `../my-agents` FastAPI + LangGraph backend.
+[English README](./README.en.md)
 
-This app is a portfolio-grade AI service console built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, and Biome. It intentionally mirrors common GreetSchool/GreetAcademy patterns so the project owner can follow and maintain the code manually.
+`../my-agents` FastAPI + LangGraph 백엔드를 위한 프론트엔드 companion 앱입니다.
 
-## What this UI wires
+이 앱은 Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, Biome으로 만든 포트폴리오 수준의 AI 서비스 콘솔입니다. 프로젝트 소유자가 수동으로 따라가고 유지보수할 수 있도록 GreetSchool/GreetAcademy의 서비스, 모델, 쿼리 키, keymesh 컴포넌트, localization 패턴을 의도적으로 맞췄습니다.
 
-- Auth: signup, login, logout, current user restore.
-- Product chat: conversations, server-owned messages, conversation runs, run history, run events, citations.
-- Knowledge/document workflows: knowledge-base create/list, document create/list/detail, ingest, extraction runs, document permission patch.
-- Groups: create/list plus ID-based member role upsert/patch.
+## 이 UI가 연결하는 기능
 
-Product chat uses `/conversations/{id}/runs`; `/assistant/chat` is legacy/dev-only and is blocked from product BFF proxy use.
+- 인증: 회원가입, 로그인, 로그아웃, 현재 사용자 복원.
+- 제품 채팅: 대화, 서버 소유 메시지, conversation run, run history, run event, citation.
+- 지식/문서 워크플로: 지식 베이스 생성/목록, 문서 생성/목록/상세, ingest, extraction run, 문서 권한 patch.
+- 그룹: 생성/목록 및 ID 기반 멤버 역할 upsert/patch.
 
-## Local setup
+제품 채팅은 `/conversations/{id}/runs`를 사용합니다. `/assistant/chat`은 레거시/개발용이므로 제품 BFF proxy에서 차단합니다.
+
+## 로컬 실행
 
 ```bash
 pnpm install
@@ -21,13 +23,13 @@ cp .env.example .env.local
 pnpm dev
 ```
 
-Run the backend separately, normally from `../my-agents`:
+백엔드는 보통 `../my-agents`에서 별도로 실행합니다.
 
 ```bash
 MY_AGENTS_RESPONSE_MODE=deterministic uv run uvicorn main:app --host 127.0.0.1 --port 8000
 ```
 
-Required frontend environment variables are safe placeholders:
+필수 프론트엔드 환경 변수는 안전한 placeholder입니다.
 
 ```bash
 MY_AGENTS_BACKEND_URL=http://127.0.0.1:8000
@@ -35,9 +37,30 @@ MY_AGENTS_FRONTEND_ORIGIN=http://localhost:3000
 MY_AGENTS_COOKIE_SECURE=false
 ```
 
-Do not store real secrets in this repository or expose secrets with `NEXT_PUBLIC_*`.
+실제 secret을 이 저장소에 저장하거나 `NEXT_PUBLIC_*`로 노출하지 마세요.
 
-## Architecture
+## Localization 규칙
+
+- 사용자에게 보이는 문자열은 컴포넌트에 하드코딩하지 않습니다.
+- 기본 locale은 `ko`이며 `i18n.config.ts`에서 관리합니다.
+- UI 문구는 `localization/ko.json`과 `localization/en.json`에 함께 추가합니다.
+- Client Component에서는 Greet 계열 프로젝트처럼 `useLocalization()`을 사용합니다.
+- Server Component, metadata, route handler의 안전한 사용자 메시지는 `defaultLocalization`을 사용합니다.
+- 문구를 제거하거나 바꾸면 사용하지 않는 localization key도 같은 변경에서 정리합니다.
+
+관련 파일:
+
+- `i18n.config.ts` — 지원 locale과 기본 locale.
+- `localization/*.json` — 한국어/영어 UI copy.
+- `utils/localization.ts` — locale별 dictionary 접근자.
+- `providers/localization.tsx` — 앱 전역 localization context.
+- `hooks/useLocalization.ts` — Client Component용 localization hook.
+
+## 디자인/테마 워크플로
+
+`DESIGN.md`는 UI, theme, spacing, typography, component state를 결정할 때 읽어야 하는 활성 design contract입니다. UI 작업을 시작하기 전에 관련 섹션을 확인하고, 새 시각 값은 `DESIGN.md` token 또는 명시적인 design note로 되돌아갈 수 있어야 합니다.
+
+## 아키텍처
 
 ```mermaid
 flowchart LR
@@ -47,32 +70,32 @@ flowchart LR
     BFF --> Backend[FastAPI backend ../my-agents]
 ```
 
-Important folders:
+주요 폴더:
 
-- `constants/` — API paths, query keys, headers, HTTP constants.
-- `model/my-agents/` — Zod schemas and TypeScript types for backend contracts.
-- `services/my-agents/` — typed service classes and safe API error handling.
-- `server/my-agents/` — BFF configuration, cookie helpers, proxy allowlist, CSRF/same-origin policy.
-- `hooks/` — TanStack Query hooks for auth, conversations, documents, knowledge, groups.
-- `components/keymesh/` — app-specific UI helpers and product surfaces.
-- `docs/implementation-log.md` — followable implementation status and verification notes.
-- `docs/backend-requests.md` — backend contract gaps discovered by frontend work.
+- `constants/` — API path, query key, header, HTTP 상수.
+- `model/my-agents/` — 백엔드 계약용 Zod schema와 TypeScript type.
+- `services/my-agents/` — typed service class와 안전한 API error 처리.
+- `server/my-agents/` — BFF 설정, cookie helper, proxy allowlist, CSRF/same-origin 정책.
+- `hooks/` — auth, conversation, document, knowledge, group용 TanStack Query hook.
+- `components/keymesh/` — 앱 전용 UI helper와 제품 화면.
+- `DESIGN.md` — UI/theme/layout 결정을 위한 활성 design contract.
+- `docs/implementation-log.md` — 구현 상태와 검증 기록.
+- `docs/backend-requests.md` — 프론트엔드 작업 중 발견한 백엔드 계약 gap.
 
+## Agent handoff 문서
 
-## Agent handoff docs
+새 Codex 세션은 다음 문서부터 확인하세요.
 
-Fresh Codex sessions should start with:
+- `docs/agent-onboarding.md` — 목표, 현재 상태, 규칙, 작업 흐름.
+- `docs/frontend-architecture.md` — 폴더 맵, 데이터 흐름, 엔드포인트 커버리지.
+- `docs/security-and-backend-boundary.md` — BFF/CSRF 모델과 백엔드 read-only 규칙.
+- `docs/verification-runbook.md` — 로컬 실행 명령, 브라우저 smoke, 최종 확인.
 
-- `docs/agent-onboarding.md` — goals, current status, rules, and task workflow.
-- `docs/frontend-architecture.md` — folder map, data flow, and endpoint coverage.
-- `docs/security-and-backend-boundary.md` — BFF/CSRF model and backend read-only rules.
-- `docs/verification-runbook.md` — local run commands, browser smoke, and final checks.
+## 백엔드 경계
 
-## Backend boundary
+프론트엔드 세션은 계약, schema, 동작을 이해하기 위해 `../my-agents`를 읽을 수 있습니다. 하지만 사용자가 명시적으로 백엔드 작업을 승인하기 전에는 백엔드 파일을 수정하면 안 됩니다. 더 나은 프론트엔드 구현에 백엔드 gap이 막히면 먼저 `docs/backend-requests.md`에 기록하세요.
 
-Frontend sessions may inspect `../my-agents` for contracts, schemas, and behavior, but must not edit backend files unless the user explicitly approves backend work. If a backend gap blocks a better frontend implementation, document it in `docs/backend-requests.md` first.
-
-## Verification
+## 검증
 
 ```bash
 pnpm lint
@@ -81,4 +104,4 @@ pnpm exec vitest run
 pnpm build
 ```
 
-When backend/browser verification is needed, also run the backend and inspect the primary auth/chat journey in a browser.
+백엔드/브라우저 검증이 필요한 경우 백엔드를 함께 실행하고 주요 인증/채팅 흐름을 브라우저에서 확인하세요.

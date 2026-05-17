@@ -1,5 +1,6 @@
 import { toFrontendAPIPath } from "@/constants/api-path";
 import { JSON_CONTENT_TYPE } from "@/constants/header";
+import { defaultLocalization } from "@/utils/localization";
 import { MyAgentsAPIError } from "./MyAgentsAPIError";
 
 export type RequestBody = BodyInit | Record<string, unknown> | undefined;
@@ -59,7 +60,10 @@ export class MyAgentsFetchClient {
     if (response.ok) return body;
     const detail = safeDetail(body);
     throw new MyAgentsAPIError({
-      message: detail ?? response.statusText ?? "Request failed",
+      message:
+        detail ??
+        response.statusText ??
+        defaultLocalization.errors.requestFailed,
       status: response.status,
       detail,
       body,

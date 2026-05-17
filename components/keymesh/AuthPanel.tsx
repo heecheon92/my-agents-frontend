@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useLogin, useSignup } from "@/hooks/use-auth";
+import { useLocalization } from "@/hooks/useLocalization";
 import { Field, inputClassName } from "./Field";
 import { ErrorState } from "./Status";
 
@@ -14,6 +15,10 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
   const signup = useSignup();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { localization } = useLocalization((state) => ({
+    auth: state.localization.auth,
+    brand: state.localization.brand,
+  }));
   const isSignup = mode === "signup";
   const active = isSignup ? signup : login;
 
@@ -30,26 +35,20 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
     <div className="mx-auto grid min-h-dvh w-full max-w-6xl items-center px-6 py-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-12">
       <section className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm lg:p-12">
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-slate-500">
-          my-agents
+          {localization.brand.name}
         </p>
         <h1 className="mt-4 max-w-xl text-4xl font-semibold tracking-tight text-slate-950 lg:text-6xl">
-          A portfolio-grade AI service console.
+          {localization.auth.heroTitle}
         </h1>
         <p className="mt-5 max-w-2xl text-lg leading-8 text-slate-600">
-          Authenticate into a FastAPI + LangGraph backend, run real conversation
-          workflows, and inspect citations, documents, groups, and safe agent
-          activity.
+          {localization.auth.heroDescription}
         </p>
         <div className="mt-8 grid gap-3 text-sm text-slate-600 sm:grid-cols-3">
-          <div className="rounded-2xl bg-slate-50 p-4">
-            Conversation runs, not legacy smoke chat.
-          </div>
-          <div className="rounded-2xl bg-slate-50 p-4">
-            BFF-protected session and CSRF flow.
-          </div>
-          <div className="rounded-2xl bg-slate-50 p-4">
-            Followable Greet-style structure.
-          </div>
+          {localization.auth.features.map((feature) => (
+            <div key={feature} className="rounded-2xl bg-slate-50 p-4">
+              {feature}
+            </div>
+          ))}
         </div>
       </section>
       <form
@@ -57,15 +56,17 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
         className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm"
       >
         <h2 className="text-2xl font-semibold text-slate-950">
-          {isSignup ? "Create account" : "Welcome back"}
+          {isSignup
+            ? localization.auth.createAccount
+            : localization.auth.welcomeBack}
         </h2>
         <p className="mt-2 text-sm text-slate-500">
           {isSignup
-            ? "Sign up, then you will be logged in automatically."
-            : "Use the backend auth session to enter the console."}
+            ? localization.auth.signupDescription
+            : localization.auth.loginDescription}
         </p>
         <div className="mt-6 grid gap-4">
-          <Field label="Email">
+          <Field label={localization.auth.email}>
             <input
               className={inputClassName}
               type="email"
@@ -76,8 +77,8 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
             />
           </Field>
           <Field
-            label="Password"
-            hint={isSignup ? "At least 8 characters." : undefined}
+            label={localization.auth.password}
+            hint={isSignup ? localization.auth.passwordHint : undefined}
           >
             <input
               className={inputClassName}
@@ -90,23 +91,30 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
             />
           </Field>
           {active.error ? (
-            <ErrorState error={active.error} title="Authentication failed" />
+            <ErrorState
+              error={active.error}
+              title={localization.auth.authenticationFailed}
+            />
           ) : null}
           <Button type="submit" size="lg" disabled={active.isPending}>
             {active.isPending
-              ? "Working..."
+              ? localization.auth.working
               : isSignup
-                ? "Sign up and enter"
-                : "Log in"}
+                ? localization.auth.signupSubmit
+                : localization.auth.loginSubmit}
           </Button>
         </div>
         <p className="mt-6 text-sm text-slate-500">
-          {isSignup ? "Already have an account?" : "Need an account?"}{" "}
+          {isSignup
+            ? localization.auth.alreadyHaveAccount
+            : localization.auth.needAccount}{" "}
           <Link
             className="font-medium text-slate-950 underline"
             href={isSignup ? "/login" : "/signup"}
           >
-            {isSignup ? "Log in" : "Sign up"}
+            {isSignup
+              ? localization.auth.loginLink
+              : localization.auth.signupLink}
           </Link>
         </p>
       </form>

@@ -60,3 +60,21 @@ Remaining: completion audit and optional commit/push.
 - Browser verification still depends on running the backend locally.
 - Some admin UX remains ID-based because the backend does not expose user search/member listing. This is documented honestly in UI copy; no backend request is required unless richer UX becomes a goal.
 - Equal polish across all domains is intentionally deferred in favor of understandable staged quality, with chat as the visual anchor.
+
+## 2026-05-17 — README language split and localization workflow
+
+- Converted the primary `README.md` to Korean and added `README.en.md` as the English counterpart; both files link to each other.
+- Added a GreetSchool/GreetAcademy-style localization surface with `i18n.config.ts`, `localization/ko.json`, `localization/en.json`, `utils/localization.ts`, `providers/localization.tsx`, and `hooks/useLocalization.ts`.
+- Moved user-facing app copy from landing, auth, service shell, chat, admin surfaces, status fallback, BFF errors, and fetch fallback into localization dictionaries.
+- Added `tests/localization.test.ts` to keep Korean and English dictionary shapes aligned.
+
+Verification passed in this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build`, and `pnpm exec playwright test`.
+
+
+## 2026-05-17 — DESIGN.md workflow activation
+
+- Confirmed `DESIGN.md` existed but was not referenced by code or docs as an active workflow contract.
+- Refreshed `DESIGN.md` with source-of-truth metadata, product-specific design workflow guidance, implementation constraints, and open questions while preserving the existing theme token analysis.
+- Added `DESIGN.md` to onboarding, architecture, README, and AGENTS guidance so future UI/theme/layout changes read it before implementation.
+
+Verification passed in this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, and `git diff --check`.

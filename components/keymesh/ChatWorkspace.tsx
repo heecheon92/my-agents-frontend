@@ -11,6 +11,7 @@ import {
   useRunEvents,
   useRuns,
 } from "@/hooks/use-conversations";
+import { useLocalization } from "@/hooks/useLocalization";
 import { cn } from "@/lib/utils";
 import { inputClassName } from "./Field";
 import { EmptyState, ErrorState, Pill } from "./Status";
@@ -28,10 +29,13 @@ export function ChatWorkspace() {
   const runConversation = useRunConversation(activeId);
   const [draft, setDraft] = useState("");
   const latestCitations = runConversation.data?.citations ?? [];
+  const { lang, localization } = useLocalization(
+    (state) => state.localization.chat,
+  );
 
   async function handleCreate() {
     const created = await createConversation.mutateAsync({
-      title: `Conversation ${new Date().toLocaleString()}`,
+      title: `${localization.newConversationTitle} ${new Date().toLocaleString(lang)}`,
     });
     setSelectedId(created.id);
   }
@@ -51,17 +55,15 @@ export function ChatWorkspace() {
       <aside className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold">Chat</h1>
-            <p className="text-sm text-slate-500">
-              Conversation-run product surface.
-            </p>
+            <h1 className="text-xl font-semibold">{localization.title}</h1>
+            <p className="text-sm text-slate-500">{localization.description}</p>
           </div>
           <Button
             size="sm"
             onClick={handleCreate}
             disabled={createConversation.isPending}
           >
-            New
+            {localization.newButton}
           </Button>
         </div>
         <div className="mt-4 grid gap-2">
@@ -69,12 +71,14 @@ export function ChatWorkspace() {
             <ErrorState error={conversations.error} />
           ) : null}
           {conversations.isLoading ? (
-            <p className="text-sm text-slate-500">Loading conversations...</p>
+            <p className="text-sm text-slate-500">
+              {localization.loadingConversations}
+            </p>
           ) : null}
           {conversations.data?.length === 0 ? (
             <EmptyState
-              title="No conversations"
-              description="Create a conversation to begin."
+              title={localization.noConversationsTitle}
+              description={localization.noConversationsDescription}
             />
           ) : null}
           {conversations.data?.map((item) => (
@@ -105,16 +109,19 @@ export function ChatWorkspace() {
 
       <section className="flex min-h-0 flex-col rounded-3xl border border-slate-200 bg-white shadow-sm">
         <header className="border-b border-slate-200 p-4">
-          <p className="text-sm text-slate-500">Active conversation</p>
+          <p className="text-sm text-slate-500">
+            {localization.activeConversationLabel}
+          </p>
           <h2 className="text-lg font-semibold">
-            {conversation.data?.title ?? "Select or create a conversation"}
+            {conversation.data?.title ??
+              localization.selectOrCreateConversation}
           </h2>
         </header>
         <div className="min-h-0 flex-1 overflow-auto p-4">
           {!activeId ? (
             <EmptyState
-              title="No active conversation"
-              description="Create a conversation to unlock the chat composer."
+              title={localization.noActiveConversationTitle}
+              description={localization.noActiveConversationDescription}
             />
           ) : null}
           {messages.error ? <ErrorState error={messages.error} /> : null}
@@ -130,14 +137,16 @@ export function ChatWorkspace() {
                 )}
               >
                 <p className="mb-1 text-xs uppercase tracking-wide opacity-60">
-                  {message.role}
+                  {localization.roles[
+                    message.role as keyof typeof localization.roles
+                  ] ?? message.role}
                 </p>
                 <p className="whitespace-pre-wrap">{message.content}</p>
               </div>
             ))}
             {runConversation.isPending ? (
               <div className="max-w-[78%] rounded-3xl bg-slate-100 px-4 py-3 text-sm text-slate-500">
-                Agent is composing...
+                {localization.agentComposing}
               </div>
             ) : null}
           </div>
@@ -148,7 +157,7 @@ export function ChatWorkspace() {
               className={cn(inputClassName, "min-h-12 flex-1")}
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
-              placeholder="Ask the assistant through /conversations/{id}/runs..."
+              placeholder={localization.composerPlaceholder}
               disabled={!activeId || runConversation.isPending}
             />
             <Button
@@ -156,12 +165,15 @@ export function ChatWorkspace() {
               size="lg"
               disabled={!activeId || !draft.trim() || runConversation.isPending}
             >
-              Send
+              {localization.send}
             </Button>
           </div>
           {runConversation.error ? (
             <div className="mt-3">
-              <ErrorState title="Run failed" error={runConversation.error} />
+              <ErrorState
+                title={localization.runFailed}
+                error={runConversation.error}
+              />
             </div>
           ) : null}
         </form>
@@ -169,12 +181,12 @@ export function ChatWorkspace() {
 
       <aside className="grid min-h-0 gap-4 overflow-auto">
         <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="font-semibold">Run history</h2>
+          <h2 className="font-semibold">{localization.runHistory}</h2>
           <div className="mt-3 grid gap-2">
             {runs.data?.length === 0 ? (
               <EmptyState
-                title="No runs"
-                description="Send a message to create the first run."
+                title={localization.noRunsTitle}
+                description={localization.noRunsDescription}
               />
             ) : null}
             {runs.data?.map((run) => (
@@ -184,26 +196,28 @@ export function ChatWorkspace() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <Pill tone={run.status === "completed" ? "green" : "rose"}>
-                    {run.status}
+                    {localization.runStatuses[
+                      run.status as keyof typeof localization.runStatuses
+                    ] ?? run.status}
                   </Pill>
                   <span className="text-xs text-slate-500">
-                    {new Date(run.created_at).toLocaleString()}
+                    {new Date(run.created_at).toLocaleString(lang)}
                   </span>
                 </div>
                 <p className="mt-2 text-slate-600">
-                  {run.route_label ?? "unrouted"}
+                  {run.route_label ?? localization.unrouted}
                 </p>
               </div>
             ))}
           </div>
         </section>
         <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="font-semibold">Activity events</h2>
+          <h2 className="font-semibold">{localization.activityEvents}</h2>
           <div className="mt-3 grid gap-2">
             {events.data?.length === 0 || !latestRunId ? (
               <EmptyState
-                title="No events"
-                description="Latest run events will appear here."
+                title={localization.noEventsTitle}
+                description={localization.noEventsDescription}
               />
             ) : null}
             {events.data?.map((event) => (
@@ -222,12 +236,12 @@ export function ChatWorkspace() {
           </div>
         </section>
         <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="font-semibold">Latest citations</h2>
+          <h2 className="font-semibold">{localization.latestCitations}</h2>
           <div className="mt-3 grid gap-2">
             {latestCitations.length === 0 ? (
               <EmptyState
-                title="No citations"
-                description="RAG citations appear when retrieved context is used."
+                title={localization.noCitationsTitle}
+                description={localization.noCitationsDescription}
               />
             ) : null}
             {latestCitations.map((citation) => (
@@ -236,7 +250,8 @@ export function ChatWorkspace() {
                 className="rounded-2xl bg-blue-50 p-3 text-sm text-blue-950"
               >
                 <p className="font-medium">
-                  Document {citation.document_id.slice(0, 8)}
+                  {localization.documentLabel}{" "}
+                  {citation.document_id.slice(0, 8)}
                 </p>
                 <p className="mt-1 text-blue-800">{citation.snippet}</p>
               </div>
