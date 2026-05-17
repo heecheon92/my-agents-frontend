@@ -7,11 +7,11 @@ test("landing page renders localized Korean copy", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: ko.home.title }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: ko.home.login })).toHaveAttribute(
-    "href",
-    "/login",
-  );
+  const header = page.locator("header");
   await expect(
-    page.getByRole("link", { name: ko.home.signup }),
+    header.getByRole("link", { name: ko.home.login }),
+  ).toHaveAttribute("href", "/login");
+  await expect(
+    header.getByRole("link", { name: ko.home.signup }),
   ).toHaveAttribute("href", "/signup");
 });

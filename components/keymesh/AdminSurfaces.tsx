@@ -42,7 +42,7 @@ export function KnowledgeSurface() {
     >
       <form
         onSubmit={handleSubmit}
-        className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4"
+        className="cal-card grid gap-3 rounded-xl p-4"
       >
         <Field label={localization.knowledge.nameLabel}>
           <input
@@ -127,7 +127,7 @@ export function DocumentsSurface() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
         <form
           onSubmit={handleCreate}
-          className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4"
+          className="cal-card grid gap-3 rounded-xl p-4"
         >
           <Field label={localization.documents.titleLabel}>
             <input
@@ -157,12 +157,14 @@ export function DocumentsSurface() {
             <ErrorState error={createDocument.error} />
           ) : null}
         </form>
-        <section className="rounded-3xl border border-slate-200 bg-white p-4">
+        <section className="cal-card rounded-xl p-4">
           <h2 className="font-semibold">
             {localization.documents.selectedActions}
           </h2>
           {activeDocumentId ? (
-            <p className="mt-1 text-sm text-slate-500">{activeDocumentId}</p>
+            <p className="mt-2 text-sm leading-6 text-cal-muted">
+              {activeDocumentId}
+            </p>
           ) : (
             <EmptyState
               title={localization.documents.noSelectedTitle}
@@ -183,7 +185,7 @@ export function DocumentsSurface() {
           ) : null}
           <form
             onSubmit={handlePatchPermission}
-            className="mt-4 grid gap-3 border-t border-slate-200 pt-4"
+            className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
           >
             <Field
               label={localization.documents.permissionLabel}
@@ -223,14 +225,17 @@ export function DocumentsSurface() {
               />
             ) : null}
             {extractionRuns.data?.map((run) => (
-              <div key={run.id} className="rounded-2xl bg-slate-50 p-3 text-sm">
+              <div
+                key={run.id}
+                className="rounded-lg bg-cal-surface-soft p-3 text-sm"
+              >
                 <div className="flex items-center justify-between">
                   <Pill tone="green">{run.status}</Pill>
                   <span>
                     {run.chunk_count} {localization.common.chunks}
                   </span>
                 </div>
-                <p className="mt-2 text-slate-600">
+                <p className="mt-2 text-cal-body">
                   {run.entity_count} {localization.common.entities} ·{" "}
                   {run.relationship_count} {localization.common.relationships}
                 </p>
@@ -309,7 +314,7 @@ export function GroupsSurface() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_380px]">
         <form
           onSubmit={handleSubmit}
-          className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4"
+          className="cal-card grid gap-3 rounded-xl p-4"
         >
           <Field label={localization.groups.nameLabel}>
             <input
@@ -327,12 +332,12 @@ export function GroupsSurface() {
           </Button>
           {createGroup.error ? <ErrorState error={createGroup.error} /> : null}
         </form>
-        <section className="rounded-3xl border border-slate-200 bg-white p-4">
+        <section className="cal-card rounded-xl p-4">
           <h2 className="font-semibold">
             {localization.groups.membershipActions}
           </h2>
           {activeGroupId ? (
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-2 text-sm leading-6 text-cal-muted">
               {localization.groups.activeGroupLabel}: {activeGroupId}
             </p>
           ) : (
@@ -343,7 +348,7 @@ export function GroupsSurface() {
           )}
           <form
             onSubmit={handleAddMember}
-            className="mt-4 grid gap-3 border-t border-slate-200 pt-4"
+            className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
           >
             <Field label={localization.groups.addMemberLabel}>
               <input
@@ -374,7 +379,7 @@ export function GroupsSurface() {
           ) : null}
           <form
             onSubmit={handleUpdateMember}
-            className="mt-4 grid gap-3 border-t border-slate-200 pt-4"
+            className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
           >
             <Field label={localization.groups.patchMemberLabel}>
               <input
@@ -404,7 +409,7 @@ export function GroupsSurface() {
               <ErrorState error={updateMember.error} />
             </div>
           ) : null}
-          <p className="mt-4 rounded-2xl bg-amber-50 p-3 text-sm text-amber-800">
+          <p className="mt-4 rounded-lg border border-cal-hairline bg-cal-surface-strong p-3 text-sm leading-6 text-cal-body">
             {localization.groups.backendNote}
           </p>
         </section>
@@ -476,12 +481,10 @@ function PageCard({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto grid max-w-6xl gap-5">
+    <div className="mx-auto grid max-w-6xl gap-6">
       <header>
-        <h1 className="text-3xl font-semibold tracking-tight text-slate-950">
-          {title}
-        </h1>
-        <p className="mt-2 max-w-3xl text-slate-600">{description}</p>
+        <h1 className="cal-heading text-4xl leading-tight">{title}</h1>
+        <p className="cal-subcopy mt-3 max-w-3xl">{description}</p>
       </header>
       {children}
     </div>
@@ -504,9 +507,9 @@ function ResourceList({
     ? children.length > 0
     : Boolean(children);
   return (
-    <section className="grid gap-3 rounded-3xl border border-slate-200 bg-white p-4">
+    <section className="cal-card grid gap-3 rounded-xl p-4">
       {loading ? (
-        <p className="text-sm text-slate-500">{localization.common.loading}</p>
+        <p className="text-sm text-cal-muted">{localization.common.loading}</p>
       ) : null}
       {error ? <ErrorState error={error} /> : null}
       {!loading && !error && !hasChildren ? (
@@ -533,14 +536,14 @@ function ResourceRow({
 }) {
   return (
     <div
-      className={`rounded-2xl border p-3 ${active ? "border-slate-950 bg-slate-950 text-white" : "border-slate-200 bg-white"}`}
+      className={`rounded-lg border p-3 ${active ? "border-cal-primary bg-cal-primary text-white" : "border-cal-hairline bg-cal-canvas"}`}
     >
       <div className="flex items-center justify-between gap-3">
         <p className="font-medium">{title}</p>
         <Pill>{meta}</Pill>
       </div>
       <p
-        className={`mt-1 text-xs ${active ? "text-slate-300" : "text-slate-500"}`}
+        className={`mt-1 text-xs ${active ? "text-white/70" : "text-cal-muted"}`}
       >
         {subtitle}
       </p>

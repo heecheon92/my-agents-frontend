@@ -52,11 +52,15 @@ export function ChatWorkspace() {
 
   return (
     <div className="grid h-[calc(100dvh-4rem)] gap-4 xl:grid-cols-[320px_minmax(0,1fr)_340px]">
-      <aside className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
+      <aside className="cal-card rounded-xl p-4">
         <div className="flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-xl font-semibold">{localization.title}</h1>
-            <p className="text-sm text-slate-500">{localization.description}</p>
+            <h1 className="cal-heading text-3xl leading-tight">
+              {localization.title}
+            </h1>
+            <p className="mt-1 text-sm text-cal-muted">
+              {localization.description}
+            </p>
           </div>
           <Button
             size="sm"
@@ -66,12 +70,12 @@ export function ChatWorkspace() {
             {localization.newButton}
           </Button>
         </div>
-        <div className="mt-4 grid gap-2">
+        <div className="mt-5 grid gap-2">
           {conversations.error ? (
             <ErrorState error={conversations.error} />
           ) : null}
           {conversations.isLoading ? (
-            <p className="text-sm text-slate-500">
+            <p className="text-sm text-cal-muted">
               {localization.loadingConversations}
             </p>
           ) : null}
@@ -87,17 +91,17 @@ export function ChatWorkspace() {
               type="button"
               onClick={() => setSelectedId(item.id)}
               className={cn(
-                "rounded-2xl border p-3 text-left text-sm transition hover:border-slate-300 hover:bg-slate-50",
+                "rounded-lg border p-3 text-left text-sm transition hover:border-cal-hairline hover:bg-cal-surface-soft",
                 activeId === item.id
-                  ? "border-slate-900 bg-slate-950 text-white"
-                  : "border-slate-200 bg-white",
+                  ? "border-cal-primary bg-cal-primary text-white"
+                  : "border-cal-hairline bg-cal-canvas",
               )}
             >
               <span className="block font-medium">{item.title}</span>
               <span
                 className={cn(
                   "mt-1 block text-xs",
-                  activeId === item.id ? "text-slate-300" : "text-slate-500",
+                  activeId === item.id ? "text-white/70" : "text-cal-muted",
                 )}
               >
                 {item.id.slice(0, 8)}
@@ -107,12 +111,10 @@ export function ChatWorkspace() {
         </div>
       </aside>
 
-      <section className="flex min-h-0 flex-col rounded-3xl border border-slate-200 bg-white shadow-sm">
-        <header className="border-b border-slate-200 p-4">
-          <p className="text-sm text-slate-500">
-            {localization.activeConversationLabel}
-          </p>
-          <h2 className="text-lg font-semibold">
+      <section className="cal-card flex min-h-0 flex-col rounded-xl">
+        <header className="border-b border-cal-hairline p-5">
+          <p className="cal-label">{localization.activeConversationLabel}</p>
+          <h2 className="mt-2 text-lg font-medium text-cal-ink">
             {conversation.data?.title ??
               localization.selectOrCreateConversation}
           </h2>
@@ -130,13 +132,13 @@ export function ChatWorkspace() {
               <div
                 key={message.id}
                 className={cn(
-                  "max-w-[78%] rounded-3xl px-4 py-3 text-sm leading-6",
+                  "max-w-[78%] rounded-xl border px-4 py-3 text-sm leading-6",
                   message.role === "user"
-                    ? "ml-auto bg-slate-950 text-white"
-                    : "bg-slate-100 text-slate-900",
+                    ? "ml-auto border-cal-primary bg-cal-primary text-white"
+                    : "border-cal-hairline bg-cal-surface-soft text-cal-ink",
                 )}
               >
-                <p className="mb-1 text-xs uppercase tracking-wide opacity-60">
+                <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] opacity-60">
                   {localization.roles[
                     message.role as keyof typeof localization.roles
                   ] ?? message.role}
@@ -145,13 +147,16 @@ export function ChatWorkspace() {
               </div>
             ))}
             {runConversation.isPending ? (
-              <div className="max-w-[78%] rounded-3xl bg-slate-100 px-4 py-3 text-sm text-slate-500">
+              <div className="max-w-[78%] rounded-xl border border-cal-hairline bg-cal-surface-soft px-4 py-3 text-sm text-cal-muted">
                 {localization.agentComposing}
               </div>
             ) : null}
           </div>
         </div>
-        <form onSubmit={handleSend} className="border-t border-slate-200 p-4">
+        <form
+          onSubmit={handleSend}
+          className="border-t border-cal-hairline p-4"
+        >
           <div className="flex gap-3">
             <input
               className={cn(inputClassName, "min-h-12 flex-1")}
@@ -180,8 +185,10 @@ export function ChatWorkspace() {
       </section>
 
       <aside className="grid min-h-0 gap-4 overflow-auto">
-        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="font-semibold">{localization.runHistory}</h2>
+        <section className="cal-card rounded-xl p-4">
+          <h2 className="font-medium text-cal-ink">
+            {localization.runHistory}
+          </h2>
           <div className="mt-3 grid gap-2">
             {runs.data?.length === 0 ? (
               <EmptyState
@@ -192,7 +199,7 @@ export function ChatWorkspace() {
             {runs.data?.map((run) => (
               <div
                 key={run.run_id}
-                className="rounded-2xl border border-slate-200 p-3 text-sm"
+                className="rounded-lg border border-cal-hairline p-3 text-sm"
               >
                 <div className="flex items-center justify-between gap-2">
                   <Pill tone={run.status === "completed" ? "green" : "rose"}>
@@ -200,19 +207,21 @@ export function ChatWorkspace() {
                       run.status as keyof typeof localization.runStatuses
                     ] ?? run.status}
                   </Pill>
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-cal-muted">
                     {new Date(run.created_at).toLocaleString(lang)}
                   </span>
                 </div>
-                <p className="mt-2 text-slate-600">
+                <p className="mt-2 text-cal-muted">
                   {run.route_label ?? localization.unrouted}
                 </p>
               </div>
             ))}
           </div>
         </section>
-        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="font-semibold">{localization.activityEvents}</h2>
+        <section className="cal-card rounded-xl p-4">
+          <h2 className="font-medium text-cal-ink">
+            {localization.activityEvents}
+          </h2>
           <div className="mt-3 grid gap-2">
             {events.data?.length === 0 || !latestRunId ? (
               <EmptyState
@@ -223,20 +232,22 @@ export function ChatWorkspace() {
             {events.data?.map((event) => (
               <div
                 key={event.id}
-                className="rounded-2xl bg-slate-50 p-3 text-sm"
+                className="rounded-lg bg-cal-surface-soft p-3 text-sm"
               >
-                <p className="font-medium">
+                <p className="font-medium text-cal-ink">
                   {event.sequence}. {event.event_type}
                 </p>
-                <pre className="mt-2 max-h-28 overflow-auto rounded-xl bg-white p-2 text-xs text-slate-600">
+                <pre className="mt-2 max-h-28 overflow-auto rounded-xl border border-cal-hairline bg-white p-2 text-xs text-cal-muted">
                   {JSON.stringify(event.payload, null, 2)}
                 </pre>
               </div>
             ))}
           </div>
         </section>
-        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-          <h2 className="font-semibold">{localization.latestCitations}</h2>
+        <section className="cal-card rounded-xl p-4">
+          <h2 className="font-medium text-cal-ink">
+            {localization.latestCitations}
+          </h2>
           <div className="mt-3 grid gap-2">
             {latestCitations.length === 0 ? (
               <EmptyState
@@ -247,13 +258,13 @@ export function ChatWorkspace() {
             {latestCitations.map((citation) => (
               <div
                 key={citation.id}
-                className="rounded-2xl bg-blue-50 p-3 text-sm text-blue-950"
+                className="rounded-lg bg-cal-surface-strong p-3 text-sm text-cal-ink"
               >
                 <p className="font-medium">
                   {localization.documentLabel}{" "}
                   {citation.document_id.slice(0, 8)}
                 </p>
-                <p className="mt-1 text-blue-800">{citation.snippet}</p>
+                <p className="mt-1 text-cal-body">{citation.snippet}</p>
               </div>
             ))}
           </div>

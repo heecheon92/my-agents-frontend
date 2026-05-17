@@ -32,7 +32,7 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
 
   if (user.isLoading) {
     return (
-      <div className="grid min-h-dvh place-items-center bg-slate-950 text-white">
+      <div className="grid min-h-dvh place-items-center bg-cal-canvas text-cal-ink">
         {localization.service.restoringSession}
       </div>
     );
@@ -40,8 +40,8 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
 
   if (user.error) {
     return (
-      <main className="grid min-h-dvh place-items-center bg-slate-50 p-6">
-        <div className="max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+      <main className="grid min-h-dvh place-items-center bg-cal-canvas p-6">
+        <div className="cal-card max-w-md rounded-xl p-6">
           <ErrorState
             title={localization.service.pleaseLogin}
             error={user.error}
@@ -55,11 +55,11 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <main className="flex min-h-dvh bg-slate-100 text-slate-950">
-      <aside className="hidden w-72 flex-col border-r border-slate-200 bg-white p-5 lg:flex">
+    <main className="flex min-h-dvh bg-cal-canvas text-cal-ink">
+      <aside className="hidden w-72 flex-col border-r border-cal-hairline bg-cal-surface-soft p-5 lg:flex">
         <Link
           href="/chat"
-          className="rounded-2xl bg-slate-950 px-4 py-3 text-lg font-semibold text-white"
+          className="rounded-lg bg-cal-primary px-5 py-4 font-heading text-2xl font-semibold tracking-[-0.04em] text-white"
         >
           {localization.brand.name}
         </Link>
@@ -69,20 +69,22 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
               key={item.href}
               href={item.href}
               className={cn(
-                "rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 hover:text-slate-950",
+                "rounded-md px-4 py-2 text-sm font-medium text-cal-muted transition hover:bg-cal-canvas hover:text-cal-ink",
                 pathname === item.href &&
-                  "bg-slate-950 text-white hover:bg-slate-950 hover:text-white",
+                  "bg-cal-primary text-white hover:bg-cal-primary hover:text-white",
               )}
             >
               {localization.service.nav[item.key]}
             </Link>
           ))}
         </nav>
-        <div className="mt-auto rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
-          <p className="font-medium text-slate-900">{user.data?.email}</p>
-          <p className="mt-1 text-xs">{localization.service.sessionRestored}</p>
+        <div className="mt-auto rounded-xl border border-cal-hairline bg-cal-canvas p-4 text-sm text-cal-muted shadow-[0_4px_16px_rgb(0_0_0/0.04)]">
+          <p className="font-medium text-cal-ink">{user.data?.email}</p>
+          <p className="mt-2 text-xs leading-5">
+            {localization.service.sessionRestored}
+          </p>
           <Button
-            className="mt-3 w-full"
+            className="mt-4 w-full"
             variant="outline"
             onClick={handleLogout}
             disabled={logout.isPending}
@@ -92,8 +94,11 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <section className="flex min-w-0 flex-1 flex-col">
-        <header className="flex items-center justify-between border-b border-slate-200 bg-white px-4 py-3 lg:hidden">
-          <Link href="/chat" className="font-semibold">
+        <header className="flex items-center justify-between border-b border-cal-hairline bg-cal-surface-soft px-4 py-3 lg:hidden">
+          <Link
+            href="/chat"
+            className="font-heading text-2xl font-semibold tracking-[-0.04em]"
+          >
             {localization.brand.name}
           </Link>
           <Button variant="outline" size="sm" onClick={handleLogout}>

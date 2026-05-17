@@ -7,9 +7,33 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
+  --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-heading: var(--font-geist-sans);
+  --color-cal-primary: var(--cal-primary);
+  --color-cal-primary-active: var(--cal-primary-active);
+  --color-cal-primary-disabled: var(--cal-primary-disabled);
+  --color-cal-ink: var(--cal-ink);
+  --color-cal-body: var(--cal-body);
+  --color-cal-muted: var(--cal-muted);
+  --color-cal-muted-soft: var(--cal-muted-soft);
+  --color-cal-hairline: var(--cal-hairline);
+  --color-cal-hairline-soft: var(--cal-hairline-soft);
+  --color-cal-canvas: var(--cal-canvas);
+  --color-cal-surface-soft: var(--cal-surface-soft);
+  --color-cal-surface-card: var(--cal-surface-card);
+  --color-cal-surface-strong: var(--cal-surface-strong);
+  --color-cal-surface-dark: var(--cal-surface-dark);
+  --color-cal-surface-dark-elevated: var(--cal-surface-dark-elevated);
+  --color-cal-on-dark-soft: var(--cal-on-dark-soft);
+  --color-cal-brand-accent: var(--cal-brand-accent);
+  --color-cal-success: var(--cal-success);
+  --color-cal-warning: var(--cal-warning);
+  --color-cal-error: var(--cal-error);
+  --color-cal-badge-orange: var(--cal-badge-orange);
+  --color-cal-badge-pink: var(--cal-badge-pink);
+  --color-cal-badge-violet: var(--cal-badge-violet);
+  --color-cal-badge-emerald: var(--cal-badge-emerald);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -39,82 +63,101 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
+  --radius-sm: calc(var(--radius) * 0.75);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) * 1.5);
+  --radius-xl: calc(var(--radius) * 2);
+  --radius-2xl: calc(var(--radius) * 2.5);
+  --radius-3xl: calc(var(--radius) * 3);
+  --radius-4xl: calc(var(--radius) * 3.5);
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --cal-primary: #111111;
+  --cal-primary-active: #242424;
+  --cal-primary-disabled: #e5e7eb;
+  --cal-ink: #111111;
+  --cal-body: #374151;
+  --cal-muted: #6b7280;
+  --cal-muted-soft: #898989;
+  --cal-hairline: #e5e7eb;
+  --cal-hairline-soft: #f3f4f6;
+  --cal-canvas: #ffffff;
+  --cal-surface-soft: #f8f9fa;
+  --cal-surface-card: #f5f5f5;
+  --cal-surface-strong: #e5e7eb;
+  --cal-surface-dark: #101010;
+  --cal-surface-dark-elevated: #1a1a1a;
+  --cal-on-dark-soft: #a1a1aa;
+  --cal-brand-accent: #3b82f6;
+  --cal-success: #10b981;
+  --cal-warning: #f59e0b;
+  --cal-error: #ef4444;
+  --cal-badge-orange: #fb923c;
+  --cal-badge-pink: #ec4899;
+  --cal-badge-violet: #8b5cf6;
+  --cal-badge-emerald: #34d399;
+  --background: var(--cal-canvas);
+  --foreground: var(--cal-ink);
+  --card: var(--cal-canvas);
+  --card-foreground: var(--cal-ink);
+  --popover: var(--cal-canvas);
+  --popover-foreground: var(--cal-ink);
+  --primary: var(--cal-primary);
+  --primary-foreground: #ffffff;
+  --secondary: var(--cal-canvas);
+  --secondary-foreground: var(--cal-ink);
+  --muted: var(--cal-surface-soft);
+  --muted-foreground: var(--cal-muted);
+  --accent: var(--cal-surface-soft);
+  --accent-foreground: var(--cal-ink);
+  --destructive: var(--cal-error);
+  --border: var(--cal-hairline);
+  --input: var(--cal-hairline);
+  --ring: var(--cal-ink);
+  --chart-1: var(--cal-brand-accent);
+  --chart-2: var(--cal-badge-orange);
+  --chart-3: var(--cal-badge-pink);
+  --chart-4: var(--cal-badge-violet);
+  --chart-5: var(--cal-badge-emerald);
+  --radius: 0.5rem;
+  --sidebar: var(--cal-surface-soft);
+  --sidebar-foreground: var(--cal-ink);
+  --sidebar-primary: var(--cal-primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--cal-canvas);
+  --sidebar-accent-foreground: var(--cal-ink);
+  --sidebar-border: var(--cal-hairline);
+  --sidebar-ring: var(--cal-ink);
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: var(--cal-surface-dark);
+  --foreground: #ffffff;
+  --card: var(--cal-surface-dark-elevated);
+  --card-foreground: #ffffff;
+  --popover: var(--cal-surface-dark-elevated);
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: var(--cal-surface-dark);
+  --secondary: var(--cal-surface-dark-elevated);
+  --secondary-foreground: #ffffff;
+  --muted: var(--cal-surface-dark-elevated);
+  --muted-foreground: var(--cal-on-dark-soft);
+  --accent: var(--cal-surface-dark-elevated);
+  --accent-foreground: #ffffff;
+  --destructive: #f87171;
+  --border: rgb(255 255 255 / 10%);
+  --input: rgb(255 255 255 / 15%);
+  --ring: var(--cal-on-dark-soft);
+  --sidebar: var(--cal-surface-dark-elevated);
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #ffffff;
+  --sidebar-primary-foreground: var(--cal-surface-dark);
+  --sidebar-accent: #242424;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgb(255 255 255 / 10%);
+  --sidebar-ring: var(--cal-on-dark-soft);
 }
 
 @layer base {
@@ -123,8 +166,32 @@
   }
   body {
     @apply bg-background text-foreground;
+    color: var(--cal-body);
+    letter-spacing: 0;
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer components {
+  .cal-card {
+    @apply border border-cal-hairline bg-cal-surface-card shadow-[0_1px_2px_rgb(0_0_0/0.05)];
+  }
+
+  .cal-product-card {
+    @apply border border-cal-hairline bg-cal-canvas shadow-[0_4px_12px_rgb(0_0_0/0.08)];
+  }
+
+  .cal-label {
+    @apply text-[13px] font-medium text-cal-muted;
+  }
+
+  .cal-heading {
+    @apply font-heading font-semibold tracking-[-0.04em] text-cal-ink;
+  }
+
+  .cal-subcopy {
+    @apply leading-7 text-cal-body;
   }
 }

@@ -13,16 +13,18 @@ export function Field({
 }) {
   return (
     <div
-      className={cn("grid gap-2 text-sm font-medium text-slate-700", className)}
+      className={cn("grid gap-2 text-sm font-medium text-cal-ink", className)}
     >
       <span>{label}</span>
       {children}
       {hint ? (
-        <span className="text-xs font-normal text-slate-500">{hint}</span>
+        <span className="text-xs font-normal leading-5 text-cal-muted">
+          {hint}
+        </span>
       ) : null}
     </div>
   );
 }
 
 export const inputClassName =
-  "min-h-10 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-100 disabled:cursor-not-allowed disabled:bg-slate-50";
+  "min-h-10 rounded-md border border-cal-hairline bg-cal-canvas px-3.5 py-2.5 text-base text-cal-ink outline-none transition placeholder:text-cal-muted-soft focus:border-cal-ink focus:ring-2 focus:ring-cal-ink/10 disabled:cursor-not-allowed disabled:bg-cal-surface-strong disabled:text-cal-muted";
