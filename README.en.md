@@ -4,16 +4,16 @@
 
 Frontend companion for the `../my-agents` FastAPI + LangGraph backend.
 
-This app is a portfolio-grade AI service console built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, and Biome. It intentionally mirrors common GreetSchool/GreetAcademy service, model, query-key, keymesh component, and localization patterns so the project owner can follow and maintain the code manually.
+This app is a polished AI service console built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, and Biome. It intentionally mirrors common GreetSchool/GreetAcademy service, model, query-key, keymesh component, and localization patterns so the project owner can follow and maintain the code manually.
 
 ## What this UI wires
 
-- Auth: signup with email-verification handoff, login, logout, current user restore.
+- Auth: signup, login, logout, current user restore.
 - Product chat: conversations, server-owned messages, conversation runs, run history, run events, citations.
 - Knowledge/document workflows: knowledge-base create/list, document create/list/detail, ingest, extraction runs, document permission patch.
 - Groups: create/list plus ID-based member role upsert/patch.
 
-Product chat uses `/conversations/{id}/runs`; `/assistant/chat` is legacy/dev-only and is blocked from product BFF proxy use. Signup follows the backend contract: account creation returns a user envelope plus `verification_email_sent`, then the user must verify email before logging in.
+Product chat uses `/conversations/{id}/runs`; `/assistant/chat` is legacy/dev-only and is blocked from product BFF proxy use. Signup follows the backend contract: account creation returns the safe user payload (`id`, `email`), then the user can log in with the same credentials.
 
 ## Local setup
 

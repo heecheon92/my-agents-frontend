@@ -13,6 +13,7 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
   const login = useLogin();
   const signup = useSignup();
+  const [activeMode, setActiveMode] = useState(mode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [signupEmail, setSignupEmail] = useState<string | null>(null);
@@ -20,19 +21,29 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
     auth: state.localization.auth,
     brand: state.localization.brand,
   }));
-  const isSignup = mode === "signup";
+  const isSignup = activeMode === "signup";
   const active = isSignup ? signup : login;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isSignup) {
-      const result = await signup.mutateAsync({ email, password });
-      setSignupEmail(result.user.email);
-      setPassword("");
+      try {
+        const result = await signup.mutateAsync({ email, password });
+        setEmail(result.email);
+        setSignupEmail(result.email);
+        setPassword("");
+        setActiveMode("login");
+      } catch {
+        // React Query stores the API error on the mutation; render it below.
+      }
       return;
     }
-    await login.mutateAsync({ email, password });
-    router.push("/chat");
+    try {
+      await login.mutateAsync({ email, password });
+      router.push("/chat");
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
   }
 
   return (
@@ -80,7 +91,6 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
                 value={email}
                 onChange={(event) => {
                   setEmail(event.target.value);
-                  setSignupEmail(null);
                 }}
                 required
               />
@@ -96,7 +106,6 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
                 value={password}
                 onChange={(event) => {
                   setPassword(event.target.value);
-                  setSignupEmail(null);
                 }}
                 required
                 minLength={isSignup ? 8 : 1}
@@ -105,10 +114,10 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
             {signupEmail ? (
               <div className="rounded-lg border border-cal-success/20 bg-cal-success/5 p-4 text-sm text-cal-success">
                 <p className="font-semibold">
-                  {localization.auth.signupVerificationTitle}
+                  {localization.auth.signupSuccessTitle}
                 </p>
                 <p className="mt-1 leading-6">
-                  {localization.auth.signupVerificationDescription.replace(
+                  {localization.auth.signupSuccessDescription.replace(
                     "{email}",
                     signupEmail,
                   )}

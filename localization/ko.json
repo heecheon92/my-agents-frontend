@@ -19,7 +19,7 @@
     ]
   },
   "auth": {
-    "heroTitle": "포트폴리오 수준의 AI 서비스 콘솔",
+    "heroTitle": "완성도 높은 AI 서비스 콘솔",
     "heroDescription": "FastAPI + LangGraph 백엔드에 인증하고 실제 대화 워크플로를 실행하며 인용, 문서, 그룹, 안전한 에이전트 활동을 확인합니다.",
     "features": [
       "레거시 스모크 채팅이 아닌 conversation run 사용",
@@ -28,7 +28,7 @@
     ],
     "createAccount": "계정 만들기",
     "welcomeBack": "다시 오신 것을 환영합니다",
-    "signupDescription": "계정을 만든 뒤 이메일 인증을 완료하고 로그인하세요.",
+    "signupDescription": "계정을 만든 뒤 같은 이메일과 비밀번호로 로그인하세요.",
     "loginDescription": "백엔드 인증 세션으로 콘솔에 입장합니다.",
     "email": "이메일",
     "password": "비밀번호",
@@ -41,8 +41,8 @@
     "needAccount": "계정이 필요하신가요?",
     "loginLink": "로그인",
     "signupLink": "회원가입",
-    "signupVerificationTitle": "인증 이메일을 확인하세요",
-    "signupVerificationDescription": "{email} 계정을 만들었습니다. 백엔드 이메일 인증 토큰으로 인증을 완료한 뒤 로그인하세요."
+    "signupSuccessTitle": "계정을 만들었습니다",
+    "signupSuccessDescription": "{email} 계정을 만들었습니다. 이제 이 계정으로 로그인할 수 있습니다."
   },
   "service": {
     "nav": {

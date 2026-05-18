@@ -4,7 +4,7 @@ Use this file first when a fresh Codex session starts in `my-agents-frontend`.
 
 ## Mission
 
-`my-agents-frontend` is the frontend companion for the backend service in `../my-agents`. The product is a portfolio-grade AI service console where authenticated users can:
+`my-agents-frontend` is the frontend companion for the backend service in `../my-agents`. The product is a polished AI service console where authenticated users can:
 
 - sign up, log in, log out, and restore session state;
 - manage conversations and send messages through product run endpoints;

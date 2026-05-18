@@ -61,14 +61,22 @@ Remaining: completion audit and optional commit/push.
 - Some admin UX remains ID-based because the backend does not expose user search/member listing. This is documented honestly in UI copy; no backend request is required unless richer UX becomes a goal.
 - Equal polish across all domains is intentionally deferred in favor of understandable staged quality, with chat as the visual anchor.
 
+## 2026-05-18 — chat inspector layout widening
+
+- Replaced the narrow third-column chat inspector with a two-column desktop shell: conversation list on the left and a wider main workspace on the right.
+- Moved run history, activity events, and citations into a full-width inspector band beneath the chat transcript. Activity events now receive the widest share on large screens, with run history and citations alongside it on 2xl screens and stacked/mobile-safe layouts below that.
+- Kept the responsive-design workflow constraints: mobile-first stacking, `min-w-0` containment, scrollable cards in fixed-height desktop shells, and no horizontal overflow.
+
+Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build`, `pnpm exec playwright test`, browser auth/chat smoke at 1440px confirmed inspector widths of run history 368px, activity events 752px, citations 368px, and viewport overflow checks passed at 390px, 768px, and 1280px.
+
 ## 2026-05-18 — signup contract alignment
 
-- Fixed the frontend auth contract for `POST /auth/signup`: the backend returns `{ user, verification_email_sent }`, not a bare user object.
-- Updated signup UI to show an email-verification handoff and stop the previous immediate login attempt, matching the backend verified-email login requirement.
+- Corrected the frontend auth contract for `POST /auth/signup`: the backend returns a bare safe user payload (`{ id, email }`), not a temporary envelope.
+- Updated signup UI to show an account-created handoff and stop the previous immediate login attempt, matching the backend signup/login flow.
 - Added contract regression coverage for signup schema parsing and `MyAgentsAuthAPI.signup`.
-- Updated bilingual README copy, architecture notes, and the verification runbook so future smoke tests do not expect auto-login after signup.
+- Updated bilingual README copy, architecture notes, and the verification runbook so future smoke tests do not expect email verification or auto-login after signup.
 
-Verification in progress for this log entry: targeted auth model/API tests and TypeScript passed; full lint/test/build and browser signup smoke should be recorded before final handoff.
+Verification passed for this log entry: backend OpenAPI from `http://localhost:8000/openapi.json` confirms `POST /auth/signup` responds with `UserResponse`, `POST /auth/login` responds with `LoginResponse`, `GET /auth/me` responds with `UserResponse`, and `POST /auth/logout` returns 204; `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build`, `pnpm exec playwright test`, and a live backend/browser auth smoke against `../my-agents` deterministic mode confirmed `/auth/signup` returns `{ id, email }`, `/auth/login` returns browser-safe `{ user }` without `csrf_token`, and login redirects to `/chat`.
 
 ## 2026-05-17 — README language split and localization workflow
 

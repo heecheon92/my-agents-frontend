@@ -6,15 +6,15 @@ import {
 } from "@/model/my-agents";
 
 describe("auth response schemas", () => {
-  it("parses signup responses as backend envelopes", () => {
+  it("parses signup responses as backend user payloads", () => {
     expect(
       signupResponseSchema.parse({
-        user: { id: "u1", email: "user@example.com" },
-        verification_email_sent: true,
+        id: "u1",
+        email: "user@example.com",
       }),
     ).toEqual({
-      user: { id: "u1", email: "user@example.com" },
-      verification_email_sent: true,
+      id: "u1",
+      email: "user@example.com",
     });
   });
 
@@ -30,5 +30,14 @@ describe("auth response schemas", () => {
       user: { id: "u1", email: "user@example.com" },
     });
     expect("csrf_token" in browserSafe).toBe(false);
+  });
+
+  it("rejects leaked CSRF fields in browser-visible login responses", () => {
+    expect(() =>
+      loginResponseSchema.parse({
+        user: { id: "u1", email: "user@example.com" },
+        csrf_token: "csrf-secret",
+      }),
+    ).toThrow();
   });
 });

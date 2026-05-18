@@ -7,7 +7,7 @@ Use this runbook before claiming frontend work is complete.
 Backend terminal:
 
 ```bash
-cd /Users/heecheonpark/Git/Portfolio/my-agents
+cd ../my-agents
 MY_AGENTS_RESPONSE_MODE=deterministic \
 MY_AGENTS_SESSION_COOKIE_SECURE=false \
 uv run uvicorn main:app --host 127.0.0.1 --port 8000
@@ -16,7 +16,7 @@ uv run uvicorn main:app --host 127.0.0.1 --port 8000
 Frontend terminal:
 
 ```bash
-cd /Users/heecheonpark/Git/Portfolio/my-agents-frontend
+cd ../my-agents-frontend
 cp .env.example .env.local
 pnpm dev
 ```
@@ -58,8 +58,8 @@ Use this after auth, BFF, chat, route, provider, or visual shell changes.
 2. Start frontend with `pnpm dev`.
 3. Open `http://localhost:3000/signup`.
 4. Create a new account with a unique email and password of at least 8 characters.
-5. Confirm the signup screen shows the email-verification handoff instead of a Zod/parser error or automatic chat redirect.
-6. Verify the account with the backend local/dev email-verification token, then log in and confirm redirect to `/chat`.
+5. Confirm the signup screen shows an account-created handoff instead of a Zod/parser error or automatic chat redirect.
+6. Log in with the newly created credentials and confirm redirect to `/chat`.
 7. Confirm browser `localStorage` and `sessionStorage` do not contain session or CSRF values.
 8. Create a conversation.
 9. Send a message such as `Plan my next backend milestone`.

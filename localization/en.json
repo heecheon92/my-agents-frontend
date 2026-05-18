@@ -19,7 +19,7 @@
     ]
   },
   "auth": {
-    "heroTitle": "A portfolio-grade AI service console.",
+    "heroTitle": "A polished AI service console.",
     "heroDescription": "Authenticate into a FastAPI + LangGraph backend, run real conversation workflows, and inspect citations, documents, groups, and safe agent activity.",
     "features": [
       "Conversation runs, not legacy smoke chat.",
@@ -28,7 +28,7 @@
     ],
     "createAccount": "Create account",
     "welcomeBack": "Welcome back",
-    "signupDescription": "Create an account, then verify your email before logging in.",
+    "signupDescription": "Create an account, then log in with the same credentials.",
     "loginDescription": "Use the backend auth session to enter the console.",
     "email": "Email",
     "password": "Password",
@@ -41,8 +41,8 @@
     "needAccount": "Need an account?",
     "loginLink": "Log in",
     "signupLink": "Sign up",
-    "signupVerificationTitle": "Check your verification email",
-    "signupVerificationDescription": "We created {email}. Verify the account with the backend email-verification token, then log in."
+    "signupSuccessTitle": "Account created",
+    "signupSuccessDescription": "We created {email}. You can now log in with this account."
   },
   "service": {
     "nav": {

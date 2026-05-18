@@ -26,8 +26,12 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
   }));
 
   async function handleLogout() {
-    await logout.mutateAsync();
-    router.push("/login");
+    try {
+      await logout.mutateAsync();
+      router.push("/login");
+    } catch {
+      // React Query stores the API error on the mutation; keep the user on the shell.
+    }
   }
 
   if (user.isLoading) {
@@ -91,6 +95,11 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
           >
             {localization.service.logout}
           </Button>
+          {logout.error ? (
+            <div className="mt-3">
+              <ErrorState error={logout.error} />
+            </div>
+          ) : null}
         </div>
       </aside>
       <section className="flex min-w-0 flex-1 flex-col">
@@ -102,7 +111,12 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
             >
               {localization.brand.name}
             </Link>
-            <Button variant="outline" size="sm" onClick={handleLogout}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleLogout}
+              disabled={logout.isPending}
+            >
               {localization.service.logout}
             </Button>
           </div>

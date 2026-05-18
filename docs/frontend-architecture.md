@@ -41,7 +41,7 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | --- | --- | --- |
 | `/` | `app/page.tsx` | Marketing/landing entry point. |
 | `/login` | `components/keymesh/AuthPanel.tsx` | Login through BFF `/auth/login`. |
-| `/signup` | `components/keymesh/AuthPanel.tsx` | Signup parses the backend envelope and shows the email-verification handoff before login. |
+| `/signup` | `components/keymesh/AuthPanel.tsx` | Signup parses the backend `UserResponse` and shows an account-created handoff before login. |
 | `/chat` | `components/keymesh/ChatWorkspace.tsx` | Anchor journey. Uses conversations, messages, runs, events, citations. |
 | `/documents` | `components/keymesh/AdminSurfaces.tsx` | Document create/list, ingest, extraction runs, permission patch. |
 | `/knowledge` | `components/keymesh/AdminSurfaces.tsx` | Knowledge-base create/list. |
@@ -118,6 +118,6 @@ Before changing UI/theme/layout code:
 The UI should stay polished but not noisy:
 
 - Use readable spacing, generous body text, and clear empty/error/loading states.
-- Keep chat as the portfolio anchor surface.
+- Keep chat as the primary product anchor surface.
 - Keep admin surfaces honest and usable even when backend contracts are ID-based.
 - Prefer `components/keymesh/` extraction over large route-page component trees.

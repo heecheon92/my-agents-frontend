@@ -4,16 +4,16 @@
 
 `../my-agents` FastAPI + LangGraph 백엔드를 위한 프론트엔드 companion 앱입니다.
 
-이 앱은 Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, Biome으로 만든 포트폴리오 수준의 AI 서비스 콘솔입니다. 프로젝트 소유자가 수동으로 따라가고 유지보수할 수 있도록 GreetSchool/GreetAcademy의 서비스, 모델, 쿼리 키, keymesh 컴포넌트, localization 패턴을 의도적으로 맞췄습니다.
+이 앱은 Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, Biome으로 만든 완성도 높은 AI 서비스 콘솔입니다. 프로젝트 소유자가 수동으로 따라가고 유지보수할 수 있도록 GreetSchool/GreetAcademy의 서비스, 모델, 쿼리 키, keymesh 컴포넌트, localization 패턴을 의도적으로 맞췄습니다.
 
 ## 이 UI가 연결하는 기능
 
-- 인증: 이메일 인증 안내가 포함된 회원가입, 로그인, 로그아웃, 현재 사용자 복원.
+- 인증: 회원가입, 로그인, 로그아웃, 현재 사용자 복원.
 - 제품 채팅: 대화, 서버 소유 메시지, conversation run, run history, run event, citation.
 - 지식/문서 워크플로: 지식 베이스 생성/목록, 문서 생성/목록/상세, ingest, extraction run, 문서 권한 patch.
 - 그룹: 생성/목록 및 ID 기반 멤버 역할 upsert/patch.
 
-제품 채팅은 `/conversations/{id}/runs`를 사용합니다. `/assistant/chat`은 레거시/개발용이므로 제품 BFF proxy에서 차단합니다. 회원가입은 백엔드 계약을 그대로 따릅니다. 계정 생성은 user envelope과 `verification_email_sent`를 반환하며, 사용자는 이메일 인증을 완료한 뒤 로그인해야 합니다.
+제품 채팅은 `/conversations/{id}/runs`를 사용합니다. `/assistant/chat`은 레거시/개발용이므로 제품 BFF proxy에서 차단합니다. 회원가입은 백엔드 계약을 그대로 따릅니다. 계정 생성은 안전한 user payload(`id`, `email`)를 반환하며, 사용자는 같은 자격 증명으로 로그인할 수 있습니다.
 
 ## 로컬 실행
 

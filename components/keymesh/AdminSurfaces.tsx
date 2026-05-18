@@ -31,8 +31,12 @@ export function KnowledgeSurface() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await createKnowledgeBase.mutateAsync({ name, scope: "personal" });
-    setName("");
+    try {
+      await createKnowledgeBase.mutateAsync({ name, scope: "personal" });
+      setName("");
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
   }
 
   return (
@@ -99,24 +103,32 @@ export function DocumentsSurface() {
 
   async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const created = await createDocument.mutateAsync({ title, content });
-    setTitle("");
-    setContent("");
-    setSelectedDocumentId(created.id);
+    try {
+      const created = await createDocument.mutateAsync({ title, content });
+      setTitle("");
+      setContent("");
+      setSelectedDocumentId(created.id);
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
   }
 
   async function handlePatchPermission(
     event: React.FormEvent<HTMLFormElement>,
   ) {
     event.preventDefault();
-    await patchPermission.mutateAsync({
-      user_id: permissionUserId,
-      can_read: true,
-      can_write: false,
-      can_manage: false,
-      can_ingest: false,
-    });
-    setPermissionUserId("");
+    try {
+      await patchPermission.mutateAsync({
+        user_id: permissionUserId,
+        can_read: true,
+        can_write: false,
+        can_manage: false,
+        can_ingest: false,
+      });
+      setPermissionUserId("");
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
   }
 
   return (
@@ -293,21 +305,33 @@ export function GroupsSurface() {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const created = await createGroup.mutateAsync({ name });
-    setName("");
-    setSelectedGroupId(created.id);
+    try {
+      const created = await createGroup.mutateAsync({ name });
+      setName("");
+      setSelectedGroupId(created.id);
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
   }
 
   async function handleAddMember(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await addMember.mutateAsync({ user_id: memberUserId, role: memberRole });
-    setMemberUserId("");
+    try {
+      await addMember.mutateAsync({ user_id: memberUserId, role: memberRole });
+      setMemberUserId("");
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
   }
 
   async function handleUpdateMember(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await updateMember.mutateAsync({ role: updateRole });
-    setUpdateUserId("");
+    try {
+      await updateMember.mutateAsync({ role: updateRole });
+      setUpdateUserId("");
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
   }
 
   return (
