@@ -28,19 +28,21 @@
     ],
     "createAccount": "계정 만들기",
     "welcomeBack": "다시 오신 것을 환영합니다",
-    "signupDescription": "회원가입 후 자동으로 로그인됩니다.",
+    "signupDescription": "계정을 만든 뒤 이메일 인증을 완료하고 로그인하세요.",
     "loginDescription": "백엔드 인증 세션으로 콘솔에 입장합니다.",
     "email": "이메일",
     "password": "비밀번호",
     "passwordHint": "8자 이상 입력하세요.",
     "authenticationFailed": "인증에 실패했습니다",
     "working": "처리 중...",
-    "signupSubmit": "회원가입 후 입장",
+    "signupSubmit": "계정 만들기",
     "loginSubmit": "로그인",
     "alreadyHaveAccount": "이미 계정이 있나요?",
     "needAccount": "계정이 필요하신가요?",
     "loginLink": "로그인",
-    "signupLink": "회원가입"
+    "signupLink": "회원가입",
+    "signupVerificationTitle": "인증 이메일을 확인하세요",
+    "signupVerificationDescription": "{email} 계정을 만들었습니다. 백엔드 이메일 인증 토큰으로 인증을 완료한 뒤 로그인하세요."
   },
   "service": {
     "nav": {

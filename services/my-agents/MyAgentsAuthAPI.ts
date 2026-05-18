@@ -4,6 +4,8 @@ import {
   type LoginResponse,
   loginResponseSchema,
   type SignupRequest,
+  type SignupResponse,
+  signupResponseSchema,
   type User,
   userSchema,
 } from "@/model/my-agents";
@@ -15,12 +17,12 @@ export class MyAgentsAuthAPI {
     private readonly client: MyAgentsFetchClient = myAgentsFetchClient,
   ) {}
 
-  async signup(payload: SignupRequest): Promise<User> {
+  async signup(payload: SignupRequest): Promise<SignupResponse> {
     const value = await this.client.fetch(API_PATH.auth.signup, {
       method: "POST",
       body: payload,
     });
-    return parseWithSchema(userSchema, value);
+    return parseWithSchema(signupResponseSchema, value);
   }
 
   async login(payload: LoginRequest): Promise<LoginResponse> {

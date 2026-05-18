@@ -8,12 +8,12 @@ This app is a portfolio-grade AI service console built with Next.js 16, React 19
 
 ## What this UI wires
 
-- Auth: signup, login, logout, current user restore.
+- Auth: signup with email-verification handoff, login, logout, current user restore.
 - Product chat: conversations, server-owned messages, conversation runs, run history, run events, citations.
 - Knowledge/document workflows: knowledge-base create/list, document create/list/detail, ingest, extraction runs, document permission patch.
 - Groups: create/list plus ID-based member role upsert/patch.
 
-Product chat uses `/conversations/{id}/runs`; `/assistant/chat` is legacy/dev-only and is blocked from product BFF proxy use.
+Product chat uses `/conversations/{id}/runs`; `/assistant/chat` is legacy/dev-only and is blocked from product BFF proxy use. Signup follows the backend contract: account creation returns a user envelope plus `verification_email_sent`, then the user must verify email before logging in.
 
 ## Local setup
 

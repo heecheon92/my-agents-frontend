@@ -15,6 +15,7 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
   const signup = useSignup();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [signupEmail, setSignupEmail] = useState<string | null>(null);
   const { localization } = useLocalization((state) => ({
     auth: state.localization.auth,
     brand: state.localization.brand,
@@ -25,7 +26,10 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isSignup) {
-      await signup.mutateAsync({ email, password });
+      const result = await signup.mutateAsync({ email, password });
+      setSignupEmail(result.user.email);
+      setPassword("");
+      return;
     }
     await login.mutateAsync({ email, password });
     router.push("/chat");
@@ -74,7 +78,10 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
                 type="email"
                 autoComplete="email"
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(event) => {
+                  setEmail(event.target.value);
+                  setSignupEmail(null);
+                }}
                 required
               />
             </Field>
@@ -87,11 +94,27 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
                 type="password"
                 autoComplete={isSignup ? "new-password" : "current-password"}
                 value={password}
-                onChange={(event) => setPassword(event.target.value)}
+                onChange={(event) => {
+                  setPassword(event.target.value);
+                  setSignupEmail(null);
+                }}
                 required
                 minLength={isSignup ? 8 : 1}
               />
             </Field>
+            {signupEmail ? (
+              <div className="rounded-lg border border-cal-success/20 bg-cal-success/5 p-4 text-sm text-cal-success">
+                <p className="font-semibold">
+                  {localization.auth.signupVerificationTitle}
+                </p>
+                <p className="mt-1 leading-6">
+                  {localization.auth.signupVerificationDescription.replace(
+                    "{email}",
+                    signupEmail,
+                  )}
+                </p>
+              </div>
+            ) : null}
             {active.error ? (
               <ErrorState
                 error={active.error}

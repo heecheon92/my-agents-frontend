@@ -2,9 +2,22 @@ import { describe, expect, it } from "vitest";
 import {
   backendLoginResponseSchema,
   loginResponseSchema,
+  signupResponseSchema,
 } from "@/model/my-agents";
 
-describe("login response schemas", () => {
+describe("auth response schemas", () => {
+  it("parses signup responses as backend envelopes", () => {
+    expect(
+      signupResponseSchema.parse({
+        user: { id: "u1", email: "user@example.com" },
+        verification_email_sent: true,
+      }),
+    ).toEqual({
+      user: { id: "u1", email: "user@example.com" },
+      verification_email_sent: true,
+    });
+  });
+
   it("parses backend CSRF response separately from browser-safe response", () => {
     const backend = backendLoginResponseSchema.parse({
       user: { id: "u1", email: "user@example.com" },

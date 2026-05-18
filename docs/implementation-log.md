@@ -61,6 +61,15 @@ Remaining: completion audit and optional commit/push.
 - Some admin UX remains ID-based because the backend does not expose user search/member listing. This is documented honestly in UI copy; no backend request is required unless richer UX becomes a goal.
 - Equal polish across all domains is intentionally deferred in favor of understandable staged quality, with chat as the visual anchor.
 
+## 2026-05-18 — signup contract alignment
+
+- Fixed the frontend auth contract for `POST /auth/signup`: the backend returns `{ user, verification_email_sent }`, not a bare user object.
+- Updated signup UI to show an email-verification handoff and stop the previous immediate login attempt, matching the backend verified-email login requirement.
+- Added contract regression coverage for signup schema parsing and `MyAgentsAuthAPI.signup`.
+- Updated bilingual README copy, architecture notes, and the verification runbook so future smoke tests do not expect auto-login after signup.
+
+Verification in progress for this log entry: targeted auth model/API tests and TypeScript passed; full lint/test/build and browser signup smoke should be recorded before final handoff.
+
 ## 2026-05-17 — README language split and localization workflow
 
 - Converted the primary `README.md` to Korean and added `README.en.md` as the English counterpart; both files link to each other.

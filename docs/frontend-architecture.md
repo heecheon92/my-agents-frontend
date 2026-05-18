@@ -41,7 +41,7 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | --- | --- | --- |
 | `/` | `app/page.tsx` | Marketing/landing entry point. |
 | `/login` | `components/keymesh/AuthPanel.tsx` | Login through BFF `/auth/login`. |
-| `/signup` | `components/keymesh/AuthPanel.tsx` | Signup, then login. |
+| `/signup` | `components/keymesh/AuthPanel.tsx` | Signup parses the backend envelope and shows the email-verification handoff before login. |
 | `/chat` | `components/keymesh/ChatWorkspace.tsx` | Anchor journey. Uses conversations, messages, runs, events, citations. |
 | `/documents` | `components/keymesh/AdminSurfaces.tsx` | Document create/list, ingest, extraction runs, permission patch. |
 | `/knowledge` | `components/keymesh/AdminSurfaces.tsx` | Knowledge-base create/list. |

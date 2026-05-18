@@ -28,19 +28,21 @@
     ],
     "createAccount": "Create account",
     "welcomeBack": "Welcome back",
-    "signupDescription": "Sign up, then you will be logged in automatically.",
+    "signupDescription": "Create an account, then verify your email before logging in.",
     "loginDescription": "Use the backend auth session to enter the console.",
     "email": "Email",
     "password": "Password",
     "passwordHint": "At least 8 characters.",
     "authenticationFailed": "Authentication failed",
     "working": "Working...",
-    "signupSubmit": "Sign up and enter",
+    "signupSubmit": "Create account",
     "loginSubmit": "Log in",
     "alreadyHaveAccount": "Already have an account?",
     "needAccount": "Need an account?",
     "loginLink": "Log in",
-    "signupLink": "Sign up"
+    "signupLink": "Sign up",
+    "signupVerificationTitle": "Check your verification email",
+    "signupVerificationDescription": "We created {email}. Verify the account with the backend email-verification token, then log in."
   },
   "service": {
     "nav": {

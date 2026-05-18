@@ -58,15 +58,16 @@ Use this after auth, BFF, chat, route, provider, or visual shell changes.
 2. Start frontend with `pnpm dev`.
 3. Open `http://localhost:3000/signup`.
 4. Create a new account with a unique email and password of at least 8 characters.
-5. Confirm redirect to `/chat`.
-6. Confirm browser `localStorage` and `sessionStorage` do not contain session or CSRF values.
-7. Create a conversation.
-8. Send a message such as `Plan my next backend milestone`.
-9. Confirm transcript shows user and assistant messages.
-10. Confirm run history shows a completed run and route label.
-11. Confirm event timeline shows redacted operational events.
-12. Confirm browser console has no unexpected errors. A 401 from `/auth/me` after logout is expected unauthenticated behavior.
-13. Click logout and confirm redirect to `/login`.
+5. Confirm the signup screen shows the email-verification handoff instead of a Zod/parser error or automatic chat redirect.
+6. Verify the account with the backend local/dev email-verification token, then log in and confirm redirect to `/chat`.
+7. Confirm browser `localStorage` and `sessionStorage` do not contain session or CSRF values.
+8. Create a conversation.
+9. Send a message such as `Plan my next backend milestone`.
+10. Confirm transcript shows user and assistant messages.
+11. Confirm run history shows a completed run and route label.
+12. Confirm event timeline shows redacted operational events.
+13. Confirm browser console has no unexpected errors. A 401 from `/auth/me` after logout is expected unauthenticated behavior.
+14. Click logout and confirm redirect to `/login`.
 
 ## Backend boundary check
 
