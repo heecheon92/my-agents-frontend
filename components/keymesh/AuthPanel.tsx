@@ -29,8 +29,8 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
     if (isSignup) {
       try {
         const result = await signup.mutateAsync({ email, password });
-        setEmail(result.email);
-        setSignupEmail(result.email);
+        setEmail(result.user.email);
+        setSignupEmail(result.user.email);
         setPassword("");
         setActiveMode("login");
       } catch {

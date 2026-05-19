@@ -49,15 +49,16 @@ function safeDetail(body: unknown) {
 }
 
 export class MyAgentsFetchClient {
-  async fetch(path: string, init: MyAgentsFetchInit = {}) {
+  async fetchResponse(path: string, init: MyAgentsFetchInit = {}) {
     const response = await fetch(toFrontendAPIPath(path), {
       ...init,
       body: buildBody(init.body),
       credentials: "include",
       headers: buildHeaders(init.headers, init.body, init.method),
     });
+    if (response.ok) return response;
+
     const body = await readResponse(response);
-    if (response.ok) return body;
     const detail = safeDetail(body);
     throw new MyAgentsAPIError({
       message:
@@ -68,6 +69,10 @@ export class MyAgentsFetchClient {
       detail,
       body,
     });
+  }
+
+  async fetch(path: string, init: MyAgentsFetchInit = {}) {
+    return readResponse(await this.fetchResponse(path, init));
   }
 }
 

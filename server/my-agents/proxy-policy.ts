@@ -17,7 +17,22 @@ const uuidLike = "[^/]+";
 export const BFF_ALLOWLIST: Rule[] = [
   { method: "GET", pattern: /^\/health$/, name: "health" },
   { method: "POST", pattern: /^\/auth\/signup$/, name: "auth.signup" },
+  {
+    method: "POST",
+    pattern: /^\/auth\/verify-email$/,
+    name: "auth.verify-email",
+  },
   { method: "POST", pattern: /^\/auth\/login$/, name: "auth.login" },
+  {
+    method: "POST",
+    pattern: /^\/auth\/password-reset\/request$/,
+    name: "auth.password-reset.request",
+  },
+  {
+    method: "POST",
+    pattern: /^\/auth\/password-reset\/confirm$/,
+    name: "auth.password-reset.confirm",
+  },
   { method: "POST", pattern: /^\/auth\/logout$/, name: "auth.logout" },
   { method: "GET", pattern: /^\/auth\/me$/, name: "auth.me" },
   {
@@ -50,6 +65,11 @@ export const BFF_ALLOWLIST: Rule[] = [
     method: "GET",
     pattern: new RegExp(`^/conversations/${uuidLike}/runs$`),
     name: "runs.list",
+  },
+  {
+    method: "POST",
+    pattern: new RegExp(`^/conversations/${uuidLike}/runs/stream$`),
+    name: "runs.stream",
   },
   {
     method: "GET",
@@ -119,7 +139,13 @@ export function isMutation(method: string) {
 }
 
 export function isCsrfExemptPath(path: string) {
-  return path === "/auth/login" || path === "/auth/signup";
+  return (
+    path === "/auth/login" ||
+    path === "/auth/signup" ||
+    path === "/auth/verify-email" ||
+    path === "/auth/password-reset/request" ||
+    path === "/auth/password-reset/confirm"
+  );
 }
 
 export function isAllowedBackendPath(

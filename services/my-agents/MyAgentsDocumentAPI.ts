@@ -14,7 +14,10 @@ import { parseArrayWithSchema, parseWithSchema } from "./parser";
 
 export class MyAgentsDocumentAPI {
   constructor(
-    private readonly client: MyAgentsFetchClient = myAgentsFetchClient,
+    private readonly client: Pick<
+      MyAgentsFetchClient,
+      "fetch"
+    > = myAgentsFetchClient,
   ) {}
 
   async create(payload: DocumentCreateRequest): Promise<Document> {

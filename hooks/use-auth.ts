@@ -2,7 +2,13 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
-import type { LoginRequest, SignupRequest } from "@/model/my-agents";
+import type {
+  LoginRequest,
+  PasswordResetConfirmRequest,
+  PasswordResetRequest,
+  SignupRequest,
+  VerifyEmailRequest,
+} from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 
 export function useCurrentUser() {
@@ -10,6 +16,17 @@ export function useCurrentUser() {
     queryKey: MyAgentsQueryKeys.auth.me(),
     queryFn: () => myAgentsAPI.auth.me(),
     retry: false,
+  });
+}
+
+export function useVerifyEmail() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: VerifyEmailRequest) =>
+      myAgentsAPI.auth.verifyEmail(payload),
+    onSuccess: (user) => {
+      queryClient.setQueryData(MyAgentsQueryKeys.auth.me(), user);
+    },
   });
 }
 
@@ -26,6 +43,24 @@ export function useLogin() {
 export function useSignup() {
   return useMutation({
     mutationFn: (payload: SignupRequest) => myAgentsAPI.auth.signup(payload),
+  });
+}
+
+export function useRequestPasswordReset() {
+  return useMutation({
+    mutationFn: (payload: PasswordResetRequest) =>
+      myAgentsAPI.auth.requestPasswordReset(payload),
+  });
+}
+
+export function useConfirmPasswordReset() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: PasswordResetConfirmRequest) =>
+      myAgentsAPI.auth.confirmPasswordReset(payload),
+    onSettled: () => {
+      queryClient.clear();
+    },
   });
 }
 

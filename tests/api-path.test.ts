@@ -10,6 +10,9 @@ describe("API_PATH", () => {
     expect(API_PATH.conversations.runs(conversationId)).toBe(
       "/conversations/conversation-1/runs",
     );
+    expect(API_PATH.conversations.runStream(conversationId)).toBe(
+      "/conversations/conversation-1/runs/stream",
+    );
     expect(API_PATH.conversations.runEvents(conversationId, runId)).toBe(
       "/conversations/conversation-1/runs/run-1/events",
     );
@@ -26,6 +29,16 @@ describe("API_PATH", () => {
 
   it("prefixes frontend BFF paths", () => {
     expect(toFrontendAPIPath(API_PATH.auth.me)).toBe("/api/my-agents/auth/me");
+  });
+
+  it("builds new auth lifecycle paths", () => {
+    expect(API_PATH.auth.verifyEmail).toBe("/auth/verify-email");
+    expect(API_PATH.auth.passwordResetRequest).toBe(
+      "/auth/password-reset/request",
+    );
+    expect(API_PATH.auth.passwordResetConfirm).toBe(
+      "/auth/password-reset/confirm",
+    );
   });
 });
 

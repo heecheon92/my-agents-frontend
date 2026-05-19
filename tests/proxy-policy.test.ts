@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   buildBackendPath,
   isAllowedBackendPath,
+  isCsrfExemptPath,
   validateSameOriginProof,
 } from "@/server/my-agents/proxy-policy";
 
@@ -23,6 +24,18 @@ describe("proxy policy", () => {
     expect(
       isAllowedBackendPath("PATCH", "/documents/doc-1/permissions").allowed,
     ).toBe(true);
+    expect(isAllowedBackendPath("POST", "/auth/verify-email").allowed).toBe(
+      true,
+    );
+    expect(
+      isAllowedBackendPath("POST", "/auth/password-reset/request").allowed,
+    ).toBe(true);
+    expect(
+      isAllowedBackendPath("POST", "/auth/password-reset/confirm").allowed,
+    ).toBe(true);
+    expect(
+      isAllowedBackendPath("POST", "/conversations/abc/runs/stream").allowed,
+    ).toBe(true);
   });
 
   it("blocks legacy assistant chat and unknown paths before forwarding", () => {
@@ -34,6 +47,14 @@ describe("proxy policy", () => {
       allowed: false,
       code: "path_not_allowed",
     });
+  });
+
+  it("exempts unauthenticated auth lifecycle mutations from CSRF cookies", () => {
+    expect(isCsrfExemptPath("/auth/signup")).toBe(true);
+    expect(isCsrfExemptPath("/auth/verify-email")).toBe(true);
+    expect(isCsrfExemptPath("/auth/password-reset/request")).toBe(true);
+    expect(isCsrfExemptPath("/auth/password-reset/confirm")).toBe(true);
+    expect(isCsrfExemptPath("/auth/logout")).toBe(false);
   });
 
   it("rejects cross-site mutations", () => {

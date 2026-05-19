@@ -11,7 +11,10 @@ import { parseArrayWithSchema, parseWithSchema } from "./parser";
 
 export class MyAgentsGroupAPI {
   constructor(
-    private readonly client: MyAgentsFetchClient = myAgentsFetchClient,
+    private readonly client: Pick<
+      MyAgentsFetchClient,
+      "fetch"
+    > = myAgentsFetchClient,
   ) {}
 
   async create(payload: GroupCreateRequest): Promise<Group> {

@@ -25,6 +25,10 @@ export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ path: string[] }> };
 
+function isStreamPath(path: string) {
+  return /^\/conversations\/[^/]+\/runs\/stream$/.test(path);
+}
+
 async function proxy(request: NextRequest, context: RouteContext) {
   const { path } = await context.params;
   const backendPath = buildBackendPath(path);
@@ -76,6 +80,17 @@ async function proxy(request: NextRequest, context: RouteContext) {
     body: hasBody ? await request.text() : undefined,
     cache: "no-store",
   });
+
+  if (isStreamPath(backendPath) && backendResponse.ok) {
+    return new NextResponse(backendResponse.body, {
+      status: backendResponse.status,
+      headers: {
+        "cache-control": "no-store",
+        "content-type":
+          backendResponse.headers.get("content-type") ?? "application/json",
+      },
+    });
+  }
 
   const rawResponseBody =
     backendResponse.status === 204 ? null : await backendResponse.text();

@@ -9,7 +9,10 @@ import { parseArrayWithSchema, parseWithSchema } from "./parser";
 
 export class MyAgentsKnowledgeBaseAPI {
   constructor(
-    private readonly client: MyAgentsFetchClient = myAgentsFetchClient,
+    private readonly client: Pick<
+      MyAgentsFetchClient,
+      "fetch"
+    > = myAgentsFetchClient,
   ) {}
 
   async create(payload: KnowledgeBaseCreateRequest): Promise<KnowledgeBase> {

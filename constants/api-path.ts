@@ -2,7 +2,10 @@ export const API_PATH = {
   health: "/health",
   auth: {
     signup: "/auth/signup",
+    verifyEmail: "/auth/verify-email",
     login: "/auth/login",
+    passwordResetRequest: "/auth/password-reset/request",
+    passwordResetConfirm: "/auth/password-reset/confirm",
     logout: "/auth/logout",
     me: "/auth/me",
   },
@@ -16,6 +19,9 @@ export const API_PATH = {
     },
     runs(conversationId: string) {
       return `${this.detail(conversationId)}/runs`;
+    },
+    runStream(conversationId: string) {
+      return `${this.runs(conversationId)}/stream`;
     },
     runEvents(conversationId: string, runId: string) {
       return `${this.runs(conversationId)}/${runId}/events`;
