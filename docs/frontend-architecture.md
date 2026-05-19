@@ -41,8 +41,8 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | --- | --- | --- |
 | `/` | `app/page.tsx` | Marketing/landing entry point. |
 | `/login` | `components/keymesh/AuthPanel.tsx` | Login through BFF `/auth/login`. |
-| `/signup` | `components/keymesh/AuthPanel.tsx` | Signup parses the backend `UserResponse` and shows an account-created handoff before login. |
-| `/chat` | `components/keymesh/ChatWorkspace.tsx` | Anchor journey. Uses conversations, messages, runs, events, citations. |
+| `/signup` | `components/keymesh/AuthPanel.tsx` | Signup parses the backend `SignupResponse` envelope and shows an account-created handoff before login. |
+| `/chat` | `components/keymesh/ChatWorkspace.tsx` | Anchor journey. Uses conversations, messages, streamed run answer deltas, events, citations. |
 | `/documents` | `components/keymesh/AdminSurfaces.tsx` | Document create/list, ingest, extraction runs, permission patch. |
 | `/knowledge` | `components/keymesh/AdminSurfaces.tsx` | Knowledge-base create/list. |
 | `/groups` | `components/keymesh/AdminSurfaces.tsx` | Group create/list and ID-based membership role actions. |
@@ -75,7 +75,10 @@ The BFF allowlist currently covers:
 
 - `GET /health`
 - `POST /auth/signup`
+- `POST /auth/verify-email`
 - `POST /auth/login`
+- `POST /auth/password-reset/request`
+- `POST /auth/password-reset/confirm`
 - `POST /auth/logout`
 - `GET /auth/me`
 - `POST /conversations`
@@ -85,6 +88,7 @@ The BFF allowlist currently covers:
 - `GET /conversations/{conversation_id}/messages`
 - `POST /conversations/{conversation_id}/runs`
 - `GET /conversations/{conversation_id}/runs`
+- `POST /conversations/{conversation_id}/runs/stream`
 - `GET /conversations/{conversation_id}/runs/{run_id}/events`
 - `POST /groups`
 - `GET /groups`
@@ -100,7 +104,7 @@ The BFF allowlist currently covers:
 - `POST /documents/{document_id}/ingest`
 - `GET /documents/{document_id}/extraction-runs`
 
-`POST /assistant/chat` is intentionally excluded from product BFF use.
+`POST /assistant/chat` is intentionally excluded from product BFF use. The list above was reconciled against the hosted OpenAPI document at `http://127.0.0.1:8000/openapi.json`; do not derive frontend contracts from backend source inspection.
 
 ## Design approach
 

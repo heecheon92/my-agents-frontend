@@ -2,8 +2,10 @@ import { API_PATH } from "@/constants/api-path";
 import {
   type AgentEvent,
   type AgentRunSummary,
+  type AnswerDeltaEventData,
   agentEventSchema,
   agentRunSummarySchema,
+  answerDeltaEventDataSchema,
   type Conversation,
   type ConversationCreateRequest,
   type ConversationRunRequest,
@@ -16,10 +18,50 @@ import {
 } from "@/model/my-agents";
 import { type MyAgentsFetchClient, myAgentsFetchClient } from "./fetch-client";
 import { parseArrayWithSchema, parseWithSchema } from "./parser";
+import { streamServerSentEvents } from "./sse";
+
+export type ConversationRunStreamEvent =
+  | { event: "answer_delta"; data: AnswerDeltaEventData }
+  | { event: "run_completed"; data: ConversationRunResponse }
+  | { event: string; data: unknown };
+
+function parseStreamEventData(value: string) {
+  try {
+    return JSON.parse(value) as unknown;
+  } catch {
+    return value;
+  }
+}
+
+function parseConversationRunStreamEvent({
+  event,
+  data,
+}: {
+  event: string;
+  data: string;
+}): ConversationRunStreamEvent {
+  const parsedData = parseStreamEventData(data);
+  if (event === "answer_delta") {
+    return {
+      event,
+      data: parseWithSchema(answerDeltaEventDataSchema, parsedData),
+    };
+  }
+  if (event === "run_completed") {
+    return {
+      event,
+      data: parseWithSchema(conversationRunResponseSchema, parsedData),
+    };
+  }
+  return { event, data: parsedData };
+}
 
 export class MyAgentsConversationAPI {
   constructor(
-    private readonly client: MyAgentsFetchClient = myAgentsFetchClient,
+    private readonly client: Pick<
+      MyAgentsFetchClient,
+      "fetch" | "fetchResponse"
+    > = myAgentsFetchClient,
   ) {}
 
   async create(payload: ConversationCreateRequest): Promise<Conversation> {
@@ -77,6 +119,29 @@ export class MyAgentsConversationAPI {
         body: payload,
       }),
     );
+  }
+
+  async streamRun(
+    conversationId: string,
+    payload: ConversationRunRequest,
+  ): Promise<Response> {
+    return this.client.fetchResponse(
+      API_PATH.conversations.runStream(conversationId),
+      {
+        method: "POST",
+        body: payload,
+      },
+    );
+  }
+
+  async *streamRunEvents(
+    conversationId: string,
+    payload: ConversationRunRequest,
+  ): AsyncGenerator<ConversationRunStreamEvent> {
+    const response = await this.streamRun(conversationId, payload);
+    for await (const event of streamServerSentEvents(response)) {
+      yield parseConversationRunStreamEvent(event);
+    }
   }
 
   async runs(conversationId: string): Promise<AgentRunSummary[]> {

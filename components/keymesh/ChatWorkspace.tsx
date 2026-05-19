@@ -1,22 +1,45 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import {
   useConversation,
   useConversations,
   useCreateConversation,
   useMessages,
-  useRunConversation,
   useRunEvents,
   useRuns,
 } from "@/hooks/use-conversations";
 import { useLocalization } from "@/hooks/useLocalization";
 import { cn } from "@/lib/utils";
+import type {
+  AgentEvent,
+  AnswerDeltaEventData,
+  Citation,
+  ConversationRunResponse,
+  Message,
+} from "@/model/my-agents";
+import { myAgentsAPI } from "@/services/my-agents";
 import { inputClassName } from "./Field";
 import { EmptyState, ErrorState, Pill } from "./Status";
 
+type LiveActivityEvent = Pick<AgentEvent, "id" | "sequence" | "event_type"> & {
+  payload: unknown;
+};
+
+const CHAT_BOTTOM_THRESHOLD_PX = 96;
+
+function isNearScrollBottom(element: HTMLElement) {
+  return (
+    element.scrollHeight - element.scrollTop - element.clientHeight <=
+    CHAT_BOTTOM_THRESHOLD_PX
+  );
+}
+
 export function ChatWorkspace() {
+  const queryClient = useQueryClient();
   const conversations = useConversations();
   const createConversation = useCreateConversation();
   const [selectedId, setSelectedId] = useState<string>();
@@ -26,9 +49,19 @@ export function ChatWorkspace() {
   const runs = useRuns(activeId);
   const latestRunId = runs.data?.[0]?.run_id;
   const events = useRunEvents(activeId, latestRunId);
-  const runConversation = useRunConversation(activeId);
   const [draft, setDraft] = useState("");
-  const latestCitations = runConversation.data?.citations ?? [];
+  const [isStreaming, setIsStreaming] = useState(false);
+  const [streamError, setStreamError] = useState<unknown>(null);
+  const [streamedReply, setStreamedReply] = useState("");
+  const [liveActivityEvents, setLiveActivityEvents] = useState<
+    LiveActivityEvent[]
+  >([]);
+  const [optimisticMessage, setOptimisticMessage] = useState<Message | null>(
+    null,
+  );
+  const [latestCitations, setLatestCitations] = useState<Citation[]>([]);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+  const shouldAutoScrollRef = useRef(true);
   const { lang, localization } = useLocalization(
     (state) => state.localization.chat,
   );
@@ -49,14 +82,107 @@ export function ChatWorkspace() {
     const message = draft.trim();
     if (!message || !activeId) return;
     setDraft("");
+    setIsStreaming(true);
+    setStreamError(null);
+    setStreamedReply("");
+    setLiveActivityEvents([]);
+    setLatestCitations([]);
+    setOptimisticMessage({
+      id: `optimistic-${Date.now()}`,
+      conversation_id: activeId,
+      role: "user",
+      content: message,
+    });
+
+    let completed = false;
+    let liveSequence = 0;
     try {
-      await runConversation.mutateAsync({ message });
-    } catch {
-      // React Query stores the API error on the mutation; render it below.
+      for await (const streamEvent of myAgentsAPI.conversations.streamRunEvents(
+        activeId,
+        { message },
+      )) {
+        liveSequence += 1;
+        const sequence = liveSequence;
+        setLiveActivityEvents((current) => [
+          ...current,
+          {
+            id: `live-${sequence}`,
+            sequence,
+            event_type: streamEvent.event,
+            payload: streamEvent.data,
+          },
+        ]);
+
+        if (streamEvent.event === "answer_delta") {
+          const data = streamEvent.data as AnswerDeltaEventData;
+          setStreamedReply((current) => current + data.delta);
+        }
+        if (streamEvent.event === "run_completed") {
+          const data = streamEvent.data as ConversationRunResponse;
+          completed = true;
+          setStreamedReply(data.reply);
+          setLatestCitations(data.citations ?? []);
+        }
+        if (streamEvent.event === "run_failed") {
+          throw new Error(localization.runFailed);
+        }
+      }
+
+      if (!completed) throw new Error(localization.runFailed);
+
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: MyAgentsQueryKeys.conversations.messages(activeId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: MyAgentsQueryKeys.conversations.runs(activeId),
+        }),
+      ]);
+      setOptimisticMessage(null);
+      setStreamedReply("");
+    } catch (error) {
+      setStreamError(error);
+    } finally {
+      setIsStreaming(false);
     }
   }
 
-  const sortedMessages = useMemo(() => messages.data ?? [], [messages.data]);
+  const sortedMessages = useMemo(() => {
+    const persistedMessages = messages.data ?? [];
+    if (!optimisticMessage || optimisticMessage.conversation_id !== activeId) {
+      return persistedMessages;
+    }
+    return [...persistedMessages, optimisticMessage];
+  }, [activeId, messages.data, optimisticMessage]);
+  const visibleActivityEvents =
+    liveActivityEvents.length > 0 ? liveActivityEvents : (events.data ?? []);
+  const autoScrollTrigger = `${sortedMessages.length}:${streamedReply.length}`;
+
+  function handleChatScroll() {
+    const scrollElement = chatScrollRef.current;
+    if (!scrollElement) return;
+    shouldAutoScrollRef.current = isNearScrollBottom(scrollElement);
+  }
+
+  useEffect(() => {
+    if (!activeId) return;
+    shouldAutoScrollRef.current = true;
+    requestAnimationFrame(() => {
+      const scrollElement = chatScrollRef.current;
+      if (!scrollElement) return;
+      scrollElement.scrollTop = scrollElement.scrollHeight;
+    });
+  }, [activeId]);
+
+  useEffect(() => {
+    if (!autoScrollTrigger || !shouldAutoScrollRef.current) return;
+
+    requestAnimationFrame(() => {
+      const scrollElement = chatScrollRef.current;
+      if (!scrollElement || !shouldAutoScrollRef.current) return;
+      scrollElement.scrollTop = scrollElement.scrollHeight;
+    });
+  }, [autoScrollTrigger]);
 
   return (
     <div className="grid gap-4 xl:h-[calc(100dvh-8rem)] xl:grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)]">
@@ -133,7 +259,12 @@ export function ChatWorkspace() {
                 localization.selectOrCreateConversation}
             </h2>
           </header>
-          <div className="min-h-0 flex-1 overflow-auto p-4">
+          <div
+            ref={chatScrollRef}
+            onScroll={handleChatScroll}
+            data-testid="chat-scroll-region"
+            className="min-h-0 flex-1 overflow-auto p-4"
+          >
             {!activeId ? (
               <EmptyState
                 title={localization.noActiveConversationTitle}
@@ -162,9 +293,14 @@ export function ChatWorkspace() {
                   </p>
                 </div>
               ))}
-              {runConversation.isPending ? (
-                <div className="max-w-[88%] rounded-xl border border-cal-hairline bg-cal-surface-soft px-4 py-3 text-sm text-cal-muted sm:max-w-[78%]">
-                  {localization.agentComposing}
+              {isStreaming || streamedReply ? (
+                <div className="max-w-[88%] overflow-hidden rounded-xl border border-cal-hairline bg-cal-surface-soft px-4 py-3 text-sm leading-6 text-cal-ink sm:max-w-[78%]">
+                  <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+                    {localization.roles.assistant}
+                  </p>
+                  <p className="whitespace-pre-wrap break-words">
+                    {streamedReply || localization.agentComposing}
+                  </p>
                 </div>
               ) : null}
             </div>
@@ -179,24 +315,22 @@ export function ChatWorkspace() {
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder={localization.composerPlaceholder}
-                disabled={!activeId || runConversation.isPending}
+                disabled={!activeId || isStreaming}
               />
               <Button
                 className="w-full sm:w-auto"
                 type="submit"
                 size="lg"
-                disabled={
-                  !activeId || !draft.trim() || runConversation.isPending
-                }
+                disabled={!activeId || !draft.trim() || isStreaming}
               >
                 {localization.send}
               </Button>
             </div>
-            {runConversation.error ? (
+            {streamError ? (
               <div className="mt-3">
                 <ErrorState
                   title={localization.runFailed}
-                  error={runConversation.error}
+                  error={streamError}
                 />
               </div>
             ) : null}
@@ -242,13 +376,14 @@ export function ChatWorkspace() {
               {localization.activityEvents}
             </h2>
             <div className="mt-3 grid gap-2">
-              {events.data?.length === 0 || !latestRunId ? (
+              {visibleActivityEvents.length === 0 ||
+              (!latestRunId && !isStreaming) ? (
                 <EmptyState
                   title={localization.noEventsTitle}
                   description={localization.noEventsDescription}
                 />
               ) : null}
-              {events.data?.map((event) => (
+              {visibleActivityEvents.map((event) => (
                 <div
                   key={event.id}
                   className="rounded-lg bg-cal-surface-soft p-3 text-sm"

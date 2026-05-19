@@ -58,8 +58,8 @@ Use this after auth, BFF, chat, route, provider, or visual shell changes.
 2. Start frontend with `pnpm dev`.
 3. Open `http://localhost:3000/signup`.
 4. Create a new account with a unique email and password of at least 8 characters.
-5. Confirm the signup screen shows an account-created handoff instead of a Zod/parser error or automatic chat redirect.
-6. Log in with the newly created credentials and confirm redirect to `/chat`.
+5. Confirm the signup screen shows an account-created handoff from the `{ user, verification_email_sent }` response instead of a Zod/parser error or automatic chat redirect.
+6. If the local backend mode requires email verification, use the hosted API/dev mail flow available for that environment; otherwise log in with the newly created credentials and confirm redirect to `/chat`.
 7. Confirm browser `localStorage` and `sessionStorage` do not contain session or CSRF values.
 8. Create a conversation.
 9. Send a message such as `Plan my next backend milestone`.
@@ -87,7 +87,7 @@ Expected result: no output, unless the user already had unrelated backend change
 | Login response contains `csrf_token` | BFF redaction regression | `app/api/my-agents/[...path]/route.ts`, `model/my-agents/auth.ts` |
 | Product chat calls `/assistant/chat` | Wrong endpoint family | `services/my-agents/`, `components/keymesh/ChatWorkspace.tsx` |
 | Cross-site mutation is forwarded | BFF policy regression | `server/my-agents/proxy-policy.ts`, `tests/proxy-policy.test.ts` |
-| UI claims unavailable backend features | Fake data or stale docs | `docs/backend-requests.md`, relevant component copy |
+| UI claims unavailable backend features | Fake data or stale docs | Hosted OpenAPI document, `docs/backend-requests.md`, relevant component copy |
 
 ## Final report checklist
 

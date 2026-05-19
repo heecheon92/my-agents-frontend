@@ -63,6 +63,13 @@ export function useRunEvents(conversationId?: string, runId?: string) {
   });
 }
 
+export function useStreamConversationRun(conversationId?: string) {
+  return useMutation({
+    mutationFn: (payload: ConversationRunRequest) =>
+      myAgentsAPI.conversations.streamRun(conversationId ?? "", payload),
+  });
+}
+
 export function useRunConversation(conversationId?: string) {
   const queryClient = useQueryClient();
   return useMutation({

@@ -2,6 +2,26 @@
 
 This log keeps frontend work followable for future manual maintenance and future Codex sessions.
 
+## 2026-05-19 — hosted OpenAPI endpoint reconciliation
+
+- Confirmed the backend dev server is running by fetching `http://127.0.0.1:8000/openapi.json` and `http://127.0.0.1:8000/health`; the hosted OpenAPI document reports `my-agents` version `0.1.0` with 31 operations across 25 paths.
+- Reconciled frontend endpoint wiring from the hosted OpenAPI document only, without inspecting backend source code.
+- Added auth lifecycle wiring for `POST /auth/verify-email`, `POST /auth/password-reset/request`, and `POST /auth/password-reset/confirm`, including Zod schemas, service methods, TanStack Query mutations, BFF allowlist entries, and unauthenticated CSRF-cookie exemptions while preserving same-origin JSON checks.
+- Updated auth contracts for the current hosted schema: `UserResponse` now includes `email_verified_at`, and `SignupResponse` is `{ user, verification_email_sent }`.
+- Added streamed conversation run wiring for `POST /conversations/{conversation_id}/runs/stream`, including path constants, a raw-response fetch path, BFF streaming pass-through, service method, and hook.
+- Updated docs and tests so future agents use hosted OpenAPI as the frontend contract source of truth and do not silently fall back to backend source inspection.
+
+Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (7 files / 23 tests), `pnpm exec playwright test` (1 Chromium test), `pnpm build`, `git diff --check`, and `git -C ../my-agents status --short` returned no output.
+
+## 2026-05-19 — assistant delta streaming UI
+
+- Verified the updated backend stream endpoint from the hosted dev server: `POST /conversations/{conversation_id}/runs/stream` now emits incremental `answer_delta` SSE events before the final `run_completed` event.
+- Switched the chat composer flow to consume the streamed endpoint, append assistant deltas into a live assistant bubble, show live activity events while the run is in flight, then invalidate persisted messages/runs after `run_completed`.
+- Added pinned-to-bottom chat scrolling: when the transcript is already near the bottom, streamed answer deltas keep it scrolled down; if the user scrolls up, the UI does not fight their position.
+- Added a small SSE parser and stream-event parser coverage so chunked `answer_delta` and final `run_completed` events are protected by unit tests.
+
+Verification passed for this log entry: hosted backend SSE probe confirmed `answer_delta` events before `run_completed`; `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (7 files / 24 tests), `pnpm build`, `pnpm exec playwright test`, and a browser smoke of signup/login/create conversation/send message confirmed visible `answer_delta`, `run_completed`, assistant text, pinned chat scroll distance `0`, and zero browser console errors.
+
 ## Current strategy
 
 Use one visible quality queue delivered as staged vertical slices:

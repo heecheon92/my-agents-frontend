@@ -8,8 +8,9 @@ This project has two important boundaries: browser-to-frontend BFF security, and
 
 Allowed from this repo:
 
-- Read backend route files, schemas, tests, and settings.
-- Run read-only inspection commands.
+- Use the hosted backend OpenAPI document as the source of truth for frontend API contracts.
+- Read backend route files, schemas, tests, and settings only when the task explicitly allows backend source inspection.
+- Run read-only inspection commands when explicitly allowed and not substituting for hosted OpenAPI.
 - Record backend gaps in `docs/backend-requests.md`.
 
 Not allowed from this repo:
@@ -66,6 +67,8 @@ Current strategy:
 3. The BFF removes `csrf_token` before returning login JSON to browser code.
 4. Mutating browser calls go through the BFF.
 5. The BFF injects the backend CSRF header server-side only after safety checks pass.
+
+Unauthenticated auth lifecycle mutations (`/auth/signup`, `/auth/login`, `/auth/verify-email`, `/auth/password-reset/request`, and `/auth/password-reset/confirm`) are exempt from the CSRF-cookie requirement because a user may not have a session yet. They still go through same-origin JSON and fetch-metadata checks.
 
 Never regress these rules:
 
