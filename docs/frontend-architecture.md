@@ -43,7 +43,7 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | `/login` | `components/keymesh/AuthPanel.tsx` | Login through BFF `/auth/login`. |
 | `/signup` | `components/keymesh/AuthPanel.tsx` | Signup parses the backend `SignupResponse` envelope and shows an account-created handoff before login. |
 | `/chat` | `components/keymesh/ChatWorkspace.tsx` | Anchor journey. Uses conversations, messages, streamed run answer deltas, events, citations. |
-| `/documents` | `components/keymesh/AdminSurfaces.tsx` | Document create/list, ingest, extraction runs, permission patch. |
+| `/documents` | `components/keymesh/AdminSurfaces.tsx` | Document create/list/delete, PDF upload, ingest, extraction runs, permission patch. |
 | `/knowledge` | `components/keymesh/AdminSurfaces.tsx` | Knowledge-base create/list. |
 | `/groups` | `components/keymesh/AdminSurfaces.tsx` | Group create/list and ID-based membership role actions. |
 
@@ -89,6 +89,7 @@ The BFF allowlist currently covers:
 - `POST /conversations/{conversation_id}/runs`
 - `GET /conversations/{conversation_id}/runs`
 - `POST /conversations/{conversation_id}/runs/stream`
+- `GET /conversations/{conversation_id}/runs/{run_id}`
 - `GET /conversations/{conversation_id}/runs/{run_id}/events`
 - `POST /groups`
 - `GET /groups`
@@ -101,6 +102,7 @@ The BFF allowlist currently covers:
 - `POST /documents/upload`
 - `GET /documents`
 - `GET /documents/{document_id}`
+- `DELETE /documents/{document_id}`
 - `PATCH /documents/{document_id}/permissions`
 - `POST /documents/{document_id}/ingest`
 - `GET /documents/{document_id}/extraction-runs`

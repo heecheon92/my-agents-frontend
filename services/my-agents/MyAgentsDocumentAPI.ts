@@ -63,6 +63,12 @@ export class MyAgentsDocumentAPI {
     );
   }
 
+  async remove(documentId: string): Promise<void> {
+    await this.client.fetch(API_PATH.documents.detail(documentId), {
+      method: "DELETE",
+    });
+  }
+
   async patchPermission(
     documentId: string,
     payload: DocumentPermissionPatchRequest,

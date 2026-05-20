@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import type {
+  Document,
   DocumentCreateRequest,
   DocumentPermissionPatchRequest,
   DocumentUploadRequest,
@@ -65,6 +66,33 @@ export function useUploadDocument() {
       queryClient.invalidateQueries({
         queryKey: MyAgentsQueryKeys.documents.list(),
       }),
+  });
+}
+
+export function useDeleteDocument(documentId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => myAgentsAPI.documents.remove(documentId ?? ""),
+    onSuccess: () => {
+      queryClient.setQueryData<Document[]>(
+        MyAgentsQueryKeys.documents.list(),
+        (current) =>
+          documentId && current
+            ? current.filter((document) => document.id !== documentId)
+            : current,
+      );
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.documents.list(),
+      });
+      if (documentId) {
+        queryClient.removeQueries({
+          queryKey: MyAgentsQueryKeys.documents.detail(documentId),
+        });
+        queryClient.removeQueries({
+          queryKey: MyAgentsQueryKeys.documents.extractionRuns(documentId),
+        });
+      }
+    },
   });
 }
 

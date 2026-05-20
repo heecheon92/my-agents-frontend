@@ -146,7 +146,11 @@
       "textSource": "Text",
       "pdfSource": "PDF",
       "pdfSourcePrefix": "PDF",
-      "pagesLabel": "pages"
+      "pagesLabel": "pages",
+      "deleteTitle": "Delete corrupted document",
+      "deleteDescription": "Remove the selected uploaded or text document when ingestion produced bad data. This cannot be undone.",
+      "deleteButton": "Delete document",
+      "deleteConfirm": "Delete \"{title}\"? This cannot be undone."
     },
     "groups": {
       "title": "Groups",

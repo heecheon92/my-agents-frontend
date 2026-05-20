@@ -11,6 +11,7 @@ import {
 import {
   useCreateDocument,
   useCreateKnowledgeBase,
+  useDeleteDocument,
   useDocuments,
   useExtractionRuns,
   useIngestDocument,
@@ -101,6 +102,7 @@ export function DocumentsSurface() {
   const activeDocumentId = selectedDocumentId ?? documents.data?.[0]?.id;
   const extractionRuns = useExtractionRuns(activeDocumentId);
   const ingest = useIngestDocument(activeDocumentId);
+  const deleteDocument = useDeleteDocument(activeDocumentId);
   const patchPermission = usePatchDocumentPermission(activeDocumentId);
   const [permissionUserId, setPermissionUserId] = useState("");
   const { localization } = useLocalization((state) => state.localization.admin);
@@ -129,6 +131,31 @@ export function DocumentsSurface() {
       setUploadFile(null);
       event.currentTarget.reset();
       setSelectedDocumentId(uploaded.id);
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
+  }
+
+  async function handleDeleteDocument() {
+    if (!activeDocumentId) return;
+    const selectedDocument = documents.data?.find(
+      (document) => document.id === activeDocumentId,
+    );
+    const title = selectedDocument?.title ?? activeDocumentId;
+    if (
+      !window.confirm(
+        localization.documents.deleteConfirm.replace("{title}", title),
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const nextDocumentId = documents.data?.find(
+        (document) => document.id !== activeDocumentId,
+      )?.id;
+      await deleteDocument.mutateAsync();
+      setSelectedDocumentId(nextDocumentId);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -294,6 +321,27 @@ export function DocumentsSurface() {
                 <ErrorState error={patchPermission.error} />
               </div>
             ) : null}
+            <div className="mt-4 grid gap-3 border-t border-cal-hairline pt-4">
+              <div>
+                <h3 className="font-semibold">
+                  {localization.documents.deleteTitle}
+                </h3>
+                <p className="mt-1 text-sm leading-6 text-cal-muted">
+                  {localization.documents.deleteDescription}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDeleteDocument}
+                disabled={!activeDocumentId || deleteDocument.isPending}
+              >
+                {localization.documents.deleteButton}
+              </Button>
+              {deleteDocument.error ? (
+                <ErrorState error={deleteDocument.error} />
+              ) : null}
+            </div>
             <h3 className="mt-6 font-semibold">
               {localization.documents.extractionRuns}
             </h3>

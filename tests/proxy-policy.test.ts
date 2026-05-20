@@ -24,6 +24,9 @@ describe("proxy policy", () => {
     expect(
       isAllowedBackendPath("PATCH", "/documents/doc-1/permissions").allowed,
     ).toBe(true);
+    expect(isAllowedBackendPath("DELETE", "/documents/doc-1").allowed).toBe(
+      true,
+    );
     expect(isAllowedBackendPath("POST", "/documents/upload").allowed).toBe(
       true,
     );

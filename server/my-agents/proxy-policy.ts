@@ -121,6 +121,11 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "documents.detail",
   },
   {
+    method: "DELETE",
+    pattern: new RegExp(`^/documents/${uuidLike}$`),
+    name: "documents.delete",
+  },
+  {
     method: "PATCH",
     pattern: new RegExp(`^/documents/${uuidLike}/permissions$`),
     name: "documents.permissions",

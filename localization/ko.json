@@ -146,7 +146,11 @@
       "textSource": "텍스트",
       "pdfSource": "PDF",
       "pdfSourcePrefix": "PDF",
-      "pagesLabel": "쪽"
+      "pagesLabel": "쪽",
+      "deleteTitle": "손상된 문서 삭제",
+      "deleteDescription": "수집 결과가 잘못된 선택 문서나 업로드 문서를 제거합니다. 이 작업은 되돌릴 수 없습니다.",
+      "deleteButton": "문서 삭제",
+      "deleteConfirm": "\"{title}\" 문서를 삭제할까요? 이 작업은 되돌릴 수 없습니다."
     },
     "groups": {
       "title": "그룹",

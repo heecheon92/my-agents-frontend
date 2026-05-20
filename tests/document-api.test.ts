@@ -50,6 +50,22 @@ describe("MyAgentsDocumentAPI", () => {
     expect(formData.get("file")).toBe(file);
   });
 
+  it("deletes documents through the backend 204 contract", async () => {
+    const calls: Array<{ path: string; init?: { method?: string } }> = [];
+    const api = new MyAgentsDocumentAPI({
+      fetch: async (path, init) => {
+        calls.push({ path, init });
+        return null;
+      },
+    });
+
+    await expect(api.remove("doc-1")).resolves.toBeUndefined();
+
+    expect(calls).toEqual([
+      { path: "/documents/doc-1", init: { method: "DELETE" } },
+    ]);
+  });
+
   it("accepts backend Phase 2 document source metadata", () => {
     expect(
       documentSchema.parse({

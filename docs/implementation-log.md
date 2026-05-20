@@ -1,3 +1,11 @@
+## 2026-05-20 — document delete frontend wiring
+
+- Wired backend commit `c3a6785` document deletion into the frontend-only surface: BFF allowlist accepts `DELETE /documents/{document_id}`, `MyAgentsDocumentAPI.remove()` sends the bodyless DELETE request, and `useDeleteDocument()` refreshes/removes document-related query state.
+- Added a safe selected-document delete action to the Documents UI using the existing destructive button variant plus browser confirmation, then advances selection to another available document after deletion.
+- Updated bilingual README and architecture endpoint coverage so future demo/readiness checks include document delete support for corrupted uploads.
+
+Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (8 files / 35 tests), `pnpm build`, and `git diff --check`.
+
 ## 2026-05-20 — Strict V1 Phase 1 auth/session frontend gate
 
 - Verified the frontend BFF/browser auth assumptions against backend Phase 1 auth/session evidence without adding backend fields or changing frontend API models.
