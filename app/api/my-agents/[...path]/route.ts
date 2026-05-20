@@ -78,7 +78,7 @@ async function proxy(request: NextRequest, context: RouteContext) {
   const backendResponse = await fetch(`${BACKEND_URL}${backendPath}`, {
     method: request.method,
     headers,
-    body: hasBody ? await request.text() : undefined,
+    body: hasBody ? await request.arrayBuffer() : undefined,
     cache: "no-store",
   });
 

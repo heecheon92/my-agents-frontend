@@ -5,6 +5,7 @@ import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import type {
   DocumentCreateRequest,
   DocumentPermissionPatchRequest,
+  DocumentUploadRequest,
   KnowledgeBaseCreateRequest,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
@@ -48,6 +49,18 @@ export function useCreateDocument() {
   return useMutation({
     mutationFn: (payload: DocumentCreateRequest) =>
       myAgentsAPI.documents.create(payload),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.documents.list(),
+      }),
+  });
+}
+
+export function useUploadDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: DocumentUploadRequest) =>
+      myAgentsAPI.documents.upload(payload),
     onSuccess: () =>
       queryClient.invalidateQueries({
         queryKey: MyAgentsQueryKeys.documents.list(),

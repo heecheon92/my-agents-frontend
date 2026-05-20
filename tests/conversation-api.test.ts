@@ -51,7 +51,16 @@ describe("MyAgentsConversationAPI", () => {
           reply: "Hello",
           route: { label: "general_assistant", explanation: "test" },
           handled_by: "personal_assistant_graph",
-          citations: [],
+          citations: [
+            {
+              id: "citation-1",
+              document_id: "doc-1",
+              chunk_id: "chunk-1",
+              snippet: "Evidence",
+              source_page: 2,
+              source_filename: "phase-2.pdf",
+            },
+          ],
         };
       },
       fetchResponse: async () => new Response(),
@@ -63,7 +72,16 @@ describe("MyAgentsConversationAPI", () => {
       reply: "Hello",
       route: { label: "general_assistant", explanation: "test" },
       handled_by: "personal_assistant_graph",
-      citations: [],
+      citations: [
+        {
+          id: "citation-1",
+          document_id: "doc-1",
+          chunk_id: "chunk-1",
+          snippet: "Evidence",
+          source_page: 2,
+          source_filename: "phase-2.pdf",
+        },
+      ],
     });
     expect(calls).toEqual(["/conversations/conversation-1/runs/run-1"]);
   });

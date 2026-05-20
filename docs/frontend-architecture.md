@@ -98,13 +98,14 @@ The BFF allowlist currently covers:
 - `POST /knowledge-bases`
 - `GET /knowledge-bases`
 - `POST /documents`
+- `POST /documents/upload`
 - `GET /documents`
 - `GET /documents/{document_id}`
 - `PATCH /documents/{document_id}/permissions`
 - `POST /documents/{document_id}/ingest`
 - `GET /documents/{document_id}/extraction-runs`
 
-`POST /assistant/chat` is intentionally excluded from product BFF use. The list above was reconciled against the hosted OpenAPI document at `http://127.0.0.1:8000/openapi.json`; do not derive frontend contracts from backend source inspection.
+`POST /assistant/chat` is intentionally excluded from product BFF use. The Phase 2 upload route was reconciled from backend commit `ef88553` generated OpenAPI because the running local server still served the pre-Phase-2 OpenAPI; future model changes should prefer the hosted OpenAPI document once the backend server is restarted.
 
 ## Design approach
 

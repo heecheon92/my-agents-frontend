@@ -16,6 +16,7 @@ import {
   useIngestDocument,
   useKnowledgeBases,
   usePatchDocumentPermission,
+  useUploadDocument,
 } from "@/hooks/use-knowledge";
 import { useLocalization } from "@/hooks/useLocalization";
 import { Field, inputClassName } from "./Field";
@@ -91,8 +92,11 @@ export function KnowledgeSurface() {
 export function DocumentsSurface() {
   const documents = useDocuments();
   const createDocument = useCreateDocument();
+  const uploadDocument = useUploadDocument();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  const [uploadTitle, setUploadTitle] = useState("");
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>();
   const activeDocumentId = selectedDocumentId ?? documents.data?.[0]?.id;
   const extractionRuns = useExtractionRuns(activeDocumentId);
@@ -108,6 +112,23 @@ export function DocumentsSurface() {
       setTitle("");
       setContent("");
       setSelectedDocumentId(created.id);
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
+  }
+
+  async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!uploadFile) return;
+    try {
+      const uploaded = await uploadDocument.mutateAsync({
+        title: uploadTitle,
+        file: uploadFile,
+      });
+      setUploadTitle("");
+      setUploadFile(null);
+      event.currentTarget.reset();
+      setSelectedDocumentId(uploaded.id);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -138,38 +159,84 @@ export function DocumentsSurface() {
     >
       <div className="responsive-panel">
         <div className="responsive-panel-grid" data-layout="form-aside">
-          <form
-            onSubmit={handleCreate}
-            className="cal-card grid gap-3 rounded-xl p-4"
-          >
-            <Field label={localization.documents.titleLabel}>
-              <input
-                className={inputClassName}
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                required
-              />
-            </Field>
-            <Field
-              label={localization.documents.contentLabel}
-              hint={localization.documents.contentHint}
+          <div className="grid gap-4">
+            <form
+              onSubmit={handleCreate}
+              className="cal-card grid gap-3 rounded-xl p-4"
             >
-              <textarea
-                className={`${inputClassName} min-h-40`}
-                value={content}
-                onChange={(event) => setContent(event.target.value)}
-              />
-            </Field>
-            <Button
-              type="submit"
-              disabled={createDocument.isPending || !title.trim()}
+              <h2 className="font-semibold">
+                {localization.documents.textCreateTitle}
+              </h2>
+              <Field label={localization.documents.titleLabel}>
+                <input
+                  className={inputClassName}
+                  value={title}
+                  onChange={(event) => setTitle(event.target.value)}
+                  required
+                />
+              </Field>
+              <Field
+                label={localization.documents.contentLabel}
+                hint={localization.documents.contentHint}
+              >
+                <textarea
+                  className={`${inputClassName} min-h-40`}
+                  value={content}
+                  onChange={(event) => setContent(event.target.value)}
+                />
+              </Field>
+              <Button
+                type="submit"
+                disabled={createDocument.isPending || !title.trim()}
+              >
+                {localization.documents.createButton}
+              </Button>
+              {createDocument.error ? (
+                <ErrorState error={createDocument.error} />
+              ) : null}
+            </form>
+            <form
+              onSubmit={handleUpload}
+              className="cal-card grid gap-3 rounded-xl p-4"
             >
-              {localization.documents.createButton}
-            </Button>
-            {createDocument.error ? (
-              <ErrorState error={createDocument.error} />
-            ) : null}
-          </form>
+              <h2 className="font-semibold">
+                {localization.documents.pdfUploadTitle}
+              </h2>
+              <Field
+                label={localization.documents.pdfTitleLabel}
+                hint={localization.documents.pdfUploadHint}
+              >
+                <input
+                  className={inputClassName}
+                  value={uploadTitle}
+                  onChange={(event) => setUploadTitle(event.target.value)}
+                  required
+                />
+              </Field>
+              <Field label={localization.documents.pdfFileLabel}>
+                <input
+                  className={inputClassName}
+                  type="file"
+                  accept="application/pdf,.pdf"
+                  onChange={(event) => {
+                    setUploadFile(event.target.files?.[0] ?? null);
+                  }}
+                  required
+                />
+              </Field>
+              <Button
+                type="submit"
+                disabled={
+                  uploadDocument.isPending || !uploadTitle.trim() || !uploadFile
+                }
+              >
+                {localization.documents.uploadButton}
+              </Button>
+              {uploadDocument.error ? (
+                <ErrorState error={uploadDocument.error} />
+              ) : null}
+            </form>
+          </div>
           <section className="cal-card rounded-xl p-4">
             <h2 className="font-semibold">
               {localization.documents.selectedActions}
@@ -275,11 +342,7 @@ export function DocumentsSurface() {
             <ResourceRow
               title={doc.title}
               subtitle={doc.id}
-              meta={
-                doc.knowledge_base_id
-                  ? `${localization.common.knowledgeBasePrefix} ${doc.knowledge_base_id.slice(0, 8)}`
-                  : localization.common.noKnowledgeBase
-              }
+              meta={documentMeta(doc, localization)}
               active={activeDocumentId === doc.id}
             />
           </button>
@@ -523,6 +586,38 @@ function PageCard({
       {children}
     </div>
   );
+}
+
+function documentMeta(
+  doc: {
+    knowledge_base_id: string | null;
+    source_type?: string;
+    source_filename?: string | null;
+    source_page_count?: number | null;
+  },
+  localization: {
+    common: { knowledgeBasePrefix: string };
+    documents: {
+      pdfSourcePrefix: string;
+      pdfSource: string;
+      textSource: string;
+      pagesLabel: string;
+    };
+  },
+) {
+  const source =
+    doc.source_type === "pdf"
+      ? doc.source_filename
+        ? `${localization.documents.pdfSourcePrefix} ${doc.source_filename}`
+        : localization.documents.pdfSource
+      : localization.documents.textSource;
+  const pages = doc.source_page_count
+    ? ` · ${doc.source_page_count} ${localization.documents.pagesLabel}`
+    : "";
+  const kb = doc.knowledge_base_id
+    ? ` · ${localization.common.knowledgeBasePrefix} ${doc.knowledge_base_id.slice(0, 8)}`
+    : "";
+  return `${source}${pages}${kb}`;
 }
 
 function ResourceList({

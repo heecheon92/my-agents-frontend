@@ -88,6 +88,16 @@ Remaining: completion audit and optional commit/push.
 - Backend may be inspected but not edited from frontend work without explicit user approval.
 - Backend gaps belong in `docs/backend-requests.md` first.
 
+## 2026-05-20 — strict V1 Phase 2 PDF upload frontend gate
+
+- Reconciled backend commit `ef88553` by generating backend OpenAPI from `my_agents.api.create_app().openapi()` because the running local server still exposed the pre-Phase-2 OpenAPI.
+- Added frontend support for the additive PDF contract: `POST /documents/upload`, multipart `FormData`, document source metadata, and citation filename/page provenance.
+- Preserved the existing JSON text document create path and bodyless `/documents/{document_id}/ingest` path.
+- Updated the BFF same-origin policy to allow `multipart/form-data` for authenticated upload mutations without allowing simple form posts.
+- Added the PDF upload form to the Documents UI and kept the seeded text V1 flow available.
+
+Verification passed for this log entry: `pnpm exec vitest run tests/api-path.test.ts tests/proxy-policy.test.ts tests/fetch-client.test.ts tests/document-api.test.ts tests/conversation-api.test.ts`, `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (8 files / 34 tests), `pnpm build`, `pnpm exec playwright test e2e/home.spec.ts`, and `git diff --check`. Final PDF browser upload smoke is deferred until the backend server is restarted on commit `ef88553` or later.
+
 ## Verification log
 
 - 2026-05-17 — `$ralplan` consensus completed. Architect initially requested a concrete BFF/CSRF strategy; Critic requested auth/security alternatives, allowlist, negative tests, pre-mortem, expanded test plan, and exact backend-request logging. Artifacts were revised and final Critic verdict was APPROVE.

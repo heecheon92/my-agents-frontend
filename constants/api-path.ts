@@ -47,6 +47,7 @@ export const API_PATH = {
   },
   documents: {
     root: "/documents",
+    upload: "/documents/upload",
     detail(documentId: string) {
       return `${this.root}/${documentId}`;
     },

@@ -121,7 +121,7 @@
     },
     "documents": {
       "title": "Documents",
-      "description": "Manage document metadata, ingestion, extraction runs, and direct permission patches.",
+      "description": "Manage text documents, PDF uploads, ingestion, extraction runs, and direct permission patches.",
       "titleLabel": "Title",
       "contentLabel": "Content",
       "contentHint": "The backend stores content and deterministic ingestion creates chunks/entities.",
@@ -136,7 +136,17 @@
       "extractionRuns": "Extraction runs",
       "noExtractionRunsTitle": "No extraction runs",
       "noExtractionRunsDescription": "Run ingest to create one.",
-      "empty": "No documents yet."
+      "empty": "No documents yet.",
+      "textCreateTitle": "Create text document",
+      "pdfUploadTitle": "Upload PDF document",
+      "pdfTitleLabel": "PDF title",
+      "pdfFileLabel": "PDF file",
+      "pdfUploadHint": "Backend Phase 2 accepts multipart PDF uploads at /documents/upload. Text-based PDFs are supported in V1.",
+      "uploadButton": "Upload PDF",
+      "textSource": "Text",
+      "pdfSource": "PDF",
+      "pdfSourcePrefix": "PDF",
+      "pagesLabel": "pages"
     },
     "groups": {
       "title": "Groups",

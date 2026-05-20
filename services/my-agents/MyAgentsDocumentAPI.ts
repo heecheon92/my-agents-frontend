@@ -4,6 +4,7 @@ import {
   type DocumentCreateRequest,
   type DocumentPermission,
   type DocumentPermissionPatchRequest,
+  type DocumentUploadRequest,
   documentPermissionSchema,
   documentSchema,
   type ExtractionRun,
@@ -26,6 +27,24 @@ export class MyAgentsDocumentAPI {
       await this.client.fetch(API_PATH.documents.root, {
         method: "POST",
         body: payload,
+      }),
+    );
+  }
+
+  async upload(payload: DocumentUploadRequest): Promise<Document> {
+    const formData = new FormData();
+    formData.set("title", payload.title);
+    formData.set("file", payload.file);
+    if (payload.group_id) formData.set("group_id", payload.group_id);
+    if (payload.knowledge_base_id) {
+      formData.set("knowledge_base_id", payload.knowledge_base_id);
+    }
+
+    return parseWithSchema(
+      documentSchema,
+      await this.client.fetch(API_PATH.documents.upload, {
+        method: "POST",
+        body: formData,
       }),
     );
   }

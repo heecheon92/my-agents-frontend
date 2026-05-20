@@ -66,21 +66,21 @@ Frontend workaround, if any: Backend commit `24b3ff8` adds `MY_AGENTS_AUTH_DEV_O
 
 ## 2026-05-20 — strict V1 PDF upload contract
 
-Status: proposed
+Status: implemented
 Frontend need: A realistic uploaded-file contract for the strict V1 document flow, preferably PDF-first as defined in the backend V1 PRD.
-Current backend behavior: Hosted OpenAPI exposes JSON `POST /documents` with `title`, `content`, `group_id`, and `knowledge_base_id`, plus bodyless `POST /documents/{document_id}/ingest`. There is no multipart/file upload endpoint or file metadata response shape in the current contract.
+Current backend behavior: Backend commit `ef88553` adds additive multipart `POST /documents/upload` with `title`, `file`, optional `group_id`, and optional `knowledge_base_id`; V1 accepts PDF uploads and preserves existing JSON `POST /documents` plus bodyless `POST /documents/{document_id}/ingest`.
 Requested backend contract: Provide the upload route, accepted content types, request encoding, max-size/error behavior, returned document/file metadata, and how upload links to ingestion lifecycle and provenance.
 Why it matters: The frontend cannot honestly implement a PDF upload UI or claim strict V1 realistic ingestion while the contract only supports seeded/text JSON documents.
-Frontend workaround, if any: Keep the current seeded text-document ingest smoke and report this as a strict V1 blocker before upload UI work.
+Frontend workaround, if any: Implemented direct PDF upload UI/API/BFF support from the backend-owned OpenAPI generated at commit `ef88553`; final browser PDF smoke waits for a restarted backend server on that commit or later.
 
 ## 2026-05-20 — strict V1 citation provenance contract
 
-Status: proposed
+Status: implemented
 Frontend need: Citation fields rich enough for display, debugging, and refresh-safe run detail UX.
-Current backend behavior: Hosted OpenAPI `CitationResponse` exposes `id`, `document_id`, `chunk_id`, and `snippet`.
+Current backend behavior: Backend commit `ef88553` extends `CitationResponse` with optional `source_page` and `source_filename` while preserving `id`, `document_id`, `chunk_id`, and `snippet`.
 Requested backend contract: Add or document stable provenance fields such as source title/filename, page number, section/heading, chunk index or offsets, ingestion/source version, and any display-safe labels the frontend should render.
 Why it matters: Strict V1 requires citations with enough provenance for display/debugging; the current frontend can show only generic document/chunk/snippet data.
-Frontend workaround, if any: Continue rendering current simple citations and avoid inventing page/file labels until backend OpenAPI owns those fields.
+Frontend workaround, if any: Citation UI now renders backend-provided filename/page when present and falls back to document id for older/simple citations.
 
 ## 2026-05-20 — strict V1 safe event display contract
 

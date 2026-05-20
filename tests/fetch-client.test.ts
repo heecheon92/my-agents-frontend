@@ -29,6 +29,31 @@ describe("MyAgentsFetchClient", () => {
     vi.unstubAllGlobals();
   });
 
+  it("passes FormData without forcing a JSON content type", async () => {
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) => {
+      const headers = new Headers(init?.headers);
+      expect(headers.has("content-type")).toBe(false);
+      expect(init?.body).toBeInstanceOf(FormData);
+      return Response.json({ ok: true });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    const client = new MyAgentsFetchClient();
+    const formData = new FormData();
+    formData.set("title", "PDF");
+
+    await client.fetch("/documents/upload", {
+      method: "POST",
+      body: formData,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/my-agents/documents/upload",
+      expect.objectContaining({ method: "POST", body: formData }),
+    );
+    vi.unstubAllGlobals();
+  });
+
   it.each([
     {
       detail: "email verification required",

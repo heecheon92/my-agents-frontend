@@ -22,6 +22,13 @@ export const documentSchema = z.object({
   owner_user_id: z.string().min(1),
   group_id: z.string().nullable(),
   knowledge_base_id: z.string().nullable(),
+  source_type: z.string().default("text"),
+  source_filename: z.string().nullable().optional(),
+  source_content_type: z.string().nullable().optional(),
+  source_byte_size: z.number().nullable().optional(),
+  source_sha256: z.string().nullable().optional(),
+  source_page_count: z.number().nullable().optional(),
+  parser_name: z.string().nullable().optional(),
 });
 
 export const documentCreateRequestSchema = z.object({
@@ -30,6 +37,13 @@ export const documentCreateRequestSchema = z.object({
   group_id: z.string().nullable().optional(),
   knowledge_base_id: z.string().nullable().optional(),
 });
+
+export type DocumentUploadRequest = {
+  title: string;
+  file: File;
+  group_id?: string | null;
+  knowledge_base_id?: string | null;
+};
 
 export const documentPermissionPatchRequestSchema = z.object({
   user_id: z.string().min(1),
@@ -62,6 +76,8 @@ export const citationSchema = z.object({
   document_id: z.string().min(1),
   chunk_id: z.string().min(1),
   snippet: z.string(),
+  source_page: z.number().nullable().optional(),
+  source_filename: z.string().nullable().optional(),
 });
 
 export type KnowledgeBaseScope = z.infer<typeof knowledgeBaseScopeSchema>;

@@ -24,6 +24,9 @@ describe("proxy policy", () => {
     expect(
       isAllowedBackendPath("PATCH", "/documents/doc-1/permissions").allowed,
     ).toBe(true);
+    expect(isAllowedBackendPath("POST", "/documents/upload").allowed).toBe(
+      true,
+    );
     expect(isAllowedBackendPath("POST", "/auth/verify-email").allowed).toBe(
       true,
     );
@@ -101,6 +104,21 @@ describe("proxy policy", () => {
         }),
       }),
     ).toMatchObject({ allowed: false, code: "json_required" });
+  });
+
+  it("accepts same-origin multipart mutations for PDF upload", () => {
+    expect(
+      validateSameOriginProof({
+        method: "POST",
+        requestUrl: "http://localhost:3000/api/my-agents/documents/upload",
+        configuredOrigin: "http://localhost:3000",
+        headers: headers({
+          "content-type": "multipart/form-data; boundary=test",
+          origin: "http://localhost:3000",
+          "sec-fetch-site": "same-origin",
+        }),
+      }),
+    ).toMatchObject({ allowed: true });
   });
 
   it("accepts same-origin JSON mutations", () => {

@@ -121,7 +121,7 @@
     },
     "documents": {
       "title": "문서",
-      "description": "문서 메타데이터, 수집, 추출 실행, 직접 권한 패치를 관리합니다.",
+      "description": "텍스트 문서, PDF 업로드, 수집, 추출 실행, 직접 권한 패치를 관리합니다.",
       "titleLabel": "제목",
       "contentLabel": "내용",
       "contentHint": "백엔드는 내용을 저장하고 deterministic ingestion으로 청크와 엔티티를 생성합니다.",
@@ -136,7 +136,17 @@
       "extractionRuns": "추출 실행",
       "noExtractionRunsTitle": "추출 실행이 없습니다",
       "noExtractionRunsDescription": "수집을 실행해 생성하세요.",
-      "empty": "아직 문서가 없습니다."
+      "empty": "아직 문서가 없습니다.",
+      "textCreateTitle": "텍스트 문서 만들기",
+      "pdfUploadTitle": "PDF 문서 업로드",
+      "pdfTitleLabel": "PDF 제목",
+      "pdfFileLabel": "PDF 파일",
+      "pdfUploadHint": "백엔드 Phase 2는 /documents/upload에서 multipart PDF 업로드를 받습니다. V1은 텍스트 기반 PDF를 지원합니다.",
+      "uploadButton": "PDF 업로드",
+      "textSource": "텍스트",
+      "pdfSource": "PDF",
+      "pdfSourcePrefix": "PDF",
+      "pagesLabel": "쪽"
     },
     "groups": {
       "title": "그룹",

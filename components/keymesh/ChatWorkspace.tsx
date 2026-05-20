@@ -428,9 +428,19 @@ export function ChatWorkspace() {
                   className="rounded-lg bg-cal-surface-strong p-3 text-sm text-cal-ink"
                 >
                   <p className="font-medium">
-                    {localization.documentLabel}{" "}
-                    {citation.document_id.slice(0, 8)}
+                    {citation.source_filename ?? localization.documentLabel}{" "}
+                    {citation.source_filename
+                      ? citation.source_page
+                        ? `p. ${citation.source_page}`
+                        : ""
+                      : citation.document_id.slice(0, 8)}
                   </p>
+                  {citation.source_filename ? (
+                    <p className="mt-1 text-xs text-cal-muted">
+                      {localization.documentLabel}{" "}
+                      {citation.document_id.slice(0, 8)}
+                    </p>
+                  ) : null}
                   <p className="mt-1 break-words text-cal-body">
                     {citation.snippet}
                   </p>

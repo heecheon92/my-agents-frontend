@@ -109,6 +109,11 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "knowledge-bases.list",
   },
   { method: "POST", pattern: /^\/documents$/, name: "documents.create" },
+  {
+    method: "POST",
+    pattern: /^\/documents\/upload$/,
+    name: "documents.upload",
+  },
   { method: "GET", pattern: /^\/documents$/, name: "documents.list" },
   {
     method: "GET",
@@ -187,10 +192,13 @@ export function isAllowedBackendPath(
   return { allowed: true, params: { route: rule.name } };
 }
 
-export function isJsonMutation(headers: Headers) {
-  const contentType = headers.get("content-type");
+export function isAllowedMutationContentType(headers: Headers) {
+  const contentType = headers.get("content-type")?.toLowerCase();
   if (!contentType) return false;
-  return contentType.toLowerCase().includes(JSON_CONTENT_TYPE);
+  return (
+    contentType.includes(JSON_CONTENT_TYPE) ||
+    contentType.includes("multipart/form-data")
+  );
 }
 
 export function resolveExpectedOrigin(
@@ -214,7 +222,7 @@ export function validateSameOriginProof({
 }): ProxyDecision {
   if (!isMutation(method)) return { allowed: true, params: {} };
 
-  if (!isJsonMutation(headers)) {
+  if (!isAllowedMutationContentType(headers)) {
     return {
       allowed: false,
       status: 415,

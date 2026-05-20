@@ -22,6 +22,7 @@ describe("API_PATH", () => {
   });
 
   it("builds document operation paths", () => {
+    expect(API_PATH.documents.upload).toBe("/documents/upload");
     expect(API_PATH.documents.permissions("doc-1")).toBe(
       "/documents/doc-1/permissions",
     );
