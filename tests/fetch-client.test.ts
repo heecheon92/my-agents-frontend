@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { MyAgentsFetchClient } from "@/services/my-agents/fetch-client";
+import type { MyAgentsAPIError } from "@/services/my-agents/MyAgentsAPIError";
 
 describe("MyAgentsFetchClient", () => {
   it("sets JSON content type for no-body mutations such as logout and ingest", async () => {
@@ -27,4 +28,47 @@ describe("MyAgentsFetchClient", () => {
     );
     vi.unstubAllGlobals();
   });
+
+  it.each([
+    {
+      detail: "email verification required",
+      status: 403,
+    },
+    {
+      detail: "too many auth attempts",
+      status: 429,
+    },
+  ])(
+    "surfaces backend auth hardening errors without custom fields: $detail",
+    async ({ detail, status }) => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () =>
+          Response.json(
+            { detail },
+            {
+              status,
+              statusText: status === 429 ? "Too Many Requests" : "Forbidden",
+            },
+          ),
+        ),
+      );
+
+      const client = new MyAgentsFetchClient();
+
+      await expect(
+        client.fetch("/auth/login", {
+          method: "POST",
+          body: { email: "user@example.com", password: "wrong" },
+        }),
+      ).rejects.toMatchObject({
+        name: "MyAgentsAPIError",
+        message: detail,
+        status,
+        detail,
+      } satisfies Partial<MyAgentsAPIError>);
+
+      vi.unstubAllGlobals();
+    },
+  );
 });

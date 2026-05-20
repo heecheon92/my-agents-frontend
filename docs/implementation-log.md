@@ -1,3 +1,11 @@
+## 2026-05-20 — Strict V1 Phase 1 auth/session frontend gate
+
+- Verified the frontend BFF/browser auth assumptions against backend Phase 1 auth/session evidence without adding backend fields or changing frontend API models.
+- Added targeted Vitest regressions for backend-standard unverified-login and rate-limit `{ detail }` surfacing, public-demo origin acceptance, and `localhost`/`127.0.0.1` mismatch rejection.
+- Added `docs/strict-v1-phase-1-auth-session-gate.md` as the frontend Phase 1 gate report, including backend-owned remaining risks and the next live V1 browser-smoke gate.
+
+Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (7 files / 30 tests), `pnpm build`, `V1_DEMO_EMAIL=test@test.com V1_DEMO_PASSWORD=... pnpm exec playwright test e2e/v1-demo.spec.ts` (1 Chromium test), and `git diff --check`. Backend boundary check was read-only but not clean because the sibling backend repo had concurrent task edits in `my_agents/settings.py`, `tests/test_auth_api.py`, `tests/test_cors_api.py`, and `tests/test_settings.py`.
+
 # Frontend Implementation Log
 
 ## 2026-05-20 — backend v1 readiness frontend lane audit

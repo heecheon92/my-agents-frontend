@@ -117,4 +117,33 @@ describe("proxy policy", () => {
       }),
     ).toMatchObject({ allowed: true });
   });
+
+  it("accepts an explicitly configured public demo origin", () => {
+    expect(
+      validateSameOriginProof({
+        method: "POST",
+        requestUrl: "https://demo.example.com/api/my-agents/auth/logout",
+        configuredOrigin: "https://demo.example.com",
+        headers: headers({
+          "content-type": "application/json",
+          origin: "https://demo.example.com",
+          "sec-fetch-site": "same-origin",
+        }),
+      }),
+    ).toMatchObject({ allowed: true });
+  });
+
+  it("rejects localhost and 127.0.0.1 origin mismatches for cookie auth", () => {
+    expect(
+      validateSameOriginProof({
+        method: "POST",
+        requestUrl: "http://localhost:3000/api/my-agents/auth/logout",
+        configuredOrigin: "http://localhost:3000",
+        headers: headers({
+          "content-type": "application/json",
+          origin: "http://127.0.0.1:3000",
+        }),
+      }),
+    ).toMatchObject({ allowed: false, code: "origin_rejected" });
+  });
 });
