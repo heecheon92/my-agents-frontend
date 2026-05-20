@@ -50,6 +50,17 @@ Use this after UI/layout changes and whenever the `responsive-design` skill appl
 5. Confirm primary touch targets are comfortable on mobile; avoid adding tiny-only controls unless the component has a clear dense-UI reason.
 6. Prefer browser screenshots or Playwright viewport checks for substantial visual changes; record any manual viewport checks in `docs/implementation-log.md`.
 
+
+## Public demo release gates
+
+Use [`docs/public-demo-release-runbook.md`](./public-demo-release-runbook.md) for preview and production readiness. The short version is:
+
+1. Local deterministic smoke must pass first.
+2. Hosted preview smoke must pass before any public production smoke.
+3. Final live deploy, provider activation, production migrations, secrets, and spend remain owner-gated actions.
+4. Evidence bundles must redact emails, cookies, tokens, API keys, document contents, and host secrets.
+5. Public visitor proof must use a real visitor account path and must not rely on seeded demo credentials or `/auth/dev/outbox`.
+
 ## Browser smoke for auth/chat
 
 Use this after auth, BFF, chat, route, provider, or visual shell changes.
@@ -101,6 +112,47 @@ Phase 2 PDF upload smoke should be run after the backend server is restarted on
 commit `ef88553` or later: login -> Documents -> upload a text-based PDF through
 `POST /documents/upload` -> verify document source metadata -> run bodyless ingest ->
 confirm citations can render backend-provided filename/page provenance.
+
+
+## V1 public visitor smoke (preview/public final proof)
+
+Use this only after preview backend/frontend URLs, cookie/CORS settings, persistent DB migrations, and the account/email provider are configured. This smoke intentionally creates a unique visitor account through the public UI, does not use the seeded demo account, and does not call the backend dev outbox.
+
+Required final-proof behavior:
+
+1. Missing provider variables fail the Playwright test explicitly when `V1_PUBLIC_VISITOR_SMOKE=1`; they must not silently skip.
+2. The generated account email must be unique via `{nonce}`.
+3. Email/account activation must use the configured public provider path, or a documented preview-safe provider command.
+4. Browser `localStorage` and `sessionStorage` must not contain session, CSRF, provider tokens, raw passwords, API keys, or OpenAI-style keys.
+5. The flow creates a text document, ingests it, streams a chat run, verifies citations/events, reloads, and verifies persisted evidence.
+6. If hosted proof uses the default local Playwright config, record the local-to-hosted topology explicitly; otherwise record the alternate hosted command/config used for the run.
+7. If `login-after-signup` mode is used, record why immediate login is valid for that preview/provider setup; otherwise use `provider-command` and keep command output limited to the activation URL.
+8. Record whether `/assistant/chat` exclusion was proven by `tests/proxy-policy.test.ts` only or by an additional browser assertion.
+
+Example for a preview environment that allows login immediately after signup:
+
+```bash
+MY_AGENTS_BACKEND_URL=https://preview-api.example.invalid \
+V1_PUBLIC_VISITOR_SMOKE=1 \
+V1_PUBLIC_VISITOR_EMAIL_TEMPLATE='portfolio-smoke+{nonce}@example.invalid' \
+V1_PUBLIC_VISITOR_PASSWORD='use-a-preview-only-password' \
+pnpm exec playwright test e2e/v1-demo.spec.ts -g 'public visitor'
+```
+
+Example when the provider requires an activation link fetched by an operator-owned command:
+
+```bash
+MY_AGENTS_BACKEND_URL=https://preview-api.example.invalid \
+V1_PUBLIC_VISITOR_SMOKE=1 \
+V1_PUBLIC_VISITOR_EMAIL_TEMPLATE='portfolio-smoke+{nonce}@example.invalid' \
+V1_PUBLIC_VISITOR_PASSWORD='use-a-preview-only-password' \
+V1_PUBLIC_VISITOR_VERIFICATION_MODE=provider-command \
+V1_PUBLIC_VISITOR_VERIFICATION_COMMAND='./scripts/print-preview-verification-link.sh' \
+pnpm exec playwright test e2e/v1-demo.spec.ts -g 'public visitor'
+```
+
+`V1_PUBLIC_VISITOR_VERIFICATION_COMMAND` receives `V1_PUBLIC_VISITOR_EMAIL` in its environment and must print only the verification URL to stdout. Do not use this hook to print secrets, mailbox contents, cookies, or provider tokens. Production public smoke still requires explicit user confirmation before live deploy, live secrets, spend, or public activation.
+
 
 ## Backend boundary check
 

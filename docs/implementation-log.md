@@ -98,6 +98,25 @@ Remaining: completion audit and optional commit/push.
 
 Verification passed for this log entry: `pnpm exec vitest run tests/api-path.test.ts tests/proxy-policy.test.ts tests/fetch-client.test.ts tests/document-api.test.ts tests/conversation-api.test.ts`, `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (8 files / 34 tests), `pnpm build`, `pnpm exec playwright test e2e/home.spec.ts`, and `git diff --check`. Final PDF browser upload smoke is deferred until the backend server is restarted on commit `ef88553` or later.
 
+
+## 2026-05-20 — public demo release runbook
+
+- Added a preview/production release runbook with provider/dependency decision records, deployment topology and auth/session matrices, no-secret/no-spend gates, visitor privacy copy, cleanup guidance, and an evidence bundle template.
+- Linked the runbook from verification, security boundary, and bilingual README handoff docs.
+- Logged the backend contract gap for a hosted public visitor email/provider verification path so final e2e proof does not fall back to seeded credentials or the dev outbox.
+
+Verification for this log entry: docs-only change; `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build`, backend boundary check, and `git diff --check` were run after the edit.
+
+
+## 2026-05-20 — worker-3 verification/evidence coverage probe
+
+- Reviewed the production orchestration test spec against backend `/Users/heecheonpark/Git/Portfolio/my-agents` and frontend `/Users/heecheonpark/Git/Portfolio/my-agents-frontend` test surfaces.
+- Confirmed backend coverage commands and smoke helper: `uv run pytest -q`, `uv run ruff check . --no-cache`, `uv run ruff format --check .`, and `uv run python -m scripts.local_demo_smoke --base-url http://localhost:8000 --timeout 120`.
+- Confirmed frontend coverage commands and smoke specs: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build`, `e2e/home.spec.ts`, and `e2e/v1-demo.spec.ts`.
+- Added release-runbook checklist items for public visitor proof gaps: provider activation evidence, hosted Playwright topology, text-document vs PDF branch declaration, `/assistant/chat` exclusion evidence, and event/log redaction proof.
+
+Verification for this log entry: docs-only update; `git diff --check -- docs/public-demo-release-runbook.md docs/verification-runbook.md docs/implementation-log.md` passed.
+
 ## Verification log
 
 - 2026-05-17 — `$ralplan` consensus completed. Architect initially requested a concrete BFF/CSRF strategy; Critic requested auth/security alternatives, allowlist, negative tests, pre-mortem, expanded test plan, and exact backend-request logging. Artifacts were revised and final Critic verdict was APPROVE.
@@ -173,3 +192,11 @@ Verification passed in this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `p
 - Updated chat and admin surfaces to reduce narrow-width overflow risk: mobile-first stacked chat panes, wrapped composer/actions, wider mobile message bubbles, break-word IDs/content, and container-query-driven admin form/action splits.
 
 Verification passed in this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build`, `pnpm exec playwright test`, and a Playwright viewport overflow check for `/` and `/login` at 390px, 768px, and 1280px (all `scrollWidth === innerWidth`).
+
+## 2026-05-20 — Public visitor smoke e2e readiness
+
+- Added an opt-in `V1_PUBLIC_VISITOR_SMOKE=1` Playwright path in `e2e/v1-demo.spec.ts` that creates a unique account from `V1_PUBLIC_VISITOR_EMAIL_TEMPLATE`, supports provider activation through `V1_PUBLIC_VISITOR_VERIFICATION_COMMAND`, and fails explicitly when required final-proof provider variables are missing.
+- Kept the seeded V1 smoke as a separate describe block so missing seeded credentials no longer skip the public visitor final-proof path.
+- Added browser storage assertions that reject session, CSRF, provider token, password, API-key, and OpenAI-style key material in `localStorage`/`sessionStorage`.
+- Documented preview/public smoke usage and the no-dev-outbox/no-secret command boundary in `docs/verification-runbook.md`.
+- Verification passed in this worker pass: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build`, and `pnpm exec playwright test` (public visitor final-proof path intentionally skipped unless `V1_PUBLIC_VISITOR_SMOKE=1` provider env is supplied). Hosted smoke remains user/provider-gated and must not run before preview configuration and final confirmation.
