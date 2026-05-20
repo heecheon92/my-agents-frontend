@@ -69,6 +69,27 @@ Use this after auth, BFF, chat, route, provider, or visual shell changes.
 13. Confirm browser console has no unexpected errors. A 401 from `/auth/me` after logout is expected unauthenticated behavior.
 14. Click logout and confirm redirect to `/login`.
 
+## V1 local demo smoke
+
+Use this opt-in smoke after backend local-demo seed/reset support is available and the
+demo account is verified. It drives only product UI/BFF routes and does not expose the
+dev outbox or seed helper in production UX.
+
+```bash
+MY_AGENTS_BACKEND_URL=http://localhost:8000 pnpm dev
+V1_DEMO_EMAIL=test@test.com \
+V1_DEMO_PASSWORD='your-demo-password' \
+pnpm exec playwright test e2e/v1-demo.spec.ts
+```
+
+The backend local demo seed helper currently provides the verified account
+`test@test.com`, password `correct horse battery staple`, and seeded text document
+`V1 Portfolio Chat Service Demo`.
+
+Expected flow: login -> choose seeded text document -> bodyless ingest through the
+BFF -> streamed chat answer -> completed run history -> persisted run-detail citations
+after reload -> redacted event trail.
+
 ## Backend boundary check
 
 Always run this before final reporting if the task touched backend contracts, BFF, auth, or docs that mention backend behavior:

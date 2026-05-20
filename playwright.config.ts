@@ -5,12 +5,13 @@ export default defineConfig({
   timeout: 30_000,
   expect: { timeout: 5_000 },
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL: "http://localhost:3000",
     trace: "on-first-retry",
   },
   webServer: {
-    command: "pnpm dev --hostname 127.0.0.1",
-    url: "http://127.0.0.1:3000",
+    command:
+      "MY_AGENTS_BACKEND_URL=http://localhost:8000 pnpm dev --hostname localhost",
+    url: "http://localhost:3000",
     reuseExistingServer: true,
     timeout: 60_000,
   },

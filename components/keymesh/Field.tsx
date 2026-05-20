@@ -1,3 +1,4 @@
+import { cloneElement, isValidElement, useId } from "react";
 import { cn } from "@/lib/utils";
 
 export function Field({
@@ -7,22 +8,29 @@ export function Field({
   className,
 }: {
   label: string;
-  children: React.ReactNode;
+  children: React.ReactElement<{ id?: string }>;
   hint?: string;
   className?: string;
 }) {
+  const fallbackId = useId();
+  const controlId = children.props.id ?? fallbackId;
+  const control = isValidElement(children)
+    ? cloneElement(children, { id: controlId })
+    : children;
+
   return (
-    <div
+    <label
+      htmlFor={controlId}
       className={cn("grid gap-2 text-sm font-medium text-cal-ink", className)}
     >
       <span>{label}</span>
-      {children}
+      {control}
       {hint ? (
         <span className="text-xs font-normal leading-5 text-cal-muted">
           {hint}
         </span>
       ) : null}
-    </div>
+    </label>
   );
 }
 
