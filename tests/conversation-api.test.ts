@@ -36,7 +36,36 @@ describe("MyAgentsConversationAPI", () => {
     expect(calls[0]?.init).toMatchObject({
       method: "POST",
       body: { message: "hello" },
+      headers: { Accept: "text/event-stream" },
     });
+  });
+
+  it("fetches completed run detail for refresh-safe citations", async () => {
+    const calls: string[] = [];
+    const api = new MyAgentsConversationAPI({
+      fetch: async (path) => {
+        calls.push(path);
+        return {
+          run_id: "run-1",
+          conversation_id: "conversation-1",
+          reply: "Hello",
+          route: { label: "general_assistant", explanation: "test" },
+          handled_by: "personal_assistant_graph",
+          citations: [],
+        };
+      },
+      fetchResponse: async () => new Response(),
+    });
+
+    await expect(api.runDetail("conversation-1", "run-1")).resolves.toEqual({
+      run_id: "run-1",
+      conversation_id: "conversation-1",
+      reply: "Hello",
+      route: { label: "general_assistant", explanation: "test" },
+      handled_by: "personal_assistant_graph",
+      citations: [],
+    });
+    expect(calls).toEqual(["/conversations/conversation-1/runs/run-1"]);
   });
 
   it("parses answer deltas and the final run_completed event from SSE", async () => {

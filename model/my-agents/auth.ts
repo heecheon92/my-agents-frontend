@@ -4,7 +4,10 @@ export const userSchema = z
   .object({
     id: z.string().min(1),
     email: z.string().email(),
-    email_verified_at: z.string().datetime().nullable(),
+    email_verified_at: z
+      .string()
+      .datetime({ local: true, offset: true })
+      .nullable(),
   })
   .strict();
 

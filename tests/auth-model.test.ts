@@ -20,6 +20,14 @@ describe("auth response schemas", () => {
     expect(userSchema.parse(user)).toEqual(user);
   });
 
+  it("parses backend-local datetime strings for verified users", () => {
+    const verified = {
+      ...user,
+      email_verified_at: "2026-05-20T04:49:38.581993",
+    };
+    expect(userSchema.parse(verified)).toEqual(verified);
+  });
+
   it("parses signup responses as backend user envelopes", () => {
     expect(
       signupResponseSchema.parse({

@@ -1,6 +1,26 @@
 # Frontend Implementation Log
 
+## 2026-05-20 — backend v1 readiness frontend lane audit
+
+- Audited frontend integration against the backend product endpoint family: auth, groups, documents, knowledge bases, ingest/extraction runs, conversations, conversation runs, streamed runs, and run events. Product code does not call legacy `/assistant/chat`; the BFF allowlist continues to block `/assistant/*`.
+- Hardened streamed run negotiation by sending `Accept: text/event-stream` from the frontend service and using `text/event-stream` as the BFF fallback content type for successful stream pass-through responses.
+- Made latest-run activity selection independent of backend list ordering by sorting run summaries by `created_at` descending before selecting the latest run.
+- Added backend handoff requests for hosted OpenAPI/response shapes, cookie/CSRF semantics, SSE event framing, persisted citation/run ordering behavior, and deterministic seed/demo flow in `docs/backend-requests.md`.
+
+Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (7 files / 24 tests), `pnpm build`, and `pnpm exec playwright test` (1 Chromium test).
+
+
 This log keeps frontend work followable for future manual maintenance and future Codex sessions.
+
+## 2026-05-20 — backend 24b3ff8 demo contract verification
+
+- Pulled/read backend commit `24b3ff8` demo runbook updates: hostname-consistent localhost CORS, `MY_AGENTS_AUTH_DEV_OUTBOX_ENABLED=true`, `GET /auth/dev/outbox`, and completed run detail via `GET /conversations/{conversation_id}/runs/{run_id}`.
+- Reconciled the new run-detail endpoint against hosted OpenAPI from `http://localhost:8000/openapi.json`, then added frontend BFF allowlist, API path/query key, service method, hook, and chat citation fallback to persisted completed run detail.
+- Kept `/auth/dev/outbox` out of the frontend BFF product allowlist; it is used only by local smoke automation directly against the backend when explicitly enabled.
+- Relaxed verified-user timestamp parsing to accept backend-local datetime strings as well as RFC3339 offset/Z datetime strings, matching the current hosted OpenAPI response observed during smoke.
+- Confirmed the transient 415 on document ingest was from a custom smoke helper missing `Content-Type`; the product fetch client already sends JSON content type for no-body mutations, and test coverage now explicitly includes `/documents/{id}/ingest`.
+
+Verification passed for this log entry: backend commit `24b3ff8` was running with deterministic mode, `MY_AGENTS_AUTH_DEV_OUTBOX_ENABLED=true`, and `MY_AGENTS_CORS_ALLOWED_ORIGINS=http://localhost:3000`; hosted OpenAPI confirmed `/auth/dev/outbox` and completed run detail; custom browser smoke passed signup -> dev outbox verification -> direct credentialed CORS login/me -> BFF login/me -> knowledge base/document/ingest -> conversation -> SSE run -> completed run detail -> run events -> `/chat` UI refresh-safe citation check; `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (7 files / 26 tests), `pnpm build`, and `pnpm exec playwright test` (1 Chromium test) passed.
 
 ## 2026-05-19 — hosted OpenAPI endpoint reconciliation
 

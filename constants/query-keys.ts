@@ -25,6 +25,15 @@ export const MyAgentsQueryKeys = {
     runs(conversationId: string) {
       return ["my-agents", "conversations", "runs", conversationId] as const;
     },
+    run(conversationId: string, runId: string) {
+      return [
+        "my-agents",
+        "conversations",
+        "run",
+        conversationId,
+        runId,
+      ] as const;
+    },
     events(conversationId: string, runId: string) {
       return [
         "my-agents",

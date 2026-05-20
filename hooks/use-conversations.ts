@@ -51,6 +51,18 @@ export function useRuns(conversationId?: string) {
   });
 }
 
+export function useRunDetail(conversationId?: string, runId?: string) {
+  return useQuery({
+    queryKey: MyAgentsQueryKeys.conversations.run(
+      conversationId ?? "",
+      runId ?? "",
+    ),
+    queryFn: () =>
+      myAgentsAPI.conversations.runDetail(conversationId ?? "", runId ?? ""),
+    enabled: Boolean(conversationId && runId),
+  });
+}
+
 export function useRunEvents(conversationId?: string, runId?: string) {
   return useQuery({
     queryKey: MyAgentsQueryKeys.conversations.events(

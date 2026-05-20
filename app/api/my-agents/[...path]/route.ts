@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { TEXT_EVENT_STREAM_CONTENT_TYPE } from "@/constants/header";
 import {
   BACKEND_URL,
   COOKIE_SECURE,
@@ -87,7 +88,8 @@ async function proxy(request: NextRequest, context: RouteContext) {
       headers: {
         "cache-control": "no-store",
         "content-type":
-          backendResponse.headers.get("content-type") ?? "application/json",
+          backendResponse.headers.get("content-type") ??
+          TEXT_EVENT_STREAM_CONTENT_TYPE,
       },
     });
   }

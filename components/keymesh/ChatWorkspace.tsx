@@ -9,6 +9,7 @@ import {
   useConversations,
   useCreateConversation,
   useMessages,
+  useRunDetail,
   useRunEvents,
   useRuns,
 } from "@/hooks/use-conversations";
@@ -47,7 +48,15 @@ export function ChatWorkspace() {
   const conversation = useConversation(activeId);
   const messages = useMessages(activeId);
   const runs = useRuns(activeId);
-  const latestRunId = runs.data?.[0]?.run_id;
+  const sortedRuns = useMemo(() => {
+    return [...(runs.data ?? [])].sort(
+      (left, right) =>
+        new Date(right.created_at).getTime() -
+        new Date(left.created_at).getTime(),
+    );
+  }, [runs.data]);
+  const latestRunId = sortedRuns[0]?.run_id;
+  const runDetail = useRunDetail(activeId, latestRunId);
   const events = useRunEvents(activeId, latestRunId);
   const [draft, setDraft] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -156,6 +165,10 @@ export function ChatWorkspace() {
   }, [activeId, messages.data, optimisticMessage]);
   const visibleActivityEvents =
     liveActivityEvents.length > 0 ? liveActivityEvents : (events.data ?? []);
+  const visibleCitations =
+    latestCitations.length > 0
+      ? latestCitations
+      : (runDetail.data?.citations ?? []);
   const autoScrollTrigger = `${sortedMessages.length}:${streamedReply.length}`;
 
   function handleChatScroll() {
@@ -343,13 +356,13 @@ export function ChatWorkspace() {
               {localization.runHistory}
             </h2>
             <div className="mt-3 grid gap-2">
-              {runs.data?.length === 0 ? (
+              {sortedRuns.length === 0 ? (
                 <EmptyState
                   title={localization.noRunsTitle}
                   description={localization.noRunsDescription}
                 />
               ) : null}
-              {runs.data?.map((run) => (
+              {sortedRuns.map((run) => (
                 <div
                   key={run.run_id}
                   className="rounded-lg border border-cal-hairline p-3 text-sm"
@@ -403,13 +416,13 @@ export function ChatWorkspace() {
               {localization.latestCitations}
             </h2>
             <div className="mt-3 grid gap-2">
-              {latestCitations.length === 0 ? (
+              {visibleCitations.length === 0 ? (
                 <EmptyState
                   title={localization.noCitationsTitle}
                   description={localization.noCitationsDescription}
                 />
               ) : null}
-              {latestCitations.map((citation) => (
+              {visibleCitations.map((citation) => (
                 <div
                   key={citation.id}
                   className="rounded-lg bg-cal-surface-strong p-3 text-sm text-cal-ink"

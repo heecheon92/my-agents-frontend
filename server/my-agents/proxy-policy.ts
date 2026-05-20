@@ -67,6 +67,11 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "runs.list",
   },
   {
+    method: "GET",
+    pattern: new RegExp(`^/conversations/${uuidLike}/runs/${uuidLike}$`),
+    name: "runs.detail",
+  },
+  {
     method: "POST",
     pattern: new RegExp(`^/conversations/${uuidLike}/runs/stream$`),
     name: "runs.stream",

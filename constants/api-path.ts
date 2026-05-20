@@ -20,11 +20,14 @@ export const API_PATH = {
     runs(conversationId: string) {
       return `${this.detail(conversationId)}/runs`;
     },
+    run(conversationId: string, runId: string) {
+      return `${this.runs(conversationId)}/${runId}`;
+    },
     runStream(conversationId: string) {
       return `${this.runs(conversationId)}/stream`;
     },
     runEvents(conversationId: string, runId: string) {
-      return `${this.runs(conversationId)}/${runId}/events`;
+      return `${this.run(conversationId, runId)}/events`;
     },
   },
   groups: {

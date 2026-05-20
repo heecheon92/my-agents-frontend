@@ -10,6 +10,9 @@ describe("API_PATH", () => {
     expect(API_PATH.conversations.runs(conversationId)).toBe(
       "/conversations/conversation-1/runs",
     );
+    expect(API_PATH.conversations.run(conversationId, runId)).toBe(
+      "/conversations/conversation-1/runs/run-1",
+    );
     expect(API_PATH.conversations.runStream(conversationId)).toBe(
       "/conversations/conversation-1/runs/stream",
     );
@@ -49,6 +52,13 @@ describe("MyAgentsQueryKeys", () => {
       "conversations",
       "messages",
       conversationId,
+    ]);
+    expect(MyAgentsQueryKeys.conversations.run(conversationId, runId)).toEqual([
+      "my-agents",
+      "conversations",
+      "run",
+      conversationId,
+      runId,
     ]);
   });
 });

@@ -1,4 +1,5 @@
 import { API_PATH } from "@/constants/api-path";
+import { TEXT_EVENT_STREAM_CONTENT_TYPE } from "@/constants/header";
 import {
   type AgentEvent,
   type AgentRunSummary,
@@ -130,6 +131,7 @@ export class MyAgentsConversationAPI {
       {
         method: "POST",
         body: payload,
+        headers: { Accept: TEXT_EVENT_STREAM_CONTENT_TYPE },
       },
     );
   }
@@ -148,6 +150,18 @@ export class MyAgentsConversationAPI {
     return parseArrayWithSchema(
       agentRunSummarySchema,
       await this.client.fetch(API_PATH.conversations.runs(conversationId)),
+    );
+  }
+
+  async runDetail(
+    conversationId: string,
+    runId: string,
+  ): Promise<ConversationRunResponse> {
+    return parseWithSchema(
+      conversationRunResponseSchema,
+      await this.client.fetch(
+        API_PATH.conversations.run(conversationId, runId),
+      ),
     );
   }
 

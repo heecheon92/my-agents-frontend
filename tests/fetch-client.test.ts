@@ -10,10 +10,19 @@ describe("MyAgentsFetchClient", () => {
     });
     vi.stubGlobal("fetch", fetchMock);
 
-    await new MyAgentsFetchClient().fetch("/auth/logout", { method: "POST" });
+    const client = new MyAgentsFetchClient();
 
-    expect(fetchMock).toHaveBeenCalledWith(
+    await client.fetch("/auth/logout", { method: "POST" });
+    await client.fetch("/documents/document-1/ingest", { method: "POST" });
+
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
       "/api/my-agents/auth/logout",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      "/api/my-agents/documents/document-1/ingest",
       expect.objectContaining({ method: "POST" }),
     );
     vi.unstubAllGlobals();
