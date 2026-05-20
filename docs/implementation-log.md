@@ -8,6 +8,15 @@ Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `
 
 # Frontend Implementation Log
 
+
+## 2026-05-20 — dependency/provider evaluation closure
+
+- Added an explicit task-5 provider/dependency evaluation summary to the public demo release runbook.
+- Recorded that no new frontend dependency is needed for the current public visitor proof; email/account verification remains backend-owned through provider-neutral SMTP or another backend-approved provider path.
+- Preserved the no-secret, no-spend, no-destructive-production-action, and no-final-live-deploy gates.
+
+Verification for this log entry: pending current worker-3 task-5 verification run.
+
 ## 2026-05-20 — backend v1 readiness frontend lane audit
 
 - Audited frontend integration against the backend product endpoint family: auth, groups, documents, knowledge bases, ingest/extraction runs, conversations, conversation runs, streamed runs, and run events. Product code does not call legacy `/assistant/chat`; the BFF allowlist continues to block `/assistant/*`.

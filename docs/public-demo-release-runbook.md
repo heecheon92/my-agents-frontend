@@ -46,6 +46,20 @@ Evaluation rules:
 - Record cost ceilings before enabling anything that can bill. If the cost boundary is unclear, stop at preview-ready documentation.
 - Include a rollback path such as disabling signup, returning to a seeded demo account, or turning off a provider webhook.
 
+
+## Current provider/dependency evaluation summary
+
+Task 5 evaluation status as of 2026-05-20:
+
+| Area | Decision | Rationale | Activation boundary |
+| --- | --- | --- | --- |
+| Frontend UI packages | No new dependency. | Existing Next.js, React, TanStack Query, Playwright, Vitest, Biome, and local UI primitives already cover the public visitor proof and evidence workflow. | Re-evaluate only if a specific UX/reliability gap appears in preview smoke. |
+| Email/account provider | Backend-owned generic SMTP path; no frontend SDK. | Visitor verification should remain a backend contract so browser code never handles provider tokens or SMTP secrets. | Provider secrets, live sender identity, and spend are owner-gated. |
+| Database/hosting provider | No frontend package change. | Frontend needs hosted HTTPS origins and OpenAPI URL, not provider SDK access. | Preview/production deploy, migrations, and provider dashboards are owner-gated. |
+| Analytics/monitoring | No dependency for this milestone. | Evidence bundles and host logs are sufficient for portfolio smoke; adding analytics would create privacy/cost review work. | Add only through a future provider record with privacy and rollback review. |
+
+Dependency rule for this milestone: do not add a package or provider integration unless it directly improves public visitor UX or deployment reliability and the provider record below is filled with cost, secret, rollback, and offline-test boundaries.
+
 ## Deployment topology matrix
 
 Fill this table before preview smoke and refresh it before production smoke.
