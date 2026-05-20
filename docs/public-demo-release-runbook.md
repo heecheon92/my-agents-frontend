@@ -20,6 +20,38 @@ flowchart LR
 
 Do not run production deployment, production migrations, provider activation, or paid API operations from an agent session without explicit owner confirmation.
 
+## Public portfolio demo P0 scope
+
+This launch target is a hosted reviewer-facing portfolio demo with safe limits, not a full SaaS launch. P0 frontend readiness means the existing product UI is proven against current backend contracts and deployed preview topology; it does not require new product features beyond fixing evidence failures.
+
+Must be done before reviewer access:
+
+1. Run full local frontend checks: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, and `pnpm build`.
+2. Run the local seeded V1 browser smoke against a deterministic/demo backend.
+3. Run hosted preview visitor smoke over HTTPS with exact frontend/backend origins.
+4. Prove public visitor signup/verification/login/session restore without seeded credentials and without `/auth/dev/outbox`.
+5. Confirm browser `localStorage` and `sessionStorage` contain no session, CSRF, password, provider token, or API key values.
+6. Exercise document evidence: upload a supported text-based PDF through `POST /documents/upload` and ingest it, or explicitly record that the launch gate used the text-document fallback and why.
+7. Verify streamed answer, citations, redacted activity events, and refresh persistence.
+8. Produce a redacted evidence bundle with commit SHAs, command outputs, smoke topology, provider decisions, and known limitations.
+
+Explicitly out of scope for first public portfolio demo:
+
+- Full SaaS hardening, multi-tenant admin UX, account deletion/export self-service, billing, analytics, monitoring, OAuth, or arbitrary file support.
+- Always-open public registration after the reviewer window. The backend-owned `MY_AGENTS_AUTH_SIGNUP_ENABLED=false` switch is the preferred abuse-control/rollback path after the backend change is deployed.
+- Frontend provider SDKs or new packages unless preview smoke exposes a concrete P0 reliability gap.
+- Production deploys, production migrations, live secrets, provider activation, or spend from an agent session without owner confirmation.
+- Product use of legacy `/assistant/chat` or production exposure of `/auth/dev/outbox`.
+
+Owner/orchestrator decisions required:
+
+- Preview and production frontend/backend origins.
+- Email/account verification provider or preview-safe operator verification mode.
+- Whether reviewer signup remains open, is invite/time-boxed, or is disabled after evidence collection using the backend-owned `MY_AGENTS_AUTH_SIGNUP_ENABLED=false` switch after the backend change is deployed.
+- Whether PDF upload is mandatory for the public demo gate or whether text-document fallback is acceptable for that gate.
+- Cost ceiling and rollback plan for any hosted backend, LLM/runtime, email, database, or logging provider.
+- Final approval before live production deploy, secrets, provider activation, migrations, or spend.
+
 ## Provider/dependency decision record
 
 Create one record for each email, database, hosting, analytics, monitoring, or UX dependency before enabling it:
@@ -71,7 +103,7 @@ Fill this table before preview smoke and refresh it before production smoke.
 | Database | Local SQLite or local Postgres | Persistent preview DB with migrations applied | Owner-confirmed persistent DB |
 | Email/account provider | Local dev outbox only | Real provider or documented preview-safe verification path | Real provider; no dev outbox |
 | OpenAI runtime | Deterministic or owner-provided key | Owner-approved env; redacted evidence | Owner-approved env and budget controls |
-| Rollback | Stop local services | Disable signup or remove preview env | Disable signup or revert deployment |
+| Rollback | Stop local services | Disable signup with `MY_AGENTS_AUTH_SIGNUP_ENABLED=false`, or remove preview env | Disable signup with `MY_AGENTS_AUTH_SIGNUP_ENABLED=false`, or revert deployment |
 
 ## Auth/session matrix
 
@@ -91,7 +123,7 @@ The final visitor proof must exercise a real visitor account and fail loudly if 
 2. Complete account verification through the configured provider flow, or record the preview-safe operator step if provider APIs require it.
 3. Log in and refresh; `/auth/me` must restore the session.
 4. Inspect browser `localStorage` and `sessionStorage`; they must not contain session cookies, CSRF tokens, provider tokens, raw passwords, or API keys.
-5. Upload a supported text-based PDF, or create a text document if upload is explicitly out of scope for the gate.
+5. Upload a supported text-based PDF through `POST /documents/upload`, or create a text document only if the evidence bundle explicitly records why PDF upload was out of scope/unavailable for that gate.
 6. Run ingest and record extraction evidence.
 7. Create a conversation and run streamed chat.
 8. Verify answer text, citations, and redacted activity events.
@@ -108,7 +140,8 @@ Use this checklist to close the verification/evidence lane before marking previe
 - Seeded local browser proof may use `V1_DEMO_EMAIL`/`V1_DEMO_PASSWORD`, but preview/public proof must set `V1_PUBLIC_VISITOR_SMOKE=1` and must use a unique visitor email template containing `{nonce}`.
 - If `V1_PUBLIC_VISITOR_VERIFICATION_MODE=login-after-signup` is used, the evidence bundle must name the backend/provider rule that makes immediate login preview-safe; otherwise use `provider-command` and record the operator-safe activation mechanism.
 - Hosted proof must record how Playwright reached the hosted frontend/backend topology, because the default `playwright.config.ts` web server targets local `http://localhost:3000` with `MY_AGENTS_BACKEND_URL=http://localhost:8000`.
-- Public visitor proof must include either uploaded text-based PDF evidence or an explicit note that the text-document branch was intentionally used for that gate.
+- Public visitor proof must include uploaded text-based PDF evidence through `POST /documents/upload`, or an explicit note that the text-document branch was intentionally used for that gate with the backend/infrastructure reason.
+- Signup-disable rollback proof should show that `POST /auth/signup` returns a safe 403-style `{ detail }` error and the frontend renders it through the existing auth error panel without exposing internals.
 - `/assistant/chat` exclusion must be evidenced by `tests/proxy-policy.test.ts`; add a browser assertion only if the release gate requires end-to-end proof of the BFF rejection.
 - Redacted event proof must state that only display-safe event names/payloads were captured and that screenshots/logs do not include prompts, provider exceptions, tokens, cookies, API keys, or raw backend internals.
 
@@ -160,7 +193,7 @@ Create one bundle per gate. Store it outside screenshots/log locations that may 
 - Signup/account verification:
 - Login/session restore:
 - Browser storage secret check:
-- Document upload/create + ingest:
+- Document upload/create + ingest: PDF upload preferred; text-document fallback reason required if used
 - Streamed chat:
 - Citations:
 - Redacted events:
@@ -170,7 +203,7 @@ Create one bundle per gate. Store it outside screenshots/log locations that may 
 
 - Provider records linked or pasted here:
 - Cost/spend boundary:
-- Rollback path:
+- Rollback path, including signup-disable state if used:
 
 ## Redaction review
 

@@ -1,6 +1,6 @@
 # Strict V1 Phase 2 frontend PDF upload gate
 
-Date: 2026-05-20
+Date: 2026-05-20; refreshed 2026-05-21
 Frontend repo: `/Users/heecheonpark/Git/my-agents-frontend`
 Backend contract source: backend commit `ef88553` plus generated OpenAPI from `my_agents.api.create_app().openapi()` because the already-running local server still served the pre-Phase-2 contract.
 
@@ -26,6 +26,8 @@ The backend-owned contract now exposes:
 - Document list displays backend source metadata for PDF/text documents.
 - Citation panel shows backend-provided source filename and page when present, while keeping document id fallback for old citations.
 
-## Remaining gate
+## Remaining gates for public portfolio demo P0
 
-The live backend server at `http://127.0.0.1:8000/openapi.json` still served the old contract during this frontend pass. Final browser PDF-upload smoke should be rerun after restarting/deploying the backend at commit `ef88553` or later.
+- The hosted or local backend used for final evidence must expose the Phase 2 upload contract in its active OpenAPI/runtime. This frontend doc does not claim that any currently running backend instance has been restarted or deployed.
+- Final browser evidence should upload a supported text-based PDF through the product UI, ingest it, and show source metadata/citations. If the launch gate intentionally uses the text-document fallback instead, record that fallback and reason in `docs/public-demo-release-runbook.md` evidence bundle fields.
+- Keep accepted content types, file-size limits, parser failure behavior, and provider/runtime failures backend-owned; the frontend should surface safe errors rather than inventing unsupported behavior.
