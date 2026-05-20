@@ -93,6 +93,7 @@ flowchart LR
 - `docs/frontend-architecture.md` — 폴더 맵, 데이터 흐름, 엔드포인트 커버리지.
 - `docs/security-and-backend-boundary.md` — BFF/CSRF 모델과 백엔드 read-only 규칙.
 - `docs/verification-runbook.md` — 로컬 실행 명령, 브라우저 smoke, 최종 확인.
+- `docs/public-demo-release-runbook.md` — preview/production gate, provider decision record, privacy copy, evidence bundle template.
 
 ## 백엔드 경계
 

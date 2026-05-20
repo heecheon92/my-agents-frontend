@@ -84,6 +84,7 @@ Regression tests that protect this:
 - `tests/auth-model.test.ts`
 - `tests/fetch-client.test.ts`
 
+
 ## Backend request policy
 
 Use `docs/backend-requests.md` when a frontend task needs a backend capability that does not exist.
@@ -99,3 +100,13 @@ Do not create a backend request for:
 - A temporary local-development issue.
 - A frontend-only bug.
 - A feature idea that the user has not asked to pursue.
+
+## Public demo privacy and release boundary
+
+For preview/production readiness, use [`public-demo-release-runbook.md`](./public-demo-release-runbook.md). The important safety boundaries are:
+
+- Hosted preview smoke must pass before public production smoke.
+- Agents must not run production deploys, production migrations, provider activation, or paid/spend-bearing operations without explicit owner confirmation.
+- `GET /auth/dev/outbox` is local-only; production config must keep `MY_AGENTS_AUTH_DEV_OUTBOX_ENABLED=false`.
+- Public evidence must redact emails, cookies, tokens, API keys, document contents beyond safe snippets, and host secrets.
+- Demo visitors must be warned not to upload secrets, credentials, regulated records, or sensitive personal documents.

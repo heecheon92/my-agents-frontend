@@ -90,6 +90,7 @@ Fresh Codex sessions should start with:
 - `docs/frontend-architecture.md` — folder map, data flow, and endpoint coverage.
 - `docs/security-and-backend-boundary.md` — BFF/CSRF model and backend read-only rules.
 - `docs/verification-runbook.md` — local run commands, browser smoke, and final checks.
+- `docs/public-demo-release-runbook.md` — preview/production gates, provider decision records, privacy copy, and evidence bundle template.
 
 ## Backend boundary
 

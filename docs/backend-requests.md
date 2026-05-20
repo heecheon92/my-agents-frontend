@@ -90,3 +90,12 @@ Current backend behavior: Hosted OpenAPI `AgentEventResponse` exposes `id`, `run
 Requested backend contract: Freeze allowed event types, public payload fields per event type, redaction guarantees, and how clients should display unknown or future event payloads.
 Why it matters: Strict V1 requires useful and safe events; rendering arbitrary payload objects risks leaking backend-internal or unsafe fields if the contract is not constrained.
 Frontend workaround, if any: Keep the generic activity timeline conservative and report unknown/unsafe payload needs to backend/orchestrator rather than adding richer display logic.
+
+## 2026-05-20 — public visitor email/provider verification path
+
+Status: proposed
+Frontend need: A hosted preview-safe way for a real public visitor account to complete signup, email verification, login, and session restore without using the local dev outbox or a seeded account.
+Current backend behavior: Local demo flows can use deterministic mode, seeded credentials, and `/auth/dev/outbox` when enabled for development. Production readiness requires `MY_AGENTS_AUTH_DEV_OUTBOX_ENABLED=false`, exact CORS origins, secure cookies, and a real or explicitly documented provider verification path.
+Requested backend contract: Document the email/provider adapter, required environment variables, verification/reset URL origin behavior, production assertion that the dev outbox is disabled, and an operator-safe preview verification mechanism if direct email provider APIs need manual action.
+Why it matters: The public visitor e2e proof must fail loudly when hosted/provider variables are missing and must not silently fall back to dev-only account verification.
+Frontend workaround, if any: Keep seeded `e2e/v1-demo.spec.ts` for local proof, and use `docs/public-demo-release-runbook.md` as the provider/evidence gate until the backend-owned provider contract is available.
