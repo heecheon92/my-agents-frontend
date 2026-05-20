@@ -63,3 +63,30 @@ Current backend behavior: README suggests deterministic response mode but fronte
 Requested backend contract: Provide demo commands, seed user credentials or signup/login expectations, sample group/document/knowledge-base data if available, and a known prompt/document combination that produces citations and visible redacted events.
 Why it matters: Frontend browser smoke tests and reviewer walkthroughs need predictable setup without backend source edits from the frontend lane.
 Frontend workaround, if any: Backend commit `24b3ff8` adds `MY_AGENTS_AUTH_DEV_OUTBOX_ENABLED=true`, `GET /auth/dev/outbox`, hostname-consistency guidance, and deterministic sample document/prompt docs. Frontend smoke now uses the dev outbox instead of direct database edits.
+
+## 2026-05-20 — strict V1 PDF upload contract
+
+Status: proposed
+Frontend need: A realistic uploaded-file contract for the strict V1 document flow, preferably PDF-first as defined in the backend V1 PRD.
+Current backend behavior: Hosted OpenAPI exposes JSON `POST /documents` with `title`, `content`, `group_id`, and `knowledge_base_id`, plus bodyless `POST /documents/{document_id}/ingest`. There is no multipart/file upload endpoint or file metadata response shape in the current contract.
+Requested backend contract: Provide the upload route, accepted content types, request encoding, max-size/error behavior, returned document/file metadata, and how upload links to ingestion lifecycle and provenance.
+Why it matters: The frontend cannot honestly implement a PDF upload UI or claim strict V1 realistic ingestion while the contract only supports seeded/text JSON documents.
+Frontend workaround, if any: Keep the current seeded text-document ingest smoke and report this as a strict V1 blocker before upload UI work.
+
+## 2026-05-20 — strict V1 citation provenance contract
+
+Status: proposed
+Frontend need: Citation fields rich enough for display, debugging, and refresh-safe run detail UX.
+Current backend behavior: Hosted OpenAPI `CitationResponse` exposes `id`, `document_id`, `chunk_id`, and `snippet`.
+Requested backend contract: Add or document stable provenance fields such as source title/filename, page number, section/heading, chunk index or offsets, ingestion/source version, and any display-safe labels the frontend should render.
+Why it matters: Strict V1 requires citations with enough provenance for display/debugging; the current frontend can show only generic document/chunk/snippet data.
+Frontend workaround, if any: Continue rendering current simple citations and avoid inventing page/file labels until backend OpenAPI owns those fields.
+
+## 2026-05-20 — strict V1 safe event display contract
+
+Status: proposed
+Frontend need: Stable, redacted event fields suitable for an activity timeline in a public portfolio demo.
+Current backend behavior: Hosted OpenAPI `AgentEventResponse` exposes `id`, `run_id`, `sequence`, `event_type`, and arbitrary `payload`.
+Requested backend contract: Freeze allowed event types, public payload fields per event type, redaction guarantees, and how clients should display unknown or future event payloads.
+Why it matters: Strict V1 requires useful and safe events; rendering arbitrary payload objects risks leaking backend-internal or unsafe fields if the contract is not constrained.
+Frontend workaround, if any: Keep the generic activity timeline conservative and report unknown/unsafe payload needs to backend/orchestrator rather than adding richer display logic.
