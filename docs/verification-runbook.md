@@ -75,6 +75,13 @@ Use this opt-in smoke after backend local-demo seed/reset support is available a
 demo account is verified. It drives only product UI/BFF routes and does not expose the
 dev outbox or seed helper in production UX.
 
+As a backend-only companion preflight, backend commit `89dccec` provides an API
+smoke that proves the public V1 path before running the browser flow:
+
+```bash
+uv run python -m scripts.local_demo_smoke --base-url http://localhost:8000 --timeout 120
+```
+
 ```bash
 MY_AGENTS_BACKEND_URL=http://localhost:8000 pnpm dev
 V1_DEMO_EMAIL=test@test.com \
