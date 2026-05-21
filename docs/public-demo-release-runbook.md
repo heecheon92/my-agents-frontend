@@ -29,7 +29,7 @@ Must be done before reviewer access:
 1. Run full local frontend checks: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, and `pnpm build`.
 2. Run the local seeded V1 browser smoke against a deterministic/demo backend.
 3. Run hosted preview visitor smoke over HTTPS with exact frontend/backend origins.
-4. Prove public visitor signup/verification/login/session restore without seeded credentials and without `/auth/dev/outbox`.
+4. Prove public visitor access without seeded credentials and without `/auth/dev/outbox`: prefer guest demo access (`POST /auth/guest/request` then `POST /auth/guest/login`) for reviewer-safe access, or use full signup/verification only when owner-approved.
 5. Confirm browser `localStorage` and `sessionStorage` contain no session, CSRF, password, provider token, or API key values.
 6. Exercise document evidence: upload a supported text-based PDF through `POST /documents/upload` and ingest it, or explicitly record that the launch gate used the text-document fallback and why.
 7. Verify streamed answer, citations, redacted activity events, and refresh persistence.
@@ -46,7 +46,8 @@ Explicitly out of scope for first public portfolio demo:
 Owner/orchestrator decisions required:
 
 - Preview and production frontend/backend origins.
-- Email/account verification provider or preview-safe operator verification mode.
+- Whether reviewer access uses guest demo access, full signup/verification, or both.
+- Email/account verification provider or preview-safe operator verification mode if full signup remains enabled.
 - Whether reviewer signup remains open, is invite/time-boxed, or is disabled after evidence collection using the backend-owned `MY_AGENTS_AUTH_SIGNUP_ENABLED=false` switch after the backend change is deployed.
 - Whether PDF upload is mandatory for the public demo gate or whether text-document fallback is acceptable for that gate.
 - Cost ceiling and rollback plan for any hosted backend, LLM/runtime, email, database, or logging provider.
@@ -117,18 +118,19 @@ Production config must assert `MY_AGENTS_AUTH_DEV_OUTBOX_ENABLED=false`; the pub
 
 ## Public visitor smoke checklist
 
-The final visitor proof must exercise a real visitor account and fail loudly if required hosted/provider variables are absent.
+The final visitor proof must exercise the selected reviewer access path and fail loudly if required hosted/provider variables are absent.
 
-1. Create a unique visitor account through the public UI.
-2. Complete account verification through the configured provider flow, or record the preview-safe operator step if provider APIs require it.
-3. Log in and refresh; `/auth/me` must restore the session.
+1. Preferred path: click **Continue as guest**, request a one-time guest code through `POST /auth/guest/request`, redeem it through `POST /auth/guest/login`, and receive the normal session cookie + CSRF flow through the BFF.
+2. If full signup remains enabled instead, create a unique visitor account through the public UI and complete account verification through the configured provider flow or documented preview-safe operator step.
+3. Refresh; `/auth/me` must restore the session. Guest users may have `email: null`, `is_guest: true`, and `guest_expires_at`.
 4. Inspect browser `localStorage` and `sessionStorage`; they must not contain session cookies, CSRF tokens, provider tokens, raw passwords, or API keys.
-5. Upload a supported text-based PDF through `POST /documents/upload`, or create a text document only if the evidence bundle explicitly records why PDF upload was out of scope/unavailable for that gate.
-6. Run ingest and record extraction evidence.
-7. Create a conversation and run streamed chat.
-8. Verify answer text, citations, and redacted activity events.
-9. Refresh/reopen the conversation and verify persisted run/citation/event evidence.
-10. Record screenshots or log snippets with email addresses, tokens, cookies, document contents, and host secrets redacted.
+5. Confirm the guest limitation notice is visible for guest access: 24h access, one chat, 5 prompts, and 3 document uploads. Limits are backend-owned and safe `{ detail }` errors must render in the existing UI error panels.
+6. Upload a supported text-based PDF through `POST /documents/upload`, or create a text document only if the evidence bundle explicitly records why PDF upload was out of scope/unavailable for that gate.
+7. Run ingest and record extraction evidence.
+8. Create a conversation and run streamed chat.
+9. Verify answer text, citations, and redacted activity events.
+10. Refresh/reopen the conversation and verify persisted run/citation/event evidence.
+11. Record screenshots or log snippets with email addresses, tokens, cookies, document contents, and host secrets redacted.
 
 
 ## Worker-3 coverage probe checklist
@@ -137,7 +139,7 @@ Use this checklist to close the verification/evidence lane before marking previe
 
 - Local backend proof is command-backed: `uv run pytest -q`, `uv run ruff check . --no-cache`, `uv run ruff format --check .`, and `uv run python -m scripts.local_demo_smoke --base-url http://localhost:8000 --timeout 120`.
 - Local frontend proof is command-backed: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build`, and the relevant Playwright smoke.
-- Seeded local browser proof may use `V1_DEMO_EMAIL`/`V1_DEMO_PASSWORD`, but preview/public proof must set `V1_PUBLIC_VISITOR_SMOKE=1` and must use a unique visitor email template containing `{nonce}`.
+- Seeded local browser proof may use `V1_DEMO_EMAIL`/`V1_DEMO_PASSWORD`, but preview/public proof must set `V1_PUBLIC_VISITOR_SMOKE=1` and must use guest access or a unique visitor email template containing `{nonce}` for full signup mode.
 - If `V1_PUBLIC_VISITOR_VERIFICATION_MODE=login-after-signup` is used, the evidence bundle must name the backend/provider rule that makes immediate login preview-safe; otherwise use `provider-command` and record the operator-safe activation mechanism.
 - Hosted proof must record how Playwright reached the hosted frontend/backend topology, because the default `playwright.config.ts` web server targets local `http://localhost:3000` with `MY_AGENTS_BACKEND_URL=http://localhost:8000`.
 - Public visitor proof must include uploaded text-based PDF evidence through `POST /documents/upload`, or an explicit note that the text-document branch was intentionally used for that gate with the backend/infrastructure reason.
@@ -190,7 +192,7 @@ Create one bundle per gate. Store it outside screenshots/log locations that may 
 
 ## Smoke checklist
 
-- Signup/account verification:
+- Guest access or signup/account verification:
 - Login/session restore:
 - Browser storage secret check:
 - Document upload/create + ingest: PDF upload preferred; text-document fallback reason required if used

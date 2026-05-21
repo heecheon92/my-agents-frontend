@@ -24,6 +24,30 @@ describe("MyAgentsAuthAPI", () => {
     });
   });
 
+  it("requests and redeems guest access through the auth endpoints", async () => {
+    const calls: Array<{
+      path: string;
+      init?: { method?: string; body?: unknown };
+    }> = [];
+    const api = new MyAgentsAuthAPI({
+      fetch: async (path, init) => {
+        calls.push({ path, init });
+        if (path === "/auth/guest/request") return { code: "guest-code" };
+        if (path === "/auth/guest/login") return { user };
+        return null;
+      },
+    });
+
+    await expect(api.continueAsGuest()).resolves.toEqual({ user });
+    expect(calls).toEqual([
+      { path: "/auth/guest/request", init: { method: "POST" } },
+      {
+        path: "/auth/guest/login",
+        init: { method: "POST", body: { code: "guest-code" } },
+      },
+    ]);
+  });
+
   it("wires verification and password-reset auth endpoints", async () => {
     const calls: Array<{ path: string; init?: unknown }> = [];
     const api = new MyAgentsAuthAPI({

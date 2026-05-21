@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useLogin, useSignup } from "@/hooks/use-auth";
+import { useGuestLogin, useLogin, useSignup } from "@/hooks/use-auth";
 import { useLocalization } from "@/hooks/useLocalization";
 import { Field, inputClassName } from "./Field";
 import { ErrorState } from "./Status";
@@ -13,6 +13,7 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
   const login = useLogin();
   const signup = useSignup();
+  const guestLogin = useGuestLogin();
   const [activeMode, setActiveMode] = useState(mode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -24,13 +25,23 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
   const isSignup = activeMode === "signup";
   const active = isSignup ? signup : login;
 
+  async function handleGuestLogin() {
+    try {
+      await guestLogin.mutateAsync();
+      router.push("/chat?guest=1");
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (isSignup) {
       try {
         const result = await signup.mutateAsync({ email, password });
-        setEmail(result.user.email);
-        setSignupEmail(result.user.email);
+        const createdEmail = result.user.email ?? email;
+        setEmail(createdEmail);
+        setSignupEmail(createdEmail);
         setPassword("");
         setActiveMode("login");
       } catch {
@@ -130,13 +141,43 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
                 title={localization.auth.authenticationFailed}
               />
             ) : null}
-            <Button type="submit" size="lg" disabled={active.isPending}>
+            {guestLogin.error ? (
+              <ErrorState
+                error={guestLogin.error}
+                title={localization.auth.guestFailed}
+              />
+            ) : null}
+            <Button
+              type="submit"
+              size="lg"
+              disabled={active.isPending || guestLogin.isPending}
+            >
               {active.isPending
                 ? localization.auth.working
                 : isSignup
                   ? localization.auth.signupSubmit
                   : localization.auth.loginSubmit}
             </Button>
+            <div className="grid gap-3 rounded-lg border border-cal-hairline bg-cal-surface-soft p-4 text-sm text-cal-muted">
+              <div>
+                <p className="font-semibold text-cal-ink">
+                  {localization.auth.guestTitle}
+                </p>
+                <p className="mt-1 leading-6">
+                  {localization.auth.guestDescription}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={guestLogin.isPending || active.isPending}
+                onClick={handleGuestLogin}
+              >
+                {guestLogin.isPending
+                  ? localization.auth.working
+                  : localization.auth.guestSubmit}
+              </Button>
+            </div>
           </div>
           <p className="mt-6 text-sm text-cal-muted">
             {isSignup

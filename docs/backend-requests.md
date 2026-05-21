@@ -108,3 +108,12 @@ Current backend behavior: The frontend currently posts signup attempts to `POST 
 Requested backend contract: Add or document an environment/config switch that disables signup, returns a non-2xx response such as HTTP 403 with a safe `{ detail: string }` body, leaves login/session restore available for existing approved accounts, and avoids exposing stack traces, provider configuration, or operational secrets.
 Why it matters: The public portfolio demo is reviewer-facing, not an open SaaS. Signup disable is the preferred abuse-control and rollback path once evidence collection is complete or if preview traffic becomes risky.
 Frontend workaround, if any: No UI change needed if the backend returns a safe `{ detail }`; `services/my-agents/fetch-client.ts` preserves string details and `components/keymesh/AuthPanel.tsx` renders mutation errors through `ErrorState`.
+
+## 2026-05-21 — public-demo guest access contract
+
+Status: proposed
+Frontend need: A reviewer-safe guest entrypoint that avoids provider setup for basic portfolio review while preserving the normal session cookie and CSRF flow.
+Current backend behavior: Backend pane `%10` reported the target contract: `POST /auth/guest/request` returns `{ code, expires_at }`; `POST /auth/guest/login` accepts `{ code }`, returns the normal login body `{ user, csrf_token }`, and sets the app session cookie. Guest users may have `email: null`, `is_guest: true`, and `guest_expires_at`.
+Requested backend contract: Keep the guest endpoints same-origin/BFF friendly, return safe `{ detail }` errors for disabled/invalid/expired/limit cases, and own enforcement for 24h access, one chat, 5 prompts, and 3 document creates/uploads.
+Why it matters: Public portfolio demo reviewers need low-friction access without exposing provider secrets or making signup permanently open.
+Frontend workaround, if any: Frontend BFF allowlists the guest endpoints, treats guest login like normal login for cookie/CSRF redaction, displays guest limits in auth/chat UI, and relies on backend safe errors for limit/expiry enforcement.

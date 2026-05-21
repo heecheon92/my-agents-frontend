@@ -30,6 +30,10 @@ function isStreamPath(path: string) {
   return /^\/conversations\/[^/]+\/runs\/stream$/.test(path);
 }
 
+function isSessionLoginPath(path: string) {
+  return path === "/auth/login" || path === "/auth/guest/login";
+}
+
 async function proxy(request: NextRequest, context: RouteContext) {
   const { path } = await context.params;
   const backendPath = buildBackendPath(path);
@@ -98,7 +102,11 @@ async function proxy(request: NextRequest, context: RouteContext) {
     backendResponse.status === 204 ? null : await backendResponse.text();
   let responseBody = rawResponseBody;
 
-  if (backendPath === "/auth/login" && backendResponse.ok && rawResponseBody) {
+  if (
+    isSessionLoginPath(backendPath) &&
+    backendResponse.ok &&
+    rawResponseBody
+  ) {
     try {
       const parsed = JSON.parse(rawResponseBody) as { csrf_token?: unknown };
       if ("csrf_token" in parsed) {
@@ -118,7 +126,7 @@ async function proxy(request: NextRequest, context: RouteContext) {
     },
   });
 
-  if (backendPath === "/auth/login" && backendResponse.ok) {
+  if (isSessionLoginPath(backendPath) && backendResponse.ok) {
     for (const setCookie of getSetCookieHeaders(backendResponse.headers)) {
       const sessionValue = parseCookieValue(setCookie, SESSION_COOKIE_NAME);
       if (sessionValue) {

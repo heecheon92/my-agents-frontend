@@ -32,6 +32,14 @@ type LiveActivityEvent = Pick<AgentEvent, "id" | "sequence" | "event_type"> & {
 
 const CHAT_BOTTOM_THRESHOLD_PX = 96;
 
+function safeBackendDetail(value: unknown) {
+  if (value && typeof value === "object" && "detail" in value) {
+    const detail = (value as { detail?: unknown }).detail;
+    if (typeof detail === "string") return detail;
+  }
+  return undefined;
+}
+
 function isNearScrollBottom(element: HTMLElement) {
   return (
     element.scrollHeight - element.scrollTop - element.clientHeight <=
@@ -69,6 +77,7 @@ export function ChatWorkspace() {
     null,
   );
   const [latestCitations, setLatestCitations] = useState<Citation[]>([]);
+  const [showGuestNotice, setShowGuestNotice] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
   const { lang, localization } = useLocalization(
@@ -133,7 +142,9 @@ export function ChatWorkspace() {
           setLatestCitations(data.citations ?? []);
         }
         if (streamEvent.event === "run_failed") {
-          throw new Error(localization.runFailed);
+          throw new Error(
+            safeBackendDetail(streamEvent.data) ?? localization.runFailed,
+          );
         }
       }
 
@@ -178,6 +189,12 @@ export function ChatWorkspace() {
   }
 
   useEffect(() => {
+    setShowGuestNotice(
+      new URLSearchParams(window.location.search).get("guest") === "1",
+    );
+  }, []);
+
+  useEffect(() => {
     if (!activeId) return;
     shouldAutoScrollRef.current = true;
     requestAnimationFrame(() => {
@@ -199,6 +216,16 @@ export function ChatWorkspace() {
 
   return (
     <div className="grid gap-4 xl:h-[calc(100dvh-8rem)] xl:grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)]">
+      {showGuestNotice ? (
+        <div className="rounded-xl border border-cal-warning/25 bg-cal-warning/10 p-4 text-sm text-cal-body xl:col-span-2">
+          <p className="font-semibold text-cal-ink">
+            {localization.guestNoticeTitle}
+          </p>
+          <p className="mt-1 leading-6">
+            {localization.guestNoticeDescription}
+          </p>
+        </div>
+      ) : null}
       <aside className="cal-card min-w-0 rounded-xl p-4 xl:overflow-auto">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

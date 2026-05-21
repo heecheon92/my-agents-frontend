@@ -83,7 +83,11 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className="mt-auto rounded-xl border border-cal-hairline bg-cal-canvas p-4 text-sm text-cal-muted shadow-[0_4px_16px_rgb(0_0_0/0.04)]">
-          <p className="font-medium text-cal-ink">{user.data?.email}</p>
+          <p className="font-medium text-cal-ink">
+            {user.data?.is_guest
+              ? localization.service.guestSessionLabel
+              : user.data?.email}
+          </p>
           <p className="mt-2 text-xs leading-5">
             {localization.service.sessionRestored}
           </p>

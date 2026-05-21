@@ -25,6 +25,16 @@ export const BFF_ALLOWLIST: Rule[] = [
   { method: "POST", pattern: /^\/auth\/login$/, name: "auth.login" },
   {
     method: "POST",
+    pattern: /^\/auth\/guest\/request$/,
+    name: "auth.guest.request",
+  },
+  {
+    method: "POST",
+    pattern: /^\/auth\/guest\/login$/,
+    name: "auth.guest.login",
+  },
+  {
+    method: "POST",
     pattern: /^\/auth\/password-reset\/request$/,
     name: "auth.password-reset.request",
   },
@@ -156,6 +166,8 @@ export function isMutation(method: string) {
 export function isCsrfExemptPath(path: string) {
   return (
     path === "/auth/login" ||
+    path === "/auth/guest/request" ||
+    path === "/auth/guest/login" ||
     path === "/auth/signup" ||
     path === "/auth/verify-email" ||
     path === "/auth/password-reset/request" ||

@@ -4,6 +4,8 @@ export const API_PATH = {
     signup: "/auth/signup",
     verifyEmail: "/auth/verify-email",
     login: "/auth/login",
+    guestRequest: "/auth/guest/request",
+    guestLogin: "/auth/guest/login",
     passwordResetRequest: "/auth/password-reset/request",
     passwordResetConfirm: "/auth/password-reset/confirm",
     logout: "/auth/logout",

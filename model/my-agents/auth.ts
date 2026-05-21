@@ -3,11 +3,17 @@ import { z } from "zod";
 export const userSchema = z
   .object({
     id: z.string().min(1),
-    email: z.string().email(),
+    email: z.string().email().nullable(),
     email_verified_at: z
       .string()
       .datetime({ local: true, offset: true })
       .nullable(),
+    is_guest: z.boolean().optional(),
+    guest_expires_at: z
+      .string()
+      .datetime({ local: true, offset: true })
+      .nullable()
+      .optional(),
   })
   .strict();
 
@@ -28,6 +34,19 @@ export const loginRequestSchema = z
   .object({
     email: z.string().email(),
     password: z.string().min(1).max(128),
+  })
+  .strict();
+
+export const guestAccessResponseSchema = z
+  .object({
+    code: z.string().min(1).max(256),
+    expires_at: z.string().datetime({ local: true, offset: true }).optional(),
+  })
+  .strict();
+
+export const guestLoginRequestSchema = z
+  .object({
+    code: z.string().min(1).max(256),
   })
   .strict();
 
@@ -75,6 +94,8 @@ export type SignupRequest = z.infer<typeof signupRequestSchema>;
 export type SignupResponse = z.infer<typeof signupResponseSchema>;
 export type VerifyEmailRequest = z.infer<typeof verifyEmailRequestSchema>;
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
+export type GuestAccessResponse = z.infer<typeof guestAccessResponseSchema>;
+export type GuestLoginRequest = z.infer<typeof guestLoginRequestSchema>;
 export type BackendLoginResponse = z.infer<typeof backendLoginResponseSchema>;
 export type LoginResponse = z.infer<typeof loginResponseSchema>;
 export type PasswordResetRequest = z.infer<typeof passwordResetRequestSchema>;

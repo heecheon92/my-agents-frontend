@@ -37,6 +37,8 @@ describe("API_PATH", () => {
 
   it("builds new auth lifecycle paths", () => {
     expect(API_PATH.auth.verifyEmail).toBe("/auth/verify-email");
+    expect(API_PATH.auth.guestRequest).toBe("/auth/guest/request");
+    expect(API_PATH.auth.guestLogin).toBe("/auth/guest/login");
     expect(API_PATH.auth.passwordResetRequest).toBe(
       "/auth/password-reset/request",
     );

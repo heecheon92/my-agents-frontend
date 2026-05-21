@@ -42,7 +42,11 @@
     "loginLink": "Log in",
     "signupLink": "Sign up",
     "signupSuccessTitle": "Account created",
-    "signupSuccessDescription": "We created {email}. You can now log in with this account."
+    "signupSuccessDescription": "We created {email}. You can now log in with this account.",
+    "guestTitle": "Public demo guest access",
+    "guestDescription": "Continue with a 24-hour guest session: one chat, up to 5 prompts, and up to 3 document uploads. The backend enforces these limits.",
+    "guestSubmit": "Continue as guest",
+    "guestFailed": "Guest access failed"
   },
   "service": {
     "nav": {
@@ -55,7 +59,8 @@
     "pleaseLogin": "Please log in",
     "goToLogin": "Go to login",
     "sessionRestored": "Backend session restored through /auth/me.",
-    "logout": "Log out"
+    "logout": "Log out",
+    "guestSessionLabel": "Guest demo session"
   },
   "status": {
     "defaultErrorTitle": "Something went wrong",
@@ -98,7 +103,9 @@
       "failed": "failed",
       "running": "running",
       "pending": "pending"
-    }
+    },
+    "guestNoticeTitle": "Guest demo limits",
+    "guestNoticeDescription": "This guest session lasts 24 hours and is limited to one chat, 5 prompts, and 3 document uploads. If you hit a limit, the backend will return a safe error here."
   },
   "admin": {
     "common": {

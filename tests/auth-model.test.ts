@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   acceptedResponseSchema,
   backendLoginResponseSchema,
+  guestAccessResponseSchema,
+  guestLoginRequestSchema,
   loginResponseSchema,
   passwordResetConfirmRequestSchema,
   signupResponseSchema,
@@ -38,6 +40,34 @@ describe("auth response schemas", () => {
       user,
       verification_email_sent: true,
     });
+  });
+
+  it("parses guest access ticket responses and redeem requests", () => {
+    expect(
+      guestAccessResponseSchema.parse({
+        code: "guest-code",
+        expires_at: "2026-05-22T00:00:00Z",
+      }),
+    ).toEqual({
+      code: "guest-code",
+      expires_at: "2026-05-22T00:00:00Z",
+    });
+    expect(guestLoginRequestSchema.parse({ code: "guest-code" })).toEqual({
+      code: "guest-code",
+    });
+  });
+
+  it("parses guest users from the backend session response", () => {
+    const guest = {
+      id: "guest-1",
+      email: null,
+      email_verified_at: null,
+      is_guest: true,
+      guest_expires_at: "2026-05-22T00:00:00Z",
+    };
+
+    expect(userSchema.parse(guest)).toEqual(guest);
+    expect(loginResponseSchema.parse({ user: guest })).toEqual({ user: guest });
   });
 
   it("parses backend CSRF response separately from browser-safe response", () => {

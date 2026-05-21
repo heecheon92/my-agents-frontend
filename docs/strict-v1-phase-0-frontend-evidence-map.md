@@ -16,7 +16,7 @@ The frontend targets these product routes across the hosted OpenAPI checked duri
 
 | Area | Hosted OpenAPI routes | Frontend status |
 | --- | --- | --- |
-| Auth/session | `POST /auth/signup`, `POST /auth/verify-email`, `POST /auth/login`, `POST /auth/logout`, `GET /auth/me`, password reset routes, `GET /auth/dev/outbox` | Wired through BFF for product auth; dev outbox intentionally excluded from product BFF. |
+| Auth/session | `POST /auth/signup`, `POST /auth/verify-email`, `POST /auth/login`, `POST /auth/guest/request`, `POST /auth/guest/login`, `POST /auth/logout`, `GET /auth/me`, password reset routes, `GET /auth/dev/outbox` | Wired through BFF for product auth and guest demo access; dev outbox intentionally excluded from product BFF. |
 | Documents/KB | `POST /documents`, `POST /documents/upload`, `GET /documents`, `GET /documents/{document_id}`, `DELETE /documents/{document_id}`, `PATCH /documents/{document_id}/permissions`, `POST /documents/{document_id}/ingest`, `GET /documents/{document_id}/extraction-runs`, `POST/GET /knowledge-bases` | Wired for JSON document create/list/detail/delete, PDF upload, source metadata display, permissions, bodyless ingest, extraction runs, and KB create/list. |
 | Conversation/run | `POST/GET /conversations`, `GET /conversations/{conversation_id}`, `POST/GET /conversations/{conversation_id}/messages`, `POST/GET /conversations/{conversation_id}/runs`, `POST /conversations/{conversation_id}/runs/stream`, `GET /conversations/{conversation_id}/runs/{run_id}`, `GET /conversations/{conversation_id}/runs/{run_id}/events` | Wired for conversation list/detail/messages, streamed run, run summaries, run detail, events, and refresh-safe citations. |
 | Legacy dev chat | `POST /assistant/chat` | Hosted backend still exposes it, but frontend product BFF blocks `/assistant/*`. |
@@ -40,7 +40,7 @@ The frontend targets these product routes across the hosted OpenAPI checked duri
 1. **Hosted upload contract evidence**: frontend PDF upload support exists, but the hosted preview backend/OpenAPI used for the reviewer demo must expose `POST /documents/upload` and its PDF limits/error behavior.
 2. **Safe event display**: current event `payload` is arbitrary; public demo evidence must confirm displayed events are redacted, and a fuller event taxonomy remains backend-owned future hardening.
 3. **Auth/session hardening**: backend must freeze cookie/CSRF/origin/rate-limit behavior for public demo. Frontend BFF is ready to preserve the contract once confirmed.
-4. **Public visitor verification**: preview/public proof must use a real provider path or documented preview-safe operator step, not seeded credentials or `/auth/dev/outbox`.
+4. **Public visitor access**: preview/public proof should use guest demo access or a real provider path, not seeded credentials or `/auth/dev/outbox`.
 5. **Backend readiness evidence**: database migrations, pgvector/runtime readiness, and local/live backend smoke evidence must be backend-owned before frontend claims reviewer-facing product proof.
 
 ## Current frontend verification surface
@@ -69,6 +69,6 @@ Treat Phase 0 frontend as **ready to enter public-demo P0 evidence collection**,
 
 1. Full local frontend checks: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, and `pnpm build`.
 2. Local seeded V1 smoke with backend deterministic/demo support.
-3. Hosted preview visitor smoke using HTTPS frontend/backend origins, no `/auth/dev/outbox`, no seeded account, and no browser storage secrets.
+3. Hosted preview visitor smoke using HTTPS frontend/backend origins, guest access or real provider verification, no `/auth/dev/outbox`, no seeded account, and no browser storage secrets.
 4. Document proof: uploaded supported text-based PDF preferred; if using text-document fallback, record the backend/infrastructure reason and limitation in the evidence bundle.
 5. Reviewer-facing evidence is redacted and records known limitations: portfolio demo only, no full SaaS guarantees, no account deletion/export self-service, no production deploy/secrets/spend without owner approval.

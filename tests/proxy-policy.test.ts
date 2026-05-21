@@ -33,6 +33,12 @@ describe("proxy policy", () => {
     expect(isAllowedBackendPath("POST", "/auth/verify-email").allowed).toBe(
       true,
     );
+    expect(isAllowedBackendPath("POST", "/auth/guest/request").allowed).toBe(
+      true,
+    );
+    expect(isAllowedBackendPath("POST", "/auth/guest/login").allowed).toBe(
+      true,
+    );
     expect(
       isAllowedBackendPath("POST", "/auth/password-reset/request").allowed,
     ).toBe(true);
@@ -61,6 +67,8 @@ describe("proxy policy", () => {
   it("exempts unauthenticated auth lifecycle mutations from CSRF cookies", () => {
     expect(isCsrfExemptPath("/auth/signup")).toBe(true);
     expect(isCsrfExemptPath("/auth/verify-email")).toBe(true);
+    expect(isCsrfExemptPath("/auth/guest/request")).toBe(true);
+    expect(isCsrfExemptPath("/auth/guest/login")).toBe(true);
     expect(isCsrfExemptPath("/auth/password-reset/request")).toBe(true);
     expect(isCsrfExemptPath("/auth/password-reset/confirm")).toBe(true);
     expect(isCsrfExemptPath("/auth/logout")).toBe(false);

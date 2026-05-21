@@ -40,6 +40,16 @@ export function useLogin() {
   });
 }
 
+export function useGuestLogin() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => myAgentsAPI.auth.continueAsGuest(),
+    onSuccess: (data) => {
+      queryClient.setQueryData(MyAgentsQueryKeys.auth.me(), data.user);
+    },
+  });
+}
+
 export function useSignup() {
   return useMutation({
     mutationFn: (payload: SignupRequest) => myAgentsAPI.auth.signup(payload),
