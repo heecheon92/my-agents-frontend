@@ -108,9 +108,7 @@ Expected seeded text flow: login -> choose seeded text document -> bodyless inge
 BFF -> streamed chat answer -> completed run history -> persisted run-detail citations
 after reload -> redacted event trail.
 
-Phase 2 PDF upload smoke should be run after the backend server is restarted on
-commit `ef88553` or later: login -> Documents -> upload a text-based PDF through
-`POST /documents/upload` -> verify document source metadata -> run bodyless ingest ->
+Upload smoke should use an active backend with the expanded `/documents/upload` contract: login -> Documents -> upload a supported PDF, Markdown (`.md`/`.markdown`), or plain text (`.txt`) file through `POST /documents/upload` -> verify document source metadata -> run bodyless ingest ->
 confirm citations can render backend-provided filename/page provenance.
 
 

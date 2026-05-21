@@ -111,7 +111,7 @@ Remaining: completion audit and optional commit/push.
 - Added frontend support for the additive PDF contract: `POST /documents/upload`, multipart `FormData`, document source metadata, and citation filename/page provenance.
 - Preserved the existing JSON text document create path and bodyless `/documents/{document_id}/ingest` path.
 - Updated the BFF same-origin policy to allow `multipart/form-data` for authenticated upload mutations without allowing simple form posts.
-- Added the PDF upload form to the Documents UI and kept the seeded text V1 flow available.
+- Added the PDF upload form to the Documents UI and kept the seeded text V1 flow available. Later refreshed the same form for the expanded PDF/Markdown/plain-text upload contract while keeping CSV/JSON unadvertised until backend structural support exists.
 
 Verification passed for this log entry: `pnpm exec vitest run tests/api-path.test.ts tests/proxy-policy.test.ts tests/fetch-client.test.ts tests/document-api.test.ts tests/conversation-api.test.ts`, `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (8 files / 34 tests), `pnpm build`, `pnpm exec playwright test e2e/home.spec.ts`, and `git diff --check`. Final PDF browser upload smoke is deferred until the backend server is restarted on commit `ef88553` or later.
 

@@ -50,6 +50,66 @@ describe("MyAgentsDocumentAPI", () => {
     expect(formData.get("file")).toBe(file);
   });
 
+  it.each([
+    {
+      fileName: "notes.md",
+      type: "text/markdown",
+      sourceType: "markdown",
+      parserName: "text",
+    },
+    {
+      fileName: "notes.txt",
+      type: "text/plain",
+      sourceType: "text",
+      parserName: "text",
+    },
+  ])(
+    "uploads $fileName through the shared document upload contract",
+    async ({ fileName, type, sourceType, parserName }) => {
+      const calls: Array<{
+        path: string;
+        init?: { method?: string; body?: unknown };
+      }> = [];
+      const api = new MyAgentsDocumentAPI({
+        fetch: async (path, init) => {
+          calls.push({ path, init });
+          return {
+            id: "doc-1",
+            title: "Uploaded notes",
+            owner_user_id: "user-1",
+            group_id: null,
+            knowledge_base_id: null,
+            source_type: sourceType,
+            source_filename: fileName,
+            source_content_type: type,
+            source_byte_size: 32,
+            source_sha256: "abc123",
+            source_page_count: null,
+            parser_name: parserName,
+          };
+        },
+      });
+
+      const file = new File(["# Notes\nPlain text"], fileName, { type });
+
+      await expect(
+        api.upload({ title: "Uploaded notes", file }),
+      ).resolves.toMatchObject({
+        id: "doc-1",
+        source_type: sourceType,
+        source_filename: fileName,
+        parser_name: parserName,
+      });
+
+      expect(calls).toHaveLength(1);
+      expect(calls[0]?.path).toBe("/documents/upload");
+      expect(calls[0]?.init?.method).toBe("POST");
+      const formData = calls[0]?.init?.body as FormData;
+      expect(formData.get("title")).toBe("Uploaded notes");
+      expect(formData.get("file")).toBe(file);
+    },
+  );
+
   it("deletes documents through the backend 204 contract", async () => {
     const calls: Array<{ path: string; init?: { method?: string } }> = [];
     const api = new MyAgentsDocumentAPI({
@@ -66,7 +126,7 @@ describe("MyAgentsDocumentAPI", () => {
     ]);
   });
 
-  it("accepts backend Phase 2 document source metadata", () => {
+  it("accepts backend uploaded document source metadata", () => {
     expect(
       documentSchema.parse({
         id: "doc-1",
@@ -86,6 +146,48 @@ describe("MyAgentsDocumentAPI", () => {
       source_type: "pdf",
       source_filename: "uploaded.pdf",
       source_page_count: 3,
+    });
+
+    expect(
+      documentSchema.parse({
+        id: "doc-2",
+        title: "Uploaded Markdown",
+        owner_user_id: "user-1",
+        group_id: null,
+        knowledge_base_id: null,
+        source_type: "markdown",
+        source_filename: "notes.md",
+        source_content_type: "text/markdown",
+        source_byte_size: 128,
+        source_sha256: "a".repeat(64),
+        source_page_count: null,
+        parser_name: "text",
+      }),
+    ).toMatchObject({
+      source_type: "markdown",
+      source_filename: "notes.md",
+      parser_name: "text",
+    });
+
+    expect(
+      documentSchema.parse({
+        id: "doc-3",
+        title: "Uploaded Text",
+        owner_user_id: "user-1",
+        group_id: null,
+        knowledge_base_id: null,
+        source_type: "text",
+        source_filename: "notes.txt",
+        source_content_type: "text/plain",
+        source_byte_size: 128,
+        source_sha256: "b".repeat(64),
+        source_page_count: null,
+        parser_name: "text",
+      }),
+    ).toMatchObject({
+      source_type: "text",
+      source_filename: "notes.txt",
+      parser_name: "text",
     });
   });
 });

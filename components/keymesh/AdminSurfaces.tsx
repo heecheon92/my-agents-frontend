@@ -227,11 +227,11 @@ export function DocumentsSurface() {
               className="cal-card grid gap-3 rounded-xl p-4"
             >
               <h2 className="font-semibold">
-                {localization.documents.pdfUploadTitle}
+                {localization.documents.fileUploadTitle}
               </h2>
               <Field
-                label={localization.documents.pdfTitleLabel}
-                hint={localization.documents.pdfUploadHint}
+                label={localization.documents.fileTitleLabel}
+                hint={localization.documents.fileUploadHint}
               >
                 <input
                   className={inputClassName}
@@ -240,11 +240,11 @@ export function DocumentsSurface() {
                   required
                 />
               </Field>
-              <Field label={localization.documents.pdfFileLabel}>
+              <Field label={localization.documents.fileLabel}>
                 <input
                   className={inputClassName}
                   type="file"
-                  accept="application/pdf,.pdf"
+                  accept="application/pdf,text/markdown,text/plain,.pdf,.md,.markdown,.txt"
                   onChange={(event) => {
                     setUploadFile(event.target.files?.[0] ?? null);
                   }}
@@ -648,17 +648,16 @@ function documentMeta(
     documents: {
       pdfSourcePrefix: string;
       pdfSource: string;
+      markdownSourcePrefix: string;
+      markdownSource: string;
+      uploadedTextSourcePrefix: string;
+      uploadedTextSource: string;
       textSource: string;
       pagesLabel: string;
     };
   },
 ) {
-  const source =
-    doc.source_type === "pdf"
-      ? doc.source_filename
-        ? `${localization.documents.pdfSourcePrefix} ${doc.source_filename}`
-        : localization.documents.pdfSource
-      : localization.documents.textSource;
+  const source = documentSourceLabel(doc, localization.documents);
   const pages = doc.source_page_count
     ? ` · ${doc.source_page_count} ${localization.documents.pagesLabel}`
     : "";
@@ -666,6 +665,40 @@ function documentMeta(
     ? ` · ${localization.common.knowledgeBasePrefix} ${doc.knowledge_base_id.slice(0, 8)}`
     : "";
   return `${source}${pages}${kb}`;
+}
+
+function documentSourceLabel(
+  doc: {
+    source_type?: string;
+    source_filename?: string | null;
+  },
+  localization: {
+    pdfSourcePrefix: string;
+    pdfSource: string;
+    markdownSourcePrefix: string;
+    markdownSource: string;
+    uploadedTextSourcePrefix: string;
+    uploadedTextSource: string;
+    textSource: string;
+  },
+) {
+  if (doc.source_type === "pdf") {
+    return doc.source_filename
+      ? `${localization.pdfSourcePrefix} ${doc.source_filename}`
+      : localization.pdfSource;
+  }
+  if (doc.source_type === "markdown") {
+    return doc.source_filename
+      ? `${localization.markdownSourcePrefix} ${doc.source_filename}`
+      : localization.markdownSource;
+  }
+  if (doc.source_filename) {
+    return `${localization.uploadedTextSourcePrefix} ${doc.source_filename}`;
+  }
+  if (doc.source_type === "text" && doc.source_filename) {
+    return localization.uploadedTextSource;
+  }
+  return localization.textSource;
 }
 
 function ResourceList({

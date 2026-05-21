@@ -31,7 +31,7 @@ Must be done before reviewer access:
 3. Run hosted preview visitor smoke over HTTPS with exact frontend/backend origins.
 4. Prove public visitor access without seeded credentials and without `/auth/dev/outbox`: prefer guest demo access (`POST /auth/guest/request` then `POST /auth/guest/login`) for reviewer-safe access, or use full signup/verification only when owner-approved.
 5. Confirm browser `localStorage` and `sessionStorage` contain no session, CSRF, password, provider token, or API key values.
-6. Exercise document evidence: upload a supported text-based PDF through `POST /documents/upload` and ingest it, or explicitly record that the launch gate used the text-document fallback and why.
+6. Exercise document evidence: upload a supported PDF, Markdown, or plain-text file through `POST /documents/upload` and ingest it, or explicitly record that the launch gate used the JSON text-document fallback and why.
 7. Verify streamed answer, citations, redacted activity events, and refresh persistence.
 8. Produce a redacted evidence bundle with commit SHAs, command outputs, smoke topology, provider decisions, and known limitations.
 
@@ -49,7 +49,7 @@ Owner/orchestrator decisions required:
 - Whether reviewer access uses guest demo access, full signup/verification, or both.
 - Email/account verification provider or preview-safe operator verification mode if full signup remains enabled.
 - Whether reviewer signup remains open, is invite/time-boxed, or is disabled after evidence collection using the backend-owned `MY_AGENTS_AUTH_SIGNUP_ENABLED=false` switch after the backend change is deployed.
-- Whether PDF upload is mandatory for the public demo gate or whether text-document fallback is acceptable for that gate.
+- Whether uploaded-file proof is mandatory for the public demo gate or whether JSON text-document fallback is acceptable for that gate.
 - Cost ceiling and rollback plan for any hosted backend, LLM/runtime, email, database, or logging provider.
 - Final approval before live production deploy, secrets, provider activation, migrations, or spend.
 
@@ -125,7 +125,7 @@ The final visitor proof must exercise the selected reviewer access path and fail
 3. Refresh; `/auth/me` must restore the session. Guest users may have `email: null`, `is_guest: true`, and `guest_expires_at`.
 4. Inspect browser `localStorage` and `sessionStorage`; they must not contain session cookies, CSRF tokens, provider tokens, raw passwords, or API keys.
 5. Confirm the guest limitation notice is visible for guest access: 24h access, one chat, 5 prompts, and 3 document uploads. Limits are backend-owned and safe `{ detail }` errors must render in the existing UI error panels.
-6. Upload a supported text-based PDF through `POST /documents/upload`, or create a text document only if the evidence bundle explicitly records why PDF upload was out of scope/unavailable for that gate.
+6. Upload a supported PDF, Markdown, or plain-text file through `POST /documents/upload`, or create a JSON text document only if the evidence bundle explicitly records why uploaded-file proof was out of scope/unavailable for that gate.
 7. Run ingest and record extraction evidence.
 8. Create a conversation and run streamed chat.
 9. Verify answer text, citations, and redacted activity events.
@@ -142,7 +142,7 @@ Use this checklist to close the verification/evidence lane before marking previe
 - Seeded local browser proof may use `V1_DEMO_EMAIL`/`V1_DEMO_PASSWORD`, but preview/public proof must set `V1_PUBLIC_VISITOR_SMOKE=1` and must use guest access or a unique visitor email template containing `{nonce}` for full signup mode.
 - If `V1_PUBLIC_VISITOR_VERIFICATION_MODE=login-after-signup` is used, the evidence bundle must name the backend/provider rule that makes immediate login preview-safe; otherwise use `provider-command` and record the operator-safe activation mechanism.
 - Hosted proof must record how Playwright reached the hosted frontend/backend topology, because the default `playwright.config.ts` web server targets local `http://localhost:3000` with `MY_AGENTS_BACKEND_URL=http://localhost:8000`.
-- Public visitor proof must include uploaded text-based PDF evidence through `POST /documents/upload`, or an explicit note that the text-document branch was intentionally used for that gate with the backend/infrastructure reason.
+- Public visitor proof must include uploaded-file evidence through `POST /documents/upload`, or an explicit note that the JSON text-document branch was intentionally used for that gate with the backend/infrastructure reason.
 - Signup-disable rollback proof should show that `POST /auth/signup` returns a safe 403-style `{ detail }` error and the frontend renders it through the existing auth error panel without exposing internals.
 - `/assistant/chat` exclusion must be evidenced by `tests/proxy-policy.test.ts`; add a browser assertion only if the release gate requires end-to-end proof of the BFF rejection.
 - Redacted event proof must state that only display-safe event names/payloads were captured and that screenshots/logs do not include prompts, provider exceptions, tokens, cookies, API keys, or raw backend internals.
@@ -195,7 +195,7 @@ Create one bundle per gate. Store it outside screenshots/log locations that may 
 - Guest access or signup/account verification:
 - Login/session restore:
 - Browser storage secret check:
-- Document upload/create + ingest: PDF upload preferred; text-document fallback reason required if used
+- Document upload/create + ingest: uploaded PDF/Markdown/plain-text preferred; JSON text-document fallback reason required if used
 - Streamed chat:
 - Citations:
 - Redacted events:

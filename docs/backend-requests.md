@@ -68,10 +68,10 @@ Frontend workaround, if any: Backend commit `24b3ff8` adds `MY_AGENTS_AUTH_DEV_O
 
 Status: implemented
 Frontend need: A realistic uploaded-file contract for the strict V1 document flow, preferably PDF-first as defined in the backend V1 PRD.
-Current backend behavior: Backend commit `ef88553` adds additive multipart `POST /documents/upload` with `title`, `file`, optional `group_id`, and optional `knowledge_base_id`; V1 accepts PDF uploads and preserves existing JSON `POST /documents` plus bodyless `POST /documents/{document_id}/ingest`. The frontend BFF/API/UI already supports this route, but the hosted preview backend used for public-demo evidence must expose the same active contract.
+Current backend behavior: Backend commit `ef88553` adds additive multipart `POST /documents/upload` with `title`, `file`, optional `group_id`, and optional `knowledge_base_id`; V1 accepts PDF uploads, and the next expanded contract accepts Markdown and plain text uploads while preserving existing JSON `POST /documents` plus bodyless `POST /documents/{document_id}/ingest`. The frontend BFF/API/UI already supports this route, but the hosted preview backend used for public-demo evidence must expose the same active contract.
 Requested backend contract: Provide the upload route, accepted content types, request encoding, max-size/error behavior, returned document/file metadata, and how upload links to ingestion lifecycle and provenance.
 Why it matters: The frontend can now render the PDF upload UI, but public-demo evidence cannot honestly claim uploaded-file ingestion unless the active hosted backend exposes this contract and the browser smoke proves it. If not, the release must document the text-document fallback.
-Frontend workaround, if any: Implemented direct PDF upload UI/API/BFF support from the backend-owned OpenAPI generated at commit `ef88553`; final public-demo evidence still needs browser PDF upload smoke against the active hosted/local backend. If the launch gate uses a text-document fallback, record the reason explicitly in the release evidence bundle.
+Frontend workaround, if any: Implemented direct PDF/Markdown/plain-text upload UI/API/BFF support from the backend-owned OpenAPI generated at commit `ef88553`; final public-demo evidence still needs browser uploaded-file smoke against the active hosted/local backend. If the launch gate uses a text-document fallback, record the reason explicitly in the release evidence bundle.
 
 ## 2026-05-20 — strict V1 citation provenance contract
 
