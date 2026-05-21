@@ -25,6 +25,9 @@ export const API_PATH = {
     run(conversationId: string, runId: string) {
       return `${this.runs(conversationId)}/${runId}`;
     },
+    cancelRun(conversationId: string, runId: string) {
+      return `${this.run(conversationId, runId)}/cancel`;
+    },
     runStream(conversationId: string) {
       return `${this.runs(conversationId)}/stream`;
     },

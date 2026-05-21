@@ -31,6 +31,13 @@ type LiveActivityEvent = Pick<AgentEvent, "id" | "sequence" | "event_type"> & {
   payload: unknown;
 };
 
+type QueuedMessage = {
+  conversationId: string;
+  content: string;
+};
+
+type RunOutcome = "completed" | "cancelled" | "failed";
+
 const CHAT_BOTTOM_THRESHOLD_PX = 96;
 
 function safeBackendDetail(value: unknown) {
@@ -69,8 +76,14 @@ export function ChatWorkspace() {
   const events = useRunEvents(activeId, latestRunId);
   const [draft, setDraft] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
   const [streamError, setStreamError] = useState<unknown>(null);
   const [streamedReply, setStreamedReply] = useState("");
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+  const [queuedMessage, setQueuedMessageState] = useState<QueuedMessage | null>(
+    null,
+  );
+  const [statusAnnouncement, setStatusAnnouncement] = useState("");
   const [liveActivityEvents, setLiveActivityEvents] = useState<
     LiveActivityEvent[]
   >([]);
@@ -81,9 +94,35 @@ export function ChatWorkspace() {
   const [showGuestNotice, setShowGuestNotice] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
+  const isStreamingRef = useRef(false);
+  const activeRunIdRef = useRef<string | null>(null);
+  const queuedMessageRef = useRef<QueuedMessage | null>(null);
+  const pendingImmediateMessageRef = useRef<QueuedMessage | null>(null);
+  const cancelAcceptedRef = useRef(false);
   const { lang, localization } = useLocalization(
     (state) => state.localization.chat,
   );
+
+  const visibleQueuedMessage =
+    queuedMessage?.conversationId === activeId ? queuedMessage : null;
+  const draftMessage = draft.trim();
+  const hasActiveDraft = draftMessage.length > 0;
+
+  function setQueuedMessage(nextQueuedMessage: QueuedMessage | null) {
+    queuedMessageRef.current = nextQueuedMessage;
+    setQueuedMessageState(nextQueuedMessage);
+  }
+
+  function setCurrentRunId(runId: string | null) {
+    activeRunIdRef.current = runId;
+    setActiveRunId(runId);
+  }
+
+  function resetImmediateState() {
+    pendingImmediateMessageRef.current = null;
+    cancelAcceptedRef.current = false;
+    setIsCancelling(false);
+  }
 
   async function handleCreate() {
     try {
@@ -96,28 +135,32 @@ export function ChatWorkspace() {
     }
   }
 
-  async function handleSend(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const message = draft.trim();
-    if (!message || !activeId) return;
-    setDraft("");
+  async function runMessage(
+    conversationId: string,
+    message: string,
+  ): Promise<RunOutcome> {
+    if (isStreamingRef.current) return "failed";
+
+    isStreamingRef.current = true;
     setIsStreaming(true);
     setStreamError(null);
     setStreamedReply("");
+    setCurrentRunId(null);
     setLiveActivityEvents([]);
     setLatestCitations([]);
     setOptimisticMessage({
       id: `optimistic-${Date.now()}`,
-      conversation_id: activeId,
+      conversation_id: conversationId,
       role: "user",
       content: message,
     });
 
     let completed = false;
+    let cancelled = false;
     let liveSequence = 0;
     try {
       for await (const streamEvent of myAgentsAPI.conversations.streamRunEvents(
-        activeId,
+        conversationId,
         { message },
       )) {
         liveSequence += 1;
@@ -132,9 +175,16 @@ export function ChatWorkspace() {
           },
         ]);
 
+        if (streamEvent.event === "run_started") {
+          const data = streamEvent.data as { run_id: string };
+          setCurrentRunId(data.run_id);
+        }
         if (streamEvent.event === "answer_delta") {
           const data = streamEvent.data as AnswerDeltaEventData;
           setStreamedReply((current) => current + data.delta);
+        }
+        if (streamEvent.event === "run_cancelled") {
+          cancelled = true;
         }
         if (streamEvent.event === "run_completed") {
           const data = streamEvent.data as ConversationRunResponse;
@@ -149,23 +199,162 @@ export function ChatWorkspace() {
         }
       }
 
-      if (!completed) throw new Error(localization.runFailed);
+      if (!completed && !cancelled) {
+        if (cancelAcceptedRef.current && pendingImmediateMessageRef.current) {
+          cancelled = true;
+        } else {
+          throw new Error(localization.runFailed);
+        }
+      }
 
       await Promise.all([
         queryClient.invalidateQueries({
-          queryKey: MyAgentsQueryKeys.conversations.messages(activeId),
+          queryKey: MyAgentsQueryKeys.conversations.messages(conversationId),
         }),
         queryClient.invalidateQueries({
-          queryKey: MyAgentsQueryKeys.conversations.runs(activeId),
+          queryKey: MyAgentsQueryKeys.conversations.runs(conversationId),
         }),
       ]);
       setOptimisticMessage(null);
       setStreamedReply("");
+      return cancelled ? "cancelled" : "completed";
     } catch (error) {
       setStreamError(error);
+      return "failed";
     } finally {
+      isStreamingRef.current = false;
       setIsStreaming(false);
+      setCurrentRunId(null);
     }
+  }
+
+  async function runMessageAndContinue(
+    conversationId: string,
+    message: string,
+  ): Promise<void> {
+    const outcome = await runMessage(conversationId, message);
+
+    if (outcome === "failed") {
+      const pendingImmediateMessage = pendingImmediateMessageRef.current;
+      if (pendingImmediateMessage?.conversationId === conversationId) {
+        setDraft(pendingImmediateMessage.content);
+        setStatusAnnouncement(localization.immediateFailedAnnouncement);
+        resetImmediateState();
+      }
+      return;
+    }
+
+    const pendingImmediateMessage = pendingImmediateMessageRef.current;
+    if (pendingImmediateMessage?.conversationId === conversationId) {
+      resetImmediateState();
+      setStatusAnnouncement(localization.immediateStartedAnnouncement);
+      await runMessageAndContinue(
+        pendingImmediateMessage.conversationId,
+        pendingImmediateMessage.content,
+      );
+      return;
+    }
+
+    if (outcome !== "completed") {
+      resetImmediateState();
+      setStatusAnnouncement(localization.currentAnswerStoppedAnnouncement);
+      return;
+    }
+
+    const nextQueuedMessage = queuedMessageRef.current;
+    if (nextQueuedMessage?.conversationId === conversationId) {
+      setQueuedMessage(null);
+      setStatusAnnouncement(localization.queuedSentAnnouncement);
+      await runMessageAndContinue(
+        nextQueuedMessage.conversationId,
+        nextQueuedMessage.content,
+      );
+    }
+  }
+
+  async function handleSend(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!draftMessage || !activeId || isCancelling) return;
+
+    if (isStreaming) {
+      if (visibleQueuedMessage) {
+        setStatusAnnouncement(localization.queueAlreadyExistsAnnouncement);
+        return;
+      }
+      const nextQueuedMessage = {
+        conversationId: activeId,
+        content: draftMessage,
+      };
+      setQueuedMessage(nextQueuedMessage);
+      setDraft("");
+      setStatusAnnouncement(localization.queuedAnnouncement);
+      return;
+    }
+
+    setDraft("");
+    await runMessageAndContinue(activeId, draftMessage);
+  }
+
+  async function handleSendNow() {
+    if (
+      !activeId ||
+      !draftMessage ||
+      !isStreaming ||
+      isCancelling ||
+      !activeRunId ||
+      visibleQueuedMessage
+    ) {
+      return;
+    }
+
+    const immediateMessage = {
+      conversationId: activeId,
+      content: draftMessage,
+    };
+    pendingImmediateMessageRef.current = immediateMessage;
+    cancelAcceptedRef.current = false;
+    setDraft("");
+    setIsCancelling(true);
+    setStatusAnnouncement(localization.stoppingCurrentAnswerAnnouncement);
+
+    try {
+      await myAgentsAPI.conversations.cancelRun(activeId, activeRunId);
+      if (pendingImmediateMessageRef.current === immediateMessage) {
+        cancelAcceptedRef.current = true;
+        setStatusAnnouncement(localization.currentAnswerStoppingAnnouncement);
+      }
+    } catch (error) {
+      if (pendingImmediateMessageRef.current === immediateMessage) {
+        setStreamError(error);
+        setDraft(immediateMessage.content);
+        setStatusAnnouncement(localization.immediateFailedAnnouncement);
+        resetImmediateState();
+      }
+    }
+  }
+
+  function handleEditQueuedMessage() {
+    if (!visibleQueuedMessage) return;
+    setDraft(visibleQueuedMessage.content);
+    setQueuedMessage(null);
+    setStatusAnnouncement(localization.queueEditAnnouncement);
+  }
+
+  function handleCancelQueuedMessage() {
+    if (!visibleQueuedMessage) return;
+    setQueuedMessage(null);
+    setStatusAnnouncement(localization.queueCancelledAnnouncement);
+  }
+
+  async function handleSendQueuedMessage() {
+    if (!visibleQueuedMessage || isStreaming) return;
+    const nextQueuedMessage = visibleQueuedMessage;
+    setQueuedMessage(null);
+    setStatusAnnouncement(localization.queuedSentAnnouncement);
+    await runMessageAndContinue(
+      nextQueuedMessage.conversationId,
+      nextQueuedMessage.content,
+    );
   }
 
   const sortedMessages = useMemo(() => {
@@ -182,6 +371,37 @@ export function ChatWorkspace() {
       ? latestCitations
       : (runDetail.data?.citations ?? []);
   const autoScrollTrigger = `${sortedMessages.length}:${streamedReply.length}`;
+  const composerPlaceholder = isStreaming
+    ? visibleQueuedMessage
+      ? localization.queuedComposerPlaceholder
+      : localization.streamingComposerPlaceholder
+    : localization.composerPlaceholder;
+  const primaryActionLabel = isStreaming
+    ? localization.queueNext
+    : localization.send;
+  const isPrimaryActionDisabled =
+    !activeId ||
+    !hasActiveDraft ||
+    isCancelling ||
+    (isStreaming && Boolean(visibleQueuedMessage));
+  const isSendNowDisabled =
+    !activeId ||
+    !hasActiveDraft ||
+    !isStreaming ||
+    isCancelling ||
+    !activeRunId ||
+    Boolean(visibleQueuedMessage);
+  const sendNowHelper = isCancelling
+    ? localization.stoppingCurrentAnswer
+    : visibleQueuedMessage
+      ? localization.sendNowQueuedBlocked
+      : !activeRunId && isStreaming
+        ? localization.sendNowWaitingForRun
+        : localization.sendNowHelper;
+  const queuedHelper =
+    streamError && !isStreaming
+      ? localization.queuedAfterFailureHelper
+      : localization.queuedHelper;
 
   function handleChatScroll() {
     const scrollElement = chatScrollRef.current;
@@ -358,23 +578,102 @@ export function ChatWorkspace() {
             onSubmit={handleSend}
             className="border-t border-cal-hairline p-4"
           >
-            <div className="flex flex-col gap-3 sm:flex-row">
+            <p className="sr-only" aria-live="polite">
+              {statusAnnouncement}
+            </p>
+            {visibleQueuedMessage ? (
+              <div className="mb-3 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm text-cal-body">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-cal-ink">
+                      {localization.queuedTitle}
+                    </p>
+                    <p className="mt-1 max-h-20 overflow-hidden break-words text-cal-ink">
+                      {visibleQueuedMessage.content}
+                    </p>
+                    <p className="mt-1 text-xs text-cal-muted">
+                      {queuedHelper}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-2">
+                    {!isStreaming ? (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleSendQueuedMessage}
+                      >
+                        {localization.sendQueued}
+                      </Button>
+                    ) : null}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={handleEditQueuedMessage}
+                    >
+                      {localization.editQueued}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelQueuedMessage}
+                    >
+                      {localization.cancelQueued}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+            <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
               <input
-                className={cn(inputClassName, "min-h-12 flex-1")}
+                className={cn(inputClassName, "min-h-12 w-full")}
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
-                placeholder={localization.composerPlaceholder}
-                disabled={!activeId || isStreaming}
+                placeholder={composerPlaceholder}
+                disabled={!activeId || isCancelling}
+                aria-describedby={
+                  isStreaming ? "chat-steering-helper" : undefined
+                }
               />
-              <Button
-                className="w-full sm:w-auto"
-                type="submit"
-                size="lg"
-                disabled={!activeId || !draft.trim() || isStreaming}
-              >
-                {localization.send}
-              </Button>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button
+                  className="w-full sm:w-auto"
+                  type="submit"
+                  size="lg"
+                  disabled={isPrimaryActionDisabled}
+                >
+                  {primaryActionLabel}
+                </Button>
+                {isStreaming ? (
+                  <Button
+                    className="w-full sm:w-auto"
+                    type="button"
+                    size="lg"
+                    variant="secondary"
+                    onClick={handleSendNow}
+                    disabled={isSendNowDisabled}
+                    aria-describedby="chat-steering-helper"
+                  >
+                    {localization.sendNow}
+                  </Button>
+                ) : null}
+              </div>
             </div>
+            {isStreaming ? (
+              <p
+                id="chat-steering-helper"
+                className="mt-2 text-xs leading-5 text-cal-muted"
+              >
+                {sendNowHelper}
+              </p>
+            ) : null}
+            {showGuestNotice && isStreaming ? (
+              <p className="mt-1 text-xs leading-5 text-cal-muted">
+                {localization.guestPromptLimitHelper}
+              </p>
+            ) : null}
             {streamError ? (
               <div className="mt-3">
                 <ErrorState

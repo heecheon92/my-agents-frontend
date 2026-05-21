@@ -13,6 +13,9 @@ describe("API_PATH", () => {
     expect(API_PATH.conversations.run(conversationId, runId)).toBe(
       "/conversations/conversation-1/runs/run-1",
     );
+    expect(API_PATH.conversations.cancelRun(conversationId, runId)).toBe(
+      "/conversations/conversation-1/runs/run-1/cancel",
+    );
     expect(API_PATH.conversations.runStream(conversationId)).toBe(
       "/conversations/conversation-1/runs/stream",
     );

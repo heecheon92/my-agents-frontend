@@ -38,10 +38,29 @@ export const conversationRunResponseSchema = z.object({
   citations: z.array(citationSchema).default([]),
 });
 
+export const runStartedEventDataSchema = z.object({
+  run_id: z.string().min(1),
+  conversation_id: z.string().min(1),
+  status: z.string(),
+});
+
 export const answerDeltaEventDataSchema = z.object({
   delta: z.string(),
   sequence: z.number().optional(),
   run_id: z.string().optional(),
+});
+
+export const runCancelledEventDataSchema = z.object({
+  run_id: z.string().min(1),
+  conversation_id: z.string().min(1),
+  status: z.string(),
+  partial_reply_persisted: z.boolean().optional(),
+});
+
+export const runCancelResponseSchema = z.object({
+  run_id: z.string().min(1),
+  conversation_id: z.string().min(1),
+  status: z.string(),
 });
 
 export const agentRunSummarySchema = z.object({
@@ -72,6 +91,9 @@ export type ConversationRunRequest = z.infer<
 export type ConversationRunResponse = z.infer<
   typeof conversationRunResponseSchema
 >;
+export type RunStartedEventData = z.infer<typeof runStartedEventDataSchema>;
 export type AnswerDeltaEventData = z.infer<typeof answerDeltaEventDataSchema>;
+export type RunCancelledEventData = z.infer<typeof runCancelledEventDataSchema>;
+export type RunCancelResponse = z.infer<typeof runCancelResponseSchema>;
 export type AgentRunSummary = z.infer<typeof agentRunSummarySchema>;
 export type AgentEvent = z.infer<typeof agentEventSchema>;

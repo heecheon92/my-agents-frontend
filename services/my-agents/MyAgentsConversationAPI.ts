@@ -16,13 +16,21 @@ import {
   type Message,
   type MessageCreateRequest,
   messageSchema,
+  type RunCancelledEventData,
+  type RunCancelResponse,
+  type RunStartedEventData,
+  runCancelledEventDataSchema,
+  runCancelResponseSchema,
+  runStartedEventDataSchema,
 } from "@/model/my-agents";
 import { type MyAgentsFetchClient, myAgentsFetchClient } from "./fetch-client";
 import { parseArrayWithSchema, parseWithSchema } from "./parser";
 import { streamServerSentEvents } from "./sse";
 
 export type ConversationRunStreamEvent =
+  | { event: "run_started"; data: RunStartedEventData }
   | { event: "answer_delta"; data: AnswerDeltaEventData }
+  | { event: "run_cancelled"; data: RunCancelledEventData }
   | { event: "run_completed"; data: ConversationRunResponse }
   | { event: string; data: unknown };
 
@@ -42,10 +50,22 @@ function parseConversationRunStreamEvent({
   data: string;
 }): ConversationRunStreamEvent {
   const parsedData = parseStreamEventData(data);
+  if (event === "run_started") {
+    return {
+      event,
+      data: parseWithSchema(runStartedEventDataSchema, parsedData),
+    };
+  }
   if (event === "answer_delta") {
     return {
       event,
       data: parseWithSchema(answerDeltaEventDataSchema, parsedData),
+    };
+  }
+  if (event === "run_cancelled") {
+    return {
+      event,
+      data: parseWithSchema(runCancelledEventDataSchema, parsedData),
     };
   }
   if (event === "run_completed") {
@@ -119,6 +139,21 @@ export class MyAgentsConversationAPI {
         method: "POST",
         body: payload,
       }),
+    );
+  }
+
+  async cancelRun(
+    conversationId: string,
+    runId: string,
+  ): Promise<RunCancelResponse> {
+    return parseWithSchema(
+      runCancelResponseSchema,
+      await this.client.fetch(
+        API_PATH.conversations.cancelRun(conversationId, runId),
+        {
+          method: "POST",
+        },
+      ),
     );
   }
 

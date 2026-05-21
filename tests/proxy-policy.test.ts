@@ -49,6 +49,10 @@ describe("proxy policy", () => {
       isAllowedBackendPath("POST", "/conversations/abc/runs/stream").allowed,
     ).toBe(true);
     expect(
+      isAllowedBackendPath("POST", "/conversations/abc/runs/run-1/cancel")
+        .allowed,
+    ).toBe(true);
+    expect(
       isAllowedBackendPath("GET", "/conversations/abc/runs/run-1").allowed,
     ).toBe(true);
   });
