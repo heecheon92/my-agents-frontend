@@ -128,3 +128,9 @@ The UI should stay polished but not noisy:
 - Keep chat as the primary product anchor surface.
 - Keep admin surfaces honest and usable even when backend contracts are ID-based.
 - Prefer `components/keymesh/` extraction over large route-page component trees.
+
+## Assistant output rendering
+
+Assistant-authored chat content is rendered through `components/keymesh/AgentMessageRenderer.tsx`, which currently delegates Markdown strings to `components/keymesh/AgentMarkdown.tsx`. User-authored messages stay plain text by default.
+
+Supported Markdown is intentionally compact for chat bubbles: paragraphs, headings, strong text, unordered/ordered lists, inline code, code blocks, and safe external links. Raw HTML is not enabled; do not add `rehype-raw`, `dangerouslySetInnerHTML`, executable diagram specs, or arbitrary chart JavaScript. Future chart/graph/diagram/table/tool-result cards should enter through the `AgentArtifact` boundary with backend-validated JSON contracts before any rich renderer is added.

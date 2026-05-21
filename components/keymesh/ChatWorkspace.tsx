@@ -23,6 +23,7 @@ import type {
   Message,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
+import { AgentMessageRenderer } from "./AgentMessageRenderer";
 import { inputClassName } from "./Field";
 import { EmptyState, ErrorState, Pill } from "./Status";
 
@@ -328,9 +329,13 @@ export function ChatWorkspace() {
                       message.role as keyof typeof localization.roles
                     ] ?? message.role}
                   </p>
-                  <p className="whitespace-pre-wrap break-words">
-                    {message.content}
-                  </p>
+                  {message.role === "assistant" ? (
+                    <AgentMessageRenderer content={message.content} />
+                  ) : (
+                    <p className="whitespace-pre-wrap break-words">
+                      {message.content}
+                    </p>
+                  )}
                 </div>
               ))}
               {isStreaming || streamedReply ? (
@@ -338,9 +343,13 @@ export function ChatWorkspace() {
                   <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
                     {localization.roles.assistant}
                   </p>
-                  <p className="whitespace-pre-wrap break-words">
-                    {streamedReply || localization.agentComposing}
-                  </p>
+                  {streamedReply ? (
+                    <AgentMessageRenderer content={streamedReply} />
+                  ) : (
+                    <p className="whitespace-pre-wrap break-words">
+                      {localization.agentComposing}
+                    </p>
+                  )}
                 </div>
               ) : null}
             </div>

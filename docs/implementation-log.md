@@ -217,3 +217,12 @@ Verification passed in this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `p
 - Added browser storage assertions that reject session, CSRF, provider token, password, API-key, and OpenAI-style key material in `localStorage`/`sessionStorage`.
 - Documented preview/public smoke usage and the no-dev-outbox/no-secret command boundary in `docs/verification-runbook.md`.
 - Verification passed in this worker pass: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build`, and `pnpm exec playwright test` (public visitor final-proof path intentionally skipped unless `V1_PUBLIC_VISITOR_SMOKE=1` provider env is supplied). Hosted smoke remains user/provider-gated and must not run before preview configuration and final confirmation.
+
+## 2026-05-21 — assistant markdown rendering boundary
+
+- Added an assistant-only rendering boundary for chat output so General Assistant replies can render safe Markdown such as Korean checklist headings, `**bold**`, and bullet lists while user messages remain literal plain text.
+- Added `react-markdown` as the Markdown leaf renderer without raw HTML plugins, `dangerouslySetInnerHTML`, or executable chart/diagram specs.
+- Added a future artifact boundary type for chart, graph, diagram, table, and tool-result cards; current behavior renders only inert placeholders when artifacts are provided.
+- Wired persisted assistant messages and streaming assistant replies through the same renderer boundary.
+
+Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/agent-markdown.test.ts tests/conversation-api.test.ts`, `pnpm build`, and `git diff --check`.
