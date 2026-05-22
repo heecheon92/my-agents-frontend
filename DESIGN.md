@@ -1,544 +1,312 @@
----
-version: alpha
-name: Cal.com-design-analysis
-description: A clean, calendar-software-first interface anchored on white canvas with black primary CTAs and custom Cal Sans display typography. The system reads as friendly modern SaaS — generous whitespace, soft-rounded cards (~12px), product UI fragments shown directly inside cards, and a dark navy footer that visually closes long-scroll pages. Brand voltage comes from the Cal Sans display headline (a custom geometric face) and from product UI artifacts shown in-card rather than from accent colors.
+# Design
 
-colors:
-  primary: "#111111"
-  primary-active: "#242424"
-  primary-disabled: "#e5e7eb"
-  ink: "#111111"
-  body: "#374151"
-  muted: "#6b7280"
-  muted-soft: "#898989"
-  hairline: "#e5e7eb"
-  hairline-soft: "#f3f4f6"
-  canvas: "#ffffff"
-  surface-soft: "#f8f9fa"
-  surface-card: "#f5f5f5"
-  surface-strong: "#e5e7eb"
-  surface-dark: "#101010"
-  surface-dark-elevated: "#1a1a1a"
-  on-primary: "#ffffff"
-  on-dark: "#ffffff"
-  on-dark-soft: "#a1a1aa"
-  brand-accent: "#3b82f6"
-  success: "#10b981"
-  warning: "#f59e0b"
-  error: "#ef4444"
-  badge-orange: "#fb923c"
-  badge-pink: "#ec4899"
-  badge-violet: "#8b5cf6"
-  badge-emerald: "#34d399"
+## Source of truth
+- Status: Active
+- Last refreshed: 2026-05-22
+- Primary product surfaces:
+  - Public entry: `/` marketing/entry page.
+  - Auth: `/login`, `/signup` through `components/keymesh/AuthPanel.tsx`.
+  - Protected service shell: `app/(service)/layout.tsx` through `components/keymesh/ServiceShell.tsx`.
+  - Anchor workspace: `/chat` through `components/keymesh/ChatWorkspace.tsx`.
+  - Operations/admin surfaces: `/documents`, `/knowledge`, `/groups` through `components/keymesh/AdminSurfaces.tsx`.
+- Evidence reviewed:
+  - `AGENTS.md` product intent, frontend boundary, design/accessibility rules, and verification commands.
+  - `app/globals.css` Tailwind v4 theme, semantic variables, inherited `cal-*` aliases, fluid type/spacing helpers, responsive primitives, card helpers.
+  - `app/layout.tsx`, `app/page.tsx`, `app/(service)/layout.tsx`, `app/(service)/*/page.tsx` route structure.
+  - `components/keymesh/ServiceShell.tsx`, `ChatWorkspace.tsx`, `AdminSurfaces.tsx`, `AuthPanel.tsx`, `Field.tsx`, `Status.tsx`.
+  - `components/ui/button.tsx` Base UI button primitive and current variants.
+  - `docs/frontend-architecture.md`, `docs/agent-onboarding.md`, `docs/security-and-backend-boundary.md`, `docs/verification-runbook.md`, `docs/implementation-log.md`.
+  - `localization/en.json`, `localization/ko.json` bilingual product copy and route labels.
+  - Frontend engineering feedback from 2026-05-22: feasible with current Tailwind v4/local components; biggest issues are Cal.com framing, dense chat/admin layouts, thin reusable component layer, and ad hoc Tailwind strings.
 
-typography:
-  display-xl:
-    fontFamily: "Cal Sans, Inter, sans-serif"
-    fontSize: 64px
-    fontWeight: 600
-    lineHeight: 1.05
-    letterSpacing: -2px
-  display-lg:
-    fontFamily: "Cal Sans, Inter, sans-serif"
-    fontSize: 48px
-    fontWeight: 600
-    lineHeight: 1.1
-    letterSpacing: -1.5px
-  display-md:
-    fontFamily: "Cal Sans, Inter, sans-serif"
-    fontSize: 36px
-    fontWeight: 600
-    lineHeight: 1.15
-    letterSpacing: -1px
-  display-sm:
-    fontFamily: "Cal Sans, Inter, sans-serif"
-    fontSize: 28px
-    fontWeight: 600
-    lineHeight: 1.2
-    letterSpacing: -0.5px
-  title-lg:
-    fontFamily: "Inter, sans-serif"
-    fontSize: 22px
-    fontWeight: 600
-    lineHeight: 1.3
-    letterSpacing: -0.3px
-  title-md:
-    fontFamily: "Inter, sans-serif"
-    fontSize: 18px
-    fontWeight: 600
-    lineHeight: 1.4
-    letterSpacing: 0
-  title-sm:
-    fontFamily: "Inter, sans-serif"
-    fontSize: 16px
-    fontWeight: 600
-    lineHeight: 1.4
-    letterSpacing: 0
-  body-md:
-    fontFamily: "Inter, sans-serif"
-    fontSize: 16px
-    fontWeight: 400
-    lineHeight: 1.5
-    letterSpacing: 0
-  body-sm:
-    fontFamily: "Inter, sans-serif"
-    fontSize: 14px
-    fontWeight: 400
-    lineHeight: 1.5
-    letterSpacing: 0
-  caption:
-    fontFamily: "Inter, sans-serif"
-    fontSize: 13px
-    fontWeight: 500
-    lineHeight: 1.4
-    letterSpacing: 0
-  code:
-    fontFamily: "JetBrains Mono, ui-monospace, monospace"
-    fontSize: 14px
-    fontWeight: 400
-    lineHeight: 1.5
-    letterSpacing: 0
-  button:
-    fontFamily: "Inter, sans-serif"
-    fontSize: 14px
-    fontWeight: 600
-    lineHeight: 1
-    letterSpacing: 0
-  nav-link:
-    fontFamily: "Inter, sans-serif"
-    fontSize: 14px
-    fontWeight: 500
-    lineHeight: 1.4
-    letterSpacing: 0
+## Brand
+- Personality:
+  - A calm AI operations console: exact, evidence-forward, composed under load, and credible enough for security/product review.
+  - Editorial rather than dashboard-noisy: dense information is allowed, but hierarchy must feel curated, not crammed.
+  - The visual metaphor is **instrument panel + knowledge dossier**: transcripts, citations, events, documents, and permissions should feel connected as operational evidence.
+- Trust signals:
+  - Clear session/auth state, explicit backend-owned limits, honest disabled/empty states, no fake capability claims.
+  - Visible provenance: citations are close to answers; run events are visible as redacted operational facts; document source metadata is legible.
+  - Calm severity language: warnings and errors explain the safe next step without exposing secrets, stack traces, tokens, or chain-of-thought.
+- Avoid:
+  - The previous Cal.com/calendar-product framing, including calendar mockup motifs or Cal.com-specific naming in design rationale.
+  - Generic AI gradients, purple-on-white SaaS tropes, glassmorphism, floating orb illustrations, decorative chat bubbles without provenance.
+  - Overly tiny dashboard text, low-contrast gray-on-gray metadata, hidden overflow that clips IDs or code/pre blocks, or desktop-only navigation.
+  - Glassy/gradient AI-dashboard noise, broad data-flow rewrites for visual polish, untested dark mode, and fixed-height mobile layouts that trap overflow.
 
-rounded:
-  xs: 4px
-  sm: 6px
-  md: 8px
-  lg: 12px
-  xl: 16px
-  pill: 9999px
-  full: 9999px
+## Product goals
+- Goals:
+  - Make chat with server-owned runs the obvious primary journey.
+  - Let users understand what the backend did: messages, run status, event trail, citations, and document sources should be visible in one coherent workspace.
+  - Make document, knowledge-base, group, membership, and permission workflows usable even while some backend contracts remain ID-based.
+  - Support Korean and English with comfortable typography, wrapping, and no hardcoded user-facing strings.
+  - Give frontend engineers a stable theme/component contract that can be implemented with current Next.js, Tailwind v4, Base UI/shadcn-style primitives, and no new component library.
+  - Reduce future UI churn by moving repeated panel/list/message patterns out of ad hoc Tailwind strings and into small repo-native primitives.
+- Non-goals:
+  - Do not move backend logic, API contract invention, or OpenAPI generation into design work.
+  - Do not design hidden chain-of-thought, raw provider traces, or unsafe debug payload exposure.
+  - Do not introduce a second UI kit, charting dependency, animation dependency, or design-token runtime unless explicitly approved later.
+  - Do not rewrite data flow, query hooks, BFF behavior, or backend contracts as part of visual cleanup.
+  - Do not add or advertise dark mode until it has an explicit design pass and viewport/accessibility verification.
+  - Do not claim streaming, upload types, provider verification, OAuth, production release, or document intelligence beyond implemented and tested backend behavior.
+- Success signals:
+  - A new user can answer: “Am I authenticated?”, “Which conversation am I in?”, “What did the agent do?”, “What sources support this answer?”, and “What can I do next?” without reading docs.
+  - Narrow, tablet, and desktop layouts remain readable without horizontal page overflow.
+  - Chat feels like the product center; admin surfaces feel like supporting control rooms, not afterthought forms.
+  - Component states are consistent across auth, chat, documents, knowledge, and groups.
 
-spacing:
-  xxs: 4px
-  xs: 8px
-  sm: 12px
-  md: 16px
-  lg: 24px
-  xl: 32px
-  xxl: 48px
-  section: 96px
+## Personas and jobs
+- Primary personas:
+  - Product owner/reviewer validating that `my-agents` is a real AI product surface rather than a backend smoke UI.
+  - Authenticated knowledge worker using documents and conversations to inspect answer provenance.
+  - Frontend engineer extending the UI while respecting backend and security boundaries.
+  - Demo visitor or guest user trying a constrained public flow with clear limits.
+- User jobs:
+  - Sign up, log in, log out, restore a session, or continue as a limited guest.
+  - Create/select a conversation, send a message, stream the response, queue or steer a next prompt, and understand run outcome.
+  - Inspect redacted activity events and citations tied to the latest run.
+  - Create/upload documents, ingest them, monitor extraction progress, and confirm source metadata.
+  - Create knowledge bases, groups, and ID-based membership/permission changes without mistaking rough backend contracts for polished search/list UX.
+- Key contexts of use:
+  - Local development and review, with backend at `http://127.0.0.1:8000` or `http://localhost:8000` depending on configured CORS.
+  - Public/demo review where privacy, redaction, honest guest limits, and no-secret browser storage matter.
+  - Bilingual screens where Korean copy may be longer and should not break dense control surfaces.
 
-components:
-  button-primary:
-    backgroundColor: "{colors.primary}"
-    textColor: "{colors.on-primary}"
-    typography: "{typography.button}"
-    rounded: "{rounded.md}"
-    padding: 12px 20px
-    height: 40px
-  button-primary-active:
-    backgroundColor: "{colors.primary-active}"
-    textColor: "{colors.on-primary}"
-    rounded: "{rounded.md}"
-  button-primary-disabled:
-    backgroundColor: "{colors.primary-disabled}"
-    textColor: "{colors.muted}"
-    rounded: "{rounded.md}"
-  button-secondary:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.button}"
-    rounded: "{rounded.md}"
-    padding: 12px 20px
-    height: 40px
-  button-icon-circular:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.full}"
-    size: 36px
-  button-text-link:
-    backgroundColor: transparent
-    textColor: "{colors.ink}"
-    typography: "{typography.button}"
-  text-link:
-    backgroundColor: transparent
-    textColor: "{colors.ink}"
-    typography: "{typography.body-md}"
-  top-nav:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.nav-link}"
-    height: 64px
-  nav-pill-group:
-    backgroundColor: "{colors.surface-soft}"
-    textColor: "{colors.ink}"
-    typography: "{typography.nav-link}"
-    rounded: "{rounded.pill}"
-    padding: 6px
-  hero-band:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.display-xl}"
-    padding: 96px
-  hero-app-mockup-card:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.xl}"
-  feature-card:
-    backgroundColor: "{colors.surface-card}"
-    textColor: "{colors.ink}"
-    typography: "{typography.title-md}"
-    rounded: "{rounded.lg}"
-    padding: 32px
-  feature-icon-card:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.title-sm}"
-    rounded: "{rounded.lg}"
-    padding: 24px
-  product-mockup-card:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.lg}"
-    padding: 24px
-  testimonial-card:
-    backgroundColor: "{colors.surface-card}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body-md}"
-    rounded: "{rounded.lg}"
-    padding: 24px
-  pricing-tier-card:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.title-lg}"
-    rounded: "{rounded.lg}"
-    padding: 32px
-  pricing-tier-card-featured:
-    backgroundColor: "{colors.surface-dark}"
-    textColor: "{colors.on-dark}"
-    typography: "{typography.title-lg}"
-    rounded: "{rounded.lg}"
-    padding: 32px
-  text-input:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.body-md}"
-    rounded: "{rounded.md}"
-    padding: 10px 14px
-    height: 40px
-  text-input-focused:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.md}"
-  category-tab:
-    backgroundColor: transparent
-    textColor: "{colors.muted}"
-    typography: "{typography.nav-link}"
-    padding: 8px 14px
-    rounded: "{rounded.md}"
-  category-tab-active:
-    backgroundColor: "{colors.canvas}"
-    textColor: "{colors.ink}"
-    typography: "{typography.nav-link}"
-    rounded: "{rounded.md}"
-  avatar-circle:
-    backgroundColor: "{colors.surface-card}"
-    textColor: "{colors.ink}"
-    rounded: "{rounded.full}"
-    size: 36px
-  badge-pill:
-    backgroundColor: "{colors.surface-card}"
-    textColor: "{colors.ink}"
-    typography: "{typography.caption}"
-    rounded: "{rounded.pill}"
-    padding: 4px 12px
-  rating-stars:
-    backgroundColor: transparent
-    textColor: "{colors.badge-orange}"
-    typography: "{typography.caption}"
-  cta-band-light:
-    backgroundColor: "{colors.surface-card}"
-    textColor: "{colors.ink}"
-    typography: "{typography.display-sm}"
-    rounded: "{rounded.lg}"
-    padding: 48px
-  footer:
-    backgroundColor: "{colors.surface-dark}"
-    textColor: "{colors.on-dark-soft}"
-    typography: "{typography.body-sm}"
-    padding: 64px
----
+## Information architecture
+- Primary navigation:
+  - Protected app navigation is task-oriented: Chat, Documents, Knowledge, Groups.
+  - Chat is first and should be visually weighted as the default route from the service index.
+  - Mobile navigation remains horizontal-scrollable or transformed into an accessible compact pattern; it must not disappear below desktop.
+- Core routes/screens:
+  - `/`: Entry page that promises a backend-wired AI console, not a generic marketing site.
+  - `/login` and `/signup`: Two-panel trust/auth experience with guest path and account-created handoff.
+  - `/chat`: Transcript-first workspace with conversation list, composer, and progressively disclosed run history/activity/citations inspector.
+  - `/documents`: Create/upload queue + selected document actions + document list + extraction run status.
+  - `/knowledge`: Create/list knowledge bases.
+  - `/groups`: Create/list groups and ID-based member role actions.
+- Content hierarchy:
+  - Level 1: Page purpose and current user/session context.
+  - Level 2: Primary action for the route, e.g. create conversation, send message, upload/ingest document.
+  - Level 3: Progressive evidence, e.g. run status, event payload, citation snippet, document IDs, permissions; reveal in panels/tabs/accordions before forcing all metadata onscreen.
+  - Level 4: Backend limitation notes and safe recovery paths.
 
-## Overview
+## Design principles
+- Principle 1: Evidence stays attached to action.
+  - A response is incomplete without nearby citations and activity evidence.
+  - A document action is incomplete without visible status/progress and source metadata.
+- Principle 2: Calm density beats decorative emptiness.
+  - Use structured panes, captions, dividers, chips, and restrained color to make dense information scannable.
+  - Keep whitespace generous enough for readability, but avoid empty hero/dashboard templates that hide product capability.
+- Principle 3: Honest system boundaries build trust.
+  - Surface backend-owned constraints, guest limits, ID-based workflows, and unavailable capabilities directly in UI states.
+  - Prefer disabled states, backend-request notes, and clear empty states over mocked affordances.
+- Principle 4: Mobile-first does not mean feature-reduced.
+  - Every route must expose navigation, primary action, error recovery, and essential evidence on narrow screens.
+  - Desktop refinements may add simultaneous panes; they must not be required to complete core jobs.
+- Tradeoffs:
+  - Prioritize transcript-first chat polish over equal visual richness in admin surfaces, but use the same tokens and state language everywhere.
+  - Keep the current CSS/token implementation lightweight; rename or migrate legacy `cal-*` aliases only when a UI-code task explicitly includes it.
+  - Accept ID-heavy admin workflows until backend search/member-list contracts exist; design should make the limitation clear without shaming the product.
+  - Prefer progressive disclosure over always-visible density for inspectors and admin action panels; default view should show the task and the most relevant evidence first.
 
-Cal.com's marketing surface is a clean, friendly modern-SaaS interface — white canvas (`{colors.canvas}` — #ffffff) with black primary CTAs (`{colors.primary}` — #111111), custom **Cal Sans** display typography, and `{colors.surface-card}` (#f5f5f5) light-gray cards holding product UI fragments. The system reads as confidently engineered without trying to impress — every band has clear hierarchy, generous whitespace, and a single primary action.
-
-Type voice splits cleanly into two roles: **Cal Sans** (the brand's custom geometric display face — used for h1, h2, h3, and hero headlines) and **Inter** (used for everything else — body, buttons, nav, captions). Cal Sans uses weight 600 with negative letter-spacing (-0.5px to -2px depending on size) — it feels modern, slightly condensed, distinctly Cal.com.
-
-Component voltage comes from **product UI fragments shown directly inside cards** — calendar widgets, scheduling forms, automation diagrams, integration tiles. Cal.com doesn't paint marketing illustrations of the product; it shows the actual product chrome at small scale embedded in the marketing flow.
-
-The footer flips to `{colors.surface-dark}` (#101010) — a deep near-black that visually closes every long-scroll page. The footer is the only dark surface in the system; everything above stays white-with-light-gray-cards.
-
-**Key Characteristics:**
-- White canvas with black primary CTA (`{colors.primary}` — #111111). Buttons are `{rounded.md}` (8px) with confident weight-600 labels. Standard friendly-SaaS button.
-- Custom `Cal Sans` display typeface for headlines (substituted with Inter weight 600 here). Negative letter-spacing on display sizes — geometric, precise, slightly condensed.
-- Light-gray card surfaces (`{colors.surface-card}` — #f5f5f5) for feature cards, testimonials, and pricing tiers (non-featured). The featured pricing tier flips to `{colors.surface-dark}` (the only dark card on light pages).
-- Product UI fragments embedded directly in cards — Cal.com shows real schedule pickers, calendar widgets, integration grids inside its marketing cards. Brand voltage from real product chrome at small scale.
-- Nav-pill-group (`{component.nav-pill-group}`) — a small pill-radius wrapper around grouped nav segments (e.g., the sub-nav switcher between product views). The pill wrapper is one of the system's signature interactive components.
-- Avatars are circular (`{rounded.full}`), 36px diameter, used in testimonial rows and team-listing surfaces.
-- Footer is dark navy (`{colors.surface-dark}` — #101010) with light text (`{colors.on-dark-soft}` — #a1a1aa). The dark footer closes every page even though the body above is white.
-- Spacing rhythm is `{spacing.section}` (96px) between major bands — tight enough to feel modern-SaaS but generous enough to breathe.
-- Border radius is hierarchical: `{rounded.md}` (8px) for buttons + inputs, `{rounded.lg}` (12px) for content cards, `{rounded.xl}` (16px) for the hero app-mockup container, `{rounded.pill}` for nav-pill-group + badges, `{rounded.full}` for avatars + icon buttons.
-
-## Colors
-
-### Brand & Accent
-- **Primary** (`{colors.primary}` — #111111): The dominant action color. All primary CTAs, h1/h2 display type. Press state shifts to `{colors.primary-active}` (#242424).
-- **Brand Accent** (`{colors.brand-accent}` — #3b82f6): Used sparely on inline links and on a small badge / "Customer story" highlight. Cal.com is a near-monochrome brand — the blue appears rarely.
-- **Badge Pastels** — A small pastel set for category badges and avatar fills: `{colors.badge-orange}` (#fb923c), `{colors.badge-pink}` (#ec4899), `{colors.badge-violet}` (#8b5cf6), `{colors.badge-emerald}` (#34d399). These appear on tag pills and small accent moments inside product UI fragments — never on hero CTAs.
-
-### Surface
-- **Canvas** (`{colors.canvas}` — #ffffff): The default page floor.
-- **Surface Soft** (`{colors.surface-soft}` — #f8f9fa): Nav-pill-group background, very-soft section dividers.
-- **Surface Card** (`{colors.surface-card}` — #f5f5f5): Feature cards, testimonial cards, badge pills, default avatar fills.
-- **Surface Strong** (`{colors.surface-strong}` — #e5e7eb): Hairline border alternative; disabled button background.
-- **Surface Dark** (`{colors.surface-dark}` — #101010): The footer background — the only dark surface on every page. Also used for the featured pricing tier card.
-- **Surface Dark Elevated** (`{colors.surface-dark-elevated}` — #1a1a1a): Used for nested cards inside the dark footer or featured pricing card.
-- **Hairline** (`{colors.hairline}` — #e5e7eb): The 1px border tone on light surfaces. Used on input borders, table dividers, content card outlines (sometimes).
-- **Hairline Soft** (`{colors.hairline-soft}` — #f3f4f6): A barely-visible divider used between sections that share the white canvas.
-
-### Text
-- **Ink** (`{colors.ink}` — #111111): All headlines and primary text.
-- **Body** (`{colors.body}` — #374151): Default running-text color.
-- **Muted** (`{colors.muted}` — #6b7280): Secondary text — sub-headings, breadcrumbs, footer body.
-- **Muted Soft** (`{colors.muted-soft}` — #898989): Tertiary text — captions, fine-print, copyright lines.
-- **On Primary / On Dark** (`{colors.on-primary}` / `{colors.on-dark}` — #ffffff): Text on primary buttons and dark footer.
-- **On Dark Soft** (`{colors.on-dark-soft}` — #a1a1aa): Footer body text — slightly muted white for the link rows.
-
-### Semantic
-- **Success** (`{colors.success}` — #10b981): Confirmation states, success badges in product UI.
-- **Warning** (`{colors.warning}` — #f59e0b): Warning callouts.
-- **Error** (`{colors.error}` — #ef4444): Validation errors.
-
-## Typography
-
-### Font Family
-The system runs **Cal Sans** for display + brand wordmark and **Inter** for everything else. Cal Sans is Cal.com's custom geometric display typeface — slightly condensed, weight 600, negative letter-spacing. Inter handles body, buttons, navigation, captions, and tabular code blocks. The fallback stack walks `-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif` for both families.
-
-The split is functional:
-- Cal Sans (display, 600 weight, -0.5 to -2px tracking) — h1, h2, h3
-- Inter (body + UI, 400-600 weight, 0 letter-spacing) — paragraphs, labels, buttons, nav
-
-### Hierarchy
-
-| Token | Size | Weight | Line Height | Letter Spacing | Use |
-|---|---|---|---|---|---|
-| `{typography.display-xl}` | 64px | 600 | 1.05 | -2px | Homepage h1 ("The better way to schedule your meetings") — Cal Sans |
-| `{typography.display-lg}` | 48px | 600 | 1.1 | -1.5px | Section heads ("Your all-purpose scheduling app") — Cal Sans |
-| `{typography.display-md}` | 36px | 600 | 1.15 | -1px | Sub-section heads, card titles — Cal Sans |
-| `{typography.display-sm}` | 28px | 600 | 1.2 | -0.5px | CTA-band heads, pricing tier prices — Cal Sans |
-| `{typography.title-lg}` | 22px | 600 | 1.3 | -0.3px | Pricing plan names — Inter |
-| `{typography.title-md}` | 18px | 600 | 1.4 | 0 | Feature card titles, intro paragraphs |
-| `{typography.title-sm}` | 16px | 600 | 1.4 | 0 | Small card titles, list labels |
-| `{typography.body-md}` | 16px | 400 | 1.5 | 0 | Default running-text |
-| `{typography.body-sm}` | 14px | 400 | 1.5 | 0 | Footer body, fine-print |
-| `{typography.caption}` | 13px | 500 | 1.4 | 0 | Badge labels, captions |
-| `{typography.code}` | 14px | 400 | 1.5 | 0 | Code snippets, API examples — JetBrains Mono |
-| `{typography.button}` | 14px | 600 | 1.0 | 0 | Standard button labels |
-| `{typography.nav-link}` | 14px | 500 | 1.4 | 0 | Top-nav menu items |
-
-### Principles
-Cal Sans is the brand voice — every display headline uses it. Inter handles the supporting type. The boundary is strict: never put body copy in Cal Sans, never put a display headline in Inter. Cal Sans without negative letter-spacing reads as off-brand — the -0.5 to -2px tracking is part of the voice.
-
-Display weight stays at 600 across all sizes — never 700, never 500. The middle weight is what makes Cal Sans feel modern and confident without becoming bombastic.
-
-### Note on Font Substitutes
-If Cal Sans is unavailable, **Inter** at weight 600 with -0.04em letter-spacing is a usable approximation. The geometric character of Cal Sans differs from Inter's humanist forms, but the substitution preserves the weight + tracking signature. **Manrope** at weight 700 is another close alternative.
-
-## Layout
-
-### Spacing System
-- **Base unit:** 4px.
-- **Tokens:** `{spacing.xxs}` 4px · `{spacing.xs}` 8px · `{spacing.sm}` 12px · `{spacing.md}` 16px · `{spacing.lg}` 24px · `{spacing.xl}` 32px · `{spacing.xxl}` 48px · `{spacing.section}` 96px.
-- **Section padding:** `{spacing.section}` (96px) — the universal vertical rhythm between editorial bands.
-- **Card internal padding:** `{spacing.xl}` (32px) for feature cards and pricing tier cards; `{spacing.lg}` (24px) for testimonial and product-mockup cards.
-- **Gutters:** `{spacing.lg}` (24px) between cards in 3-up grids; `{spacing.md}` (16px) inside footer columns.
-
-### Grid & Container
-- **Max content width:** ~1200px centered on marketing pages.
-- **Editorial body:** Single 12-column grid; hero band often uses 7/5 split (h1 left, app mockup card right).
-- **Feature card grids:** 3-up at desktop, 2-up at tablet, 1-up at mobile.
-- **Pricing grid:** 4-up at desktop, 2-up at tablet, 1-up at mobile.
-- **Footer:** 4-column link list at desktop, wrapping to 2-up at tablet, 1-up at mobile.
-
-### Whitespace Philosophy
-Cal.com uses generous but not excessive whitespace — section padding sits at 96px (modern-SaaS standard), and card internal padding stays at 32px. The rhythm is calibrated for fast scanning: every band has a single h1 + h2 + supporting cards, never densely packed lists. The result reads as confident-not-shouting.
-
-## Elevation & Depth
-
-| Level | Treatment | Use |
-|---|---|---|
-| Flat | No shadow, no border | Body sections, top nav, hero bands |
-| Soft hairline | 1px `{colors.hairline}` border | Inputs, table dividers, occasionally on cards |
-| Card surface | `{colors.surface-card}` background — no shadow | Feature cards, testimonials |
-| Subtle drop shadow | Faint shadow at low alpha | Pricing tier cards, hover-elevated states (the system uses `0 1px 2px rgba(0,0,0,0.05)` and `0 4px 12px rgba(0,0,0,0.08)`) |
-| Featured tier | `{colors.surface-dark}` background, no shadow needed | The featured pricing tier inverts to dark surface — color contrast does the elevation work |
-
-The elevation philosophy is **soft and modern** — small drop shadows on elevated cards, color-block contrast for emphasis. No heavy shadows, no neumorphism, no glassmorphism.
-
-### Decorative Depth
-- Calendar widgets and product UI fragments embedded inside marketing cards carry their own internal shadows from the product UI itself — these are not system tokens, they're product chrome shown as content.
-- Avatar circles in testimonial sections sometimes carry pastel fill colors (`{colors.badge-orange}`, `{colors.badge-pink}`, etc.) — adds a small chromatic flourish without breaking the monochrome brand voice.
-
-## Shapes
-
-### Border Radius Scale
-
-| Token | Value | Use |
-|---|---|---|
-| `{rounded.xs}` | 4px | Almost no use — reserved for badge accents |
-| `{rounded.sm}` | 6px | Small inline buttons, dropdown items |
-| `{rounded.md}` | 8px | Standard CTA buttons, text inputs, category tabs |
-| `{rounded.lg}` | 12px | Content cards (feature cards, testimonial cards, pricing tier cards) |
-| `{rounded.xl}` | 16px | Hero app-mockup card (a slightly larger radius for the marquee component) |
-| `{rounded.pill}` | 9999px | Nav-pill-group, badge pills |
-| `{rounded.full}` | 9999px / 50% | Avatars, icon buttons |
-
-### Photography Geometry
-Avatar photos use `{rounded.full}` (perfect circles) at 36px or 40px. Product UI fragments inside marketing cards retain their native chrome (which often has its own internal radii — e.g., calendar grid cells, button rows). Hero illustration zones use 16:9 or 4:3 ratios with `{rounded.xl}` corners.
+## Visual language
+- Color:
+  - Direction: **ink, parchment, and signal** — off-white canvas, deep graphite/navy text, quiet gray surfaces, and a small set of high-signal accents.
+  - Recommended semantic palette for future token work:
+    - `canvas`: `#fbfaf7` warm off-white for page backgrounds.
+    - `surface`: `#ffffff` for primary cards and inputs.
+    - `surface-muted`: `#f1f0eb` for secondary panels and empty states.
+    - `surface-strong`: `#e3e0d8` for progress tracks, selected-neutral fills, and separators.
+    - `ink`: `#141617` for primary text and primary controls.
+    - `body`: `#3f4542` for readable body copy.
+    - `muted`: `#69716c` for metadata; avoid going lighter for essential text.
+    - `hairline`: `#d8d5cc` for borders.
+    - `primary`: `#14213d` deep navy for app identity and main CTAs.
+    - `primary-active`: `#0b162d` for hover/active.
+    - `accent`: `#0f766e` teal for active evidence, streaming, citations, and links when not primary navigation.
+    - `success`: `#15803d`, `warning`: `#b45309`, `error`: `#b91c1c`, `info`: `#2563eb`.
+  - Current implementation note: `app/globals.css` exposes inherited `cal-*` custom properties and Tailwind aliases. Future UI work may map these variables to the semantic palette above without adding dependencies; do not mention Cal.com in user-facing rationale.
+- Typography:
+  - Current implementation uses Next `Geist` and `Geist_Mono`; it is serviceable but not distinctive enough for the final product voice.
+  - Preferred future direction, still dependency-free through `next/font/google` if implemented later:
+    - Display/section headings: `IBM Plex Sans KR` or `Noto Serif KR` for Korean-capable authority. Use weight 600/700, tight but not extreme tracking.
+    - Body/UI: `IBM Plex Sans KR` for bilingual legibility and product-console restraint.
+    - Monospace/event payloads: `IBM Plex Mono` or current `Geist_Mono` if font scope stays minimal.
+  - Type rules: body text defaults to at least 16px; metadata may use 13px only when nonessential and high contrast; event JSON/code uses 12-13px with scroll containment.
+- Spacing/layout rhythm:
+  - Keep existing fluid spacing tokens as useful: `--space-fluid-xs` through `--space-fluid-xl` and `--text-fluid-*` support responsive scale.
+  - Use a 4px base rhythm with common steps 8, 12, 16, 24, 32, 48.
+  - Standard panels use 16px padding on mobile, 20-24px on tablet, 24-32px on desktop depending on density.
+  - Chat transcript should breathe more than inspectors; inspector cards can be denser if labels and dividers are clear.
+- Shape/radius/elevation:
+  - Controls: 10px radius for inputs/buttons; cards: 16px; major workspace panes: 20px.
+  - Use borders more than shadows. Shadows should be subtle and reserved for active/floating surfaces, e.g. `0 10px 30px rgb(20 22 23 / 0.08)`.
+  - Selected items may invert with primary navy, but avoid full-black selection unless contrast requires it.
+- Motion:
+  - Motion is functional: streaming answer presence, queued prompt reveal, upload progress, focus/hover, route/shell entrance.
+  - Use short timings: 120-180ms for hover/focus, 200-260ms for panel reveal, easing `cubic-bezier(0.2, 0.8, 0.2, 1)`.
+  - Respect `prefers-reduced-motion`; progress and streaming affordances must still be understandable without animation.
+- Imagery/iconography:
+  - Prefer product artifacts and evidence cards over illustrations.
+  - Icons should be sparse, line-based, and paired with text for primary actions.
+  - Entry/auth decorative modules should preview real concepts: transcript, event steps, citations, upload queue — not a calendar grid.
 
 ## Components
+- Existing components to reuse:
+  - `components/ui/button.tsx` as the only generic button primitive.
+  - `components/keymesh/Field.tsx` and `inputClassName` for labels, inputs, textareas, selects, file inputs.
+  - `components/keymesh/Status.tsx` for `EmptyState`, `ErrorState`, `Pill`.
+  - Existing `responsive-*`, `cal-card`, `cal-product-card`, `cal-heading`, `cal-label`, `cal-subcopy` helpers until a code task renames or remaps them.
+- New/changed components:
+  - Future implementation should extract app-specific primitives before adding abstractions:
+    - `WorkspacePanel`: consistent card shell with title, description, optional action, and scroll containment.
+    - `EvidenceCard`: citation/event/source metadata display with type label, provenance, and snippet/body.
+    - `TimelineStep`: redacted agent activity row with sequence, event type, timestamp when available, and safe payload preview.
+    - `DocumentQueueItem`: standardized upload/ingest row state; current `UploadQueueRow` already points in this direction.
+    - `ResourceList` / `ResourceRow`: reusable list and selectable-row primitives for conversations, documents, knowledge bases, and groups.
+    - `MessageBubble` / `ComposerBar`: transcript primitives that keep Markdown-safe assistant rendering, plain-text user messages, queued state, and send/stop affordances consistent.
+    - `ShellIdentity`: brand/session block to reduce duplication between desktop sidebar and mobile header.
+  - Do not add these until implementation work needs them; this document defines direction, not a required refactor.
+- Variants and states:
+  - Buttons:
+    - Primary: one main action per panel where possible; filled primary navy/ink.
+    - Secondary/outline: safe alternatives, cancel/edit, navigation-adjacent actions.
+    - Ghost: low-emphasis text actions only; must keep a visible focus ring.
+    - Destructive: red-tinted background with explicit confirmation for irreversible local UI actions.
+  - Fields:
+    - Always visible labels; placeholders are examples, not labels.
+    - Hints explain backend constraints, accepted formats, guest limits, or ID expectations.
+    - Focus ring must be visible against both canvas and muted panels.
+  - Status/Pill:
+    - Use semantic tones consistently: success/completed, warning/queued or limited, error/failed/destructive, info/streaming or active evidence, neutral/default.
+    - A pill should never be the only way to understand an important state; include text in row context.
+  - Chat bubbles:
+    - User messages can use primary fill; assistant messages should use readable surface with renderer-safe Markdown.
+    - Assistant content can include headings/lists/code; user content remains literal text.
+  - Event payloads:
+    - Keep raw-looking JSON visually contained and clearly labeled as redacted backend payload; long payloads scroll inside the card.
+    - Prefer summary-first rows with an optional expanded payload over raw JSON-first cards.
+- Token/component ownership:
+  - `DESIGN.md` owns brand, IA, visual language, component rules, and open questions.
+  - `app/globals.css` owns CSS custom properties, Tailwind v4 theme aliases, responsive helpers, and low-level helper classes.
+  - `components/ui/` owns generic primitives.
+  - `components/keymesh/` owns app-specific shells, workspaces, feature surfaces, and any extracted panel/list/message primitives.
+  - `localization/*.json` owns user-visible copy in Korean and English.
 
-### Top Navigation
+## Accessibility
+- Target standard:
+  - WCAG 2.2 AA for contrast, focus, keyboard access, labels, and error identification.
+  - Prefer AA+ contrast for metadata because the product is evidence-heavy.
+- Keyboard/focus behavior:
+  - All buttons, links, form controls, nav items, selected conversation/document/group rows, and upload queue actions must be keyboard reachable.
+  - `focus-visible` ring should be obvious: at least 2-3px visual treatment with sufficient offset or contrast.
+  - Chat auto-scroll must not trap users or fight manual scroll position; current near-bottom behavior is correct and should be preserved.
+- Contrast/readability:
+  - Do not use essential text below 13px; prefer 14-16px for admin metadata and 16px+ for form input text.
+  - Error/success/warning states must not rely on color alone; include labels or explanatory copy.
+  - Code/pre/event payload text needs enough contrast and internal scrolling.
+- Screen-reader semantics:
+  - Preserve `aria-live` for streaming/queued/upload announcements.
+  - Loading, empty, error, and success messages should be announced where they change task state.
+  - Use semantic headings in each panel; avoid skipping from page h1 to unlabeled dense sections.
+- Reduced motion and sensory considerations:
+  - Wrap future animations in `prefers-reduced-motion` fallbacks.
+  - Avoid flashing streaming indicators; use steady progress/typing affordances.
+  - Keep destructive confirmations clear and not purely color-coded.
 
-**`top-nav`** — White nav bar pinned to the top of every page. 64px tall, `{colors.canvas}` background. Carries the Cal.com wordmark + logo at left (the lowercase "Cal.com" with the brand circle), primary horizontal menu (Product, Solutions, Resources, Pricing, Enterprise) center, right-side cluster with "Sign in" text-link, "Sign up free" `{component.button-primary}`, and a sometimes-visible language selector. Menu items in `{typography.nav-link}` (Inter 14px / 500).
+## Responsive behavior
+- Supported breakpoints/devices:
+  - Mobile baseline: 360-430px wide, touch-first.
+  - Tablet: around 768px.
+  - Desktop: 1280px.
+  - Wide desktop: 1536px+ for multi-pane chat inspection.
+- Layout adaptations:
+  - Global/service shell:
+    - Mobile: visible header, logout, horizontally reachable primary nav, route content stacked.
+    - Desktop: persistent sidebar with brand, nav, session card, content region with bounded padding.
+  - Auth:
+    - Mobile: form should appear before excessive explanation if conversion suffers; current two-panel stack is acceptable but should be tested for scroll length.
+    - Desktop: trust/feature panel + form panel side by side.
+  - Chat:
+    - Mobile: transcript/composer should be the primary reading path after a conversation is selected; conversation list and inspectors may stack or collapse, but no route-critical panel may require horizontal scroll.
+    - Desktop: left conversation list; main column with transcript/composer and an inspector band that can be progressively disclosed.
+    - Wide desktop: run history, activity events, and citations can sit side by side, with activity events receiving the widest column, but the transcript remains the dominant surface.
+  - Admin surfaces:
+    - Use current container-query-ready `responsive-panel-grid[data-layout="form-aside"]`; forms and selected-action panels split only when the container is wide enough.
+    - De-emphasize admin-heavy density with grouped sections, collapsible/secondary action areas, and clear selected-resource context.
+    - Resource rows must wrap IDs and filenames without page overflow.
+- Touch/hover differences:
+  - Touch targets should be at least 44px high for primary controls; compact icon actions need labels or accessible names.
+  - Hover styles are enhancements only; selected/current state must be visible without hover.
 
-**`nav-pill-group`** — A small pill-radius wrapper around 2-3 sub-nav segments (e.g., the product-mode switcher between "Personal" / "Teams" / "Enterprise"). Background `{colors.surface-soft}` with internal padding 6px, rounded `{rounded.pill}`. Active segment renders as a white-canvas pill with a subtle drop shadow inside the wrapper. The pill-in-pill treatment is one of Cal.com's signature interactive components.
+## Interaction states
+- Loading:
+  - Use human-readable loading copy, not spinners alone.
+  - For shell auth restore, show clear “restoring session” state and avoid a blank protected page.
+  - For lists, maintain panel structure so layout does not jump dramatically.
+- Empty:
+  - Empty states should name the missing thing and the next action, e.g. create conversation, upload document, select a group.
+  - Empty evidence panels should explain that events/citations appear after a run, not imply failure.
+- Error:
+  - Use safe backend `{ detail }` when available; never expose stack traces, raw tokens, CSRF/session IDs, or provider secrets.
+  - Errors appear close to the failed control or panel.
+  - For failed stream/upload, preserve recoverable user input where possible.
+- Success:
+  - Success states should confirm the user-visible result and next step, e.g. account created then log in, upload completed then ingest/inspect.
+  - Avoid toast-only success for workflow-critical transitions; persistent inline status is better.
+- Disabled:
+  - Disabled actions require visible context through labels, hints, or helper text when the reason is not obvious.
+  - Do not hide backend-limited actions; show honest disabled or empty states unless the route is truly unavailable.
+- Offline/slow network, if applicable:
+  - No offline mode is currently promised.
+  - Slow streaming/upload should show progress or pending copy and allow safe cancellation/removal only when supported.
 
-### Buttons
+## Content voice
+- Tone:
+  - Precise, calm, operational, and transparent.
+  - Short sentences for controls; explanatory but not apologetic for backend limitations.
+  - Bilingual copy should preserve meaning, not line length; design must adapt to longer Korean or English strings.
+- Terminology:
+  - Use “conversation”, “run”, “activity event”, “citation”, “document”, “knowledge base”, “group”, “permission”, “guest session”.
+  - “Agent activity” means redacted operational events, not chain-of-thought.
+  - “Source” means document filename/page/snippet when backend supplies it.
+- Microcopy rules:
+  - Avoid “magic”, “brain”, “thinking”, “autonomous reasoning trace”, or claims of hidden intelligence.
+  - Say what happened and what to do next: “Run failed. Try again or edit the message.”
+  - For ID-based fields, explicitly ask for “user ID” or “group ID”; do not imply user search exists.
+  - Keep user-visible strings in `localization/ko.json` and `localization/en.json`.
 
-**`button-primary`** — The signature primary CTA. Background `{colors.primary}` (#111111), text `{colors.on-primary}`, type `{typography.button}` (Inter 14px / 600), padding 12px × 20px, height 40px, rounded `{rounded.md}` (8px). Active state `button-primary-active` shifts to `{colors.primary-active}` (#242424).
+## Implementation constraints
+- Framework/styling system:
+  - Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4, Base UI/shadcn-style local components.
+  - En/ko localization, backend-owned auth/guest/upload limits, and the safe assistant Markdown rendering boundary are hard constraints.
+  - No new dependencies or backend edits from design/UI work unless the user explicitly approves a later implementation scope.
+  - Read local Next.js 16 docs before route/cookie/cache/server behavior changes; design-only changes should not touch these.
+- Design-token constraints:
+  - Preserve useful existing fluid type/spacing and responsive helper tokens.
+  - Current class names include `cal-*` because of prior theme work. Future frontend implementation may either:
+    - remap existing `cal-*` CSS variables to this product-specific palette with minimal code churn, or
+    - introduce semantic aliases such as `--surface`, `--ink`, `--signal-*` while keeping backward-compatible Tailwind aliases during migration.
+  - Do not perform a broad token rename without tests/build and a visual smoke.
+  - Prefer semantic status colors used sparingly and consistently over decorative color variety.
+- Performance constraints:
+  - Keep CSS and component primitives lightweight; improve reuse with small local primitives before creating new abstractions.
+  - Prefer CSS transitions and existing Tailwind utilities; do not add animation/chart libraries for polish.
+  - Event payloads and Markdown rendering must remain safe and bounded; preserve the assistant-only Markdown boundary and plain-text user message behavior.
+- Compatibility constraints:
+  - Must remain responsive across 360px, 390px, 768px, 1280px, and 1536px+ checks.
+  - Must support Korean and English strings from localization dictionaries.
+  - Must preserve backend boundary and BFF security assumptions.
+- Test/screenshot expectations:
+  - Documentation-only changes: `git diff --check` is sufficient unless docs alter commands/contracts.
+  - UI/theme/layout changes: run `pnpm lint`, `pnpm exec tsc --noEmit`, relevant Vitest/Playwright checks, `pnpm build`, and inspect relevant pages in a browser when possible.
+  - Responsive visual work should verify no horizontal overflow at narrow/tablet/desktop widths and record evidence in `docs/implementation-log.md` for substantial changes.
+  - Fixed-height desktop shells must degrade safely on mobile; test scroll regions so transcript, composer, and inspectors do not become overflow traps.
 
-**`button-secondary`** — White button with hairline outline. Background `{colors.canvas}`, text `{colors.ink}`, 1px hairline border, same padding + height + radius as primary.
-
-**`button-icon-circular`** — 36 × 36px circular icon button. Background `{colors.canvas}`, hairline border, ink-color icon. Used for share, "view more", carousel arrows.
-
-**`button-text-link`** — Inline text button, no background. Used for "Sign in" in the top nav and inline CTA links inside cards.
-
-**`text-link`** — Inline body links in `{colors.ink}` (the brand keeps inline links monochrome). Underlined on hover (not documented per the no-hover policy, but mentioned for context).
-
-### Cards & Containers
-
-**`hero-band`** — White-canvas hero with a 7-5 grid: h1 + sub-headline + button row on the left, `{component.hero-app-mockup-card}` on the right. Vertical padding `{spacing.section}` (96px).
-
-**`hero-app-mockup-card`** — A larger product-UI mockup card showing the actual Cal.com booking widget with calendar grid, time slots, and a primary "Confirm" button inside. Background `{colors.canvas}`, 1px hairline border, rounded `{rounded.xl}` (16px), subtle drop shadow. Used as the hero's right-side artifact.
-
-**`feature-card`** — Used in 3-up feature grids ("With us, appointment scheduling is easy"). Background `{colors.surface-card}` (#f5f5f5), rounded `{rounded.lg}` (12px), internal padding `{spacing.xl}` (32px). Carries a small icon at top, an `{typography.title-md}` headline, and a body description in `{typography.body-md}`.
-
-**`feature-icon-card`** — A simpler card variant used in 4-up feature grids on lower-density bands. Background `{colors.canvas}` with hairline border, rounded `{rounded.lg}`, padding `{spacing.lg}` (24px). Carries a small icon, `{typography.title-sm}` title, short description.
-
-**`product-mockup-card`** — A card showing actual Cal.com product UI fragments (workflow editor, calendar grid, integration grid, automation flow). Background `{colors.canvas}`, rounded `{rounded.lg}`, padding `{spacing.lg}` (24px). The product UI inside has its own internal chrome — these cards display the product, they don't decorate around it.
-
-**`testimonial-card`** — Used in customer-quote grids. Background `{colors.surface-card}`, rounded `{rounded.lg}`, padding `{spacing.lg}` (24px). Top row carries a `{component.avatar-circle}` + name + role; below sits the testimonial quote in `{typography.body-md}`.
-
-**`pricing-tier-card`** — Standard tier card. Background `{colors.canvas}`, rounded `{rounded.lg}`, padding `{spacing.xl}` (32px). Carries the plan name in `{typography.title-lg}`, price in `{typography.display-sm}`, feature checklist in `{typography.body-md}`, and a `{component.button-primary}` at the bottom.
-
-**`pricing-tier-card-featured`** — The featured tier (typically "Teams"). Background flips to `{colors.surface-dark}` (#101010), text inverts to `{colors.on-dark}`. The dark surface IS the featured-tier signal — no accent border, no badge, no scale shift.
-
-### Inputs & Forms
-
-**`text-input`** — Standard text input. Background `{colors.canvas}`, text `{colors.ink}`, type `{typography.body-md}`, rounded `{rounded.md}` (8px), padding 10px × 14px, height 40px. 1px hairline border in `{colors.hairline}`.
-
-**`text-input-focused`** — Focus state. Border thickens or shifts to `{colors.ink}` for emphasis.
-
-### Tags / Badges
-
-**`badge-pill`** — Small pill label used for category tags ("Product", "Article", "New") and pastel-fill avatar substitutes. Background `{colors.surface-card}` or one of the badge pastels (`{colors.badge-orange}`, `{colors.badge-pink}`, etc.), text `{colors.ink}`, type `{typography.caption}` (13px / 500), rounded `{rounded.pill}`, padding 4px × 12px.
-
-**`avatar-circle`** — 36px diameter, rounded `{rounded.full}`. Either holds a photo or a pastel fill with initials in `{typography.caption}`.
-
-**`rating-stars`** — Inline star rating in `{colors.badge-orange}` (#fb923c). Used near testimonial avatars to display a 5-star satisfaction score.
-
-### Tab / Filter
-
-**`category-tab`** + **`category-tab-active`** — Used inside the nav-pill-group. Inactive: transparent background, `{colors.muted}` text. Active: `{colors.canvas}` background, `{colors.ink}` text, subtle drop shadow inside the pill-group wrapper. Padding 8px × 14px, rounded `{rounded.md}`.
-
-### CTA / Footer
-
-**`cta-band-light`** — A pre-footer "Smarter, simpler scheduling" CTA card. Background `{colors.surface-card}`, rounded `{rounded.lg}`, padding `{spacing.xxl}` (48px). Carries an h2 in `{typography.display-sm}`, a sub-line, and a `{component.button-primary}` centered.
-
-**`footer`** — Dark navy footer that closes every page. Background `{colors.surface-dark}` (#101010), text `{colors.on-dark-soft}`. 4-column link list at desktop covering Product / Solutions / Company / Resources. Vertical padding 64px. The Cal.com wordmark sits at the top-left in `{colors.on-dark}`. The footer is the only dark surface on every page — the deliberate inversion visually closes the page.
-
-## Do's and Don'ts
-
-### Do
-- Reserve `{colors.primary}` (#111111) for primary CTAs and h1/h2 type. Cal.com's button is near-black, not blue.
-- Use Cal Sans for every display headline. Pair with Inter body. Never blur the boundary.
-- Apply negative letter-spacing on display sizes (-0.5 to -2px). Cal Sans without it reads as off-brand.
-- Use `{component.feature-card}` (light gray) and `{component.product-mockup-card}` (white with chrome) deliberately — the gray cards signal "abstract feature claim", white cards signal "look at the actual product".
-- Embed real product UI fragments inside marketing cards. Don't paint marketing illustrations of the product when you can show the product itself.
-- Keep avatar circles at 36px, perfect circles, sometimes with pastel fills. Avatars are the only place where badge pastels appear.
-- Use `{component.nav-pill-group}` for grouped sub-nav segments. The pill-in-pill treatment is signature.
-- End every page with the dark footer. The light-to-dark transition is part of the editorial rhythm.
-
-### Don't
-- Don't use accent colors (`{colors.brand-accent}`, badge pastels) on primary CTAs. The system is monochrome at the action layer.
-- Don't bold display weight beyond 600. Cal Sans at 700 reads as bombastic.
-- Don't use rounded radius beyond `{rounded.xl}` (16px) on cards. Larger radii read as consumer-app, not professional booking software.
-- Don't put dark surface cards anywhere except the footer and the featured pricing tier. The dark surface is a deliberate, scarce signal.
-- Don't repeat the same surface mode in two consecutive bands. Cal.com's pacing alternates white → light-gray → white → product-mockup-card → white → dark-footer.
-- Don't add hover state styling beyond what the system already encodes — primary darkens on press; nothing else changes.
-
-## Responsive Behavior
-
-Repo workflow: whenever UI/theme/layout code changes, apply `.agents/skills/responsive-design/SKILL.md` alongside this contract. In practice, new surfaces should start mobile-first, use the shared fluid CSS tokens in `app/globals.css`, prefer reusable responsive helpers (`responsive-container`, `responsive-section`, `responsive-panel`, `responsive-panel-grid`, `responsive-card-grid`, `responsive-scroll`) before one-off breakpoint strings, and verify narrow-width overflow before desktop polish.
-
-### Breakpoints
-
-| Name | Width | Key Changes |
-|---|---|---|
-| Mobile | < 768px | Hamburger nav; hero h1 64→32px; hero-app-mockup-card stacks below content; feature grids 1-up; pricing 1-up; footer 4 cols → 1 |
-| Tablet | 768–1024px | Top nav stays horizontal but tightens; nav-pill-group wraps; feature cards 2-up; pricing 2-up |
-| Desktop | 1024–1440px | Full top-nav with all menu items; 3-up feature cards; 4-up pricing tiers |
-| Wide | > 1440px | Same as desktop with more outer breathing room; max content width caps at 1200px |
-
-### Touch Targets
-- `{component.button-primary}` at minimum 40 × 40px.
-- `{component.button-icon-circular}` at exactly 36 × 36 — slightly under WCAG's 44 × 44 but the centered icon and full-circle silhouette compensate.
-- `{component.text-input}` height is 40px.
-- `{component.category-tab}` rendered inside nav-pill-group has 8 × 14 padding; effective tap area meets 44px+ with the surrounding pill.
-
-### Collapsing Strategy
-- Top nav collapses to hamburger at < 768px; menu opens as a full-screen sheet.
-- Hero band's 7-5 grid collapses to single-column on mobile — h1 + sub-head + buttons first, then the app-mockup card below.
-- Feature grids reduce columns rather than scaling cards down.
-- Pricing tier cards collapse 4 → 2 → 1; featured-tier dark surface stays visually distinct at every breakpoint.
-- Nav-pill-group wraps to multi-row on tablet if the segments don't fit horizontally.
-- Avatar + testimonial card layouts stay grid-aligned at every breakpoint.
-
-### Image Behavior
-- Product UI fragments inside cards retain native aspect ratios; the cards themselves resize.
-- Avatar photos crop to circles at every breakpoint.
-- Hero app-mockup card scales proportionally on mobile — the calendar grid stays legible.
-
-## Iteration Guide
-
-1. Focus on ONE component at a time. Reference its YAML key directly (`{component.feature-card}`, `{component.pricing-tier-card-featured}`).
-2. Variants of an existing component (`-active`, `-disabled`, `-focused`) live as separate entries in `components:`.
-3. Use `{token.refs}` everywhere — never inline hex.
-4. Never document hover. Default and Active/Pressed states only.
-5. Display headlines stay Cal Sans 600 with negative letter-spacing. Body stays Inter 400. The trinity does not blur.
-6. The dark footer is the only dark surface on most pages. Don't add other dark cards casually.
-7. When in doubt about emphasis: bigger Cal Sans before bolder Cal Sans.
-
-## Known Gaps
-
-- The dembrandt frequency analyzer captured `Buttons: 0 variants` — Cal.com renders most CTAs as styled `<a>` link elements rather than `<button>` tags, which dembrandt's button selector doesn't capture. Button styles are documented from screenshot ground-truth + standard Cal Sans / Inter baselines.
-- Cal Sans is licensed to Cal.com and not available as a public web font; substitutes are documented in the typography section.
-- The badge pastel set (orange / pink / violet / emerald) is documented from observed avatar fill colors; exact hex values may shift seasonally.
-- Animation and transition timings (calendar slot picker, schedule confirmation, integration grid hover-reveal) are not in scope.
-- Form validation states beyond `{component.text-input-focused}` are not extracted — error / success states would need a sign-up or booking flow to confirm.
-- The actual booking widget surface (cal.com/{username}) is the product, not a marketing surface; its spec is out of scope.
-- Avatar photos in testimonial sections sometimes carry pastel circular fills with initials instead of photographs; both treatments coexist on the same page.
+## Open questions
+- [ ] Product owner / brand name: Should the visible product remain `my-agents`, or should the UI adopt a more ownable service name such as “Keymesh” while keeping repository/API names unchanged? Impact: brand lockup, metadata, copy, and nav identity.
+- [ ] Product owner / typography approval: Is a later `next/font/google` switch to `IBM Plex Sans KR` acceptable for a more distinctive bilingual voice, or must the app retain Geist for Vercel/default consistency? Impact: visual personality and Korean/English rendering.
+- [ ] Frontend owner / token migration: Should future implementation keep `cal-*` class names as compatibility aliases or migrate them to product-neutral names? Impact: diff size and risk during UI polish.
+- [ ] Frontend owner / primitive extraction: Which primitive should be extracted first after token work: `WorkspacePanel`, `ResourceList`, `MessageBubble`, or `EvidenceCard`? Impact: reduces ad hoc class strings without forcing a large refactor.
+- [ ] Backend/product owner / event display contract: Which event payload keys are guaranteed safe and stable for public display? Impact: activity timeline formatting and redaction confidence.
+- [ ] Backend/product owner / admin UX: Will user search/member listing arrive, or should ID-based group/permission workflows remain first-class? Impact: layout priority and field guidance.
