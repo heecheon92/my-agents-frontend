@@ -99,3 +99,27 @@ export function useRunConversation(conversationId?: string) {
     },
   });
 }
+
+export function useReplayAssistantMessage(conversationId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (messageId: string) =>
+      myAgentsAPI.conversations.replayMessage(conversationId ?? "", messageId),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.conversations.messages(
+          data.conversation_id,
+        ),
+      });
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.conversations.runs(data.conversation_id),
+      });
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.conversations.run(
+          data.conversation_id,
+          data.run_id,
+        ),
+      });
+    },
+  });
+}

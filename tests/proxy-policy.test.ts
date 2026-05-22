@@ -87,6 +87,12 @@ describe("proxy policy", () => {
     expect(
       isAllowedBackendPath("GET", "/conversations/abc/runs/run-1").allowed,
     ).toBe(true);
+    expect(
+      isAllowedBackendPath(
+        "POST",
+        "/conversations/abc/messages/message-1/replay",
+      ).allowed,
+    ).toBe(true);
   });
 
   it("blocks legacy assistant chat and unknown paths before forwarding", () => {

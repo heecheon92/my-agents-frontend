@@ -79,6 +79,39 @@ describe("MyAgentsConversationAPI", () => {
     ]);
   });
 
+  it("replays assistant messages through the backend replay contract", async () => {
+    const calls: Array<{ path: string; init?: unknown }> = [];
+    const api = new MyAgentsConversationAPI({
+      fetch: async (path, init) => {
+        calls.push({ path, init });
+        return {
+          run_id: "run-2",
+          conversation_id: "conversation-1",
+          reply: "Regenerated answer",
+          route: { label: "general_assistant", explanation: "test" },
+          handled_by: "personal_assistant_graph",
+          knowledge_base_selection: { mode: "all", knowledge_base_ids: [] },
+          resolved_knowledge_base_count: 0,
+          citations: [],
+        };
+      },
+      fetchResponse: async () => new Response(),
+    });
+
+    await expect(
+      api.replayMessage("conversation-1", "message-1"),
+    ).resolves.toMatchObject({
+      run_id: "run-2",
+      reply: "Regenerated answer",
+    });
+    expect(calls).toEqual([
+      {
+        path: "/conversations/conversation-1/messages/message-1/replay",
+        init: { method: "POST" },
+      },
+    ]);
+  });
+
   it("fetches completed run detail for refresh-safe citations", async () => {
     const calls: string[] = [];
     const api = new MyAgentsConversationAPI({

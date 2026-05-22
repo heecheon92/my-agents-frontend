@@ -9,6 +9,7 @@ import {
   useConversations,
   useCreateConversation,
   useMessages,
+  useReplayAssistantMessage,
   useRunDetail,
   useRunEvents,
   useRuns,
@@ -27,6 +28,7 @@ import type {
   Message,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
+import { isMyAgentsAPIError } from "@/services/my-agents/MyAgentsAPIError";
 import { AgentMessageRenderer } from "./AgentMessageRenderer";
 import { inputClassName } from "./Field";
 import { EmptyState, ErrorState, Pill } from "./Status";
@@ -89,6 +91,7 @@ export function ChatWorkspace() {
   const activeId = selectedId ?? conversations.data?.[0]?.id;
   const conversation = useConversation(activeId);
   const messages = useMessages(activeId);
+  const replayAssistantMessage = useReplayAssistantMessage(activeId);
   const runs = useRuns(activeId);
   const sortedRuns = useMemo(() => {
     return [...(runs.data ?? [])].sort(
@@ -110,6 +113,14 @@ export function ChatWorkspace() {
     null,
   );
   const [statusAnnouncement, setStatusAnnouncement] = useState("");
+  const [replayingMessageId, setReplayingMessageId] = useState<string | null>(
+    null,
+  );
+  const [replayNotice, setReplayNotice] = useState<{
+    messageId: string;
+    message: string;
+    tone: "error" | "success";
+  } | null>(null);
   const [liveActivityEvents, setLiveActivityEvents] = useState<
     LiveActivityEvent[]
   >([]);
@@ -430,6 +441,51 @@ export function ChatWorkspace() {
     );
   }
 
+  async function handleReplayAssistantMessage(messageId: string) {
+    if (
+      !activeId ||
+      isStreaming ||
+      isCancelling ||
+      replayAssistantMessage.isPending
+    ) {
+      return;
+    }
+
+    setReplayingMessageId(messageId);
+    setReplayNotice(null);
+    setStatusAnnouncement(localization.replayStartedAnnouncement);
+
+    try {
+      await replayAssistantMessage.mutateAsync(messageId);
+      setReplayNotice({
+        messageId,
+        message: localization.replaySuccess,
+        tone: "success",
+      });
+      setStatusAnnouncement(localization.replaySuccessAnnouncement);
+    } catch (error) {
+      const isConflict = isMyAgentsAPIError(error) && error.status === 409;
+      const message =
+        error instanceof Error
+          ? error.message
+          : isConflict
+            ? localization.replayConflict
+            : localization.replayFailed;
+      setReplayNotice({
+        messageId,
+        message: isConflict ? message || localization.replayConflict : message,
+        tone: "error",
+      });
+      setStatusAnnouncement(
+        isConflict
+          ? localization.replayConflictAnnouncement
+          : localization.replayFailedAnnouncement,
+      );
+    } finally {
+      setReplayingMessageId(null);
+    }
+  }
+
   const sortedMessages = useMemo(() => {
     const persistedMessages = messages.data ?? [];
     if (!optimisticMessage || optimisticMessage.conversation_id !== activeId) {
@@ -616,30 +672,68 @@ export function ChatWorkspace() {
             ) : null}
             {messages.error ? <ErrorState error={messages.error} /> : null}
             <div className="grid gap-3">
-              {sortedMessages.map((message) => (
-                <div
-                  key={message.id}
-                  className={cn(
-                    "max-w-[88%] overflow-hidden rounded-xl border px-4 py-3 text-sm leading-6 sm:max-w-[78%]",
-                    message.role === "user"
-                      ? "ml-auto border-cal-primary bg-cal-primary text-white"
-                      : "border-cal-hairline bg-cal-surface-soft text-cal-ink",
-                  )}
-                >
-                  <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] opacity-60">
-                    {localization.roles[
-                      message.role as keyof typeof localization.roles
-                    ] ?? message.role}
-                  </p>
-                  {message.role === "assistant" ? (
-                    <AgentMessageRenderer content={message.content} />
-                  ) : (
-                    <p className="whitespace-pre-wrap break-words">
-                      {message.content}
-                    </p>
-                  )}
-                </div>
-              ))}
+              {sortedMessages.map((message) => {
+                const isAssistant = message.role === "assistant";
+                const isReplaying = replayingMessageId === message.id;
+                const replayDisabled =
+                  isStreaming ||
+                  isCancelling ||
+                  replayAssistantMessage.isPending;
+                return (
+                  <div
+                    key={message.id}
+                    className={cn(
+                      "max-w-[88%] overflow-hidden rounded-xl border px-4 py-3 text-sm leading-6 sm:max-w-[78%]",
+                      message.role === "user"
+                        ? "ml-auto border-cal-primary bg-cal-primary text-white"
+                        : "border-cal-hairline bg-cal-surface-soft text-cal-ink",
+                    )}
+                  >
+                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-60">
+                        {localization.roles[
+                          message.role as keyof typeof localization.roles
+                        ] ?? message.role}
+                      </p>
+                      {isAssistant ? (
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() =>
+                            handleReplayAssistantMessage(message.id)
+                          }
+                          disabled={replayDisabled}
+                          aria-busy={isReplaying}
+                        >
+                          {isReplaying
+                            ? localization.replayLoading
+                            : localization.replayAction}
+                        </Button>
+                      ) : null}
+                    </div>
+                    {isAssistant ? (
+                      <AgentMessageRenderer content={message.content} />
+                    ) : (
+                      <p className="whitespace-pre-wrap break-words">
+                        {message.content}
+                      </p>
+                    )}
+                    {replayNotice?.messageId === message.id ? (
+                      <p
+                        className={cn(
+                          "mt-3 rounded-lg border px-3 py-2 text-xs leading-5",
+                          replayNotice.tone === "success"
+                            ? "border-cal-success/20 bg-cal-success/10 text-cal-success"
+                            : "border-cal-error/20 bg-cal-error/10 text-cal-error",
+                        )}
+                      >
+                        {replayNotice.message}
+                      </p>
+                    ) : null}
+                  </div>
+                );
+              })}
               {isStreaming || streamedReply ? (
                 <div className="max-w-[88%] overflow-hidden rounded-xl border border-cal-hairline bg-cal-surface-soft px-4 py-3 text-sm leading-6 text-cal-ink sm:max-w-[78%]">
                   <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">

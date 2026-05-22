@@ -68,6 +68,13 @@ export const BFF_ALLOWLIST: Rule[] = [
   },
   {
     method: "POST",
+    pattern: new RegExp(
+      `^/conversations/${uuidLike}/messages/${uuidLike}/replay$`,
+    ),
+    name: "messages.replay",
+  },
+  {
+    method: "POST",
     pattern: new RegExp(`^/conversations/${uuidLike}/runs$`),
     name: "runs.create",
   },

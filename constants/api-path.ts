@@ -19,6 +19,9 @@ export const API_PATH = {
     messages(conversationId: string) {
       return `${this.detail(conversationId)}/messages`;
     },
+    replayMessage(conversationId: string, messageId: string) {
+      return `${this.messages(conversationId)}/${messageId}/replay`;
+    },
     runs(conversationId: string) {
       return `${this.detail(conversationId)}/runs`;
     },

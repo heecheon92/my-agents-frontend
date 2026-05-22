@@ -164,7 +164,16 @@
     "knowledgeSourceRequired": "Select at least one knowledge base or switch back to All knowledge bases.",
     "knowledgeSourceQueuedSelected": "Queued source: {names}",
     "knowledgeSourceQueuedFallback": "Queued source: selected knowledge bases",
-    "knowledgeBaseLabel": "Knowledge base"
+    "knowledgeBaseLabel": "Knowledge base",
+    "replayAction": "Regenerate",
+    "replayLoading": "Regenerating...",
+    "replayStartedAnnouncement": "Regenerating the assistant message.",
+    "replaySuccess": "Regenerated. The conversation was refreshed with the backend replay result.",
+    "replaySuccessAnnouncement": "Assistant message regenerated.",
+    "replayFailed": "Could not regenerate this assistant message.",
+    "replayFailedAnnouncement": "Assistant message regeneration failed.",
+    "replayConflict": "Only the latest assistant message can be regenerated right now.",
+    "replayConflictAnnouncement": "This assistant message cannot be regenerated because it is not the latest replayable answer."
   },
   "admin": {
     "common": {

@@ -129,6 +129,21 @@ export class MyAgentsConversationAPI {
     );
   }
 
+  async replayMessage(
+    conversationId: string,
+    messageId: string,
+  ): Promise<ConversationRunResponse> {
+    return parseWithSchema(
+      conversationRunResponseSchema,
+      await this.client.fetch(
+        API_PATH.conversations.replayMessage(conversationId, messageId),
+        {
+          method: "POST",
+        },
+      ),
+    );
+  }
+
   async run(
     conversationId: string,
     payload: ConversationRunRequest,

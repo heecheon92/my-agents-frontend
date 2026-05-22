@@ -24,6 +24,9 @@ describe("API_PATH", () => {
     expect(API_PATH.conversations.runEvents(conversationId, runId)).toBe(
       "/conversations/conversation-1/runs/run-1/events",
     );
+    expect(API_PATH.conversations.replayMessage(conversationId, "msg-1")).toBe(
+      "/conversations/conversation-1/messages/msg-1/replay",
+    );
   });
 
   it("builds document operation paths", () => {

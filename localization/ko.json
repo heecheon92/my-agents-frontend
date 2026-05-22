@@ -164,7 +164,16 @@
     "knowledgeSourceRequired": "지식 베이스를 하나 이상 선택하거나 모든 지식 베이스로 전환하세요.",
     "knowledgeSourceQueuedSelected": "예약된 소스: {names}",
     "knowledgeSourceQueuedFallback": "예약된 소스: 선택한 지식 베이스",
-    "knowledgeBaseLabel": "지식 베이스"
+    "knowledgeBaseLabel": "지식 베이스",
+    "replayAction": "다시 생성",
+    "replayLoading": "다시 생성 중...",
+    "replayStartedAnnouncement": "어시스턴트 메시지를 다시 생성하는 중입니다.",
+    "replaySuccess": "다시 생성했습니다. 백엔드 replay 결과로 대화를 새로고침했습니다.",
+    "replaySuccessAnnouncement": "어시스턴트 메시지를 다시 생성했습니다.",
+    "replayFailed": "이 어시스턴트 메시지를 다시 생성하지 못했습니다.",
+    "replayFailedAnnouncement": "어시스턴트 메시지 다시 생성에 실패했습니다.",
+    "replayConflict": "현재는 최신 어시스턴트 메시지만 다시 생성할 수 있습니다.",
+    "replayConflictAnnouncement": "이 메시지는 다시 생성 가능한 최신 답변이 아니어서 다시 생성할 수 없습니다."
   },
   "admin": {
     "common": {
