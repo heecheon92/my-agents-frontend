@@ -11,12 +11,12 @@ import {
   useUpdateMember,
 } from "@/hooks/use-groups";
 import {
-  useCreateDocument,
   useCreateKnowledgeBase,
-  useDeleteDocument,
-  useDocuments,
-  useExtractionRuns,
-  useIngestDocument,
+  useCreateKnowledgeBaseDocument,
+  useDeleteKnowledgeBaseDocument,
+  useIngestKnowledgeBaseDocument,
+  useKnowledgeBaseDocuments,
+  useKnowledgeBaseExtractionRuns,
   useKnowledgeBases,
   usePatchDocumentPermission,
 } from "@/hooks/use-knowledge";
@@ -175,8 +175,13 @@ export function KnowledgeSurface() {
 
 export function DocumentsSurface() {
   const queryClient = useQueryClient();
-  const documents = useDocuments();
-  const createDocument = useCreateDocument();
+  const knowledgeBases = useKnowledgeBases();
+  const [selectedKnowledgeBaseId, setSelectedKnowledgeBaseId] =
+    useState<string>();
+  const activeKnowledgeBaseId =
+    selectedKnowledgeBaseId ?? knowledgeBases.data?.[0]?.id;
+  const documents = useKnowledgeBaseDocuments(activeKnowledgeBaseId);
+  const createDocument = useCreateKnowledgeBaseDocument(activeKnowledgeBaseId);
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
@@ -184,12 +189,23 @@ export function DocumentsSurface() {
   const [uploadAnnouncement, setUploadAnnouncement] = useState("");
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>();
   const activeDocumentId = selectedDocumentId ?? documents.data?.[0]?.id;
-  const extractionRuns = useExtractionRuns(activeDocumentId);
-  const ingest = useIngestDocument(activeDocumentId);
-  const deleteDocument = useDeleteDocument(activeDocumentId);
+  const extractionRuns = useKnowledgeBaseExtractionRuns(
+    activeKnowledgeBaseId,
+    activeDocumentId,
+  );
+  const ingest = useIngestKnowledgeBaseDocument(
+    activeKnowledgeBaseId,
+    activeDocumentId,
+  );
+  const deleteDocument = useDeleteKnowledgeBaseDocument(
+    activeKnowledgeBaseId,
+    activeDocumentId,
+  );
   const patchPermission = usePatchDocumentPermission(activeDocumentId);
   const [permissionUserId, setPermissionUserId] = useState("");
   const { localization } = useLocalization((state) => state.localization.admin);
+  const hasActiveKnowledgeBase = Boolean(activeKnowledgeBaseId);
+
   const pendingQueueCount = uploadQueue.filter(
     (item) =>
       item.status === "selected" ||
@@ -205,6 +221,8 @@ export function DocumentsSurface() {
   const queueSummary = localization.documents.uploadQueueSummary
     .replace("{completed}", String(completedQueueCount))
     .replace("{total}", String(uploadQueue.length));
+  const isKnowledgeBaseSelectionLocked =
+    isProcessingQueue || pendingQueueCount > 0;
 
   function updateQueueItem(
     localId: string,
@@ -280,13 +298,20 @@ export function DocumentsSurface() {
   }
 
   async function refreshDocumentQueries(documentId?: string) {
-    await queryClient.invalidateQueries({
-      queryKey: MyAgentsQueryKeys.documents.list(),
-    });
-    if (documentId) {
+    if (activeKnowledgeBaseId) {
       await queryClient.invalidateQueries({
-        queryKey: MyAgentsQueryKeys.documents.extractionRuns(documentId),
+        queryKey: MyAgentsQueryKeys.knowledgeBases.documents(
+          activeKnowledgeBaseId,
+        ),
       });
+      if (documentId) {
+        await queryClient.invalidateQueries({
+          queryKey: MyAgentsQueryKeys.knowledgeBases.extractionRuns(
+            activeKnowledgeBaseId,
+            documentId,
+          ),
+        });
+      }
     }
   }
 
@@ -297,7 +322,14 @@ export function DocumentsSurface() {
   ) {
     let latestRun: ExtractionRun | null = null;
     while (true) {
-      const run = await myAgentsAPI.documents.extractionRun(documentId, runId);
+      if (!activeKnowledgeBaseId) {
+        throw new Error(localization.documents.knowledgeBaseRequired);
+      }
+      const run = await myAgentsAPI.documents.extractionRunInKnowledgeBase(
+        activeKnowledgeBaseId,
+        documentId,
+        runId,
+      );
       latestRun = run;
       updateQueueItem(localId, {
         extractionRunId: run.id,
@@ -312,6 +344,15 @@ export function DocumentsSurface() {
   }
 
   async function processQueueItem(item: UploadQueueItem) {
+    if (!activeKnowledgeBaseId) {
+      updateQueueItem(item.localId, {
+        status: "failed",
+        error: localization.documents.knowledgeBaseRequired,
+        progressPercent: 0,
+      });
+      return;
+    }
+
     if (!item.documentId) {
       const validationError = validateUploadFile(item.file);
       if (validationError) {
@@ -332,10 +373,13 @@ export function DocumentsSurface() {
           progressPercent: 10,
           error: undefined,
         });
-        const uploaded = await myAgentsAPI.documents.upload({
-          title: item.title.trim() || titleFromFileName(item.file.name),
-          file: item.file,
-        });
+        const uploaded = await myAgentsAPI.documents.uploadToKnowledgeBase(
+          activeKnowledgeBaseId,
+          {
+            title: item.title.trim() || titleFromFileName(item.file.name),
+            file: item.file,
+          },
+        );
         documentId = uploaded.id;
         setSelectedDocumentId(uploaded.id);
         updateQueueItem(item.localId, {
@@ -351,7 +395,10 @@ export function DocumentsSurface() {
         progressPercent: 40,
         error: undefined,
       });
-      const run = await myAgentsAPI.documents.ingestAsync(documentId);
+      const run = await myAgentsAPI.documents.ingestAsyncInKnowledgeBase(
+        activeKnowledgeBaseId,
+        documentId,
+      );
       updateQueueItem(item.localId, {
         extractionRunId: run.id,
         status: run.status === "pending" ? "queued" : "ingesting",
@@ -413,7 +460,13 @@ export function DocumentsSurface() {
         item.status === "uploaded" ||
         (item.status === "failed" && Boolean(item.documentId)),
     );
-    if (processableItems.length === 0 || isProcessingQueue) return;
+    if (
+      processableItems.length === 0 ||
+      isProcessingQueue ||
+      !activeKnowledgeBaseId
+    ) {
+      return;
+    }
 
     setIsProcessingQueue(true);
     setUploadAnnouncement(localization.documents.uploadStartedAnnouncement);
@@ -438,6 +491,7 @@ export function DocumentsSurface() {
   async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
+      if (!activeKnowledgeBaseId) return;
       const created = await createDocument.mutateAsync({ title, content });
       setTitle("");
       setContent("");
@@ -466,6 +520,7 @@ export function DocumentsSurface() {
         (document) => document.id !== activeDocumentId,
       )?.id;
       await deleteDocument.mutateAsync();
+      await refreshDocumentQueries();
       setSelectedDocumentId(nextDocumentId);
     } catch {
       // React Query stores the API error on the mutation; render it below.
@@ -498,6 +553,56 @@ export function DocumentsSurface() {
       <div className="responsive-panel">
         <div className="responsive-panel-grid" data-layout="form-aside">
           <div className="grid gap-4">
+            <section className="cal-card grid gap-3 rounded-xl p-4">
+              <div>
+                <h2 className="font-semibold">
+                  {localization.documents.knowledgeBaseTitle}
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-cal-muted">
+                  {localization.documents.knowledgeBaseHint}
+                </p>
+              </div>
+              <Field label={localization.documents.knowledgeBaseLabel}>
+                <select
+                  className={inputClassName}
+                  value={activeKnowledgeBaseId ?? ""}
+                  onChange={(event) => {
+                    setSelectedKnowledgeBaseId(event.target.value || undefined);
+                    setSelectedDocumentId(undefined);
+                  }}
+                  disabled={
+                    knowledgeBases.isLoading || isKnowledgeBaseSelectionLocked
+                  }
+                  required
+                >
+                  <option value="">
+                    {localization.documents.knowledgeBasePlaceholder}
+                  </option>
+                  {knowledgeBases.data?.map((knowledgeBase) => (
+                    <option key={knowledgeBase.id} value={knowledgeBase.id}>
+                      {knowledgeBase.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              {isKnowledgeBaseSelectionLocked ? (
+                <p className="text-xs leading-5 text-cal-muted">
+                  {localization.documents.knowledgeBaseLockedHint}
+                </p>
+              ) : null}
+              {knowledgeBases.error ? (
+                <ErrorState error={knowledgeBases.error} />
+              ) : null}
+              {!knowledgeBases.isLoading &&
+              knowledgeBases.data?.length === 0 ? (
+                <EmptyState
+                  title={localization.documents.noKnowledgeBaseTitle}
+                  description={
+                    localization.documents.noKnowledgeBaseDescription
+                  }
+                />
+              ) : null}
+            </section>
             <form
               onSubmit={handleCreate}
               className="cal-card grid gap-3 rounded-xl p-4"
@@ -525,7 +630,11 @@ export function DocumentsSurface() {
               </Field>
               <Button
                 type="submit"
-                disabled={createDocument.isPending || !title.trim()}
+                disabled={
+                  createDocument.isPending ||
+                  !title.trim() ||
+                  !hasActiveKnowledgeBase
+                }
               >
                 {localization.documents.createButton}
               </Button>
@@ -555,6 +664,7 @@ export function DocumentsSurface() {
                   accept={UPLOAD_ACCEPT}
                   multiple
                   onChange={handleFileSelection}
+                  disabled={!hasActiveKnowledgeBase}
                 />
               </Field>
               <p className="sr-only" aria-live="polite">
@@ -594,7 +704,11 @@ export function DocumentsSurface() {
               <Button
                 type="button"
                 onClick={handleProcessUploadQueue}
-                disabled={isProcessingQueue || pendingQueueCount === 0}
+                disabled={
+                  isProcessingQueue ||
+                  pendingQueueCount === 0 ||
+                  !hasActiveKnowledgeBase
+                }
               >
                 {isProcessingQueue
                   ? localization.documents.uploadProcessingButton

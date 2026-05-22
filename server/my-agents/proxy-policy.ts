@@ -123,6 +123,54 @@ export const BFF_ALLOWLIST: Rule[] = [
     pattern: /^\/knowledge-bases$/,
     name: "knowledge-bases.list",
   },
+  {
+    method: "GET",
+    pattern: new RegExp(`^/knowledge-bases/${uuidLike}$`),
+    name: "knowledge-bases.detail",
+  },
+  {
+    method: "POST",
+    pattern: new RegExp(`^/knowledge-bases/${uuidLike}/documents$`),
+    name: "knowledge-bases.documents.create",
+  },
+  {
+    method: "GET",
+    pattern: new RegExp(`^/knowledge-bases/${uuidLike}/documents$`),
+    name: "knowledge-bases.documents.list",
+  },
+  {
+    method: "POST",
+    pattern: new RegExp(`^/knowledge-bases/${uuidLike}/documents/upload$`),
+    name: "knowledge-bases.documents.upload",
+  },
+  {
+    method: "POST",
+    pattern: new RegExp(
+      `^/knowledge-bases/${uuidLike}/documents/${uuidLike}/ingest$`,
+    ),
+    name: "knowledge-bases.documents.ingest",
+  },
+  {
+    method: "POST",
+    pattern: new RegExp(
+      `^/knowledge-bases/${uuidLike}/documents/${uuidLike}/ingest/async$`,
+    ),
+    name: "knowledge-bases.documents.ingest.async",
+  },
+  {
+    method: "GET",
+    pattern: new RegExp(
+      `^/knowledge-bases/${uuidLike}/documents/${uuidLike}/extraction-runs$`,
+    ),
+    name: "knowledge-bases.documents.extraction-runs",
+  },
+  {
+    method: "GET",
+    pattern: new RegExp(
+      `^/knowledge-bases/${uuidLike}/documents/${uuidLike}/extraction-runs/${uuidLike}$`,
+    ),
+    name: "knowledge-bases.documents.extraction-run.detail",
+  },
   { method: "POST", pattern: /^\/documents$/, name: "documents.create" },
   {
     method: "POST",

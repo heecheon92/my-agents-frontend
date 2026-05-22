@@ -42,9 +42,9 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | `/` | `app/page.tsx` | Marketing/landing entry point. |
 | `/login` | `components/keymesh/AuthPanel.tsx` | Login through BFF `/auth/login`. |
 | `/signup` | `components/keymesh/AuthPanel.tsx` | Signup parses the backend `SignupResponse` envelope and shows an account-created handoff before login. |
-| `/chat` | `components/keymesh/ChatWorkspace.tsx` | Anchor journey. Uses conversations, messages, streamed run answer deltas, events, citations. |
-| `/documents` | `components/keymesh/AdminSurfaces.tsx` | Document create/list/delete, PDF/Markdown/plain-text upload, ingest, extraction runs, permission patch. |
-| `/knowledge` | `components/keymesh/AdminSurfaces.tsx` | Knowledge-base create/list. |
+| `/chat` | `components/keymesh/ChatWorkspace.tsx` | Anchor journey. Uses conversations, messages, streamed run answer deltas, events, citations, and `All`/selected knowledge-base retrieval scope. |
+| `/documents` | `components/keymesh/AdminSurfaces.tsx` | KB-first document create/list/delete, PDF/Markdown/plain-text upload into the selected knowledge base, KB-scoped ingest, extraction runs, permission patch. |
+| `/knowledge` | `components/keymesh/AdminSurfaces.tsx` | Knowledge-base create/list. Documents are added from `/documents` after choosing a KB. |
 | `/groups` | `components/keymesh/AdminSurfaces.tsx` | Group create/list and ID-based membership role actions. |
 
 All service routes live under `app/(service)/layout.tsx`, which renders `ServiceShell` and restores auth through `/auth/me`.
@@ -98,6 +98,14 @@ The BFF allowlist currently covers:
 - `PATCH /groups/{group_id}/members/{user_id}`
 - `POST /knowledge-bases`
 - `GET /knowledge-bases`
+- `GET /knowledge-bases/{knowledge_base_id}`
+- `POST /knowledge-bases/{knowledge_base_id}/documents`
+- `GET /knowledge-bases/{knowledge_base_id}/documents`
+- `POST /knowledge-bases/{knowledge_base_id}/documents/upload`
+- `POST /knowledge-bases/{knowledge_base_id}/documents/{document_id}/ingest`
+- `POST /knowledge-bases/{knowledge_base_id}/documents/{document_id}/ingest/async`
+- `GET /knowledge-bases/{knowledge_base_id}/documents/{document_id}/extraction-runs`
+- `GET /knowledge-bases/{knowledge_base_id}/documents/{document_id}/extraction-runs/{run_id}`
 - `POST /documents`
 - `POST /documents/upload`
 - `GET /documents`
@@ -107,7 +115,7 @@ The BFF allowlist currently covers:
 - `POST /documents/{document_id}/ingest`
 - `GET /documents/{document_id}/extraction-runs`
 
-`POST /assistant/chat` is intentionally excluded from product BFF use. The Phase 2 upload route was reconciled from backend commit `ef88553` generated OpenAPI because the running local server still served the pre-Phase-2 OpenAPI; future model changes should prefer the hosted OpenAPI document once the backend server is restarted.
+`POST /assistant/chat` is intentionally excluded from product BFF use. The current product UI prefers the KB-nested document routes above; legacy document routes remain allowlisted for existing detail/delete/permission compatibility and older clients, not as the primary upload/create/ingest journey.
 
 ## Design approach
 

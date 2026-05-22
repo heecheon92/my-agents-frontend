@@ -1,5 +1,7 @@
 import { API_PATH } from "@/constants/api-path";
 import {
+  type Document,
+  documentSchema,
   type KnowledgeBase,
   type KnowledgeBaseCreateRequest,
   knowledgeBaseSchema,
@@ -29,6 +31,22 @@ export class MyAgentsKnowledgeBaseAPI {
     return parseArrayWithSchema(
       knowledgeBaseSchema,
       await this.client.fetch(API_PATH.knowledgeBases.root),
+    );
+  }
+
+  async detail(knowledgeBaseId: string): Promise<KnowledgeBase> {
+    return parseWithSchema(
+      knowledgeBaseSchema,
+      await this.client.fetch(API_PATH.knowledgeBases.detail(knowledgeBaseId)),
+    );
+  }
+
+  async documents(knowledgeBaseId: string): Promise<Document[]> {
+    return parseArrayWithSchema(
+      documentSchema,
+      await this.client.fetch(
+        API_PATH.knowledgeBases.documents(knowledgeBaseId),
+      ),
     );
   }
 }

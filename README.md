@@ -9,8 +9,8 @@
 ## 이 UI가 연결하는 기능
 
 - 인증: 회원가입, 이메일 인증, 로그인, 비밀번호 재설정 요청/확정, 로그아웃, 현재 사용자 복원.
-- 제품 채팅: 대화, 서버 소유 메시지, streamed assistant-answer conversation run, run history, run event, citation.
-- 지식/문서 워크플로: 지식 베이스 생성/목록, 문서 생성/목록/상세/삭제, PDF 업로드, ingest, extraction run, 문서 권한 patch.
+- 제품 채팅: 대화, 서버 소유 메시지, streamed assistant-answer conversation run, run history, run event, citation, 지식 베이스 소스 선택(`전체` 또는 선택한 KB만).
+- 지식/문서 워크플로: 지식 베이스 생성/목록/상세, KB 범위 문서 생성/목록/삭제, 선택한 지식 베이스로 PDF/Markdown/plain-text 업로드, KB 범위 ingest, extraction run, 문서 권한 patch.
 - 그룹: 생성/목록 및 ID 기반 멤버 역할 upsert/patch.
 
 제품 채팅은 `/conversations/{id}/runs`를 사용합니다. `/assistant/chat`은 레거시/개발용이므로 제품 BFF proxy에서 차단합니다. 회원가입은 hosted OpenAPI 계약을 그대로 따릅니다. 계정 생성은 `{ user, verification_email_sent }`를 반환하며, 사용자는 필요한 인증 흐름 이후 같은 자격 증명으로 로그인할 수 있습니다.

@@ -74,7 +74,7 @@ Never regress these rules:
 
 - Browser-visible login response must not contain `csrf_token`.
 - CSRF token must not be stored in `localStorage` or `sessionStorage`.
-- No-body mutations such as logout and document ingest still need `Content-Type: application/json` so the BFF JSON mutation policy passes.
+- No-body mutations such as logout and KB-scoped document ingest still need `Content-Type: application/json` so the BFF JSON mutation policy passes.
 - Unknown paths, unsupported methods, and `/assistant/chat` product usage must not forward to the backend.
 - Cross-site `Origin`, invalid `Referer`, and `Sec-Fetch-Site: cross-site` mutation attempts must be rejected before forwarding.
 

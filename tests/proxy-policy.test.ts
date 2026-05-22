@@ -33,6 +33,31 @@ describe("proxy policy", () => {
     expect(
       isAllowedBackendPath("POST", "/documents/doc-1/ingest/async").allowed,
     ).toBe(true);
+    expect(isAllowedBackendPath("GET", "/knowledge-bases/kb-1").allowed).toBe(
+      true,
+    );
+    expect(
+      isAllowedBackendPath("GET", "/knowledge-bases/kb-1/documents").allowed,
+    ).toBe(true);
+    expect(
+      isAllowedBackendPath("POST", "/knowledge-bases/kb-1/documents").allowed,
+    ).toBe(true);
+    expect(
+      isAllowedBackendPath("POST", "/knowledge-bases/kb-1/documents/upload")
+        .allowed,
+    ).toBe(true);
+    expect(
+      isAllowedBackendPath(
+        "POST",
+        "/knowledge-bases/kb-1/documents/doc-1/ingest/async",
+      ).allowed,
+    ).toBe(true);
+    expect(
+      isAllowedBackendPath(
+        "GET",
+        "/knowledge-bases/kb-1/documents/doc-1/extraction-runs/run-1",
+      ).allowed,
+    ).toBe(true);
     expect(
       isAllowedBackendPath("GET", "/documents/doc-1/extraction-runs/run-1")
         .allowed,

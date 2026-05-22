@@ -29,13 +29,25 @@ describe("MyAgentsConversationAPI", () => {
     });
 
     await expect(
-      api.streamRun("conversation-1", { message: "hello" }),
+      api.streamRun("conversation-1", {
+        message: "hello",
+        knowledge_base_selection: {
+          mode: "selected",
+          knowledge_base_ids: ["kb-1", "kb-2"],
+        },
+      }),
     ).resolves.toBe(response);
     expect(calls).toHaveLength(1);
     expect(calls[0]?.path).toBe("/conversations/conversation-1/runs/stream");
     expect(calls[0]?.init).toMatchObject({
       method: "POST",
-      body: { message: "hello" },
+      body: {
+        message: "hello",
+        knowledge_base_selection: {
+          mode: "selected",
+          knowledge_base_ids: ["kb-1", "kb-2"],
+        },
+      },
       headers: { Accept: "text/event-stream" },
     });
   });
@@ -78,10 +90,16 @@ describe("MyAgentsConversationAPI", () => {
           reply: "Hello",
           route: { label: "general_assistant", explanation: "test" },
           handled_by: "personal_assistant_graph",
+          knowledge_base_selection: {
+            mode: "selected",
+            knowledge_base_ids: ["kb-1"],
+          },
+          resolved_knowledge_base_count: 1,
           citations: [
             {
               id: "citation-1",
               document_id: "doc-1",
+              knowledge_base_id: "kb-1",
               chunk_id: "chunk-1",
               snippet: "Evidence",
               source_page: 2,
@@ -99,10 +117,16 @@ describe("MyAgentsConversationAPI", () => {
       reply: "Hello",
       route: { label: "general_assistant", explanation: "test" },
       handled_by: "personal_assistant_graph",
+      knowledge_base_selection: {
+        mode: "selected",
+        knowledge_base_ids: ["kb-1"],
+      },
+      resolved_knowledge_base_count: 1,
       citations: [
         {
           id: "citation-1",
           document_id: "doc-1",
+          knowledge_base_id: "kb-1",
           chunk_id: "chunk-1",
           snippet: "Evidence",
           source_page: 2,
@@ -118,10 +142,10 @@ describe("MyAgentsConversationAPI", () => {
       fetch: async () => null,
       fetchResponse: async () =>
         streamResponse([
-          'event: run_started\ndata: {"run_id":"run-1","conversation_id":"conversation-1","status":"running"}\n\n',
+          'event: run_started\ndata: {"run_id":"run-1","conversation_id":"conversation-1","status":"running","knowledge_base_selection":{"mode":"selected","knowledge_base_ids":["kb-1"]},"resolved_knowledge_base_count":1}\n\n',
           'event: answer_delta\ndata: {"delta":"Hel","sequence":1}\n\n',
           'event: answer_delta\ndata: {"delta":"lo","sequence":2}\n\n',
-          'event: run_completed\ndata: {"run_id":"run-1","conversation_id":"conversation-1","reply":"Hello","route":{"label":"general_assistant","explanation":"test"},"handled_by":"personal_assistant_graph","citations":[]}\n\n',
+          'event: run_completed\ndata: {"run_id":"run-1","conversation_id":"conversation-1","reply":"Hello","route":{"label":"general_assistant","explanation":"test"},"handled_by":"personal_assistant_graph","knowledge_base_selection":{"mode":"selected","knowledge_base_ids":["kb-1"]},"resolved_knowledge_base_count":1,"citations":[]}\n\n',
         ]),
     });
 
@@ -139,6 +163,11 @@ describe("MyAgentsConversationAPI", () => {
           run_id: "run-1",
           conversation_id: "conversation-1",
           status: "running",
+          knowledge_base_selection: {
+            mode: "selected",
+            knowledge_base_ids: ["kb-1"],
+          },
+          resolved_knowledge_base_count: 1,
         },
       },
       { event: "answer_delta", data: { delta: "Hel", sequence: 1 } },
@@ -151,6 +180,11 @@ describe("MyAgentsConversationAPI", () => {
           reply: "Hello",
           route: { label: "general_assistant", explanation: "test" },
           handled_by: "personal_assistant_graph",
+          knowledge_base_selection: {
+            mode: "selected",
+            knowledge_base_ids: ["kb-1"],
+          },
+          resolved_knowledge_base_count: 1,
           citations: [],
         },
       },

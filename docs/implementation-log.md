@@ -234,3 +234,17 @@ Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `
 - Kept guest upload limits backend-owned in UI copy: each accepted file can count toward the 3-document guest cap, and backend errors remain per-file retry/remove states.
 
 Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build` (retried outside sandbox after a Turbopack internal worker bind permission error), and `git diff --check`.
+
+## 2026-05-22 — KB-first document and chat source path
+
+- Replaced the primary document create/upload/ingest UI path with a knowledge-base-first flow: users select a knowledge base before adding text documents, queued PDF/Markdown/plain-text uploads, or running ingestion.
+- Added KB-nested frontend API paths, BFF allowlist entries, service methods, query keys, and TanStack hooks for `GET/POST /knowledge-bases/{knowledge_base_id}/documents`, nested upload, nested ingest/async ingest, and nested extraction-run polling.
+- Extended conversation run request/response parsing for `knowledge_base_selection` and `resolved_knowledge_base_count`, then added an `All knowledge bases` / `Selected only` chat source selector that sends the selected KB IDs as a hard retrieval boundary.
+- Kept legacy document detail/delete/permission methods available for compatibility while making KB-nested create/upload/ingest the product path.
+- Updated bilingual copy, README/architecture/runbook notes, and tests so future work sees the knowledge base as the user-facing source library abstraction.
+
+Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/api-path.test.ts tests/document-api.test.ts tests/proxy-policy.test.ts tests/conversation-api.test.ts` (30 tests), `pnpm exec vitest run` (9 files / 50 tests), `pnpm build`, and `pnpm exec playwright test` (1 passed / 2 skipped by configured smoke gates).
+
+### G005 review follow-up
+
+- Resolved the final architect WATCH items before completion: visible upload copy now describes uploads into the selected knowledge base instead of `/documents/upload`; public-demo/evidence docs now point to KB-nested upload/ingest proof; the document upload queue locks KB switching while processable items are queued; and `/documents` now uses a KB-scoped delete hook for KB document cache invalidation.

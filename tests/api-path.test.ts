@@ -3,6 +3,8 @@ import { API_PATH, toFrontendAPIPath } from "@/constants/api-path";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 
 const conversationId = "conversation-1";
+const knowledgeBaseId = "kb-1";
+const documentId = "doc-1";
 const runId = "run-1";
 
 describe("API_PATH", () => {
@@ -38,6 +40,24 @@ describe("API_PATH", () => {
     expect(API_PATH.documents.extractionRun("doc-1", "run-1")).toBe(
       "/documents/doc-1/extraction-runs/run-1",
     );
+  });
+
+  it("builds knowledge-base nested document paths", () => {
+    expect(API_PATH.knowledgeBases.detail(knowledgeBaseId)).toBe(
+      "/knowledge-bases/kb-1",
+    );
+    expect(API_PATH.knowledgeBases.documents(knowledgeBaseId)).toBe(
+      "/knowledge-bases/kb-1/documents",
+    );
+    expect(API_PATH.knowledgeBases.uploadDocument(knowledgeBaseId)).toBe(
+      "/knowledge-bases/kb-1/documents/upload",
+    );
+    expect(
+      API_PATH.knowledgeBases.ingestDocumentAsync(knowledgeBaseId, documentId),
+    ).toBe("/knowledge-bases/kb-1/documents/doc-1/ingest/async");
+    expect(
+      API_PATH.knowledgeBases.extractionRun(knowledgeBaseId, documentId, runId),
+    ).toBe("/knowledge-bases/kb-1/documents/doc-1/extraction-runs/run-1");
   });
 
   it("prefixes frontend BFF paths", () => {
@@ -77,6 +97,21 @@ describe("MyAgentsQueryKeys", () => {
       "documents",
       "extraction-runs",
       "doc-1",
+      runId,
+    ]);
+    expect(
+      MyAgentsQueryKeys.knowledgeBases.extractionRun(
+        knowledgeBaseId,
+        documentId,
+        runId,
+      ),
+    ).toEqual([
+      "my-agents",
+      "knowledge-bases",
+      "documents",
+      knowledgeBaseId,
+      "extraction-runs",
+      documentId,
       runId,
     ]);
   });

@@ -174,6 +174,71 @@ describe("MyAgentsDocumentAPI", () => {
     ]);
   });
 
+  it("uses knowledge-base nested routes for KB-first upload and ingestion", async () => {
+    const calls: Array<{
+      path: string;
+      init?: { method?: string; body?: unknown };
+    }> = [];
+    const api = new MyAgentsDocumentAPI({
+      fetch: async (path, init) => {
+        calls.push({ path, init });
+        if (path.endsWith("/documents/upload")) {
+          return {
+            id: "doc-1",
+            title: "KB source",
+            owner_user_id: "user-1",
+            group_id: null,
+            knowledge_base_id: "kb-1",
+            source_type: "text",
+            source_filename: "source.txt",
+            source_content_type: "text/plain",
+            source_byte_size: 12,
+            source_sha256: "abc123",
+            source_page_count: null,
+            parser_name: "text",
+          };
+        }
+        return {
+          id: "run-1",
+          document_id: "doc-1",
+          status: "completed",
+          stage: "completed",
+          progress_percent: 100,
+          chunk_count: 1,
+          entity_count: 0,
+          relationship_count: 0,
+          error: null,
+          started_at: "2026-05-22T00:00:00Z",
+          completed_at: "2026-05-22T00:00:01Z",
+        };
+      },
+    });
+
+    const file = new File(["source"], "source.txt", { type: "text/plain" });
+    await expect(
+      api.uploadToKnowledgeBase("kb-1", { title: "KB source", file }),
+    ).resolves.toMatchObject({
+      id: "doc-1",
+      knowledge_base_id: "kb-1",
+    });
+    await expect(
+      api.ingestAsyncInKnowledgeBase("kb-1", "doc-1"),
+    ).resolves.toMatchObject({ id: "run-1", status: "completed" });
+    await expect(
+      api.extractionRunInKnowledgeBase("kb-1", "doc-1", "run-1"),
+    ).resolves.toMatchObject({ id: "run-1", progress_percent: 100 });
+
+    expect(calls.map((call) => call.path)).toEqual([
+      "/knowledge-bases/kb-1/documents/upload",
+      "/knowledge-bases/kb-1/documents/doc-1/ingest/async",
+      "/knowledge-bases/kb-1/documents/doc-1/extraction-runs/run-1",
+    ]);
+    expect(calls[0]?.init?.body).toBeInstanceOf(FormData);
+    expect((calls[0]?.init?.body as FormData).get("knowledge_base_id")).toBe(
+      null,
+    );
+  });
+
   it("accepts backend uploaded document source metadata", () => {
     expect(
       documentSchema.parse({

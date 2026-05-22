@@ -13,6 +13,7 @@ import {
   useRunEvents,
   useRuns,
 } from "@/hooks/use-conversations";
+import { useKnowledgeBases } from "@/hooks/use-knowledge";
 import { useLocalization } from "@/hooks/useLocalization";
 import { cn } from "@/lib/utils";
 import type {
@@ -20,6 +21,9 @@ import type {
   AnswerDeltaEventData,
   Citation,
   ConversationRunResponse,
+  KnowledgeBase,
+  KnowledgeBaseSelection,
+  KnowledgeBaseSelectionMode,
   Message,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
@@ -34,6 +38,7 @@ type LiveActivityEvent = Pick<AgentEvent, "id" | "sequence" | "event_type"> & {
 type QueuedMessage = {
   conversationId: string;
   content: string;
+  knowledgeBaseSelection: KnowledgeBaseSelection;
 };
 
 type RunOutcome = "completed" | "cancelled" | "failed";
@@ -55,9 +60,30 @@ function isNearScrollBottom(element: HTMLElement) {
   );
 }
 
+function describeKnowledgeBaseSelection(
+  selection: KnowledgeBaseSelection,
+  knowledgeBases: KnowledgeBase[],
+  localization: {
+    knowledgeSourceAll: string;
+    knowledgeSourceQueuedSelected: string;
+    knowledgeSourceQueuedFallback: string;
+  },
+) {
+  if (selection.mode === "all") return localization.knowledgeSourceAll;
+  const names = selection.knowledge_base_ids
+    .map(
+      (id) => knowledgeBases.find((kb) => kb.id === id)?.name ?? id.slice(0, 8),
+    )
+    .join(", ");
+  return names
+    ? localization.knowledgeSourceQueuedSelected.replace("{names}", names)
+    : localization.knowledgeSourceQueuedFallback;
+}
+
 export function ChatWorkspace() {
   const queryClient = useQueryClient();
   const conversations = useConversations();
+  const knowledgeBases = useKnowledgeBases();
   const createConversation = useCreateConversation();
   const [selectedId, setSelectedId] = useState<string>();
   const activeId = selectedId ?? conversations.data?.[0]?.id;
@@ -92,6 +118,11 @@ export function ChatWorkspace() {
   );
   const [latestCitations, setLatestCitations] = useState<Citation[]>([]);
   const [showGuestNotice, setShowGuestNotice] = useState(false);
+  const [knowledgeBaseMode, setKnowledgeBaseMode] =
+    useState<KnowledgeBaseSelectionMode>("all");
+  const [selectedKnowledgeBaseIds, setSelectedKnowledgeBaseIds] = useState<
+    string[]
+  >([]);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
   const isStreamingRef = useRef(false);
@@ -107,6 +138,13 @@ export function ChatWorkspace() {
     queuedMessage?.conversationId === activeId ? queuedMessage : null;
   const draftMessage = draft.trim();
   const hasActiveDraft = draftMessage.length > 0;
+  const activeKnowledgeBaseSelection: KnowledgeBaseSelection = {
+    mode: knowledgeBaseMode,
+    knowledge_base_ids:
+      knowledgeBaseMode === "selected" ? selectedKnowledgeBaseIds : [],
+  };
+  const requiresKnowledgeBaseSelection =
+    knowledgeBaseMode === "selected" && selectedKnowledgeBaseIds.length === 0;
 
   function setQueuedMessage(nextQueuedMessage: QueuedMessage | null) {
     queuedMessageRef.current = nextQueuedMessage;
@@ -124,6 +162,14 @@ export function ChatWorkspace() {
     setIsCancelling(false);
   }
 
+  function toggleSelectedKnowledgeBase(knowledgeBaseId: string) {
+    setSelectedKnowledgeBaseIds((current) =>
+      current.includes(knowledgeBaseId)
+        ? current.filter((id) => id !== knowledgeBaseId)
+        : [...current, knowledgeBaseId],
+    );
+  }
+
   async function handleCreate() {
     try {
       const created = await createConversation.mutateAsync({
@@ -138,6 +184,7 @@ export function ChatWorkspace() {
   async function runMessage(
     conversationId: string,
     message: string,
+    knowledgeBaseSelection: KnowledgeBaseSelection,
   ): Promise<RunOutcome> {
     if (isStreamingRef.current) return "failed";
 
@@ -161,7 +208,7 @@ export function ChatWorkspace() {
     try {
       for await (const streamEvent of myAgentsAPI.conversations.streamRunEvents(
         conversationId,
-        { message },
+        { message, knowledge_base_selection: knowledgeBaseSelection },
       )) {
         liveSequence += 1;
         const sequence = liveSequence;
@@ -231,8 +278,13 @@ export function ChatWorkspace() {
   async function runMessageAndContinue(
     conversationId: string,
     message: string,
+    knowledgeBaseSelection: KnowledgeBaseSelection,
   ): Promise<void> {
-    const outcome = await runMessage(conversationId, message);
+    const outcome = await runMessage(
+      conversationId,
+      message,
+      knowledgeBaseSelection,
+    );
 
     if (outcome === "failed") {
       const pendingImmediateMessage = pendingImmediateMessageRef.current;
@@ -251,6 +303,7 @@ export function ChatWorkspace() {
       await runMessageAndContinue(
         pendingImmediateMessage.conversationId,
         pendingImmediateMessage.content,
+        pendingImmediateMessage.knowledgeBaseSelection,
       );
       return;
     }
@@ -268,13 +321,21 @@ export function ChatWorkspace() {
       await runMessageAndContinue(
         nextQueuedMessage.conversationId,
         nextQueuedMessage.content,
+        nextQueuedMessage.knowledgeBaseSelection,
       );
     }
   }
 
   async function handleSend(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!draftMessage || !activeId || isCancelling) return;
+    if (
+      !draftMessage ||
+      !activeId ||
+      isCancelling ||
+      requiresKnowledgeBaseSelection
+    ) {
+      return;
+    }
 
     if (isStreaming) {
       if (visibleQueuedMessage) {
@@ -284,6 +345,7 @@ export function ChatWorkspace() {
       const nextQueuedMessage = {
         conversationId: activeId,
         content: draftMessage,
+        knowledgeBaseSelection: activeKnowledgeBaseSelection,
       };
       setQueuedMessage(nextQueuedMessage);
       setDraft("");
@@ -292,7 +354,11 @@ export function ChatWorkspace() {
     }
 
     setDraft("");
-    await runMessageAndContinue(activeId, draftMessage);
+    await runMessageAndContinue(
+      activeId,
+      draftMessage,
+      activeKnowledgeBaseSelection,
+    );
   }
 
   async function handleSendNow() {
@@ -302,7 +368,8 @@ export function ChatWorkspace() {
       !isStreaming ||
       isCancelling ||
       !activeRunId ||
-      visibleQueuedMessage
+      visibleQueuedMessage ||
+      requiresKnowledgeBaseSelection
     ) {
       return;
     }
@@ -310,6 +377,7 @@ export function ChatWorkspace() {
     const immediateMessage = {
       conversationId: activeId,
       content: draftMessage,
+      knowledgeBaseSelection: activeKnowledgeBaseSelection,
     };
     pendingImmediateMessageRef.current = immediateMessage;
     cancelAcceptedRef.current = false;
@@ -336,6 +404,10 @@ export function ChatWorkspace() {
   function handleEditQueuedMessage() {
     if (!visibleQueuedMessage) return;
     setDraft(visibleQueuedMessage.content);
+    setKnowledgeBaseMode(visibleQueuedMessage.knowledgeBaseSelection.mode);
+    setSelectedKnowledgeBaseIds(
+      visibleQueuedMessage.knowledgeBaseSelection.knowledge_base_ids,
+    );
     setQueuedMessage(null);
     setStatusAnnouncement(localization.queueEditAnnouncement);
   }
@@ -354,6 +426,7 @@ export function ChatWorkspace() {
     await runMessageAndContinue(
       nextQueuedMessage.conversationId,
       nextQueuedMessage.content,
+      nextQueuedMessage.knowledgeBaseSelection,
     );
   }
 
@@ -383,6 +456,7 @@ export function ChatWorkspace() {
     !activeId ||
     !hasActiveDraft ||
     isCancelling ||
+    requiresKnowledgeBaseSelection ||
     (isStreaming && Boolean(visibleQueuedMessage));
   const isSendNowDisabled =
     !activeId ||
@@ -390,7 +464,8 @@ export function ChatWorkspace() {
     !isStreaming ||
     isCancelling ||
     !activeRunId ||
-    Boolean(visibleQueuedMessage);
+    Boolean(visibleQueuedMessage) ||
+    requiresKnowledgeBaseSelection;
   const sendNowHelper = isCancelling
     ? localization.stoppingCurrentAnswer
     : visibleQueuedMessage
@@ -414,6 +489,13 @@ export function ChatWorkspace() {
       new URLSearchParams(window.location.search).get("guest") === "1",
     );
   }, []);
+
+  useEffect(() => {
+    const availableIds = new Set(knowledgeBases.data?.map((kb) => kb.id) ?? []);
+    setSelectedKnowledgeBaseIds((current) =>
+      current.filter((id) => availableIds.has(id)),
+    );
+  }, [knowledgeBases.data]);
 
   useEffect(() => {
     if (!activeId) return;
@@ -594,6 +676,13 @@ export function ChatWorkspace() {
                     <p className="mt-1 text-xs text-cal-muted">
                       {queuedHelper}
                     </p>
+                    <p className="mt-1 text-xs text-cal-muted">
+                      {describeKnowledgeBaseSelection(
+                        visibleQueuedMessage.knowledgeBaseSelection,
+                        knowledgeBases.data ?? [],
+                        localization,
+                      )}
+                    </p>
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
                     {!isStreaming ? (
@@ -626,6 +715,91 @@ export function ChatWorkspace() {
                 </div>
               </div>
             ) : null}
+            <section className="mb-3 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <p className="font-semibold text-cal-ink">
+                    {localization.knowledgeSourceTitle}
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-cal-muted">
+                    {localization.knowledgeSourceDescription}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={
+                      knowledgeBaseMode === "all" ? "secondary" : "ghost"
+                    }
+                    onClick={() => setKnowledgeBaseMode("all")}
+                  >
+                    {localization.knowledgeSourceAll}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={
+                      knowledgeBaseMode === "selected" ? "secondary" : "ghost"
+                    }
+                    onClick={() => setKnowledgeBaseMode("selected")}
+                  >
+                    {localization.knowledgeSourceSelected}
+                  </Button>
+                </div>
+              </div>
+              {knowledgeBaseMode === "selected" ? (
+                <div className="mt-3 grid gap-2">
+                  {knowledgeBases.isLoading ? (
+                    <p className="text-xs text-cal-muted">
+                      {localization.loadingKnowledgeBases}
+                    </p>
+                  ) : null}
+                  {knowledgeBases.error ? (
+                    <ErrorState error={knowledgeBases.error} />
+                  ) : null}
+                  {knowledgeBases.data?.length === 0 ? (
+                    <EmptyState
+                      title={localization.noKnowledgeBasesTitle}
+                      description={localization.noKnowledgeBasesDescription}
+                    />
+                  ) : null}
+                  <div className="flex flex-wrap gap-2">
+                    {knowledgeBases.data?.map((knowledgeBase) => {
+                      const checked = selectedKnowledgeBaseIds.includes(
+                        knowledgeBase.id,
+                      );
+                      return (
+                        <label
+                          key={knowledgeBase.id}
+                          className={cn(
+                            "flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium",
+                            checked
+                              ? "border-cal-primary bg-cal-primary text-white"
+                              : "border-cal-hairline bg-cal-canvas text-cal-ink",
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            className="sr-only"
+                            checked={checked}
+                            onChange={() =>
+                              toggleSelectedKnowledgeBase(knowledgeBase.id)
+                            }
+                          />
+                          {knowledgeBase.name}
+                        </label>
+                      );
+                    })}
+                  </div>
+                  {requiresKnowledgeBaseSelection ? (
+                    <p className="text-xs text-cal-error">
+                      {localization.knowledgeSourceRequired}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
+            </section>
             <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto]">
               <input
                 className={cn(inputClassName, "min-h-12 w-full")}
@@ -774,6 +948,12 @@ export function ChatWorkspace() {
                     <p className="mt-1 text-xs text-cal-muted">
                       {localization.documentLabel}{" "}
                       {citation.document_id.slice(0, 8)}
+                    </p>
+                  ) : null}
+                  {citation.knowledge_base_id ? (
+                    <p className="mt-1 text-xs text-cal-muted">
+                      {localization.knowledgeBaseLabel}{" "}
+                      {citation.knowledge_base_id.slice(0, 8)}
                     </p>
                   ) : null}
                   <p className="mt-1 break-words text-cal-body">

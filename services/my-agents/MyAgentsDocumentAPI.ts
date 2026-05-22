@@ -9,9 +9,21 @@ import {
   documentSchema,
   type ExtractionRun,
   extractionRunSchema,
+  type KnowledgeBaseDocumentCreateRequest,
+  type KnowledgeBaseDocumentUploadRequest,
 } from "@/model/my-agents";
 import { type MyAgentsFetchClient, myAgentsFetchClient } from "./fetch-client";
 import { parseArrayWithSchema, parseWithSchema } from "./parser";
+
+function buildDocumentUploadFormData(
+  payload: KnowledgeBaseDocumentUploadRequest,
+) {
+  const formData = new FormData();
+  formData.set("title", payload.title);
+  formData.set("file", payload.file);
+  if (payload.group_id) formData.set("group_id", payload.group_id);
+  return formData;
+}
 
 export class MyAgentsDocumentAPI {
   constructor(
@@ -31,11 +43,24 @@ export class MyAgentsDocumentAPI {
     );
   }
 
+  async createInKnowledgeBase(
+    knowledgeBaseId: string,
+    payload: KnowledgeBaseDocumentCreateRequest,
+  ): Promise<Document> {
+    return parseWithSchema(
+      documentSchema,
+      await this.client.fetch(
+        API_PATH.knowledgeBases.documents(knowledgeBaseId),
+        {
+          method: "POST",
+          body: payload,
+        },
+      ),
+    );
+  }
+
   async upload(payload: DocumentUploadRequest): Promise<Document> {
-    const formData = new FormData();
-    formData.set("title", payload.title);
-    formData.set("file", payload.file);
-    if (payload.group_id) formData.set("group_id", payload.group_id);
+    const formData = buildDocumentUploadFormData(payload);
     if (payload.knowledge_base_id) {
       formData.set("knowledge_base_id", payload.knowledge_base_id);
     }
@@ -49,10 +74,35 @@ export class MyAgentsDocumentAPI {
     );
   }
 
+  async uploadToKnowledgeBase(
+    knowledgeBaseId: string,
+    payload: KnowledgeBaseDocumentUploadRequest,
+  ): Promise<Document> {
+    return parseWithSchema(
+      documentSchema,
+      await this.client.fetch(
+        API_PATH.knowledgeBases.uploadDocument(knowledgeBaseId),
+        {
+          method: "POST",
+          body: buildDocumentUploadFormData(payload),
+        },
+      ),
+    );
+  }
+
   async list(): Promise<Document[]> {
     return parseArrayWithSchema(
       documentSchema,
       await this.client.fetch(API_PATH.documents.root),
+    );
+  }
+
+  async listByKnowledgeBase(knowledgeBaseId: string): Promise<Document[]> {
+    return parseArrayWithSchema(
+      documentSchema,
+      await this.client.fetch(
+        API_PATH.knowledgeBases.documents(knowledgeBaseId),
+      ),
     );
   }
 
@@ -91,6 +141,21 @@ export class MyAgentsDocumentAPI {
     );
   }
 
+  async ingestInKnowledgeBase(
+    knowledgeBaseId: string,
+    documentId: string,
+  ): Promise<ExtractionRun> {
+    return parseWithSchema(
+      extractionRunSchema,
+      await this.client.fetch(
+        API_PATH.knowledgeBases.ingestDocument(knowledgeBaseId, documentId),
+        {
+          method: "POST",
+        },
+      ),
+    );
+  }
+
   async ingestAsync(documentId: string): Promise<ExtractionRun> {
     return parseWithSchema(
       extractionRunSchema,
@@ -100,10 +165,40 @@ export class MyAgentsDocumentAPI {
     );
   }
 
+  async ingestAsyncInKnowledgeBase(
+    knowledgeBaseId: string,
+    documentId: string,
+  ): Promise<ExtractionRun> {
+    return parseWithSchema(
+      extractionRunSchema,
+      await this.client.fetch(
+        API_PATH.knowledgeBases.ingestDocumentAsync(
+          knowledgeBaseId,
+          documentId,
+        ),
+        {
+          method: "POST",
+        },
+      ),
+    );
+  }
+
   async extractionRuns(documentId: string): Promise<ExtractionRun[]> {
     return parseArrayWithSchema(
       extractionRunSchema,
       await this.client.fetch(API_PATH.documents.extractionRuns(documentId)),
+    );
+  }
+
+  async extractionRunsInKnowledgeBase(
+    knowledgeBaseId: string,
+    documentId: string,
+  ): Promise<ExtractionRun[]> {
+    return parseArrayWithSchema(
+      extractionRunSchema,
+      await this.client.fetch(
+        API_PATH.knowledgeBases.extractionRuns(knowledgeBaseId, documentId),
+      ),
     );
   }
 
@@ -115,6 +210,23 @@ export class MyAgentsDocumentAPI {
       extractionRunSchema,
       await this.client.fetch(
         API_PATH.documents.extractionRun(documentId, runId),
+      ),
+    );
+  }
+
+  async extractionRunInKnowledgeBase(
+    knowledgeBaseId: string,
+    documentId: string,
+    runId: string,
+  ): Promise<ExtractionRun> {
+    return parseWithSchema(
+      extractionRunSchema,
+      await this.client.fetch(
+        API_PATH.knowledgeBases.extractionRun(
+          knowledgeBaseId,
+          documentId,
+          runId,
+        ),
       ),
     );
   }

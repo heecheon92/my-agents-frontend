@@ -56,6 +56,43 @@ export const MyAgentsQueryKeys = {
     list() {
       return ["my-agents", "knowledge-bases", "list"] as const;
     },
+    detail(knowledgeBaseId: string) {
+      return [
+        "my-agents",
+        "knowledge-bases",
+        "detail",
+        knowledgeBaseId,
+      ] as const;
+    },
+    documents(knowledgeBaseId: string) {
+      return [
+        "my-agents",
+        "knowledge-bases",
+        "documents",
+        knowledgeBaseId,
+      ] as const;
+    },
+    extractionRuns(knowledgeBaseId: string, documentId: string) {
+      return [
+        "my-agents",
+        "knowledge-bases",
+        "documents",
+        knowledgeBaseId,
+        "extraction-runs",
+        documentId,
+      ] as const;
+    },
+    extractionRun(knowledgeBaseId: string, documentId: string, runId: string) {
+      return [
+        "my-agents",
+        "knowledge-bases",
+        "documents",
+        knowledgeBaseId,
+        "extraction-runs",
+        documentId,
+        runId,
+      ] as const;
+    },
   },
   documents: {
     list() {

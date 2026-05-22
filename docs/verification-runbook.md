@@ -104,12 +104,12 @@ The backend local demo seed helper currently provides the verified account
 `test@test.com`, password `correct horse battery staple`, and seeded text document
 `V1 Portfolio Chat Service Demo`.
 
-Expected seeded text flow: login -> choose seeded text document -> bodyless ingest through the
-BFF -> streamed chat answer -> completed run history -> persisted run-detail citations
-after reload -> redacted event trail.
+Expected seeded text flow: login -> create or choose a knowledge base -> add a text
+document under that knowledge base -> bodyless KB-scoped ingest through the BFF ->
+streamed chat answer with `All` or selected KB retrieval scope -> completed run history ->
+persisted run-detail citations after reload -> redacted event trail.
 
-Upload smoke should use an active backend with the expanded `/documents/upload` contract: login -> Documents -> upload a supported PDF, Markdown (`.md`/`.markdown`), or plain text (`.txt`) file through `POST /documents/upload` -> verify document source metadata -> run bodyless ingest ->
-confirm citations can render backend-provided filename/page provenance.
+Upload smoke should use an active backend with the KB-nested upload contract: login -> Documents -> select a knowledge base -> upload a supported PDF, Markdown (`.md`/`.markdown`), or plain text (`.txt`) file through `POST /knowledge-bases/{knowledge_base_id}/documents/upload` -> verify document source metadata -> run KB-scoped ingest -> confirm citations can render backend-provided filename/page/KB provenance.
 
 
 ## V1 public visitor smoke (preview/public final proof)

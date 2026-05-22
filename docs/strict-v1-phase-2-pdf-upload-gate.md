@@ -10,19 +10,20 @@ Frontend Phase 2 is **implemented for the additive upload contract** while prese
 
 The backend-owned contract now exposes:
 
-- `POST /documents/upload`
-- multipart form fields: `title`, `file`, optional `group_id`, optional `knowledge_base_id`
+- Primary KB-first route: `POST /knowledge-bases/{knowledge_base_id}/documents/upload`
+- Legacy compatibility route: `POST /documents/upload` only when a caller supplies `knowledge_base_id`
+- KB-nested multipart form fields: `title`, `file`, optional `group_id`; the knowledge base is carried by the route path
 - V1 file support: PDF, text-based parser behavior owned by backend
 - `DocumentResponse` source metadata: `source_type`, `source_filename`, `source_content_type`, `source_byte_size`, `source_sha256`, `source_page_count`, `parser_name`
 - `CitationResponse` provenance: optional `source_page`, optional `source_filename`
 
 ## Frontend changes verified
 
-- BFF allowlist accepts `POST /documents/upload`.
+- BFF allowlist accepts `POST /knowledge-bases/{knowledge_base_id}/documents/upload` and keeps legacy `/documents/upload` compatibility allowlisted.
 - Same-origin mutation policy accepts `multipart/form-data` while still rejecting simple form content types such as `application/x-www-form-urlencoded`.
 - Next route handler forwards mutation bodies as bytes so multipart upload boundaries and file bytes are not stringified.
-- Document API adds `upload()` using `FormData` without setting a manual JSON content type.
-- Document UI adds a PDF/Markdown/plain-text upload form alongside the existing JSON text-document form.
+- Document API adds KB-scoped `uploadToKnowledgeBase()` using `FormData` without setting a manual JSON content type.
+- Document UI uploads PDF/Markdown/plain-text files into the selected knowledge base.
 - Document list displays backend source metadata for PDF/text documents.
 - Citation panel shows backend-provided source filename and page when present, while keeping document id fallback for old citations.
 

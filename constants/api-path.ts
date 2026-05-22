@@ -49,6 +49,30 @@ export const API_PATH = {
   },
   knowledgeBases: {
     root: "/knowledge-bases",
+    detail(knowledgeBaseId: string) {
+      return `${this.root}/${knowledgeBaseId}`;
+    },
+    documents(knowledgeBaseId: string) {
+      return `${this.detail(knowledgeBaseId)}/documents`;
+    },
+    uploadDocument(knowledgeBaseId: string) {
+      return `${this.documents(knowledgeBaseId)}/upload`;
+    },
+    document(knowledgeBaseId: string, documentId: string) {
+      return `${this.documents(knowledgeBaseId)}/${documentId}`;
+    },
+    ingestDocument(knowledgeBaseId: string, documentId: string) {
+      return `${this.document(knowledgeBaseId, documentId)}/ingest`;
+    },
+    ingestDocumentAsync(knowledgeBaseId: string, documentId: string) {
+      return `${this.ingestDocument(knowledgeBaseId, documentId)}/async`;
+    },
+    extractionRuns(knowledgeBaseId: string, documentId: string) {
+      return `${this.document(knowledgeBaseId, documentId)}/extraction-runs`;
+    },
+    extractionRun(knowledgeBaseId: string, documentId: string, runId: string) {
+      return `${this.extractionRuns(knowledgeBaseId, documentId)}/${runId}`;
+    },
   },
   documents: {
     root: "/documents",

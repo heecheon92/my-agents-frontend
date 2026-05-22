@@ -130,7 +130,18 @@
       "pending": "대기 중"
     },
     "guestNoticeTitle": "게스트 데모 제한",
-    "guestNoticeDescription": "이 게스트 세션은 24시간 동안 유지되며 대화 1개, 프롬프트 5개, 문서 업로드 3개로 제한됩니다. 제한에 도달하면 백엔드가 안전한 오류를 반환합니다."
+    "guestNoticeDescription": "이 게스트 세션은 24시간 동안 유지되며 대화 1개, 프롬프트 5개, 문서 업로드 3개로 제한됩니다. 제한에 도달하면 백엔드가 안전한 오류를 반환합니다.",
+    "knowledgeSourceTitle": "지식 소스",
+    "knowledgeSourceDescription": "이 실행에서 검색할 지식 베이스를 선택하세요. 선택 모드는 엄격한 경계이며, 전체는 접근 가능한 모든 지식 베이스를 검색합니다.",
+    "knowledgeSourceAll": "모든 지식 베이스",
+    "knowledgeSourceSelected": "선택한 항목만",
+    "loadingKnowledgeBases": "지식 베이스를 불러오는 중...",
+    "noKnowledgeBasesTitle": "지식 베이스가 없습니다",
+    "noKnowledgeBasesDescription": "지식 베이스를 만들고 문서를 추가한 뒤 여기에서 선택하세요.",
+    "knowledgeSourceRequired": "지식 베이스를 하나 이상 선택하거나 모든 지식 베이스로 전환하세요.",
+    "knowledgeSourceQueuedSelected": "예약된 소스: {names}",
+    "knowledgeSourceQueuedFallback": "예약된 소스: 선택한 지식 베이스",
+    "knowledgeBaseLabel": "지식 베이스"
   },
   "admin": {
     "common": {
@@ -173,7 +184,7 @@
       "pdfUploadTitle": "문서 파일 업로드",
       "pdfTitleLabel": "파일 제목",
       "pdfFileLabel": "문서 파일",
-      "pdfUploadHint": "/documents/upload으로 PDF, Markdown(.md/.markdown), 일반 텍스트(.txt) 파일을 업로드합니다. CSV/JSON은 백엔드 구조화 지원이 확정되기 전까지 표시하지 않습니다.",
+      "pdfUploadHint": "선택한 지식 베이스에 PDF, Markdown(.md/.markdown), 일반 텍스트(.txt) 파일을 업로드합니다. CSV/JSON은 백엔드 구조화 지원이 확정되기 전까지 표시하지 않습니다.",
       "uploadButton": "파일 업로드",
       "textSource": "텍스트",
       "pdfSource": "PDF",
@@ -186,7 +197,7 @@
       "fileUploadTitle": "문서 파일 업로드",
       "fileTitleLabel": "파일 제목",
       "fileLabel": "문서 파일",
-      "fileUploadHint": "/documents/upload으로 PDF, Markdown(.md/.markdown), 일반 텍스트(.txt) 파일을 업로드합니다. CSV/JSON은 백엔드 구조화 지원이 확정되기 전까지 표시하지 않습니다.",
+      "fileUploadHint": "선택한 지식 베이스에 PDF, Markdown(.md/.markdown), 일반 텍스트(.txt) 파일을 업로드합니다. CSV/JSON은 백엔드 구조화 지원이 확정되기 전까지 표시하지 않습니다.",
       "uploadedSourcePrefix": "업로드",
       "markdownSourcePrefix": "Markdown",
       "markdownSource": "Markdown",
@@ -222,7 +233,15 @@
       "fileTypeMarkdown": "Markdown",
       "fileTypeText": "텍스트",
       "retryUpload": "재시도",
-      "removeUpload": "제거"
+      "removeUpload": "제거",
+      "knowledgeBaseTitle": "지식 베이스",
+      "knowledgeBaseLabel": "업로드할 지식 베이스",
+      "knowledgeBasePlaceholder": "지식 베이스 선택",
+      "knowledgeBaseHint": "먼저 지식 베이스를 만드세요. 새 텍스트 문서, 파일 업로드, 수집 실행은 선택한 지식 베이스 아래에 저장됩니다.",
+      "knowledgeBaseRequired": "문서를 추가하거나 수집하기 전에 지식 베이스를 선택하세요.",
+      "noKnowledgeBaseTitle": "아직 지식 베이스가 없습니다",
+      "noKnowledgeBaseDescription": "Knowledge 화면에서 지식 베이스를 만든 뒤 문서를 업로드하세요.",
+      "knowledgeBaseLockedHint": "각 파일이 의도한 라이브러리에 연결되도록, 지식 베이스를 바꾸기 전에 예약된 업로드를 완료하거나 제거하세요."
     },
     "groups": {
       "title": "그룹",

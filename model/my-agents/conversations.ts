@@ -25,8 +25,16 @@ export const messageCreateRequestSchema = z.object({
   content: z.string().min(1),
 });
 
+export const knowledgeBaseSelectionModeSchema = z.enum(["all", "selected"]);
+
+export const knowledgeBaseSelectionSchema = z.object({
+  mode: knowledgeBaseSelectionModeSchema.default("all"),
+  knowledge_base_ids: z.array(z.string().min(1)).default([]),
+});
+
 export const conversationRunRequestSchema = z.object({
   message: z.string().min(1),
+  knowledge_base_selection: knowledgeBaseSelectionSchema.optional(),
 });
 
 export const conversationRunResponseSchema = z.object({
@@ -36,12 +44,19 @@ export const conversationRunResponseSchema = z.object({
   route: routeDecisionSchema,
   handled_by: z.literal("personal_assistant_graph"),
   citations: z.array(citationSchema).default([]),
+  knowledge_base_selection: knowledgeBaseSelectionSchema.default({
+    mode: "all",
+    knowledge_base_ids: [],
+  }),
+  resolved_knowledge_base_count: z.number().default(0),
 });
 
 export const runStartedEventDataSchema = z.object({
   run_id: z.string().min(1),
   conversation_id: z.string().min(1),
   status: z.string(),
+  knowledge_base_selection: knowledgeBaseSelectionSchema.optional(),
+  resolved_knowledge_base_count: z.number().optional(),
 });
 
 export const answerDeltaEventDataSchema = z.object({
@@ -69,6 +84,11 @@ export const agentRunSummarySchema = z.object({
   status: z.string(),
   route_label: z.string().nullable(),
   created_at: z.string(),
+  knowledge_base_selection: knowledgeBaseSelectionSchema.default({
+    mode: "all",
+    knowledge_base_ids: [],
+  }),
+  resolved_knowledge_base_count: z.number().default(0),
 });
 
 export const agentEventSchema = z.object({
@@ -85,6 +105,12 @@ export type ConversationCreateRequest = z.infer<
 >;
 export type Message = z.infer<typeof messageSchema>;
 export type MessageCreateRequest = z.infer<typeof messageCreateRequestSchema>;
+export type KnowledgeBaseSelectionMode = z.infer<
+  typeof knowledgeBaseSelectionModeSchema
+>;
+export type KnowledgeBaseSelection = z.infer<
+  typeof knowledgeBaseSelectionSchema
+>;
 export type ConversationRunRequest = z.infer<
   typeof conversationRunRequestSchema
 >;

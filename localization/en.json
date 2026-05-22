@@ -130,7 +130,18 @@
       "pending": "pending"
     },
     "guestNoticeTitle": "Guest demo limits",
-    "guestNoticeDescription": "This guest session lasts 24 hours and is limited to one chat, 5 prompts, and 3 document uploads. If you hit a limit, the backend will return a safe error here."
+    "guestNoticeDescription": "This guest session lasts 24 hours and is limited to one chat, 5 prompts, and 3 document uploads. If you hit a limit, the backend will return a safe error here.",
+    "knowledgeSourceTitle": "Knowledge sources",
+    "knowledgeSourceDescription": "Choose which knowledge bases this run may retrieve from. Selected mode is a hard boundary; All searches every authorized knowledge base.",
+    "knowledgeSourceAll": "All knowledge bases",
+    "knowledgeSourceSelected": "Selected only",
+    "loadingKnowledgeBases": "Loading knowledge bases...",
+    "noKnowledgeBasesTitle": "No knowledge bases",
+    "noKnowledgeBasesDescription": "Create a knowledge base, add documents, then select it here.",
+    "knowledgeSourceRequired": "Select at least one knowledge base or switch back to All knowledge bases.",
+    "knowledgeSourceQueuedSelected": "Queued source: {names}",
+    "knowledgeSourceQueuedFallback": "Queued source: selected knowledge bases",
+    "knowledgeBaseLabel": "Knowledge base"
   },
   "admin": {
     "common": {
@@ -173,7 +184,7 @@
       "pdfUploadTitle": "Upload document file",
       "pdfTitleLabel": "File title",
       "pdfFileLabel": "Document file",
-      "pdfUploadHint": "Upload a PDF, Markdown (.md/.markdown), or plain text (.txt) file through /documents/upload. CSV/JSON are not advertised until backend structural support is confirmed.",
+      "pdfUploadHint": "Upload a PDF, Markdown (.md/.markdown), or plain text (.txt) file into the selected knowledge base. CSV/JSON are not advertised until backend structural support is confirmed.",
       "uploadButton": "Upload file",
       "textSource": "Text",
       "pdfSource": "PDF",
@@ -186,7 +197,7 @@
       "fileUploadTitle": "Upload document file",
       "fileTitleLabel": "File title",
       "fileLabel": "Document file",
-      "fileUploadHint": "Upload a PDF, Markdown (.md/.markdown), or plain text (.txt) file through /documents/upload. CSV/JSON are not advertised until backend structural support is confirmed.",
+      "fileUploadHint": "Upload a PDF, Markdown (.md/.markdown), or plain text (.txt) file into the selected knowledge base. CSV/JSON are not advertised until backend structural support is confirmed.",
       "uploadedSourcePrefix": "Uploaded",
       "markdownSourcePrefix": "Markdown",
       "markdownSource": "Markdown",
@@ -222,7 +233,15 @@
       "fileTypeMarkdown": "Markdown",
       "fileTypeText": "Text",
       "retryUpload": "Retry",
-      "removeUpload": "Remove"
+      "removeUpload": "Remove",
+      "knowledgeBaseTitle": "Knowledge base",
+      "knowledgeBaseLabel": "Upload into knowledge base",
+      "knowledgeBasePlaceholder": "Select a knowledge base",
+      "knowledgeBaseHint": "Create a knowledge base first. New text documents, file uploads, and ingestion runs are stored under the selected knowledge base.",
+      "knowledgeBaseRequired": "Select a knowledge base before adding or ingesting documents.",
+      "noKnowledgeBaseTitle": "No knowledge bases yet",
+      "noKnowledgeBaseDescription": "Go to Knowledge and create a knowledge base before uploading documents.",
+      "knowledgeBaseLockedHint": "Finish or remove queued uploads before switching knowledge bases so each file stays attached to the intended library."
     },
     "groups": {
       "title": "Groups",
