@@ -67,5 +67,14 @@ export const MyAgentsQueryKeys = {
     extractionRuns(documentId: string) {
       return ["my-agents", "documents", "extraction-runs", documentId] as const;
     },
+    extractionRun(documentId: string, runId: string) {
+      return [
+        "my-agents",
+        "documents",
+        "extraction-runs",
+        documentId,
+        runId,
+      ] as const;
+    },
   },
 } as const;

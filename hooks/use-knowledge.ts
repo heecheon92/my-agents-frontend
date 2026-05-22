@@ -104,10 +104,36 @@ export function useExtractionRuns(documentId?: string) {
   });
 }
 
+export function useExtractionRun(documentId?: string, runId?: string) {
+  return useQuery({
+    queryKey: MyAgentsQueryKeys.documents.extractionRun(
+      documentId ?? "",
+      runId ?? "",
+    ),
+    queryFn: () =>
+      myAgentsAPI.documents.extractionRun(documentId ?? "", runId ?? ""),
+    enabled: Boolean(documentId && runId),
+  });
+}
+
 export function useIngestDocument(documentId?: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => myAgentsAPI.documents.ingest(documentId ?? ""),
+    onSuccess: () => {
+      if (documentId) {
+        queryClient.invalidateQueries({
+          queryKey: MyAgentsQueryKeys.documents.extractionRuns(documentId),
+        });
+      }
+    },
+  });
+}
+
+export function useIngestDocumentAsync(documentId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => myAgentsAPI.documents.ingestAsync(documentId ?? ""),
     onSuccess: () => {
       if (documentId) {
         queryClient.invalidateQueries({

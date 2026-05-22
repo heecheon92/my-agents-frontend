@@ -91,10 +91,31 @@ export class MyAgentsDocumentAPI {
     );
   }
 
+  async ingestAsync(documentId: string): Promise<ExtractionRun> {
+    return parseWithSchema(
+      extractionRunSchema,
+      await this.client.fetch(API_PATH.documents.ingestAsync(documentId), {
+        method: "POST",
+      }),
+    );
+  }
+
   async extractionRuns(documentId: string): Promise<ExtractionRun[]> {
     return parseArrayWithSchema(
       extractionRunSchema,
       await this.client.fetch(API_PATH.documents.extractionRuns(documentId)),
+    );
+  }
+
+  async extractionRun(
+    documentId: string,
+    runId: string,
+  ): Promise<ExtractionRun> {
+    return parseWithSchema(
+      extractionRunSchema,
+      await this.client.fetch(
+        API_PATH.documents.extractionRun(documentId, runId),
+      ),
     );
   }
 }

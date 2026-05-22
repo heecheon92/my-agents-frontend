@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { documentSchema } from "@/model/my-agents";
+import { documentSchema, extractionRunSchema } from "@/model/my-agents";
 import { MyAgentsDocumentAPI } from "@/services/my-agents/MyAgentsDocumentAPI";
 
 describe("MyAgentsDocumentAPI", () => {
@@ -126,6 +126,54 @@ describe("MyAgentsDocumentAPI", () => {
     ]);
   });
 
+  it("starts async ingestion and polls a single extraction run", async () => {
+    const calls: Array<{ path: string; init?: { method?: string } }> = [];
+    const api = new MyAgentsDocumentAPI({
+      fetch: async (path, init) => {
+        calls.push({ path, init });
+        return {
+          id: "run-1",
+          document_id: "doc-1",
+          status: path.endsWith("/ingest/async") ? "pending" : "completed",
+          stage: path.endsWith("/ingest/async") ? "queued" : "completed",
+          progress_percent: path.endsWith("/ingest/async") ? 0 : 100,
+          chunk_count: 4,
+          entity_count: 2,
+          relationship_count: 1,
+          error: null,
+          started_at: "2026-05-22T00:00:00Z",
+          completed_at: path.endsWith("/ingest/async")
+            ? null
+            : "2026-05-22T00:00:05Z",
+        };
+      },
+    });
+
+    await expect(api.ingestAsync("doc-1")).resolves.toMatchObject({
+      id: "run-1",
+      status: "pending",
+      stage: "queued",
+      progress_percent: 0,
+    });
+    await expect(api.extractionRun("doc-1", "run-1")).resolves.toMatchObject({
+      id: "run-1",
+      status: "completed",
+      stage: "completed",
+      progress_percent: 100,
+    });
+
+    expect(calls).toEqual([
+      {
+        path: "/documents/doc-1/ingest/async",
+        init: { method: "POST" },
+      },
+      {
+        path: "/documents/doc-1/extraction-runs/run-1",
+        init: undefined,
+      },
+    ]);
+  });
+
   it("accepts backend uploaded document source metadata", () => {
     expect(
       documentSchema.parse({
@@ -188,6 +236,29 @@ describe("MyAgentsDocumentAPI", () => {
       source_type: "text",
       source_filename: "notes.txt",
       parser_name: "text",
+    });
+  });
+
+  it("accepts async extraction run progress metadata", () => {
+    expect(
+      extractionRunSchema.parse({
+        id: "run-1",
+        document_id: "doc-1",
+        status: "running",
+        stage: "embedding",
+        progress_percent: 45,
+        chunk_count: 8,
+        entity_count: 3,
+        relationship_count: 2,
+        error: null,
+        started_at: "2026-05-22T00:00:00Z",
+        completed_at: null,
+      }),
+    ).toMatchObject({
+      id: "run-1",
+      status: "running",
+      stage: "embedding",
+      progress_percent: 45,
     });
   });
 });

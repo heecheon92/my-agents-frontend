@@ -1,7 +1,9 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import {
   useAddMember,
   useCreateGroup,
@@ -17,13 +19,94 @@ import {
   useIngestDocument,
   useKnowledgeBases,
   usePatchDocumentPermission,
-  useUploadDocument,
 } from "@/hooks/use-knowledge";
 import { useLocalization } from "@/hooks/useLocalization";
+import type { ExtractionRun } from "@/model/my-agents";
+import { myAgentsAPI } from "@/services/my-agents";
 import { Field, inputClassName } from "./Field";
 import { EmptyState, ErrorState, Pill } from "./Status";
 
 type GroupRole = "owner" | "admin" | "editor" | "viewer";
+
+type UploadQueueStatus =
+  | "selected"
+  | "uploading"
+  | "uploaded"
+  | "queued"
+  | "ingesting"
+  | "completed"
+  | "failed";
+
+type UploadQueueItem = {
+  localId: string;
+  file: File;
+  title: string;
+  status: UploadQueueStatus;
+  progressPercent: number;
+  documentId?: string;
+  extractionRunId?: string;
+  error?: string;
+};
+
+const UPLOAD_ACCEPT =
+  "application/pdf,text/markdown,text/plain,.pdf,.md,.markdown,.txt";
+const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+const UPLOAD_CONCURRENCY = 3;
+const EXTRACTION_POLL_INTERVAL_MS = 1000;
+const TERMINAL_EXTRACTION_STATUSES = new Set(["completed", "failed"]);
+const SUPPORTED_UPLOAD_EXTENSIONS = new Set([
+  ".pdf",
+  ".md",
+  ".markdown",
+  ".txt",
+]);
+const SUPPORTED_UPLOAD_TYPES = new Set([
+  "application/pdf",
+  "text/markdown",
+  "text/plain",
+]);
+
+function buildLocalUploadId(file: File) {
+  return `${file.name}-${file.size}-${file.lastModified}-${crypto.randomUUID()}`;
+}
+
+function fileExtension(fileName: string) {
+  const dotIndex = fileName.lastIndexOf(".");
+  if (dotIndex < 0) return "";
+  return fileName.slice(dotIndex).toLowerCase();
+}
+
+function titleFromFileName(fileName: string) {
+  const dotIndex = fileName.lastIndexOf(".");
+  const baseName = dotIndex > 0 ? fileName.slice(0, dotIndex) : fileName;
+  return baseName.trim() || fileName;
+}
+
+function isSupportedUploadFile(file: File) {
+  return (
+    SUPPORTED_UPLOAD_EXTENSIONS.has(fileExtension(file.name)) ||
+    SUPPORTED_UPLOAD_TYPES.has(file.type)
+  );
+}
+
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function queueProgressFromExtraction(progressPercent: number) {
+  return 40 + Math.round(Math.min(Math.max(progressPercent, 0), 100) * 0.6);
+}
+
+function safeErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 export function KnowledgeSurface() {
   const knowledgeBases = useKnowledgeBases();
@@ -91,13 +174,14 @@ export function KnowledgeSurface() {
 }
 
 export function DocumentsSurface() {
+  const queryClient = useQueryClient();
   const documents = useDocuments();
   const createDocument = useCreateDocument();
-  const uploadDocument = useUploadDocument();
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [uploadTitle, setUploadTitle] = useState("");
-  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
+  const [isProcessingQueue, setIsProcessingQueue] = useState(false);
+  const [uploadAnnouncement, setUploadAnnouncement] = useState("");
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>();
   const activeDocumentId = selectedDocumentId ?? documents.data?.[0]?.id;
   const extractionRuns = useExtractionRuns(activeDocumentId);
@@ -106,6 +190,250 @@ export function DocumentsSurface() {
   const patchPermission = usePatchDocumentPermission(activeDocumentId);
   const [permissionUserId, setPermissionUserId] = useState("");
   const { localization } = useLocalization((state) => state.localization.admin);
+  const pendingQueueCount = uploadQueue.filter(
+    (item) =>
+      item.status === "selected" ||
+      item.status === "uploaded" ||
+      (item.status === "failed" && Boolean(item.documentId)),
+  ).length;
+  const completedQueueCount = uploadQueue.filter(
+    (item) => item.status === "completed",
+  ).length;
+  const failedQueueCount = uploadQueue.filter(
+    (item) => item.status === "failed",
+  ).length;
+  const queueSummary = localization.documents.uploadQueueSummary
+    .replace("{completed}", String(completedQueueCount))
+    .replace("{total}", String(uploadQueue.length));
+
+  function updateQueueItem(
+    localId: string,
+    update:
+      | Partial<UploadQueueItem>
+      | ((current: UploadQueueItem) => Partial<UploadQueueItem>),
+  ) {
+    setUploadQueue((current) =>
+      current.map((item) => {
+        if (item.localId !== localId) return item;
+        const patch = typeof update === "function" ? update(item) : update;
+        return { ...item, ...patch };
+      }),
+    );
+  }
+
+  function validateUploadFile(file: File) {
+    if (!isSupportedUploadFile(file)) {
+      return localization.documents.unsupportedFileError;
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      return localization.documents.fileTooLargeError.replace(
+        "{maxSize}",
+        formatFileSize(MAX_UPLOAD_BYTES),
+      );
+    }
+    return undefined;
+  }
+
+  function handleFileSelection(event: React.ChangeEvent<HTMLInputElement>) {
+    const selectedFiles = Array.from(event.target.files ?? []);
+    if (selectedFiles.length === 0) return;
+
+    const nextItems = selectedFiles.map((file) => {
+      const error = validateUploadFile(file);
+      return {
+        localId: buildLocalUploadId(file),
+        file,
+        title: titleFromFileName(file.name),
+        status: error ? "failed" : "selected",
+        progressPercent: 0,
+        error,
+      } satisfies UploadQueueItem;
+    });
+
+    setUploadQueue((current) => [...current, ...nextItems]);
+    setUploadAnnouncement(
+      localization.documents.filesAddedAnnouncement.replace(
+        "{count}",
+        String(nextItems.length),
+      ),
+    );
+    event.currentTarget.value = "";
+  }
+
+  function handleQueueTitleChange(localId: string, nextTitle: string) {
+    updateQueueItem(localId, { title: nextTitle });
+  }
+
+  function handleRemoveQueueItem(localId: string) {
+    setUploadQueue((current) =>
+      current.filter((item) => item.localId !== localId),
+    );
+    setUploadAnnouncement(localization.documents.uploadRemovedAnnouncement);
+  }
+
+  function handleRetryQueueItem(localId: string) {
+    updateQueueItem(localId, (item) => ({
+      status: item.documentId ? "uploaded" : "selected",
+      error: undefined,
+      progressPercent: item.documentId ? Math.max(item.progressPercent, 35) : 0,
+    }));
+  }
+
+  async function refreshDocumentQueries(documentId?: string) {
+    await queryClient.invalidateQueries({
+      queryKey: MyAgentsQueryKeys.documents.list(),
+    });
+    if (documentId) {
+      await queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.documents.extractionRuns(documentId),
+      });
+    }
+  }
+
+  async function pollExtractionRun(
+    documentId: string,
+    runId: string,
+    localId: string,
+  ) {
+    let latestRun: ExtractionRun | null = null;
+    while (true) {
+      const run = await myAgentsAPI.documents.extractionRun(documentId, runId);
+      latestRun = run;
+      updateQueueItem(localId, {
+        extractionRunId: run.id,
+        status: run.status === "failed" ? "failed" : "ingesting",
+        progressPercent: queueProgressFromExtraction(run.progress_percent),
+        error: run.error ?? undefined,
+      });
+      if (TERMINAL_EXTRACTION_STATUSES.has(run.status)) break;
+      await wait(EXTRACTION_POLL_INTERVAL_MS);
+    }
+    return latestRun;
+  }
+
+  async function processQueueItem(item: UploadQueueItem) {
+    if (!item.documentId) {
+      const validationError = validateUploadFile(item.file);
+      if (validationError) {
+        updateQueueItem(item.localId, {
+          status: "failed",
+          error: validationError,
+          progressPercent: 0,
+        });
+        return;
+      }
+    }
+
+    try {
+      let documentId = item.documentId;
+      if (!documentId) {
+        updateQueueItem(item.localId, {
+          status: "uploading",
+          progressPercent: 10,
+          error: undefined,
+        });
+        const uploaded = await myAgentsAPI.documents.upload({
+          title: item.title.trim() || titleFromFileName(item.file.name),
+          file: item.file,
+        });
+        documentId = uploaded.id;
+        setSelectedDocumentId(uploaded.id);
+        updateQueueItem(item.localId, {
+          documentId: uploaded.id,
+          status: "uploaded",
+          progressPercent: 35,
+        });
+        await refreshDocumentQueries(uploaded.id);
+      }
+
+      updateQueueItem(item.localId, {
+        status: "queued",
+        progressPercent: 40,
+        error: undefined,
+      });
+      const run = await myAgentsAPI.documents.ingestAsync(documentId);
+      updateQueueItem(item.localId, {
+        extractionRunId: run.id,
+        status: run.status === "pending" ? "queued" : "ingesting",
+        progressPercent: queueProgressFromExtraction(run.progress_percent),
+      });
+
+      const completedRun = TERMINAL_EXTRACTION_STATUSES.has(run.status)
+        ? run
+        : await pollExtractionRun(documentId, run.id, item.localId);
+
+      if (completedRun?.status === "completed") {
+        updateQueueItem(item.localId, {
+          status: "completed",
+          progressPercent: 100,
+          error: undefined,
+        });
+        setUploadAnnouncement(
+          localization.documents.uploadCompletedAnnouncement.replace(
+            "{file}",
+            item.file.name,
+          ),
+        );
+        await refreshDocumentQueries(documentId);
+        return;
+      }
+
+      updateQueueItem(item.localId, {
+        status: "failed",
+        error: completedRun?.error ?? localization.documents.uploadFailed,
+        progressPercent: completedRun
+          ? queueProgressFromExtraction(completedRun.progress_percent)
+          : 0,
+      });
+      setUploadAnnouncement(
+        localization.documents.uploadFailedAnnouncement.replace(
+          "{file}",
+          item.file.name,
+        ),
+      );
+      await refreshDocumentQueries(documentId);
+    } catch (error) {
+      updateQueueItem(item.localId, {
+        status: "failed",
+        error: safeErrorMessage(error, localization.documents.uploadFailed),
+      });
+      setUploadAnnouncement(
+        localization.documents.uploadFailedAnnouncement.replace(
+          "{file}",
+          item.file.name,
+        ),
+      );
+    }
+  }
+
+  async function handleProcessUploadQueue() {
+    const processableItems = uploadQueue.filter(
+      (item) =>
+        item.status === "selected" ||
+        item.status === "uploaded" ||
+        (item.status === "failed" && Boolean(item.documentId)),
+    );
+    if (processableItems.length === 0 || isProcessingQueue) return;
+
+    setIsProcessingQueue(true);
+    setUploadAnnouncement(localization.documents.uploadStartedAnnouncement);
+    let nextIndex = 0;
+    const workerCount = Math.min(UPLOAD_CONCURRENCY, processableItems.length);
+
+    async function runWorker() {
+      while (nextIndex < processableItems.length) {
+        const item = processableItems[nextIndex];
+        nextIndex += 1;
+        if (item) await processQueueItem(item);
+      }
+    }
+
+    await Promise.all(Array.from({ length: workerCount }, runWorker));
+    setIsProcessingQueue(false);
+    setUploadAnnouncement(
+      localization.documents.uploadQueueFinishedAnnouncement,
+    );
+  }
 
   async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -114,23 +442,6 @@ export function DocumentsSurface() {
       setTitle("");
       setContent("");
       setSelectedDocumentId(created.id);
-    } catch {
-      // React Query stores the API error on the mutation; render it below.
-    }
-  }
-
-  async function handleUpload(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!uploadFile) return;
-    try {
-      const uploaded = await uploadDocument.mutateAsync({
-        title: uploadTitle,
-        file: uploadFile,
-      });
-      setUploadTitle("");
-      setUploadFile(null);
-      event.currentTarget.reset();
-      setSelectedDocumentId(uploaded.id);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -222,47 +533,77 @@ export function DocumentsSurface() {
                 <ErrorState error={createDocument.error} />
               ) : null}
             </form>
-            <form
-              onSubmit={handleUpload}
-              className="cal-card grid gap-3 rounded-xl p-4"
-            >
-              <h2 className="font-semibold">
-                {localization.documents.fileUploadTitle}
-              </h2>
+            <section className="cal-card grid gap-3 rounded-xl p-4">
+              <div>
+                <h2 className="font-semibold">
+                  {localization.documents.fileUploadTitle}
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-cal-muted">
+                  {localization.documents.fileUploadHint}
+                </p>
+              </div>
               <Field
-                label={localization.documents.fileTitleLabel}
-                hint={localization.documents.fileUploadHint}
+                label={localization.documents.fileLabel}
+                hint={localization.documents.multiFileUploadHint.replace(
+                  "{maxSize}",
+                  formatFileSize(MAX_UPLOAD_BYTES),
+                )}
               >
-                <input
-                  className={inputClassName}
-                  value={uploadTitle}
-                  onChange={(event) => setUploadTitle(event.target.value)}
-                  required
-                />
-              </Field>
-              <Field label={localization.documents.fileLabel}>
                 <input
                   className={inputClassName}
                   type="file"
-                  accept="application/pdf,text/markdown,text/plain,.pdf,.md,.markdown,.txt"
-                  onChange={(event) => {
-                    setUploadFile(event.target.files?.[0] ?? null);
-                  }}
-                  required
+                  accept={UPLOAD_ACCEPT}
+                  multiple
+                  onChange={handleFileSelection}
                 />
               </Field>
-              <Button
-                type="submit"
-                disabled={
-                  uploadDocument.isPending || !uploadTitle.trim() || !uploadFile
-                }
-              >
-                {localization.documents.uploadButton}
-              </Button>
-              {uploadDocument.error ? (
-                <ErrorState error={uploadDocument.error} />
+              <p className="sr-only" aria-live="polite">
+                {uploadAnnouncement}
+              </p>
+              {uploadQueue.length > 0 ? (
+                <div className="grid gap-3" data-testid="upload-queue">
+                  <div className="flex flex-col gap-2 rounded-xl bg-cal-surface-soft p-3 text-sm text-cal-muted sm:flex-row sm:items-center sm:justify-between">
+                    <span>{queueSummary}</span>
+                    <span>
+                      {failedQueueCount > 0
+                        ? localization.documents.uploadQueueFailedSummary.replace(
+                            "{count}",
+                            String(failedQueueCount),
+                          )
+                        : localization.documents.uploadQueueReadySummary.replace(
+                            "{count}",
+                            String(pendingQueueCount),
+                          )}
+                    </span>
+                  </div>
+                  <div className="grid gap-2">
+                    {uploadQueue.map((item) => (
+                      <UploadQueueRow
+                        key={item.localId}
+                        item={item}
+                        localization={localization.documents}
+                        onTitleChange={handleQueueTitleChange}
+                        onRemove={handleRemoveQueueItem}
+                        onRetry={handleRetryQueueItem}
+                        disabled={isProcessingQueue}
+                      />
+                    ))}
+                  </div>
+                </div>
               ) : null}
-            </form>
+              <Button
+                type="button"
+                onClick={handleProcessUploadQueue}
+                disabled={isProcessingQueue || pendingQueueCount === 0}
+              >
+                {isProcessingQueue
+                  ? localization.documents.uploadProcessingButton
+                  : localization.documents.uploadAndIngestButton}
+              </Button>
+              <p className="text-xs leading-5 text-cal-muted">
+                {localization.documents.guestUploadLimitHint}
+              </p>
+            </section>
           </div>
           <section className="cal-card rounded-xl p-4">
             <h2 className="font-semibold">
@@ -360,44 +701,197 @@ export function DocumentsSurface() {
                   className="rounded-lg bg-cal-surface-soft p-3 text-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Pill tone="green">{run.status}</Pill>
-                    <span>
-                      {run.chunk_count} {localization.common.chunks}
+                    <p className="break-words font-medium text-cal-ink">
+                      {run.status}
+                    </p>
+                    <span className="text-xs text-cal-muted">
+                      {run.progress_percent}%
                     </span>
                   </div>
-                  <p className="mt-2 text-cal-body">
+                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-cal-surface-strong">
+                    <div
+                      className="h-full rounded-full bg-cal-primary"
+                      style={{
+                        width: `${Math.min(run.progress_percent, 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="mt-2 text-cal-muted">
+                    {run.chunk_count} {localization.common.chunks} ·{" "}
                     {run.entity_count} {localization.common.entities} ·{" "}
                     {run.relationship_count} {localization.common.relationships}
                   </p>
+                  {run.stage ? (
+                    <p className="mt-1 text-xs text-cal-muted">
+                      {localization.documents.stageLabel}: {run.stage}
+                    </p>
+                  ) : null}
+                  {run.error ? (
+                    <p className="mt-1 text-xs text-cal-error">{run.error}</p>
+                  ) : null}
                 </div>
               ))}
             </div>
           </section>
+          <ResourceList
+            loading={documents.isLoading}
+            error={documents.error}
+            empty={localization.documents.empty}
+          >
+            {documents.data?.map((doc) => (
+              <button
+                key={doc.id}
+                type="button"
+                onClick={() => setSelectedDocumentId(doc.id)}
+                className={`rounded-lg border p-3 text-left text-sm ${
+                  doc.id === activeDocumentId
+                    ? "border-cal-primary bg-cal-primary text-white"
+                    : "border-cal-hairline bg-cal-canvas text-cal-ink"
+                }`}
+              >
+                <span className="block break-words font-medium">
+                  {doc.title}
+                </span>
+                <span className="mt-1 block break-words text-xs opacity-70">
+                  {documentMeta(doc, localization)}
+                </span>
+              </button>
+            ))}
+          </ResourceList>
         </div>
       </div>
-      <ResourceList
-        loading={documents.isLoading}
-        error={documents.error}
-        empty={localization.documents.empty}
-      >
-        {documents.data?.map((doc) => (
-          <button
-            key={doc.id}
-            type="button"
-            onClick={() => setSelectedDocumentId(doc.id)}
-            className="text-left"
-          >
-            <ResourceRow
-              title={doc.title}
-              subtitle={doc.id}
-              meta={documentMeta(doc, localization)}
-              active={activeDocumentId === doc.id}
-            />
-          </button>
-        ))}
-      </ResourceList>
     </PageCard>
   );
+}
+
+function UploadQueueRow({
+  item,
+  localization,
+  onTitleChange,
+  onRemove,
+  onRetry,
+  disabled,
+}: {
+  item: UploadQueueItem;
+  localization: {
+    uploadStatusLabels: Record<UploadQueueStatus, string>;
+    fileTypePdf: string;
+    fileTypeMarkdown: string;
+    fileTypeText: string;
+    fileTitleLabel: string;
+    retryUpload: string;
+    removeUpload: string;
+  };
+  onTitleChange: (localId: string, title: string) => void;
+  onRemove: (localId: string) => void;
+  onRetry: (localId: string) => void;
+  disabled: boolean;
+}) {
+  const canEdit = !disabled && ["selected", "failed"].includes(item.status);
+  const progress = Math.min(Math.max(item.progressPercent, 0), 100);
+
+  return (
+    <article className="rounded-xl border border-cal-hairline bg-cal-canvas p-3 text-sm">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-center gap-2">
+            <Pill
+              tone={
+                item.status === "completed"
+                  ? "green"
+                  : item.status === "failed"
+                    ? "rose"
+                    : item.status === "ingesting"
+                      ? "blue"
+                      : "slate"
+              }
+            >
+              {localization.uploadStatusLabels[item.status]}
+            </Pill>
+            <span className="rounded-full bg-cal-surface-soft px-2 py-1 text-xs font-medium text-cal-muted">
+              {uploadFileTypeLabel(item.file, localization)}
+            </span>
+            <span className="text-xs text-cal-muted">
+              {formatFileSize(item.file.size)}
+            </span>
+          </div>
+          <p className="mt-2 break-words font-medium text-cal-ink">
+            {item.file.name}
+          </p>
+          <label className="mt-2 grid gap-1 text-xs font-medium text-cal-muted">
+            {localization.fileTitleLabel}
+            <input
+              className={inputClassName}
+              value={item.title}
+              onChange={(event) =>
+                onTitleChange(item.localId, event.target.value)
+              }
+              disabled={!canEdit}
+            />
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          {item.status === "failed" ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="secondary"
+              onClick={() => onRetry(item.localId)}
+              disabled={disabled}
+            >
+              {localization.retryUpload}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            onClick={() => onRemove(item.localId)}
+            disabled={disabled}
+          >
+            {localization.removeUpload}
+          </Button>
+        </div>
+      </div>
+      <div
+        className="mt-3 h-2 overflow-hidden rounded-full bg-cal-surface-strong"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={progress}
+      >
+        <div
+          className="h-full rounded-full bg-cal-primary transition-all"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+      {item.error ? (
+        <p className="mt-2 break-words text-xs text-cal-error">{item.error}</p>
+      ) : null}
+    </article>
+  );
+}
+
+function uploadFileTypeLabel(
+  file: File,
+  localization: {
+    fileTypePdf: string;
+    fileTypeMarkdown: string;
+    fileTypeText: string;
+  },
+) {
+  const extension = fileExtension(file.name);
+  if (extension === ".pdf" || file.type === "application/pdf") {
+    return localization.fileTypePdf;
+  }
+  if (
+    extension === ".md" ||
+    extension === ".markdown" ||
+    file.type === "text/markdown"
+  ) {
+    return localization.fileTypeMarkdown;
+  }
+  return localization.fileTypeText;
 }
 
 export function GroupsSurface() {

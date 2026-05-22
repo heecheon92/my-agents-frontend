@@ -151,9 +151,19 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "documents.ingest",
   },
   {
+    method: "POST",
+    pattern: new RegExp(`^/documents/${uuidLike}/ingest/async$`),
+    name: "documents.ingest.async",
+  },
+  {
     method: "GET",
     pattern: new RegExp(`^/documents/${uuidLike}/extraction-runs$`),
     name: "documents.extraction-runs",
+  },
+  {
+    method: "GET",
+    pattern: new RegExp(`^/documents/${uuidLike}/extraction-runs/${uuidLike}$`),
+    name: "documents.extraction-run.detail",
   },
 ];
 

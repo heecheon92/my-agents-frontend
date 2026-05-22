@@ -62,8 +62,14 @@ export const API_PATH = {
     ingest(documentId: string) {
       return `${this.detail(documentId)}/ingest`;
     },
+    ingestAsync(documentId: string) {
+      return `${this.ingest(documentId)}/async`;
+    },
     extractionRuns(documentId: string) {
       return `${this.detail(documentId)}/extraction-runs`;
+    },
+    extractionRun(documentId: string, runId: string) {
+      return `${this.extractionRuns(documentId)}/${runId}`;
     },
   },
 } as const;

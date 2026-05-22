@@ -62,13 +62,35 @@ export const documentPermissionSchema = z.object({
   can_ingest: z.boolean(),
 });
 
+export const extractionRunStatusSchema = z.enum([
+  "pending",
+  "running",
+  "completed",
+  "failed",
+]);
+
+export const extractionRunStageSchema = z.enum([
+  "queued",
+  "chunking",
+  "embedding",
+  "indexing",
+  "entities",
+  "completed",
+  "failed",
+]);
+
 export const extractionRunSchema = z.object({
   id: z.string().min(1),
   document_id: z.string().min(1),
-  status: z.string(),
+  status: extractionRunStatusSchema,
+  stage: extractionRunStageSchema.nullable().optional(),
+  progress_percent: z.number().default(0),
   chunk_count: z.number(),
   entity_count: z.number(),
   relationship_count: z.number(),
+  error: z.string().nullable().optional(),
+  started_at: z.string().nullable().optional(),
+  completed_at: z.string().nullable().optional(),
 });
 
 export const citationSchema = z.object({
@@ -91,5 +113,7 @@ export type DocumentPermissionPatchRequest = z.infer<
   typeof documentPermissionPatchRequestSchema
 >;
 export type DocumentPermission = z.infer<typeof documentPermissionSchema>;
+export type ExtractionRunStatus = z.infer<typeof extractionRunStatusSchema>;
+export type ExtractionRunStage = z.infer<typeof extractionRunStageSchema>;
 export type ExtractionRun = z.infer<typeof extractionRunSchema>;
 export type Citation = z.infer<typeof citationSchema>;

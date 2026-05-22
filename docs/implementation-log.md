@@ -226,3 +226,11 @@ Verification passed in this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `p
 - Wired persisted assistant messages and streaming assistant replies through the same renderer boundary.
 
 Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/agent-markdown.test.ts tests/conversation-api.test.ts`, `pnpm build`, and `git diff --check`.
+
+## 2026-05-22 — multi-file async upload queue
+
+- Replaced the single-file document upload interaction with an in-card queue that accepts multiple PDF, Markdown, and plain-text files, keeps per-file editable titles before processing, and shows selected/uploading/queued/ingesting/completed/failed states with progress bars.
+- Added frontend client, BFF allowlist, query key, and schema support for `POST /documents/{document_id}/ingest/async` plus `GET /documents/{document_id}/extraction-runs/{run_id}` while preserving the existing synchronous ingest action.
+- Kept guest upload limits backend-owned in UI copy: each accepted file can count toward the 3-document guest cap, and backend errors remain per-file retry/remove states.
+
+Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build` (retried outside sandbox after a Turbopack internal worker bind permission error), and `git diff --check`.

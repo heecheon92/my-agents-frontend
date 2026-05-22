@@ -32,6 +32,12 @@ describe("API_PATH", () => {
     expect(API_PATH.documents.extractionRuns("doc-1")).toBe(
       "/documents/doc-1/extraction-runs",
     );
+    expect(API_PATH.documents.ingestAsync("doc-1")).toBe(
+      "/documents/doc-1/ingest/async",
+    );
+    expect(API_PATH.documents.extractionRun("doc-1", "run-1")).toBe(
+      "/documents/doc-1/extraction-runs/run-1",
+    );
   });
 
   it("prefixes frontend BFF paths", () => {
@@ -64,6 +70,13 @@ describe("MyAgentsQueryKeys", () => {
       "conversations",
       "run",
       conversationId,
+      runId,
+    ]);
+    expect(MyAgentsQueryKeys.documents.extractionRun("doc-1", runId)).toEqual([
+      "my-agents",
+      "documents",
+      "extraction-runs",
+      "doc-1",
       runId,
     ]);
   });

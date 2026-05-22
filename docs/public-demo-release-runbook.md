@@ -31,7 +31,7 @@ Must be done before reviewer access:
 3. Run hosted preview visitor smoke over HTTPS with exact frontend/backend origins.
 4. Prove public visitor access without seeded credentials and without `/auth/dev/outbox`: prefer guest demo access (`POST /auth/guest/request` then `POST /auth/guest/login`) for reviewer-safe access, or use full signup/verification only when owner-approved.
 5. Confirm browser `localStorage` and `sessionStorage` contain no session, CSRF, password, provider token, or API key values.
-6. Exercise document evidence: upload a supported PDF, Markdown, or plain-text file through `POST /documents/upload` and ingest it, or explicitly record that the launch gate used the JSON text-document fallback and why.
+6. Exercise document evidence: upload one or more supported PDF, Markdown, or plain-text files through `POST /documents/upload`, start async ingestion with `POST /documents/{document_id}/ingest/async`, poll `GET /documents/{document_id}/extraction-runs/{run_id}` to a terminal state, or explicitly record that the launch gate used the JSON text-document fallback and why.
 7. Verify streamed answer, citations, redacted activity events, and refresh persistence.
 8. Produce a redacted evidence bundle with commit SHAs, command outputs, smoke topology, provider decisions, and known limitations.
 
@@ -125,8 +125,8 @@ The final visitor proof must exercise the selected reviewer access path and fail
 3. Refresh; `/auth/me` must restore the session. Guest users may have `email: null`, `is_guest: true`, and `guest_expires_at`.
 4. Inspect browser `localStorage` and `sessionStorage`; they must not contain session cookies, CSRF tokens, provider tokens, raw passwords, or API keys.
 5. Confirm the guest limitation notice is visible for guest access: 24h access, one chat, 5 prompts, and 3 document uploads. Limits are backend-owned and safe `{ detail }` errors must render in the existing UI error panels.
-6. Upload a supported PDF, Markdown, or plain-text file through `POST /documents/upload`, or create a JSON text document only if the evidence bundle explicitly records why uploaded-file proof was out of scope/unavailable for that gate.
-7. Run ingest and record extraction evidence.
+6. Upload one or more supported PDF, Markdown, or plain-text files through the in-card upload queue; each accepted guest upload counts toward the backend-owned 3-document cap.
+7. Start async ingestion and record extraction progress/terminal evidence from `POST /documents/{document_id}/ingest/async` plus `GET /documents/{document_id}/extraction-runs/{run_id}`. Use the JSON text-document fallback only if the evidence bundle explicitly records why uploaded-file proof was out of scope/unavailable for that gate.
 8. Create a conversation and run streamed chat.
 9. Verify answer text, citations, and redacted activity events.
 10. Refresh/reopen the conversation and verify persisted run/citation/event evidence.

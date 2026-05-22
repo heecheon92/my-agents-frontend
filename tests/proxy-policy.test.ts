@@ -30,6 +30,13 @@ describe("proxy policy", () => {
     expect(isAllowedBackendPath("POST", "/documents/upload").allowed).toBe(
       true,
     );
+    expect(
+      isAllowedBackendPath("POST", "/documents/doc-1/ingest/async").allowed,
+    ).toBe(true);
+    expect(
+      isAllowedBackendPath("GET", "/documents/doc-1/extraction-runs/run-1")
+        .allowed,
+    ).toBe(true);
     expect(isAllowedBackendPath("POST", "/auth/verify-email").allowed).toBe(
       true,
     );
