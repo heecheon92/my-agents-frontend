@@ -91,6 +91,19 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
           <p className="mt-2 text-xs leading-5">
             {localization.service.sessionRestored}
           </p>
+          <div className="mt-4 border-t border-cal-hairline pt-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-cal-ink">
+              {localization.service.sessionEvidenceTitle}
+            </p>
+            <ul className="mt-2 grid gap-2 text-xs leading-5">
+              {localization.service.sessionEvidenceItems.map((item) => (
+                <li key={item} className="flex gap-2">
+                  <span className="mt-2 size-1.5 shrink-0 rounded-full bg-cal-brand-accent" />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
           <Button
             className="mt-4 w-full"
             variant="outline"
@@ -109,12 +122,19 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
       <section className="flex min-w-0 flex-1 flex-col">
         <header className="border-b border-cal-hairline bg-cal-surface-soft px-4 py-3 lg:hidden">
           <div className="flex items-center justify-between gap-3">
-            <Link
-              href="/chat"
-              className="font-heading text-2xl font-semibold tracking-[-0.04em]"
-            >
-              {localization.brand.name}
-            </Link>
+            <div className="min-w-0">
+              <Link
+                href="/chat"
+                className="font-heading text-2xl font-semibold tracking-[-0.04em]"
+              >
+                {localization.brand.name}
+              </Link>
+              <p className="mt-1 truncate text-xs text-cal-muted">
+                {user.data?.is_guest
+                  ? localization.service.guestSessionLabel
+                  : localization.service.sessionEvidenceTitle}
+              </p>
+            </div>
             <Button
               variant="outline"
               size="sm"

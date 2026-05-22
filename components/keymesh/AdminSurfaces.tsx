@@ -37,6 +37,8 @@ type UploadQueueStatus =
   | "completed"
   | "failed";
 
+type StatusTone = NonNullable<React.ComponentProps<typeof Pill>["tone"]>;
+
 type UploadQueueItem = {
   localId: string;
   file: File;
@@ -189,6 +191,9 @@ export function DocumentsSurface() {
   const [uploadAnnouncement, setUploadAnnouncement] = useState("");
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>();
   const activeDocumentId = selectedDocumentId ?? documents.data?.[0]?.id;
+  const activeDocument = documents.data?.find(
+    (document) => document.id === activeDocumentId,
+  );
   const extractionRuns = useKnowledgeBaseExtractionRuns(
     activeKnowledgeBaseId,
     activeDocumentId,
@@ -218,6 +223,21 @@ export function DocumentsSurface() {
   const failedQueueCount = uploadQueue.filter(
     (item) => item.status === "failed",
   ).length;
+  const queueStatusCounts = uploadQueue.reduce(
+    (counts, item) => {
+      counts[item.status] += 1;
+      return counts;
+    },
+    {
+      selected: 0,
+      uploading: 0,
+      uploaded: 0,
+      queued: 0,
+      ingesting: 0,
+      completed: 0,
+      failed: 0,
+    } satisfies Record<UploadQueueStatus, number>,
+  );
   const queueSummary = localization.documents.uploadQueueSummary
     .replace("{completed}", String(completedQueueCount))
     .replace("{total}", String(uploadQueue.length));
@@ -672,19 +692,41 @@ export function DocumentsSurface() {
               </p>
               {uploadQueue.length > 0 ? (
                 <div className="grid gap-3" data-testid="upload-queue">
-                  <div className="flex flex-col gap-2 rounded-xl bg-cal-surface-soft p-3 text-sm text-cal-muted sm:flex-row sm:items-center sm:justify-between">
-                    <span>{queueSummary}</span>
-                    <span>
-                      {failedQueueCount > 0
-                        ? localization.documents.uploadQueueFailedSummary.replace(
-                            "{count}",
-                            String(failedQueueCount),
-                          )
-                        : localization.documents.uploadQueueReadySummary.replace(
-                            "{count}",
-                            String(pendingQueueCount),
-                          )}
-                    </span>
+                  <div className="grid gap-3 rounded-xl bg-cal-surface-soft p-3 text-sm text-cal-muted">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <span>{queueSummary}</span>
+                      <span>
+                        {failedQueueCount > 0
+                          ? localization.documents.uploadQueueFailedSummary.replace(
+                              "{count}",
+                              String(failedQueueCount),
+                            )
+                          : localization.documents.uploadQueueReadySummary.replace(
+                              "{count}",
+                              String(pendingQueueCount),
+                            )}
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {Object.entries(queueStatusCounts).map(
+                        ([status, count]) =>
+                          count > 0 ? (
+                            <Pill
+                              key={status}
+                              tone={uploadStatusTone(
+                                status as UploadQueueStatus,
+                              )}
+                            >
+                              {
+                                localization.documents.uploadStatusLabels[
+                                  status as UploadQueueStatus
+                                ]
+                              }
+                              : {count}
+                            </Pill>
+                          ) : null,
+                      )}
+                    </div>
                   </div>
                   <div className="grid gap-2">
                     {uploadQueue.map((item) => (
@@ -724,9 +766,21 @@ export function DocumentsSurface() {
               {localization.documents.selectedActions}
             </h2>
             {activeDocumentId ? (
-              <p className="mt-2 text-sm leading-6 text-cal-muted">
-                {activeDocumentId}
-              </p>
+              <div className="mt-3 grid gap-3 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm">
+                {activeDocument ? (
+                  <div>
+                    <p className="break-words font-medium text-cal-ink">
+                      {activeDocument.title}
+                    </p>
+                    <p className="mt-1 break-words text-xs text-cal-muted">
+                      {documentMeta(activeDocument, localization)}
+                    </p>
+                  </div>
+                ) : null}
+                <p className="break-all rounded-lg bg-cal-canvas p-2 font-mono text-xs text-cal-muted">
+                  ID: {activeDocumentId}
+                </p>
+              </div>
             ) : (
               <EmptyState
                 title={localization.documents.noSelectedTitle}
@@ -815,16 +869,25 @@ export function DocumentsSurface() {
                   className="rounded-lg bg-cal-surface-soft p-3 text-sm"
                 >
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="break-words font-medium text-cal-ink">
+                    <Pill tone={extractionRunTone(run.status)}>
                       {run.status}
-                    </p>
+                    </Pill>
                     <span className="text-xs text-cal-muted">
                       {run.progress_percent}%
                     </span>
                   </div>
-                  <div className="mt-2 h-2 overflow-hidden rounded-full bg-cal-surface-strong">
+                  <p className="mt-2 break-all font-mono text-xs text-cal-muted">
+                    ID: {run.id}
+                  </p>
+                  <div
+                    className="mt-2 h-2 overflow-hidden rounded-full bg-cal-surface-strong"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={Math.min(run.progress_percent, 100)}
+                  >
                     <div
-                      className="h-full rounded-full bg-cal-primary"
+                      className={`h-full rounded-full ${extractionProgressClassName(run.status)}`}
                       style={{
                         width: `${Math.min(run.progress_percent, 100)}%`,
                       }}
@@ -909,17 +972,7 @@ function UploadQueueRow({
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <Pill
-              tone={
-                item.status === "completed"
-                  ? "green"
-                  : item.status === "failed"
-                    ? "rose"
-                    : item.status === "ingesting"
-                      ? "blue"
-                      : "slate"
-              }
-            >
+            <Pill tone={uploadStatusTone(item.status)}>
               {localization.uploadStatusLabels[item.status]}
             </Pill>
             <span className="rounded-full bg-cal-surface-soft px-2 py-1 text-xs font-medium text-cal-muted">
@@ -932,6 +985,16 @@ function UploadQueueRow({
           <p className="mt-2 break-words font-medium text-cal-ink">
             {item.file.name}
           </p>
+          {item.documentId || item.extractionRunId ? (
+            <div className="mt-2 grid gap-1 rounded-lg bg-cal-surface-soft p-2 font-mono text-[11px] leading-5 text-cal-muted">
+              {item.documentId ? (
+                <span className="break-all">doc: {item.documentId}</span>
+              ) : null}
+              {item.extractionRunId ? (
+                <span className="break-all">run: {item.extractionRunId}</span>
+              ) : null}
+            </div>
+          ) : null}
           <label className="mt-2 grid gap-1 text-xs font-medium text-cal-muted">
             {localization.fileTitleLabel}
             <input
@@ -975,7 +1038,7 @@ function UploadQueueRow({
         aria-valuenow={progress}
       >
         <div
-          className="h-full rounded-full bg-cal-primary transition-all"
+          className={`h-full rounded-full transition-all ${uploadProgressClassName(item.status)}`}
           style={{ width: `${progress}%` }}
         />
       </div>
@@ -984,6 +1047,35 @@ function UploadQueueRow({
       ) : null}
     </article>
   );
+}
+
+function uploadStatusTone(status: UploadQueueStatus): StatusTone {
+  if (status === "completed") return "green";
+  if (status === "failed") return "rose";
+  if (status === "queued" || status === "uploaded") return "amber";
+  if (status === "uploading" || status === "ingesting") return "blue";
+  return "slate";
+}
+
+function uploadProgressClassName(status: UploadQueueStatus) {
+  if (status === "completed") return "bg-cal-success";
+  if (status === "failed") return "bg-cal-error";
+  if (status === "queued" || status === "uploaded") return "bg-cal-warning";
+  return "bg-cal-primary";
+}
+
+function extractionRunTone(status: string): StatusTone {
+  if (status === "completed") return "green";
+  if (status === "failed") return "rose";
+  if (status === "pending") return "amber";
+  return "blue";
+}
+
+function extractionProgressClassName(status: string) {
+  if (status === "completed") return "bg-cal-success";
+  if (status === "failed") return "bg-cal-error";
+  if (status === "pending") return "bg-cal-warning";
+  return "bg-cal-primary";
 }
 
 function uploadFileTypeLabel(
@@ -1087,9 +1179,14 @@ export function GroupsSurface() {
               {localization.groups.membershipActions}
             </h2>
             {activeGroupId ? (
-              <p className="mt-2 text-sm leading-6 text-cal-muted">
-                {localization.groups.activeGroupLabel}: {activeGroupId}
-              </p>
+              <div className="mt-3 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm">
+                <p className="font-medium text-cal-ink">
+                  {localization.groups.activeGroupLabel}
+                </p>
+                <p className="mt-2 break-all rounded-lg bg-cal-canvas p-2 font-mono text-xs text-cal-muted">
+                  ID: {activeGroupId}
+                </p>
+              </div>
             ) : (
               <EmptyState
                 title={localization.groups.noSelectedTitle}

@@ -4,7 +4,7 @@
 
 `../my-agents` FastAPI + LangGraph 백엔드를 위한 프론트엔드 companion 앱입니다.
 
-이 앱은 Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, Biome으로 만든 완성도 높은 AI 서비스 콘솔입니다. 프로젝트 소유자가 수동으로 따라가고 유지보수할 수 있도록 GreetSchool/GreetAcademy의 서비스, 모델, 쿼리 키, keymesh 컴포넌트, localization 패턴을 의도적으로 맞췄습니다.
+이 앱은 Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, Biome으로 만든 완성도 높은 AI 서비스 콘솔입니다. 프로젝트 소유자가 수동으로 따라가고 유지보수할 수 있도록 서비스, 모델, 쿼리 키, keymesh 컴포넌트, localization 패턴을 프로젝트 내부 규칙으로 정리했습니다.
 
 ## 이 UI가 연결하는 기능
 
@@ -44,7 +44,7 @@ MY_AGENTS_COOKIE_SECURE=false
 - 사용자에게 보이는 문자열은 컴포넌트에 하드코딩하지 않습니다.
 - 기본 locale은 `ko`이며 `i18n.config.ts`에서 관리합니다.
 - UI 문구는 `localization/ko.json`과 `localization/en.json`에 함께 추가합니다.
-- Client Component에서는 Greet 계열 프로젝트처럼 `useLocalization()`을 사용합니다.
+- Client Component에서는 `useLocalization()`을 사용합니다.
 - Server Component, metadata, route handler의 안전한 사용자 메시지는 `defaultLocalization`을 사용합니다.
 - 문구를 제거하거나 바꾸면 사용하지 않는 localization key도 같은 변경에서 정리합니다.
 

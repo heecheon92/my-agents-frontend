@@ -9,22 +9,39 @@
   "home": {
     "login": "로그인",
     "signup": "회원가입",
-    "eyebrow": "FastAPI + LangGraph 제품 프론트엔드",
-    "title": "백엔드 서비스와 연결된 실제 AI 에이전트 콘솔",
-    "description": "레거시 스모크 채팅 엔드포인트를 쓰지 않고 인증된 대화, 서버 소유 transcript, 에이전트 실행, 인용, 문서, 그룹, 지식 워크플로를 관리합니다.",
+    "eyebrow": "트랜스크립트 기반 증거 추적 콘솔",
+    "title": "트랜스크립트, 근거, 문서 소스를 중심으로 동작하는 AI 콘솔.",
+    "description": "인증된 단일 작업공간에서 대화 트랜스크립트를 확인하고, 실행 활동 이력을 추적하며, 인용 근거와 문서 소스를 함께 검증하세요.",
     "featureCards": [
-      "Greet 스타일의 서비스, 쿼리 키, 모델, keymesh 컴포넌트 구조",
-      "Next BFF 라우트 핸들러로 세션과 CSRF 전달 보호",
-      "향후 수동 작업을 따라가기 쉬운 구현 로그"
-    ]
+      "트랜스크립트 우선 플로우: 사용자 발화와 에이전트 응답이 대화 단위로 연결됩니다.",
+      "실행 활동 타임라인: 예약/스트리밍/중단/완료 이벤트를 한 화면에서 추적합니다.",
+      "모든 지식 기반 응답은 인용과 문서 소스를 함께 표시해 근거를 검증합니다."
+    ],
+    "artifactLabel": "근거 작업공간 미리보기",
+    "transcriptLabel": "실시간 트랜스크립트",
+    "transcriptRows": [
+      "사용자: 오늘 대화의 핵심을 요약해 주세요.",
+      "에이전트: 지식 인덱스에서 근거 스니펫 3개를 확보했습니다.",
+      "시스템: 인용 묶음 연결됨; 문서 출처: docs/onboarding.md"
+    ],
+    "activityLabel": "실행 활동 타임라인",
+    "activityItems": [
+      "실행 시작: 에이전트가 지식 검색 도구로 시작됨",
+      "인용이 문서 출처 kb/onboarding.md에 연결됨",
+      "현재 답변 종료 후 예약 메시지 전송됨"
+    ],
+    "citationLabel": "인용",
+    "citationText": "표시되는 모든 응답에는 문서 기반 출처 참조가 포함됩니다.",
+    "sourceLabel": "문서 출처",
+    "sourceText": "PDF, Markdown, 텍스트 문서를 청크 메타데이터와 함께 문서 소스로 추적합니다."
   },
   "auth": {
     "heroTitle": "완성도 높은 AI 서비스 콘솔",
-    "heroDescription": "FastAPI + LangGraph 백엔드에 인증하고 실제 대화 워크플로를 실행하며 인용, 문서, 그룹, 안전한 에이전트 활동을 확인합니다.",
+    "heroDescription": "백엔드 인증 후 트랜스크립트, 활동 이벤트, 인용 및 문서 소스 근거를 한 화면에서 확인합니다.",
     "features": [
-      "레거시 스모크 채팅이 아닌 conversation run 사용",
-      "BFF가 보호하는 세션 및 CSRF 흐름",
-      "따라가기 쉬운 Greet 스타일 구조"
+      "대화 트랜스크립트를 인용 기반 활동과 함께 연결해 추적합니다.",
+      "동일한 셸에서 실시간 실행 이벤트와 예약 메시지를 모니터링합니다.",
+      "응답별로 참조된 문서 소스를 즉시 열람합니다."
     ],
     "createAccount": "계정 만들기",
     "welcomeBack": "다시 오신 것을 환영합니다",
@@ -58,9 +75,15 @@
     "restoringSession": "세션을 복원하는 중...",
     "pleaseLogin": "로그인이 필요합니다",
     "goToLogin": "로그인으로 이동",
-    "sessionRestored": "백엔드 세션이 /auth/me를 통해 복원되었습니다.",
+    "sessionRestored": "백엔드 세션이 /auth/me를 통해 복원되었습니다. 채팅, 문서, 지식 베이스, 그룹 작업은 서버가 관리합니다.",
     "logout": "로그아웃",
-    "guestSessionLabel": "게스트 데모 세션"
+    "guestSessionLabel": "게스트 데모 세션",
+    "sessionEvidenceTitle": "세션 근거",
+    "sessionEvidenceItems": [
+      "대화 실행은 상태, 활동 이벤트, 인용을 함께 노출합니다.",
+      "문서는 업로드와 수집 확인을 위해 출처 메타데이터를 표시합니다.",
+      "백엔드 검색이 생기기 전까지 ID 기반 그룹 작업을 명확히 유지합니다."
+    ]
   },
   "status": {
     "defaultErrorTitle": "문제가 발생했습니다",

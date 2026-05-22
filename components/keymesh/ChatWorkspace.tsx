@@ -593,8 +593,8 @@ export function ChatWorkspace() {
         </div>
       </aside>
 
-      <div className="grid min-h-0 min-w-0 gap-4 xl:grid-rows-[minmax(0,1fr)_minmax(18rem,0.72fr)]">
-        <section className="cal-card flex min-h-[32rem] min-w-0 flex-col rounded-xl xl:min-h-0">
+      <div className="grid min-h-0 min-w-0 gap-4 xl:grid-rows-[minmax(0,1fr)_auto]">
+        <section className="cal-card flex min-h-[36rem] min-w-0 flex-col rounded-xl xl:min-h-0">
           <header className="border-b border-cal-hairline p-4 sm:p-5">
             <p className="cal-label">{localization.activeConversationLabel}</p>
             <h2 className="mt-2 break-words text-lg font-medium text-cal-ink">
@@ -859,12 +859,18 @@ export function ChatWorkspace() {
           </form>
         </section>
 
-        <aside className="grid min-h-0 min-w-0 gap-4 md:grid-cols-2 2xl:grid-cols-[minmax(17rem,0.9fr)_minmax(24rem,1.45fr)_minmax(17rem,0.9fr)]">
-          <section className="cal-card min-h-0 rounded-xl p-4 xl:overflow-auto">
-            <h2 className="font-medium text-cal-ink">
-              {localization.runHistory}
-            </h2>
-            <div className="mt-3 grid gap-2">
+        <aside
+          aria-label={`${localization.runHistory}, ${localization.activityEvents}, ${localization.latestCitations}`}
+          className="grid min-w-0 gap-3 md:grid-cols-3"
+        >
+          <details className="cal-card group min-w-0 rounded-xl p-4">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-cal-ink marker:hidden">
+              <span>{localization.runHistory}</span>
+              <span className="rounded-full bg-cal-surface-soft px-2 py-1 text-xs text-cal-muted">
+                {sortedRuns.length}
+              </span>
+            </summary>
+            <div className="mt-3 grid max-h-72 gap-2 overflow-auto pr-1">
               {sortedRuns.length === 0 ? (
                 <EmptyState
                   title={localization.noRunsTitle}
@@ -892,12 +898,15 @@ export function ChatWorkspace() {
                 </div>
               ))}
             </div>
-          </section>
-          <section className="cal-card min-h-0 rounded-xl p-4 md:col-span-2 xl:overflow-auto 2xl:col-span-1">
-            <h2 className="font-medium text-cal-ink">
-              {localization.activityEvents}
-            </h2>
-            <div className="mt-3 grid gap-2">
+          </details>
+          <details className="cal-card group min-w-0 rounded-xl p-4">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-cal-ink marker:hidden">
+              <span>{localization.activityEvents}</span>
+              <span className="rounded-full bg-cal-surface-soft px-2 py-1 text-xs text-cal-muted">
+                {visibleActivityEvents.length}
+              </span>
+            </summary>
+            <div className="mt-3 grid max-h-72 gap-2 overflow-auto pr-1">
               {visibleActivityEvents.length === 0 ||
               (!latestRunId && !isStreaming) ? (
                 <EmptyState
@@ -919,12 +928,15 @@ export function ChatWorkspace() {
                 </div>
               ))}
             </div>
-          </section>
-          <section className="cal-card min-h-0 rounded-xl p-4 xl:overflow-auto">
-            <h2 className="font-medium text-cal-ink">
-              {localization.latestCitations}
-            </h2>
-            <div className="mt-3 grid gap-2">
+          </details>
+          <details className="cal-card group min-w-0 rounded-xl p-4">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-cal-ink marker:hidden">
+              <span>{localization.latestCitations}</span>
+              <span className="rounded-full bg-cal-surface-soft px-2 py-1 text-xs text-cal-muted">
+                {visibleCitations.length}
+              </span>
+            </summary>
+            <div className="mt-3 grid max-h-72 gap-2 overflow-auto pr-1">
               {visibleCitations.length === 0 ? (
                 <EmptyState
                   title={localization.noCitationsTitle}
@@ -962,7 +974,7 @@ export function ChatWorkspace() {
                 </div>
               ))}
             </div>
-          </section>
+          </details>
         </aside>
       </div>
     </div>

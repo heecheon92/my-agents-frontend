@@ -4,21 +4,21 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-md border border-transparent bg-clip-padding text-sm font-semibold whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/20 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:bg-cal-primary-disabled disabled:text-cal-muted disabled:opacity-100 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-[10px] border border-transparent bg-clip-padding text-sm font-semibold whitespace-nowrap transition-[background-color,border-color,color,box-shadow,transform] duration-150 outline-none select-none focus-visible:border-km-accent focus-visible:ring-3 focus-visible:ring-km-accent/20 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:bg-km-primary-disabled disabled:text-km-muted disabled:opacity-100 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
         default:
-          "bg-cal-primary text-primary-foreground hover:bg-cal-primary-active [a]:hover:bg-cal-primary-active",
+          "bg-km-primary text-primary-foreground shadow-[0_1px_2px_rgb(20_22_23/0.12)] hover:bg-km-primary-active [a]:hover:bg-km-primary-active",
         outline:
-          "border-cal-hairline bg-cal-canvas text-cal-ink hover:bg-cal-surface-soft aria-expanded:bg-cal-surface-soft",
+          "border-km-hairline bg-km-surface text-km-ink hover:border-km-accent/40 hover:bg-km-surface-muted aria-expanded:bg-km-surface-muted",
         secondary:
-          "border-cal-hairline bg-cal-canvas text-cal-ink hover:bg-cal-surface-soft aria-expanded:bg-cal-surface-soft",
+          "border-km-hairline bg-km-surface text-km-ink hover:border-km-accent/40 hover:bg-km-surface-muted aria-expanded:bg-km-surface-muted",
         ghost:
-          "text-cal-ink hover:bg-cal-surface-soft aria-expanded:bg-cal-surface-soft disabled:bg-transparent",
+          "text-km-ink hover:bg-km-surface-muted aria-expanded:bg-km-surface-muted disabled:bg-transparent",
         destructive:
           "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20",
-        link: "rounded-none px-0 text-cal-ink underline-offset-4 hover:underline disabled:bg-transparent",
+        link: "rounded-none px-0 text-km-accent underline-offset-4 hover:underline disabled:bg-transparent",
       },
       size: {
         default: "min-h-11 gap-2 px-5",

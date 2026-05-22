@@ -71,7 +71,7 @@ Verification passed for this log entry: hosted backend SSE probe confirmed `answ
 
 Use one visible quality queue delivered as staged vertical slices:
 
-- [x] Foundation / Greet-style spine
+- [x] Foundation / project-local frontend spine
 - [x] Auth + protected app shell
 - [x] Polished chat vertical slice
 - [x] Knowledge/document management
@@ -87,7 +87,7 @@ Planning complete. `$ralplan` produced approved Ralph-ready artifacts:
 
 Implementation is in progress under `$ralph`. Completed implementation slices so far:
 
-- Greet-style constants/models/services/query provider.
+- Project-local constants/models/services/query provider.
 - Next BFF route handler with explicit product endpoint allowlist, CSRF auxiliary cookie strategy, same-origin checks, and `/assistant/chat` exclusion.
 - Auth pages and protected service shell.
 - Chat surface for conversations, messages, runs, events, and citations.
@@ -98,8 +98,8 @@ Remaining: completion audit and optional commit/push.
 
 ## Decisions
 
-- Mirror common GreetAcademy/GreetSchool structure as much as practical.
-- Prefer GreetSchool-style top-level folders for this repo.
+- Keep the frontend structure internally consistent and easy to maintain.
+- Prefer stable top-level folders for this repo.
 - Agent owns visual design, tone, and style.
 - Chat is the anchor journey and should receive the highest first-pass polish.
 - Backend may be inspected but not edited from frontend work without explicit user approval.
@@ -175,7 +175,7 @@ Verification passed for this log entry: backend OpenAPI from `http://localhost:8
 ## 2026-05-17 — README language split and localization workflow
 
 - Converted the primary `README.md` to Korean and added `README.en.md` as the English counterpart; both files link to each other.
-- Added a GreetSchool/GreetAcademy-style localization surface with `i18n.config.ts`, `localization/ko.json`, `localization/en.json`, `utils/localization.ts`, `providers/localization.tsx`, and `hooks/useLocalization.ts`.
+- Added a project-local localization surface with `i18n.config.ts`, `localization/ko.json`, `localization/en.json`, `utils/localization.ts`, `providers/localization.tsx`, and `hooks/useLocalization.ts`.
 - Moved user-facing app copy from landing, auth, service shell, chat, admin surfaces, status fallback, BFF errors, and fetch fallback into localization dictionaries.
 - Added `tests/localization.test.ts` to keep Korean and English dictionary shapes aligned.
 
@@ -226,6 +226,25 @@ Verification passed in this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `p
 - Wired persisted assistant messages and streaming assistant replies through the same renderer boundary.
 
 Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/agent-markdown.test.ts tests/conversation-api.test.ts`, `pnpm build`, and `git diff --check`.
+
+## 2026-05-22 — design-guided UI refactor integration
+
+- Introduced product-specific `km-*` theme tokens while preserving existing `cal-*` compatibility aliases for low-risk incremental adoption.
+- Updated button, field, empty/error, and pill primitives to use the warmer evidence-console palette, clearer focus states, and semantic status tones.
+- Replaced the landing-page calendar motif with transcript, activity, citation, and document-source artifacts in localized English/Korean copy.
+- Tightened the service shell session evidence, made chat transcript/composer the dominant workspace, and moved run history, activity events, and citations into compact disclosure cards.
+- Integrated the admin document clarity pass below as the admin-surface slice of the same design rollout.
+
+Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build`, `git diff --cached --check`, and production-server responsive smoke for `/` at 390px/768px/1280px plus `/login` at 390px.
+
+## 2026-05-22 — admin document workflow clarity pass
+
+- Tightened the `/documents` admin surface so the selected document panel shows the active document title, source metadata, and explicit wrapped document ID before ID-based ingest, permission, and delete actions.
+- Grouped upload queue status counts with the same semantic pill tones used by row-level states, and exposed document/run IDs on queued rows once backend operations return them.
+- Aligned extraction-run rows with the same status/progress treatment and explicit run IDs, while preserving backend-owned upload limits and existing ID-only permission/member contracts.
+- Re-checked `AdminSurfaces.handleFileSelection` and found only one `event.currentTarget.value = ""` reset, so no duplicate reset was removed.
+
+Verification passed for this log entry: `pnpm install --frozen-lockfile`, `pnpm exec biome check --write components/keymesh/AdminSurfaces.tsx`, `pnpm exec tsc --noEmit`, `pnpm lint`, `pnpm exec vitest run tests/document-api.test.ts tests/api-path.test.ts tests/proxy-policy.test.ts`, `pnpm exec vitest run`, `pnpm build`, and `git diff --check`. Browser smoke reached `/documents` at 390px through the auth gate; unauthenticated local backend returned the expected `401 /api/my-agents/auth/me`, so authenticated responsive screenshots remain deferred to an environment with a valid session/backend.
 
 ## 2026-05-22 — multi-file async upload queue
 

@@ -4,7 +4,7 @@
 
 Frontend companion for the `../my-agents` FastAPI + LangGraph backend.
 
-This app is a polished AI service console built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, and Biome. It intentionally mirrors common GreetSchool/GreetAcademy service, model, query-key, keymesh component, and localization patterns so the project owner can follow and maintain the code manually.
+This app is a polished AI service console built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, and Biome. It keeps service, model, query-key, keymesh component, and localization patterns documented as project-local conventions so the project owner can follow and maintain the code manually.
 
 ## What this UI wires
 
@@ -44,7 +44,7 @@ Do not store real secrets in this repository or expose secrets with `NEXT_PUBLIC
 - Do not hardcode user-visible strings in components.
 - The default locale is `ko` and is managed in `i18n.config.ts`.
 - Add UI copy to both `localization/ko.json` and `localization/en.json`.
-- In Client Components, use `useLocalization()` as in the Greet projects.
+- In Client Components, use `useLocalization()`.
 - In Server Components, metadata, and route handlers that need safe user-facing messages, use `defaultLocalization`.
 - When removing or changing UI copy, remove unused localization keys in the same change.
 

@@ -10,6 +10,27 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-geist-sans);
+  --color-km-primary: var(--km-primary);
+  --color-km-primary-active: var(--km-primary-active);
+  --color-km-primary-disabled: var(--km-primary-disabled);
+  --color-km-accent: var(--km-accent);
+  --color-km-ink: var(--km-ink);
+  --color-km-body: var(--km-body);
+  --color-km-muted: var(--km-muted);
+  --color-km-muted-soft: var(--km-muted-soft);
+  --color-km-hairline: var(--km-hairline);
+  --color-km-hairline-soft: var(--km-hairline-soft);
+  --color-km-canvas: var(--km-canvas);
+  --color-km-surface: var(--km-surface);
+  --color-km-surface-muted: var(--km-surface-muted);
+  --color-km-surface-strong: var(--km-surface-strong);
+  --color-km-surface-dark: var(--km-surface-dark);
+  --color-km-surface-dark-elevated: var(--km-surface-dark-elevated);
+  --color-km-on-dark-soft: var(--km-on-dark-soft);
+  --color-km-success: var(--km-success);
+  --color-km-warning: var(--km-warning);
+  --color-km-error: var(--km-error);
+  --color-km-info: var(--km-info);
   --color-cal-primary: var(--cal-primary);
   --color-cal-primary-active: var(--cal-primary-active);
   --color-cal-primary-disabled: var(--cal-primary-disabled);
@@ -30,6 +51,7 @@
   --color-cal-success: var(--cal-success);
   --color-cal-warning: var(--cal-warning);
   --color-cal-error: var(--cal-error);
+  --color-cal-info: var(--cal-info);
   --color-cal-badge-orange: var(--cal-badge-orange);
   --color-cal-badge-pink: var(--cal-badge-pink);
   --color-cal-badge-violet: var(--cal-badge-violet);
@@ -85,30 +107,56 @@
   --space-fluid-md: clamp(1rem, 0.75rem + 1.25vw, 1.75rem);
   --space-fluid-lg: clamp(1.5rem, 1rem + 2.5vw, 3rem);
   --space-fluid-xl: clamp(2.5rem, 1.35rem + 5.75vw, 6rem);
-  --cal-primary: #111111;
-  --cal-primary-active: #242424;
-  --cal-primary-disabled: #e5e7eb;
-  --cal-ink: #111111;
-  --cal-body: #374151;
-  --cal-muted: #6b7280;
-  --cal-muted-soft: #898989;
-  --cal-hairline: #e5e7eb;
-  --cal-hairline-soft: #f3f4f6;
-  --cal-canvas: #ffffff;
-  --cal-surface-soft: #f8f9fa;
-  --cal-surface-card: #f5f5f5;
-  --cal-surface-strong: #e5e7eb;
-  --cal-surface-dark: #101010;
-  --cal-surface-dark-elevated: #1a1a1a;
-  --cal-on-dark-soft: #a1a1aa;
-  --cal-brand-accent: #3b82f6;
-  --cal-success: #10b981;
-  --cal-warning: #f59e0b;
-  --cal-error: #ef4444;
-  --cal-badge-orange: #fb923c;
-  --cal-badge-pink: #ec4899;
-  --cal-badge-violet: #8b5cf6;
-  --cal-badge-emerald: #34d399;
+  --km-canvas: #fbfaf7;
+  --km-surface: #ffffff;
+  --km-surface-muted: #f1f0eb;
+  --km-surface-strong: #e3e0d8;
+  --km-surface-dark: #101010;
+  --km-surface-dark-elevated: #1a1a1a;
+  --km-on-dark-soft: #a1a1aa;
+  --km-ink: #141617;
+  --km-body: #3f4542;
+  --km-muted: #69716c;
+  --km-muted-soft: #8b938e;
+  --km-hairline: #d8d5cc;
+  --km-hairline-soft: #ebe8df;
+  --km-primary: #14213d;
+  --km-primary-active: #0b162d;
+  --km-primary-disabled: #d8d5cc;
+  --km-accent: #0f766e;
+  --km-success: #15803d;
+  --km-warning: #b45309;
+  --km-error: #b91c1c;
+  --km-info: #2563eb;
+  --km-badge-orange: #c2410c;
+  --km-badge-pink: #be185d;
+  --km-badge-violet: #6d28d9;
+  --km-badge-emerald: #047857;
+  --cal-primary: var(--km-primary);
+  --cal-primary-active: var(--km-primary-active);
+  --cal-primary-disabled: var(--km-primary-disabled);
+  --cal-ink: var(--km-ink);
+  --cal-body: var(--km-body);
+  --cal-muted: var(--km-muted);
+  --cal-muted-soft: var(--km-muted-soft);
+  --cal-hairline: var(--km-hairline);
+  --cal-hairline-soft: var(--km-hairline-soft);
+  --cal-canvas: var(--km-canvas);
+  --cal-surface-soft: var(--km-surface-muted);
+  --cal-surface-card: var(--km-surface);
+  --cal-surface-strong: var(--km-surface-strong);
+  --cal-surface-dark: var(--km-surface-dark);
+  --cal-surface-dark-elevated: var(--km-surface-dark-elevated);
+  --cal-on-dark-soft: var(--km-on-dark-soft);
+  --cal-brand-accent: var(--km-accent);
+  --cal-success: var(--km-success);
+  --cal-warning: var(--km-warning);
+  --cal-error: var(--km-error);
+  --cal-info: var(--km-info);
+  --cal-badge-orange: var(--km-badge-orange);
+  --cal-badge-pink: var(--km-badge-pink);
+  --cal-badge-violet: var(--km-badge-violet);
+  --cal-badge-emerald: var(--km-badge-emerald);
   --background: var(--cal-canvas);
   --foreground: var(--cal-ink);
   --card: var(--cal-canvas);
@@ -224,37 +272,45 @@
     }
   }
 
+  .km-card,
   .cal-card {
-    @apply border border-cal-hairline bg-cal-surface-card shadow-[0_1px_2px_rgb(0_0_0/0.05)];
+    @apply border border-km-hairline bg-km-surface shadow-[0_10px_30px_rgb(20_22_23/0.06)];
   }
 
+  .km-product-card,
   .cal-product-card {
-    @apply border border-cal-hairline bg-cal-canvas shadow-[0_4px_12px_rgb(0_0_0/0.08)];
+    @apply border border-km-hairline bg-km-surface shadow-[0_10px_30px_rgb(20_22_23/0.08)];
   }
 
+  .km-label,
   .cal-label {
-    @apply text-[13px] font-medium text-cal-muted;
+    @apply text-[13px] font-semibold uppercase tracking-[0.08em] text-km-muted;
   }
 
+  .km-heading,
   .cal-heading {
-    @apply font-heading font-semibold tracking-[-0.04em] text-cal-ink;
+    @apply font-heading font-semibold tracking-[-0.035em] text-km-ink;
   }
 
+  .km-fluid-display,
   .cal-fluid-display {
     font-size: var(--text-fluid-4xl);
     line-height: 1.05;
   }
 
+  .km-fluid-title,
   .cal-fluid-title {
     font-size: var(--text-fluid-3xl);
     line-height: 1.12;
   }
 
+  .km-fluid-subtitle,
   .cal-fluid-subtitle {
     font-size: var(--text-fluid-lg);
   }
 
+  .km-subcopy,
   .cal-subcopy {
-    @apply leading-7 text-cal-body;
+    @apply leading-7 text-km-body;
   }
 }

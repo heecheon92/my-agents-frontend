@@ -11,13 +11,13 @@ Use this file first when a fresh Codex session starts in `my-agents-frontend`.
 - inspect server-owned transcripts, run history, redacted agent events, and citations;
 - manage documents, knowledge bases, groups, memberships, and document permissions through available backend contracts.
 
-The frontend should remain understandable for manual maintenance. Its structure intentionally mirrors common patterns from GreetSchool/GreetAcademy: top-level `constants/`, `model/`, `services/`, `server/`, `providers/`, `hooks/`, and app-specific `components/keymesh/`.
+The frontend should remain understandable for manual maintenance. Its structure uses project-local conventions: top-level `constants/`, `model/`, `services/`, `server/`, `providers/`, `hooks/`, and app-specific `components/keymesh/`.
 
 ## Current implementation status
 
 The first full frontend queue has been implemented and verified:
 
-- Greet-style service/model/query foundation.
+- Project-local service/model/query foundation.
 - Next BFF route handler at `app/api/my-agents/[...path]/route.ts`.
 - Auth shell and protected service layout.
 - Chat anchor journey using `/conversations/{id}/runs`.

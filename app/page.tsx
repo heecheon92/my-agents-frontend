@@ -1,11 +1,6 @@
 import Link from "next/link";
 import { defaultLocalization } from "@/utils/localization";
 
-const calendarCells = Array.from(
-  { length: 28 },
-  (_, index) => `calendar-cell-${index}`,
-);
-
 export default function Home() {
   const { brand, home } = defaultLocalization;
 
@@ -56,19 +51,51 @@ export default function Home() {
             </div>
           </div>
           <div className="cal-product-card overflow-hidden rounded-xl p-4">
-            <div className="rounded-lg border border-cal-hairline bg-cal-surface-soft p-3">
-              <div className="mb-3 flex items-center justify-between gap-3">
-                <span className="h-2.5 w-24 rounded-full bg-cal-surface-strong" />
-                <span className="h-8 w-20 rounded-md bg-cal-primary" />
+            <div className="mb-3 rounded-lg border border-cal-hairline bg-cal-surface-soft p-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+                {home.artifactLabel}
+              </p>
+              <div className="mt-3 rounded-md border border-cal-hairline bg-cal-canvas p-3">
+                <p className="text-xs font-semibold text-cal-ink">
+                  {home.transcriptLabel}
+                </p>
+                <div className="mt-2 grid gap-2 text-xs">
+                  {home.transcriptRows.map((row) => (
+                    <p
+                      key={row}
+                      className="rounded-md border border-cal-hairline bg-cal-surface-soft px-2 py-1"
+                    >
+                      {row}
+                    </p>
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-7 gap-1.5">
-                {calendarCells.map((cell) => (
-                  <span
-                    // Static decorative product chrome mirrors the Cal.com calendar-grid motif.
-                    key={cell}
-                    className="aspect-square rounded-md border border-cal-hairline bg-cal-canvas"
-                  />
-                ))}
+              <div className="mt-3 rounded-md border border-cal-hairline bg-cal-canvas p-3">
+                <p className="text-xs font-semibold text-cal-ink">
+                  {home.activityLabel}
+                </p>
+                <ul className="mt-2 space-y-2 text-xs leading-5 text-cal-muted">
+                  {home.activityItems.map((item) => (
+                    <li key={item} className="flex items-center gap-2">
+                      <span className="size-1.5 rounded-full bg-cal-ink" />
+                      {item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="mt-3 grid gap-2 text-xs">
+                <p className="rounded-md border border-cal-hairline bg-cal-canvas p-2 text-cal-muted">
+                  <span className="font-semibold text-cal-ink">
+                    {home.citationLabel}:
+                  </span>{" "}
+                  {home.citationText}
+                </p>
+                <p className="rounded-md border border-cal-hairline bg-cal-canvas p-2 text-cal-muted">
+                  <span className="font-semibold text-cal-ink">
+                    {home.sourceLabel}:
+                  </span>{" "}
+                  {home.sourceText}
+                </p>
               </div>
             </div>
             <div className="responsive-card-grid mt-4">

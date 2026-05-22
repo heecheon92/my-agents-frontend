@@ -9,22 +9,39 @@
   "home": {
     "login": "Log in",
     "signup": "Sign up",
-    "eyebrow": "FastAPI + LangGraph product frontend",
-    "title": "A real AI-agent console, wired to the backend service.",
-    "description": "Manage authenticated conversations, server-owned transcripts, agent runs, citations, documents, groups, and knowledge workflows without using the legacy smoke chat endpoint.",
+    "eyebrow": "AI product console with run evidence",
+    "title": "A console for transcripts, evidence, and source-aware conversations.",
+    "description": "From one authenticated workspace, inspect transcript flows, stream activity events, validate citations, and trace every answer to its source documents.",
     "featureCards": [
-      "Greet-style services, query keys, models, and keymesh components.",
-      "Next BFF route handlers protect session and CSRF forwarding.",
-      "Implementation log keeps the work followable for future manual edits."
-    ]
+      "Transcript-first workflow: user turns and assistant responses remain linked per conversation.",
+      "Activity timeline for run lifecycle events, queued follow-ups, and stop operations.",
+      "Citation-backed cards make provenance explicit for each knowledge-assisted response."
+    ],
+    "artifactLabel": "Evidence workspace preview",
+    "transcriptLabel": "Live transcript",
+    "transcriptRows": [
+      "user: Can you summarize today’s conversation highlights?",
+      "agent: Captured 3 evidence snippets from the knowledge index.",
+      "system: Citation batch attached; document source: docs/onboarding.md"
+    ],
+    "activityLabel": "Run activity",
+    "activityItems": [
+      "Run started: assistant invoked with knowledge tools",
+      "Citation attached from document source: kb/onboarding.md",
+      "Queued follow-up accepted after current answer"
+    ],
+    "citationLabel": "Citation",
+    "citationText": "Every visible answer includes source-backed references before rendering in the chat pane.",
+    "sourceLabel": "Document source",
+    "sourceText": "Primary artifacts: PDF, Markdown, and plain-text sources captured with chunk metadata."
   },
   "auth": {
     "heroTitle": "A polished AI service console.",
-    "heroDescription": "Authenticate into a FastAPI + LangGraph backend, run real conversation workflows, and inspect citations, documents, groups, and safe agent activity.",
+    "heroDescription": "Authenticate with the backend, then inspect transcript turns, activity events, citations, and document-source evidence in one console flow.",
     "features": [
-      "Conversation runs, not legacy smoke chat.",
-      "BFF-protected session and CSRF flow.",
-      "Followable Greet-style structure."
+      "Keep conversation transcripts linked to citation-backed agent activity.",
+      "Track live run lifecycle and queued follow-ups from the same shell.",
+      "Open document-source evidence from each assistant response."
     ],
     "createAccount": "Create account",
     "welcomeBack": "Welcome back",
@@ -58,9 +75,15 @@
     "restoringSession": "Restoring session...",
     "pleaseLogin": "Please log in",
     "goToLogin": "Go to login",
-    "sessionRestored": "Backend session restored through /auth/me.",
+    "sessionRestored": "Backend session restored through /auth/me; chat, documents, knowledge, and group actions stay server-owned.",
     "logout": "Log out",
-    "guestSessionLabel": "Guest demo session"
+    "guestSessionLabel": "Guest demo session",
+    "sessionEvidenceTitle": "Session evidence",
+    "sessionEvidenceItems": [
+      "Conversation runs expose status, activity events, and citations.",
+      "Documents keep source metadata visible for upload and ingest checks.",
+      "ID-based group workflows remain explicit until backend search exists."
+    ]
   },
   "status": {
     "defaultErrorTitle": "Something went wrong",
