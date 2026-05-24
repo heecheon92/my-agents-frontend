@@ -1329,31 +1329,30 @@ export function GroupsSurface() {
       title={localization.groups.title}
       description={localization.groups.description}
     >
+      <form
+        data-testid="group-create-form"
+        onSubmit={handleSubmit}
+        className="cal-card mb-4 grid max-w-2xl gap-3 rounded-xl p-4 sm:grid-cols-[minmax(0,22rem)_auto] sm:items-end sm:justify-start"
+      >
+        <Field className="min-w-0" label={localization.groups.nameLabel}>
+          <input
+            className={`${inputClassName} w-full min-w-0`}
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            required
+          />
+        </Field>
+        <Button
+          type="submit"
+          className="w-full sm:w-auto"
+          disabled={createGroup.isPending || !name.trim()}
+        >
+          {localization.groups.createButton}
+        </Button>
+        {createGroup.error ? <ErrorState error={createGroup.error} /> : null}
+      </form>
       <div className="responsive-panel">
         <div className="responsive-panel-grid" data-layout="form-aside">
-          <form
-            onSubmit={handleSubmit}
-            className="cal-card grid max-w-2xl gap-3 rounded-xl p-4 sm:grid-cols-[minmax(0,22rem)_auto] sm:items-end sm:justify-start"
-          >
-            <Field className="min-w-0" label={localization.groups.nameLabel}>
-              <input
-                className={`${inputClassName} w-full min-w-0`}
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                required
-              />
-            </Field>
-            <Button
-              type="submit"
-              className="w-full sm:w-auto"
-              disabled={createGroup.isPending || !name.trim()}
-            >
-              {localization.groups.createButton}
-            </Button>
-            {createGroup.error ? (
-              <ErrorState error={createGroup.error} />
-            ) : null}
-          </form>
           <section className="cal-card rounded-xl p-4">
             <h2 className="font-semibold">
               {localization.groups.membershipActions}

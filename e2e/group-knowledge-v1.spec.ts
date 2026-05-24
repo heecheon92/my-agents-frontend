@@ -220,12 +220,17 @@ test("Admin creation controls stay compact and aligned", async ({ page }) => {
   await expect(createGroupButton).toBeVisible();
   const groupNameBox = await groupNameInput.boundingBox();
   const createGroupBox = await createGroupButton.boundingBox();
+  const groupCreateFormBox = await page
+    .getByTestId("group-create-form")
+    .boundingBox();
   expect(groupNameBox).not.toBeNull();
   expect(createGroupBox).not.toBeNull();
+  expect(groupCreateFormBox).not.toBeNull();
   expect(
     Math.abs((groupNameBox?.y ?? 0) - (createGroupBox?.y ?? 0)),
   ).toBeLessThan(12);
   expect(groupNameBox?.width).toBeLessThanOrEqual(360);
+  expect(groupCreateFormBox?.height).toBeLessThanOrEqual(120);
 
   await page.goto("/knowledge");
   const scopeSelect = page.getByRole("combobox", {
