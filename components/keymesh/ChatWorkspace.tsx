@@ -85,6 +85,40 @@ function describeKnowledgeBaseSelection(
     : localization.knowledgeSourceQueuedFallback;
 }
 
+export function hasSourceContextMismatch({
+  conversationGroupId,
+  isGroupMode,
+  selectedGroupId,
+}: {
+  conversationGroupId: string | null | undefined;
+  isGroupMode: boolean;
+  selectedGroupId?: string;
+}) {
+  const activeConversationGroupId = conversationGroupId ?? null;
+  return isGroupMode
+    ? activeConversationGroupId !== (selectedGroupId ?? null)
+    : activeConversationGroupId !== null;
+}
+
+export function buildActiveKnowledgeBaseSelection({
+  isGroupMode,
+  knowledgeBaseMode,
+  selectedKnowledgeBaseIds,
+}: {
+  isGroupMode: boolean;
+  knowledgeBaseMode: KnowledgeBaseSelectionMode;
+  selectedKnowledgeBaseIds: string[];
+}): KnowledgeBaseSelection {
+  if (isGroupMode) {
+    return { mode: "all", knowledge_base_ids: [] };
+  }
+  return {
+    mode: knowledgeBaseMode,
+    knowledge_base_ids:
+      knowledgeBaseMode === "selected" ? selectedKnowledgeBaseIds : [],
+  };
+}
+
 export function ChatWorkspace() {
   const queryClient = useQueryClient();
   const conversations = useConversations();
@@ -175,16 +209,21 @@ export function ChatWorkspace() {
   );
   const isGroupMode = chatMode === "group";
   const groupContextRequired = isGroupMode && !selectedGroupId;
+  const sourceContextMismatch = conversation.data
+    ? hasSourceContextMismatch({
+        conversationGroupId: conversation.data?.group_id,
+        isGroupMode,
+        selectedGroupId,
+      })
+    : false;
   const activeOptionalPersonalKnowledgeBaseIds = isGroupMode
     ? selectedPrivateKnowledgeBaseIds
     : [];
-  const activeKnowledgeBaseSelection: KnowledgeBaseSelection = {
-    mode: knowledgeBaseMode,
-    knowledge_base_ids:
-      !isGroupMode && knowledgeBaseMode === "selected"
-        ? selectedKnowledgeBaseIds
-        : [],
-  };
+  const activeKnowledgeBaseSelection = buildActiveKnowledgeBaseSelection({
+    isGroupMode,
+    knowledgeBaseMode,
+    selectedKnowledgeBaseIds,
+  });
   const requiresKnowledgeBaseSelection =
     !isGroupMode &&
     knowledgeBaseMode === "selected" &&
@@ -400,7 +439,8 @@ export function ChatWorkspace() {
       !activeId ||
       isCancelling ||
       requiresKnowledgeBaseSelection ||
-      groupContextRequired
+      groupContextRequired ||
+      sourceContextMismatch
     ) {
       return;
     }
@@ -441,7 +481,8 @@ export function ChatWorkspace() {
       !activeRunId ||
       visibleQueuedMessage ||
       requiresKnowledgeBaseSelection ||
-      groupContextRequired
+      groupContextRequired ||
+      sourceContextMismatch
     ) {
       return;
     }
@@ -582,6 +623,7 @@ export function ChatWorkspace() {
     isCancelling ||
     requiresKnowledgeBaseSelection ||
     groupContextRequired ||
+    sourceContextMismatch ||
     (isStreaming && Boolean(visibleQueuedMessage));
   const isSendNowDisabled =
     !activeId ||
@@ -591,7 +633,8 @@ export function ChatWorkspace() {
     !activeRunId ||
     Boolean(visibleQueuedMessage) ||
     requiresKnowledgeBaseSelection ||
-    groupContextRequired;
+    groupContextRequired ||
+    sourceContextMismatch;
   const sendNowHelper = isCancelling
     ? localization.stoppingCurrentAnswer
     : visibleQueuedMessage
@@ -632,10 +675,19 @@ export function ChatWorkspace() {
       setSelectedGroupId(conversation.data.group_id);
       return;
     }
+    if (conversation.data && chatMode === "group") {
+      setChatMode("personal");
+    }
     if (!selectedGroupId && groups.data?.[0]) {
       setSelectedGroupId(groups.data[0].id);
     }
-  }, [conversation.data?.group_id, groups.data, selectedGroupId]);
+  }, [
+    conversation.data,
+    conversation.data?.group_id,
+    chatMode,
+    groups.data,
+    selectedGroupId,
+  ]);
 
   useEffect(() => {
     if (!activeId) return;

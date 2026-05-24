@@ -1112,6 +1112,8 @@ export function GroupsSurface() {
   const [selectedGroupId, setSelectedGroupId] = useState<string>();
   const activeGroupId = selectedGroupId ?? groups.data?.[0]?.id;
   const activeGroup = groups.data?.find((group) => group.id === activeGroupId);
+  const canReviewPublishRequests =
+    activeGroup?.role === "owner" || activeGroup?.role === "admin";
   const activeGroupKnowledgeBases = (knowledgeBases.data ?? []).filter(
     (knowledgeBase) =>
       knowledgeBase.scope === "group" &&
@@ -1385,40 +1387,49 @@ export function GroupsSurface() {
                 <ErrorState error={createPublishRequest.error} />
               ) : null}
             </form>
-            <form className="mt-4 grid gap-3 border-t border-cal-hairline pt-4">
-              <Field
-                label={localization.groups.publishReviewRequestLabel}
-                hint={localization.groups.publishReviewHint}
-              >
-                <input
-                  className={inputClassName}
-                  value={publishRequestId}
-                  onChange={(event) => setPublishRequestId(event.target.value)}
-                />
-              </Field>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={
-                    !publishRequestId.trim() || approvePublishRequest.isPending
-                  }
-                  onClick={handleApprovePublishRequest}
+            {canReviewPublishRequests ? (
+              <form className="mt-4 grid gap-3 border-t border-cal-hairline pt-4">
+                <Field
+                  label={localization.groups.publishReviewRequestLabel}
+                  hint={localization.groups.publishReviewHint}
                 >
-                  {localization.groups.publishApproveButton}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  disabled={
-                    !publishRequestId.trim() || rejectPublishRequest.isPending
-                  }
-                  onClick={handleRejectPublishRequest}
-                >
-                  {localization.groups.publishRejectButton}
-                </Button>
-              </div>
-            </form>
+                  <input
+                    className={inputClassName}
+                    value={publishRequestId}
+                    onChange={(event) =>
+                      setPublishRequestId(event.target.value)
+                    }
+                  />
+                </Field>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={
+                      !publishRequestId.trim() ||
+                      approvePublishRequest.isPending
+                    }
+                    onClick={handleApprovePublishRequest}
+                  >
+                    {localization.groups.publishApproveButton}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={
+                      !publishRequestId.trim() || rejectPublishRequest.isPending
+                    }
+                    onClick={handleRejectPublishRequest}
+                  >
+                    {localization.groups.publishRejectButton}
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <p className="mt-4 rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-sm leading-6 text-cal-muted">
+                {localization.groups.publishReviewHint}
+              </p>
+            )}
             {approvePublishRequest.error || rejectPublishRequest.error ? (
               <div className="mt-3">
                 <ErrorState

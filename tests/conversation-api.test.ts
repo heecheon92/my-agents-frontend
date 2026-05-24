@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import {
+  buildActiveKnowledgeBaseSelection,
+  hasSourceContextMismatch,
+} from "@/components/keymesh/ChatWorkspace";
 import { MyAgentsConversationAPI } from "@/services/my-agents/MyAgentsConversationAPI";
 
 function streamResponse(chunks: string[]) {
@@ -308,5 +312,56 @@ describe("MyAgentsConversationAPI", () => {
         },
       },
     ]);
+  });
+});
+
+describe("Group Chat source selection", () => {
+  it("forces mandatory all-mode after switching from personal selected mode", () => {
+    expect(
+      buildActiveKnowledgeBaseSelection({
+        isGroupMode: true,
+        knowledgeBaseMode: "selected",
+        selectedKnowledgeBaseIds: ["kb-personal-stale"],
+      }),
+    ).toEqual({ mode: "all", knowledge_base_ids: [] });
+  });
+
+  it("preserves selected personal mode outside Group Chat", () => {
+    expect(
+      buildActiveKnowledgeBaseSelection({
+        isGroupMode: false,
+        knowledgeBaseMode: "selected",
+        selectedKnowledgeBaseIds: ["kb-personal"],
+      }),
+    ).toEqual({ mode: "selected", knowledge_base_ids: ["kb-personal"] });
+  });
+
+  it("detects active conversation/source mode mismatch before send", () => {
+    expect(
+      hasSourceContextMismatch({
+        conversationGroupId: null,
+        isGroupMode: true,
+        selectedGroupId: "group-1",
+      }),
+    ).toBe(true);
+    expect(
+      hasSourceContextMismatch({
+        conversationGroupId: "group-1",
+        isGroupMode: false,
+      }),
+    ).toBe(true);
+    expect(
+      hasSourceContextMismatch({
+        conversationGroupId: "group-1",
+        isGroupMode: true,
+        selectedGroupId: "group-1",
+      }),
+    ).toBe(false);
+    expect(
+      hasSourceContextMismatch({
+        conversationGroupId: null,
+        isGroupMode: false,
+      }),
+    ).toBe(false);
   });
 });
