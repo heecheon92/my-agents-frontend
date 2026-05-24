@@ -53,6 +53,10 @@ type ChatMode = "personal" | "group";
 
 const CHAT_BOTTOM_THRESHOLD_PX = 96;
 
+export const CHAT_WORKSPACE_PANEL_CLASS_NAME =
+  "cal-card flex h-[calc(100dvh-8rem)] min-h-0 min-w-0 flex-col overflow-hidden rounded-xl xl:h-full";
+export const CHAT_SCROLL_REGION_CLASS_NAME = "min-h-0 flex-1 overflow-auto p-4";
+
 type ChatLocalization = typeof import("@/localization/en.json")["chat"];
 
 export function getLatestAssistantMessageId(messages: Message[]) {
@@ -999,8 +1003,11 @@ export function ChatWorkspace() {
         </div>
       </aside>
 
-      <div className="min-h-0 min-w-0">
-        <section className="cal-card flex min-h-[36rem] min-w-0 flex-col rounded-xl xl:min-h-0">
+      <div className="min-h-0 min-w-0 xl:h-full">
+        <section
+          data-testid="chat-workspace-panel"
+          className={CHAT_WORKSPACE_PANEL_CLASS_NAME}
+        >
           <header className="border-b border-cal-hairline p-4 sm:p-5">
             <p className="cal-label">{localization.activeConversationLabel}</p>
             <h2 className="mt-2 break-words text-lg font-medium text-cal-ink">
@@ -1012,7 +1019,7 @@ export function ChatWorkspace() {
             ref={chatScrollRef}
             onScroll={handleChatScroll}
             data-testid="chat-scroll-region"
-            className="min-h-0 flex-1 overflow-auto p-4"
+            className={CHAT_SCROLL_REGION_CLASS_NAME}
           >
             {!activeId ? (
               <EmptyState

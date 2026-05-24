@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getLatestAssistantMessageId } from "@/components/keymesh/ChatWorkspace";
+import {
+  CHAT_SCROLL_REGION_CLASS_NAME,
+  CHAT_WORKSPACE_PANEL_CLASS_NAME,
+  getLatestAssistantMessageId,
+} from "@/components/keymesh/ChatWorkspace";
 import en from "@/localization/en.json";
 import ko from "@/localization/ko.json";
 import type { Message } from "@/model/my-agents";
@@ -31,5 +35,15 @@ describe("ChatWorkspace assistant message footer", () => {
     expect(ko.chat.viewActivityEvents).toBe("활동 이벤트 보기");
     expect(en.chat.viewLatestCitations).toBe("View latest citations");
     expect(ko.chat.viewLatestCitations).toBe("최신 인용 보기");
+  });
+
+  it("keeps the chat transcript viewport-bounded and internally scrollable", () => {
+    expect(CHAT_WORKSPACE_PANEL_CLASS_NAME).toContain("h-[calc(100dvh-8rem)]");
+    expect(CHAT_WORKSPACE_PANEL_CLASS_NAME).toContain("min-h-0");
+    expect(CHAT_WORKSPACE_PANEL_CLASS_NAME).toContain("overflow-hidden");
+    expect(CHAT_WORKSPACE_PANEL_CLASS_NAME).toContain("xl:h-full");
+    expect(CHAT_SCROLL_REGION_CLASS_NAME).toContain("min-h-0");
+    expect(CHAT_SCROLL_REGION_CLASS_NAME).toContain("flex-1");
+    expect(CHAT_SCROLL_REGION_CLASS_NAME).toContain("overflow-auto");
   });
 });

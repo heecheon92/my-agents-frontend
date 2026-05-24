@@ -9,6 +9,34 @@ const seededDocumentTitle = "V1 Portfolio Chat Service Demo";
 const sensitiveStoragePattern =
   /(api[_-]?key|csrf|password|session|sk-[a-zA-Z0-9]|token)/i;
 
+async function expectChatTranscriptLayoutBounded(
+  page: import("@playwright/test").Page,
+) {
+  const metrics = await page
+    .getByTestId("chat-workspace-panel")
+    .evaluate((panel) => {
+      const scrollRegion = panel.querySelector(
+        '[data-testid="chat-scroll-region"]',
+      );
+      if (!(scrollRegion instanceof HTMLElement)) {
+        throw new Error("chat scroll region missing");
+      }
+      return {
+        panelHeight: panel.getBoundingClientRect().height,
+        scrollHeight: scrollRegion.getBoundingClientRect().height,
+        viewportHeight: window.innerHeight,
+        scrollOverflowY: window.getComputedStyle(scrollRegion).overflowY,
+        panelOverflowY: window.getComputedStyle(panel).overflowY,
+      };
+    });
+
+  expect(metrics.panelHeight).toBeGreaterThan(0);
+  expect(metrics.scrollHeight).toBeGreaterThan(0);
+  expect(metrics.panelHeight).toBeLessThanOrEqual(metrics.viewportHeight);
+  expect(metrics.scrollOverflowY).toMatch(/auto|scroll/);
+  expect(metrics.panelOverflowY).toBe("hidden");
+}
+
 function latestAssistantFooter(page: import("@playwright/test").Page) {
   return page.getByTestId("assistant-message-footer").last();
 }
@@ -239,6 +267,7 @@ test.describe("V1 seeded demo", () => {
     });
 
     await expect(latestAssistantFooter(page)).toBeVisible({ timeout: 15_000 });
+    await expectChatTranscriptLayoutBounded(page);
     await expectLatestAssistantFooterEvidence(page, "retrieval_completed");
 
     await page.reload();
@@ -248,6 +277,7 @@ test.describe("V1 seeded demo", () => {
       })
       .click();
     await expect(activeConversationHeading).toHaveText(conversationTitle);
+    await expectChatTranscriptLayoutBounded(page);
     await expectLatestAssistantFooterEvidence(page, "retrieval_completed");
   });
 });
@@ -343,6 +373,7 @@ test.describe("V1 public visitor smoke", () => {
     });
 
     await expect(latestAssistantFooter(page)).toBeVisible({ timeout: 20_000 });
+    await expectChatTranscriptLayoutBounded(page);
     await expectLatestAssistantFooterEvidence(page, /retrieval_/);
 
     await page.reload();
@@ -352,6 +383,7 @@ test.describe("V1 public visitor smoke", () => {
       })
       .click();
     await expect(activeConversationHeading).toHaveText(conversationTitle);
+    await expectChatTranscriptLayoutBounded(page);
     await expectLatestAssistantFooterEvidence(page, /retrieval_/);
     await assertBrowserStorageHasNoSecrets(page);
   });
