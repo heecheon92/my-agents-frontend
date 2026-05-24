@@ -675,16 +675,12 @@ export function ChatWorkspace() {
       setSelectedGroupId(conversation.data.group_id);
       return;
     }
-    if (conversation.data && chatMode === "group") {
-      setChatMode("personal");
-    }
     if (!selectedGroupId && groups.data?.[0]) {
       setSelectedGroupId(groups.data[0].id);
     }
   }, [
     conversation.data,
     conversation.data?.group_id,
-    chatMode,
     groups.data,
     selectedGroupId,
   ]);
