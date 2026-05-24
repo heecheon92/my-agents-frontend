@@ -1,3 +1,12 @@
+## 2026-05-24 — Group Knowledge V1 frontend OpenAPI gate
+
+- Repaired worker-4 team allocation through the supported OMX `create-task`, `write-worker-identity`, and `claim-task` APIs after original task-4 was pre-assigned to worker-1 and claim attempts returned `claim_conflict`.
+- Per frontend repo rules and the Group Knowledge V1 test spec, checked the backend contract before API/client edits. Generated OpenAPI from `main.app.openapi()` in the backend with deterministic mode because no hosted OpenAPI evidence was available in the worker handoff.
+- Confirmed the current backend OpenAPI is not ready for frontend integration: `ConversationRunRequest` lacks `optional_personal_knowledge_base_ids`, and publish request create/list/approve/reject routes are absent.
+- Logged the exact backend contract gap in `docs/backend-requests.md`; frontend model/client/hook/group-chat request-body changes remain blocked until the backend OpenAPI exposes the required contract.
+
+Verification for this log entry: read-only backend OpenAPI generation; `git -C /Users/heecheonpark/Git/Portfolio/my-agents status --short` returned clean before inspection. Frontend verification pending because this pass intentionally made documentation-only blocker notes and did not change runtime code.
+
 ## 2026-05-20 — document delete frontend wiring
 
 - Wired backend commit `c3a6785` document deletion into the frontend-only surface: BFF allowlist accepts `DELETE /documents/{document_id}`, `MyAgentsDocumentAPI.remove()` sends the bodyless DELETE request, and `useDeleteDocument()` refreshes/removes document-related query state.

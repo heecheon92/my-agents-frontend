@@ -109,6 +109,15 @@ Requested backend contract: Add or document an environment/config switch that di
 Why it matters: The public portfolio demo is reviewer-facing, not an open SaaS. Signup disable is the preferred abuse-control and rollback path once evidence collection is complete or if preview traffic becomes risky.
 Frontend workaround, if any: No UI change needed if the backend returns a safe `{ detail }`; `services/my-agents/fetch-client.ts` preserves string details and `components/keymesh/AuthPanel.tsx` renders mutation errors through `ErrorState`.
 
+
+## 2026-05-24 — Group Knowledge V1 OpenAPI gate
+
+Status: blocked
+Frontend need: Backend-owned OpenAPI for Group Knowledge V1 before changing frontend API models, clients, hooks, or group-chat request bodies.
+Current backend behavior: Read-only OpenAPI generation from `/Users/heecheonpark/Git/Portfolio/my-agents` with `MY_AGENTS_RESPONSE_MODE=deterministic uv run python - <<'PY' ... main.app.openapi() ... PY` shows `ConversationRunRequest` still contains only `message` and `knowledge_base_selection`; there are no `/groups/{group_id}/publish-requests`, approve, or reject paths.
+Requested backend contract: Expose `ConversationRunRequest.optional_personal_knowledge_base_ids`; source-audit fields/counts on run start/completion/history/detail/events; and publish request create/list/approve/reject routes with request/response schemas for owner/admin-approved copy semantics.
+Why it matters: Group Chat UI must send mandatory group KB selection plus explicit private personal attachments and must not invent publish workflow shapes from backend source inspection. Pending/rejected publish requests must have zero retrieval effect, and approved requests must appear only after backend group-owned copy creation.
+Frontend workaround, if any: Worker-4 repaired its missing team assignment and is holding frontend API/client changes. No model/client changes should be made until a fresh hosted/generated OpenAPI contains the required fields and paths.
 ## 2026-05-21 — public-demo guest access contract
 
 Status: proposed
