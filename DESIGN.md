@@ -183,6 +183,10 @@
   - Chat bubbles:
     - User messages can use primary fill; assistant messages should use readable surface with renderer-safe Markdown.
     - Assistant content can include headings/lists/code; user content remains literal text.
+    - Assistant message footers own answer-specific evidence actions. The compact footer should stay attached to the rendered answer, not drift into a global inspector.
+    - Footer actions must remain keyboard reachable with visible focus, expose accessible names even when rendered as icons, and keep the `다시 생성` / `Regenerate` action at least 44px tall on touch layouts.
+    - Footer evidence actions should progressively disclose that message's run details, redacted activity events, and citations without requiring users to leave the transcript reading path.
+    - Empty footer evidence states should explain that events/citations appear after a run, and disabled replay states should be explained by status copy or button state near the affected message.
   - Event payloads:
     - Keep raw-looking JSON visually contained and clearly labeled as redacted backend payload; long payloads scroll inside the card.
     - Prefer summary-first rows with an optional expanded payload over raw JSON-first cards.
