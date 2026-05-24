@@ -1102,15 +1102,25 @@ function uploadFileTypeLabel(
 
 export function GroupsSurface() {
   const groups = useGroups();
+  const knowledgeBases = useKnowledgeBases();
   const createGroup = useCreateGroup();
   const [name, setName] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState<string>();
   const activeGroupId = selectedGroupId ?? groups.data?.[0]?.id;
+  const activeGroup = groups.data?.find((group) => group.id === activeGroupId);
+  const activeGroupKnowledgeBases = (knowledgeBases.data ?? []).filter(
+    (knowledgeBase) =>
+      knowledgeBase.scope === "group" &&
+      (!activeGroupId || knowledgeBase.group_id === activeGroupId),
+  );
   const addMember = useAddMember(activeGroupId);
   const [memberUserId, setMemberUserId] = useState("");
   const [memberRole, setMemberRole] = useState<GroupRole>("viewer");
   const [updateUserId, setUpdateUserId] = useState("");
   const [updateRole, setUpdateRole] = useState<GroupRole>("viewer");
+  const [sourceDocumentId, setSourceDocumentId] = useState("");
+  const [targetKnowledgeBaseId, setTargetKnowledgeBaseId] = useState("");
+  const [publishRequestId, setPublishRequestId] = useState("");
   const updateMember = useUpdateMember(activeGroupId, updateUserId);
   const { localization } = useLocalization((state) => state.localization.admin);
 
@@ -1260,6 +1270,88 @@ export function GroupsSurface() {
             ) : null}
             <p className="mt-4 rounded-lg border border-cal-hairline bg-cal-surface-strong p-3 text-sm leading-6 text-cal-body">
               {localization.groups.backendNote}
+            </p>
+          </section>
+          <section className="cal-card rounded-xl p-4">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="font-semibold">
+                  {localization.groups.publishBoundaryTitle}
+                </h2>
+                <p className="mt-1 text-sm leading-6 text-cal-muted">
+                  {localization.groups.publishBoundaryDescription}
+                </p>
+              </div>
+              <Pill tone="amber">{localization.groups.openApiPendingPill}</Pill>
+            </div>
+            <div className="mt-4 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm">
+              <p className="font-medium text-cal-ink">
+                {localization.groups.publishActiveGroup}
+              </p>
+              <p className="mt-2 break-all rounded-lg bg-cal-canvas p-2 font-mono text-xs text-cal-muted">
+                {activeGroup
+                  ? `${activeGroup.name} · ${activeGroup.id}`
+                  : localization.groups.noSelectedDescription}
+              </p>
+            </div>
+            <form className="mt-4 grid gap-3 border-t border-cal-hairline pt-4">
+              <Field
+                label={localization.groups.publishSourceDocumentLabel}
+                hint={localization.groups.publishSourceDocumentHint}
+              >
+                <input
+                  className={inputClassName}
+                  value={sourceDocumentId}
+                  onChange={(event) => setSourceDocumentId(event.target.value)}
+                />
+              </Field>
+              <Field
+                label={localization.groups.publishTargetKnowledgeBaseLabel}
+                hint={localization.groups.publishTargetKnowledgeBaseHint}
+              >
+                <select
+                  className={inputClassName}
+                  value={targetKnowledgeBaseId}
+                  onChange={(event) =>
+                    setTargetKnowledgeBaseId(event.target.value)
+                  }
+                >
+                  <option value="">
+                    {localization.groups.publishTargetPlaceholder}
+                  </option>
+                  {activeGroupKnowledgeBases.map((knowledgeBase) => (
+                    <option key={knowledgeBase.id} value={knowledgeBase.id}>
+                      {knowledgeBase.name}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Button type="button" disabled>
+                {localization.groups.publishRequestButton}
+              </Button>
+            </form>
+            <form className="mt-4 grid gap-3 border-t border-cal-hairline pt-4">
+              <Field
+                label={localization.groups.publishReviewRequestLabel}
+                hint={localization.groups.publishReviewHint}
+              >
+                <input
+                  className={inputClassName}
+                  value={publishRequestId}
+                  onChange={(event) => setPublishRequestId(event.target.value)}
+                />
+              </Field>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <Button type="button" variant="outline" disabled>
+                  {localization.groups.publishApproveButton}
+                </Button>
+                <Button type="button" variant="secondary" disabled>
+                  {localization.groups.publishRejectButton}
+                </Button>
+              </div>
+            </form>
+            <p className="mt-4 rounded-lg border border-cal-warning/25 bg-cal-warning/10 p-3 text-sm leading-6 text-cal-body">
+              {localization.groups.publishOpenApiNote}
             </p>
           </section>
         </div>

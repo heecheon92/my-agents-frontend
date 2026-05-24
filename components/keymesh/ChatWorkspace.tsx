@@ -14,6 +14,7 @@ import {
   useRunEvents,
   useRuns,
 } from "@/hooks/use-conversations";
+import { useGroups } from "@/hooks/use-groups";
 import { useKnowledgeBases } from "@/hooks/use-knowledge";
 import { useLocalization } from "@/hooks/useLocalization";
 import { cn } from "@/lib/utils";
@@ -44,6 +45,7 @@ type QueuedMessage = {
 };
 
 type RunOutcome = "completed" | "cancelled" | "failed";
+type ChatMode = "personal" | "group";
 
 const CHAT_BOTTOM_THRESHOLD_PX = 96;
 
@@ -85,6 +87,7 @@ function describeKnowledgeBaseSelection(
 export function ChatWorkspace() {
   const queryClient = useQueryClient();
   const conversations = useConversations();
+  const groups = useGroups();
   const knowledgeBases = useKnowledgeBases();
   const createConversation = useCreateConversation();
   const [selectedId, setSelectedId] = useState<string>();
@@ -131,9 +134,13 @@ export function ChatWorkspace() {
   const [showGuestNotice, setShowGuestNotice] = useState(false);
   const [knowledgeBaseMode, setKnowledgeBaseMode] =
     useState<KnowledgeBaseSelectionMode>("all");
+  const [chatMode, setChatMode] = useState<ChatMode>("personal");
+  const [selectedGroupId, setSelectedGroupId] = useState<string>();
   const [selectedKnowledgeBaseIds, setSelectedKnowledgeBaseIds] = useState<
     string[]
   >([]);
+  const [selectedPrivateKnowledgeBaseIds, setSelectedPrivateKnowledgeBaseIds] =
+    useState<string[]>([]);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
   const isStreamingRef = useRef(false);
@@ -149,13 +156,35 @@ export function ChatWorkspace() {
     queuedMessage?.conversationId === activeId ? queuedMessage : null;
   const draftMessage = draft.trim();
   const hasActiveDraft = draftMessage.length > 0;
+  const personalKnowledgeBases = useMemo(
+    () => (knowledgeBases.data ?? []).filter((kb) => kb.scope === "personal"),
+    [knowledgeBases.data],
+  );
+  const groupKnowledgeBases = useMemo(
+    () =>
+      (knowledgeBases.data ?? []).filter(
+        (kb) =>
+          kb.scope === "group" &&
+          (!selectedGroupId || kb.group_id === selectedGroupId),
+      ),
+    [knowledgeBases.data, selectedGroupId],
+  );
+  const selectedGroup = groups.data?.find(
+    (group) => group.id === selectedGroupId,
+  );
+  const isGroupMode = chatMode === "group";
+  const groupChatContractPending = isGroupMode;
   const activeKnowledgeBaseSelection: KnowledgeBaseSelection = {
     mode: knowledgeBaseMode,
     knowledge_base_ids:
-      knowledgeBaseMode === "selected" ? selectedKnowledgeBaseIds : [],
+      !isGroupMode && knowledgeBaseMode === "selected"
+        ? selectedKnowledgeBaseIds
+        : [],
   };
   const requiresKnowledgeBaseSelection =
-    knowledgeBaseMode === "selected" && selectedKnowledgeBaseIds.length === 0;
+    !isGroupMode &&
+    knowledgeBaseMode === "selected" &&
+    selectedKnowledgeBaseIds.length === 0;
 
   function setQueuedMessage(nextQueuedMessage: QueuedMessage | null) {
     queuedMessageRef.current = nextQueuedMessage;
@@ -181,7 +210,19 @@ export function ChatWorkspace() {
     );
   }
 
+  function togglePrivateKnowledgeBase(knowledgeBaseId: string) {
+    setSelectedPrivateKnowledgeBaseIds((current) =>
+      current.includes(knowledgeBaseId)
+        ? current.filter((id) => id !== knowledgeBaseId)
+        : [...current, knowledgeBaseId],
+    );
+  }
+
   async function handleCreate() {
+    if (isGroupMode) {
+      setStatusAnnouncement(localization.groupChatPendingAnnouncement);
+      return;
+    }
     try {
       const created = await createConversation.mutateAsync({
         title: `${localization.newConversationTitle} ${new Date().toLocaleString(lang)}`,
@@ -343,7 +384,8 @@ export function ChatWorkspace() {
       !draftMessage ||
       !activeId ||
       isCancelling ||
-      requiresKnowledgeBaseSelection
+      requiresKnowledgeBaseSelection ||
+      groupChatContractPending
     ) {
       return;
     }
@@ -380,7 +422,8 @@ export function ChatWorkspace() {
       isCancelling ||
       !activeRunId ||
       visibleQueuedMessage ||
-      requiresKnowledgeBaseSelection
+      requiresKnowledgeBaseSelection ||
+      groupChatContractPending
     ) {
       return;
     }
@@ -504,7 +547,9 @@ export function ChatWorkspace() {
     ? visibleQueuedMessage
       ? localization.queuedComposerPlaceholder
       : localization.streamingComposerPlaceholder
-    : localization.composerPlaceholder;
+    : isGroupMode
+      ? localization.groupComposerPlaceholder
+      : localization.composerPlaceholder;
   const primaryActionLabel = isStreaming
     ? localization.queueNext
     : localization.send;
@@ -513,6 +558,7 @@ export function ChatWorkspace() {
     !hasActiveDraft ||
     isCancelling ||
     requiresKnowledgeBaseSelection ||
+    groupChatContractPending ||
     (isStreaming && Boolean(visibleQueuedMessage));
   const isSendNowDisabled =
     !activeId ||
@@ -521,7 +567,8 @@ export function ChatWorkspace() {
     isCancelling ||
     !activeRunId ||
     Boolean(visibleQueuedMessage) ||
-    requiresKnowledgeBaseSelection;
+    requiresKnowledgeBaseSelection ||
+    groupChatContractPending;
   const sendNowHelper = isCancelling
     ? localization.stoppingCurrentAnswer
     : visibleQueuedMessage
@@ -551,7 +598,16 @@ export function ChatWorkspace() {
     setSelectedKnowledgeBaseIds((current) =>
       current.filter((id) => availableIds.has(id)),
     );
+    setSelectedPrivateKnowledgeBaseIds((current) =>
+      current.filter((id) => availableIds.has(id)),
+    );
   }, [knowledgeBases.data]);
+
+  useEffect(() => {
+    if (!selectedGroupId && groups.data?.[0]) {
+      setSelectedGroupId(groups.data[0].id);
+    }
+  }, [groups.data, selectedGroupId]);
 
   useEffect(() => {
     if (!activeId) return;
@@ -598,7 +654,10 @@ export function ChatWorkspace() {
           <Button
             size="sm"
             onClick={handleCreate}
-            disabled={createConversation.isPending}
+            disabled={createConversation.isPending || isGroupMode}
+            title={
+              isGroupMode ? localization.groupChatCreateDisabled : undefined
+            }
           >
             {localization.newButton}
           </Button>
@@ -635,6 +694,18 @@ export function ChatWorkspace() {
             >
               <span className="block break-words font-medium">
                 {item.title}
+              </span>
+              <span
+                className={cn(
+                  "mt-2 inline-flex rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]",
+                  activeId === item.id
+                    ? "bg-white/15 text-white"
+                    : "bg-cal-surface-soft text-cal-muted",
+                )}
+              >
+                {item.group_id
+                  ? localization.groupConversationBadge
+                  : localization.personalConversationBadge}
               </span>
               <span
                 className={cn(
@@ -816,33 +887,76 @@ export function ChatWorkspace() {
                     {localization.knowledgeSourceTitle}
                   </p>
                   <p className="mt-1 text-xs leading-5 text-cal-muted">
-                    {localization.knowledgeSourceDescription}
+                    {isGroupMode
+                      ? localization.groupKnowledgeSourceDescription
+                      : localization.knowledgeSourceDescription}
                   </p>
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-2">
                   <Button
                     type="button"
                     size="sm"
-                    variant={
-                      knowledgeBaseMode === "all" ? "secondary" : "ghost"
-                    }
-                    onClick={() => setKnowledgeBaseMode("all")}
+                    variant={chatMode === "personal" ? "secondary" : "ghost"}
+                    onClick={() => setChatMode("personal")}
                   >
-                    {localization.knowledgeSourceAll}
+                    {localization.personalChatMode}
                   </Button>
                   <Button
                     type="button"
                     size="sm"
-                    variant={
-                      knowledgeBaseMode === "selected" ? "secondary" : "ghost"
-                    }
-                    onClick={() => setKnowledgeBaseMode("selected")}
+                    variant={chatMode === "group" ? "secondary" : "ghost"}
+                    onClick={() => setChatMode("group")}
                   >
-                    {localization.knowledgeSourceSelected}
+                    {localization.groupChatMode}
                   </Button>
                 </div>
               </div>
-              {knowledgeBaseMode === "selected" ? (
+              <div className="mt-3 grid gap-2 rounded-xl border border-cal-hairline bg-cal-canvas p-3">
+                <div className="flex flex-wrap gap-2">
+                  <Pill tone={isGroupMode ? "blue" : "green"}>
+                    {isGroupMode
+                      ? localization.privateGroupTranscriptPill
+                      : localization.personalTranscriptPill}
+                  </Pill>
+                  <Pill tone="slate">
+                    {isGroupMode
+                      ? localization.noSharedTranscriptPill
+                      : localization.personalSourcesPill}
+                  </Pill>
+                </div>
+                <p className="text-xs leading-5 text-cal-muted">
+                  {isGroupMode
+                    ? localization.groupChatBoundaryCopy
+                    : localization.personalChatBoundaryCopy}
+                </p>
+              </div>
+              {!isGroupMode ? (
+                <div className="mt-3 grid gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={
+                        knowledgeBaseMode === "all" ? "secondary" : "ghost"
+                      }
+                      onClick={() => setKnowledgeBaseMode("all")}
+                    >
+                      {localization.knowledgeSourceAll}
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={
+                        knowledgeBaseMode === "selected" ? "secondary" : "ghost"
+                      }
+                      onClick={() => setKnowledgeBaseMode("selected")}
+                    >
+                      {localization.knowledgeSourceSelected}
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
+              {!isGroupMode && knowledgeBaseMode === "selected" ? (
                 <div className="mt-3 grid gap-2">
                   {knowledgeBases.isLoading ? (
                     <p className="text-xs text-cal-muted">
@@ -852,14 +966,14 @@ export function ChatWorkspace() {
                   {knowledgeBases.error ? (
                     <ErrorState error={knowledgeBases.error} />
                   ) : null}
-                  {knowledgeBases.data?.length === 0 ? (
+                  {personalKnowledgeBases.length === 0 ? (
                     <EmptyState
                       title={localization.noKnowledgeBasesTitle}
                       description={localization.noKnowledgeBasesDescription}
                     />
                   ) : null}
                   <div className="flex flex-wrap gap-2">
-                    {knowledgeBases.data?.map((knowledgeBase) => {
+                    {personalKnowledgeBases.map((knowledgeBase) => {
                       const checked = selectedKnowledgeBaseIds.includes(
                         knowledgeBase.id,
                       );
@@ -891,6 +1005,111 @@ export function ChatWorkspace() {
                       {localization.knowledgeSourceRequired}
                     </p>
                   ) : null}
+                </div>
+              ) : null}
+              {isGroupMode ? (
+                <div className="mt-3 grid gap-3">
+                  <label className="grid gap-1 text-xs font-medium text-cal-muted">
+                    {localization.groupContextLabel}
+                    <select
+                      className={inputClassName}
+                      value={selectedGroupId ?? ""}
+                      onChange={(event) =>
+                        setSelectedGroupId(event.target.value)
+                      }
+                    >
+                      <option value="">
+                        {localization.groupContextPlaceholder}
+                      </option>
+                      {groups.data?.map((group) => (
+                        <option key={group.id} value={group.id}>
+                          {group.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  {groups.isLoading ? (
+                    <p className="text-xs text-cal-muted">
+                      {localization.loadingGroups}
+                    </p>
+                  ) : null}
+                  {groups.error ? <ErrorState error={groups.error} /> : null}
+                  <div className="rounded-xl border border-cal-hairline bg-cal-canvas p-3">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="font-semibold text-cal-ink">
+                        {localization.mandatoryGroupKnowledgeTitle}
+                      </p>
+                      <Pill tone="blue">{localization.fixedSourcePill}</Pill>
+                    </div>
+                    <p className="mt-1 text-xs leading-5 text-cal-muted">
+                      {selectedGroup
+                        ? localization.mandatoryGroupKnowledgeDescription.replace(
+                            "{group}",
+                            selectedGroup.name,
+                          )
+                        : localization.groupContextRequired}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {groupKnowledgeBases.length === 0 ? (
+                        <span className="rounded-full border border-cal-hairline bg-cal-surface-soft px-3 py-2 text-xs text-cal-muted">
+                          {localization.noGroupKnowledgeBases}
+                        </span>
+                      ) : null}
+                      {groupKnowledgeBases.map((knowledgeBase) => (
+                        <span
+                          key={knowledgeBase.id}
+                          className="rounded-full border border-cal-primary/20 bg-cal-primary/10 px-3 py-2 text-xs font-medium text-cal-ink"
+                        >
+                          {knowledgeBase.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="rounded-xl border border-cal-hairline bg-cal-canvas p-3">
+                    <p className="font-semibold text-cal-ink">
+                      {localization.optionalPrivateKnowledgeTitle}
+                    </p>
+                    <p className="mt-1 text-xs leading-5 text-cal-muted">
+                      {localization.optionalPrivateKnowledgeDescription}
+                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {personalKnowledgeBases.length === 0 ? (
+                        <span className="rounded-full border border-cal-hairline bg-cal-surface-soft px-3 py-2 text-xs text-cal-muted">
+                          {localization.noPersonalKnowledgeBases}
+                        </span>
+                      ) : null}
+                      {personalKnowledgeBases.map((knowledgeBase) => {
+                        const checked =
+                          selectedPrivateKnowledgeBaseIds.includes(
+                            knowledgeBase.id,
+                          );
+                        return (
+                          <label
+                            key={knowledgeBase.id}
+                            className={cn(
+                              "flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-xs font-medium",
+                              checked
+                                ? "border-cal-brand-accent bg-cal-brand-accent/10 text-cal-ink"
+                                : "border-cal-hairline bg-cal-surface-soft text-cal-muted",
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              className="sr-only"
+                              checked={checked}
+                              onChange={() =>
+                                togglePrivateKnowledgeBase(knowledgeBase.id)
+                              }
+                            />
+                            {knowledgeBase.name}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <p className="rounded-lg border border-cal-warning/25 bg-cal-warning/10 p-3 text-xs leading-5 text-cal-body">
+                    {localization.groupChatOpenApiPending}
+                  </p>
                 </div>
               ) : null}
             </section>
@@ -935,6 +1154,11 @@ export function ChatWorkspace() {
                 className="mt-2 text-xs leading-5 text-cal-muted"
               >
                 {sendNowHelper}
+              </p>
+            ) : null}
+            {groupChatContractPending ? (
+              <p className="mt-2 text-xs leading-5 text-cal-muted">
+                {localization.groupChatSendDisabled}
               </p>
             ) : null}
             {showGuestNotice && isStreaming ? (

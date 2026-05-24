@@ -276,3 +276,10 @@ Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `
 ### G005 review follow-up
 
 - Resolved the final architect WATCH items before completion: visible upload copy now describes uploads into the selected knowledge base instead of `/documents/upload`; public-demo/evidence docs now point to KB-nested upload/ingest proof; the document upload queue locks KB switching while processable items are queued; and `/documents` now uses a KB-scoped delete hook for KB document cache invalidation.
+
+## 2026-05-24 — Group Knowledge V1 source-boundary UX preview
+
+- Added a Group Chat preview mode in `components/keymesh/ChatWorkspace.tsx` that distinguishes personal conversations from group-context conversations, labels transcripts as private, shows mandatory group KBs as fixed sources, and presents optional private personal KB attachments without sending them.
+- Kept backend-first constraints: no API model/client changes were made, and group-chat create/send is disabled until a hosted backend OpenAPI proves the V1 source contract.
+- Added disabled publish request and owner/admin review controls in `components/keymesh/AdminSurfaces.tsx` so the intended workflow is visible without inventing backend routes.
+- Recorded the missing backend OpenAPI contract in `docs/backend-requests.md`.
