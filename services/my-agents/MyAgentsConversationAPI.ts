@@ -109,6 +109,12 @@ export class MyAgentsConversationAPI {
     );
   }
 
+  async delete(conversationId: string): Promise<void> {
+    await this.client.fetch(API_PATH.conversations.detail(conversationId), {
+      method: "DELETE",
+    });
+  }
+
   async addMessage(
     conversationId: string,
     payload: MessageCreateRequest,

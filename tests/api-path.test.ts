@@ -9,6 +9,9 @@ const runId = "run-1";
 
 describe("API_PATH", () => {
   it("builds conversation run/event paths", () => {
+    expect(API_PATH.conversations.detail(conversationId)).toBe(
+      "/conversations/conversation-1",
+    );
     expect(API_PATH.conversations.runs(conversationId)).toBe(
       "/conversations/conversation-1/runs",
     );

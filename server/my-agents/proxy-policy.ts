@@ -57,6 +57,11 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "conversations.detail",
   },
   {
+    method: "DELETE",
+    pattern: new RegExp(`^/conversations/${uuidLike}$`),
+    name: "conversations.delete",
+  },
+  {
     method: "POST",
     pattern: new RegExp(`^/conversations/${uuidLike}/messages$`),
     name: "messages.create",

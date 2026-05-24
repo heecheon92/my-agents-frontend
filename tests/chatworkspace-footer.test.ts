@@ -3,6 +3,7 @@ import {
   CHAT_SCROLL_REGION_CLASS_NAME,
   CHAT_WORKSPACE_PANEL_CLASS_NAME,
   getLatestAssistantMessageId,
+  getNextConversationIdAfterDelete,
 } from "@/components/keymesh/ChatWorkspace";
 import en from "@/localization/en.json";
 import ko from "@/localization/ko.json";
@@ -35,6 +36,29 @@ describe("ChatWorkspace assistant message footer", () => {
     expect(ko.chat.viewActivityEvents).toBe("활동 이벤트 보기");
     expect(en.chat.viewLatestCitations).toBe("View latest citations");
     expect(ko.chat.viewLatestCitations).toBe("최신 인용 보기");
+    expect(en.chat.deleteConversationAction).toBe("Delete");
+    expect(ko.chat.deleteConversationAction).toBe("삭제");
+    expect(en.chat.deleteConversationConfirm).toContain(
+      "conversation and all messages",
+    );
+    expect(ko.chat.deleteConversationConfirm).toContain("모든 메시지");
+  });
+
+  it("selects a stable neighboring conversation after deleting the active one", () => {
+    const conversations = [{ id: "first" }, { id: "second" }, { id: "third" }];
+
+    expect(
+      getNextConversationIdAfterDelete(conversations, "second", "second"),
+    ).toBe("third");
+    expect(
+      getNextConversationIdAfterDelete(conversations, "third", "third"),
+    ).toBe("second");
+    expect(
+      getNextConversationIdAfterDelete(conversations, "first", "third"),
+    ).toBe("third");
+    expect(
+      getNextConversationIdAfterDelete([{ id: "only" }], "only", "only"),
+    ).toBeUndefined();
   });
 
   it("keeps the chat transcript viewport-bounded and internally scrollable", () => {

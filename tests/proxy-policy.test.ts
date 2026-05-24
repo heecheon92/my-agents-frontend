@@ -87,6 +87,9 @@ describe("proxy policy", () => {
     expect(
       isAllowedBackendPath("GET", "/conversations/abc/runs/run-1").allowed,
     ).toBe(true);
+    expect(isAllowedBackendPath("DELETE", "/conversations/abc").allowed).toBe(
+      true,
+    );
     expect(
       isAllowedBackendPath(
         "POST",

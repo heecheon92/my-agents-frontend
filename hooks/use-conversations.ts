@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import type {
+  Conversation,
   ConversationCreateRequest,
   ConversationRunRequest,
 } from "@/model/my-agents";
@@ -32,6 +33,32 @@ export function useCreateConversation() {
       queryClient.invalidateQueries({
         queryKey: MyAgentsQueryKeys.conversations.list(),
       }),
+  });
+}
+
+export function useDeleteConversation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (conversationId: string) =>
+      myAgentsAPI.conversations.delete(conversationId),
+    onSuccess: async (_data, conversationId) => {
+      queryClient.setQueryData<Conversation[]>(
+        MyAgentsQueryKeys.conversations.list(),
+        (current) => current?.filter((item) => item.id !== conversationId),
+      );
+      queryClient.removeQueries({
+        queryKey: MyAgentsQueryKeys.conversations.detail(conversationId),
+      });
+      queryClient.removeQueries({
+        queryKey: MyAgentsQueryKeys.conversations.messages(conversationId),
+      });
+      queryClient.removeQueries({
+        queryKey: MyAgentsQueryKeys.conversations.runs(conversationId),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.conversations.list(),
+      });
+    },
   });
 }
 

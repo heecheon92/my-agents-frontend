@@ -57,6 +57,25 @@ describe("MyAgentsConversationAPI", () => {
     });
   });
 
+  it("deletes conversations through the backend delete contract", async () => {
+    const calls: Array<{ path: string; init?: unknown }> = [];
+    const api = new MyAgentsConversationAPI({
+      fetch: async (path, init) => {
+        calls.push({ path, init });
+        return null;
+      },
+      fetchResponse: async () => new Response(),
+    });
+
+    await expect(api.delete("conversation-1")).resolves.toBeUndefined();
+    expect(calls).toEqual([
+      {
+        path: "/conversations/conversation-1",
+        init: { method: "DELETE" },
+      },
+    ]);
+  });
+
   it("cancels the active run through the backend interrupt contract", async () => {
     const calls: Array<{ path: string; init?: unknown }> = [];
     const api = new MyAgentsConversationAPI({

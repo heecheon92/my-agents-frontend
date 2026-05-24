@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
@@ -10,6 +10,7 @@ import {
   useConversation,
   useConversations,
   useCreateConversation,
+  useDeleteConversation,
   useMessages,
   useReplayAssistantMessage,
   useRunDetail,
@@ -25,6 +26,7 @@ import type {
   AgentRunSummary,
   AnswerDeltaEventData,
   Citation,
+  Conversation,
   ConversationRunResponse,
   KnowledgeBase,
   KnowledgeBaseSelection,
@@ -62,6 +64,28 @@ type ChatLocalization = typeof import("@/localization/en.json")["chat"];
 export function getLatestAssistantMessageId(messages: Message[]) {
   return [...messages].reverse().find((message) => message.role === "assistant")
     ?.id;
+}
+
+export function getNextConversationIdAfterDelete(
+  conversations: Array<Pick<Conversation, "id">>,
+  deletedConversationId: string,
+  activeConversationId?: string,
+) {
+  if (activeConversationId !== deletedConversationId)
+    return activeConversationId;
+
+  const deletedIndex = conversations.findIndex(
+    (item) => item.id === deletedConversationId,
+  );
+  const remainingConversations = conversations.filter(
+    (item) => item.id !== deletedConversationId,
+  );
+  if (remainingConversations.length === 0) return undefined;
+  if (deletedIndex < 0) return remainingConversations[0]?.id;
+  return (
+    remainingConversations[deletedIndex]?.id ??
+    remainingConversations[deletedIndex - 1]?.id
+  );
 }
 
 function MessageFooterDisclosure({
@@ -314,6 +338,7 @@ export function ChatWorkspace() {
   const knowledgeBases = useKnowledgeBases();
   const currentUser = useCurrentUser();
   const createConversation = useCreateConversation();
+  const deleteConversation = useDeleteConversation();
   const [selectedId, setSelectedId] = useState<string>();
   const activeId = selectedId ?? conversations.data?.[0]?.id;
   const conversation = useConversation(activeId);
@@ -478,6 +503,34 @@ export function ChatWorkspace() {
       setSelectedId(created.id);
     } catch {
       // React Query stores the API error on the mutation; render it below.
+    }
+  }
+
+  async function handleDeleteConversation(item: Conversation) {
+    const nextSelectedId = getNextConversationIdAfterDelete(
+      conversations.data ?? [],
+      item.id,
+      activeId,
+    );
+    const confirmed = window.confirm(
+      localization.deleteConversationConfirm.replace("{title}", item.title),
+    );
+    if (!confirmed) return;
+
+    try {
+      await deleteConversation.mutateAsync(item.id);
+      if (activeId === item.id) {
+        setSelectedId(nextSelectedId);
+        setQueuedMessage(null);
+        setStreamError(null);
+        setReplayNotice(null);
+        setLiveActivityEvents([]);
+        setLatestCitations([]);
+        setOptimisticMessage(null);
+      }
+      setStatusAnnouncement(localization.deleteConversationSuccessAnnouncement);
+    } catch {
+      setStatusAnnouncement(localization.deleteConversationFailedAnnouncement);
     }
   }
 
@@ -952,6 +1005,9 @@ export function ChatWorkspace() {
           {createConversation.error ? (
             <ErrorState error={createConversation.error} />
           ) : null}
+          {deleteConversation.error ? (
+            <ErrorState error={deleteConversation.error} />
+          ) : null}
           {conversations.isLoading ? (
             <p className="text-sm text-cal-muted">
               {localization.loadingConversations}
@@ -963,43 +1019,82 @@ export function ChatWorkspace() {
               description={localization.noConversationsDescription}
             />
           ) : null}
-          {conversations.data?.map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => setSelectedId(item.id)}
-              className={cn(
-                "rounded-lg border p-3 text-left text-sm transition hover:border-cal-hairline hover:bg-cal-surface-soft",
-                activeId === item.id
-                  ? "border-cal-primary bg-cal-primary text-white"
-                  : "border-cal-hairline bg-cal-canvas",
-              )}
-            >
-              <span className="block break-words font-medium">
-                {item.title}
-              </span>
-              <span
+          {conversations.data?.map((item) => {
+            const isActiveConversation = activeId === item.id;
+            const deleteDisabled =
+              deleteConversation.isPending ||
+              (isActiveConversation && (isStreaming || isCancelling));
+            return (
+              <div
+                key={item.id}
                 className={cn(
-                  "mt-2 inline-flex rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]",
-                  activeId === item.id
-                    ? "bg-white/15 text-white"
-                    : "bg-cal-surface-soft text-cal-muted",
+                  "group/conversation rounded-lg border p-2 transition hover:border-cal-hairline hover:bg-cal-surface-soft",
+                  isActiveConversation
+                    ? "border-cal-primary bg-cal-primary text-white"
+                    : "border-cal-hairline bg-cal-canvas",
                 )}
               >
-                {item.group_id
-                  ? localization.groupConversationBadge
-                  : localization.personalConversationBadge}
-              </span>
-              <span
-                className={cn(
-                  "mt-1 block text-xs",
-                  activeId === item.id ? "text-white/70" : "text-cal-muted",
-                )}
-              >
-                {item.id.slice(0, 8)}
-              </span>
-            </button>
-          ))}
+                <div className="flex min-w-0 items-start gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(item.id)}
+                    className="min-w-0 flex-1 rounded-md p-1 text-left text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cal-primary"
+                    aria-current={isActiveConversation ? "true" : undefined}
+                  >
+                    <span className="block break-words font-medium">
+                      {item.title}
+                    </span>
+                    <span
+                      className={cn(
+                        "mt-2 inline-flex rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.08em]",
+                        isActiveConversation
+                          ? "bg-white/15 text-white"
+                          : "bg-cal-surface-soft text-cal-muted",
+                      )}
+                    >
+                      {item.group_id
+                        ? localization.groupConversationBadge
+                        : localization.personalConversationBadge}
+                    </span>
+                    <span
+                      className={cn(
+                        "mt-1 block text-xs",
+                        isActiveConversation
+                          ? "text-white/70"
+                          : "text-cal-muted",
+                      )}
+                    >
+                      {item.id.slice(0, 8)}
+                    </span>
+                  </button>
+                  <Button
+                    type="button"
+                    size="icon-xs"
+                    variant="ghost"
+                    className={cn(
+                      "mt-0.5",
+                      isActiveConversation
+                        ? "text-white hover:bg-white/15"
+                        : "text-cal-muted hover:text-cal-error",
+                    )}
+                    onClick={() => handleDeleteConversation(item)}
+                    disabled={deleteDisabled}
+                    aria-label={localization.deleteConversationLabel.replace(
+                      "{title}",
+                      item.title,
+                    )}
+                    title={
+                      deleteDisabled && isActiveConversation
+                        ? localization.deleteConversationActiveRunDisabled
+                        : localization.deleteConversationAction
+                    }
+                  >
+                    <Trash2 aria-hidden="true" />
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </aside>
 
