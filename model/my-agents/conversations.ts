@@ -48,6 +48,13 @@ export const runSourceContextSchema = z.object({
   resolved_knowledge_base_count: z.number().default(0),
 });
 
+export const conversationRunWarningSchema = z.object({
+  code: z.literal("regeneration_sources_unavailable"),
+  message: z.string(),
+  missing_document_ids: z.array(z.string()).default([]),
+  missing_source_filenames: z.array(z.string()).default([]),
+});
+
 export const conversationRunResponseSchema = z
   .object({
     run_id: z.string().min(1),
@@ -59,6 +66,7 @@ export const conversationRunResponseSchema = z
     answer_mode: z.string().optional(),
     document_scope: z.string().optional(),
     citations: z.array(citationSchema).default([]),
+    warnings: z.array(conversationRunWarningSchema).default([]),
     knowledge_base_selection: knowledgeBaseSelectionSchema.default({
       mode: "all",
       knowledge_base_ids: [],
@@ -130,6 +138,9 @@ export type KnowledgeBaseSelection = z.infer<
 >;
 export type ConversationRunRequest = z.infer<
   typeof conversationRunRequestSchema
+>;
+export type ConversationRunWarning = z.infer<
+  typeof conversationRunWarningSchema
 >;
 export type RunSourceContext = z.infer<typeof runSourceContextSchema>;
 export type ConversationRunResponse = z.infer<

@@ -371,7 +371,7 @@ export function ChatWorkspace() {
   const [replayNotice, setReplayNotice] = useState<{
     messageId: string;
     message: string;
-    tone: "error" | "success";
+    tone: "error" | "success" | "warning";
   } | null>(null);
   const [liveActivityEvents, setLiveActivityEvents] = useState<
     LiveActivityEvent[]
@@ -820,13 +820,22 @@ export function ChatWorkspace() {
     setStatusAnnouncement(localization.replayStartedAnnouncement);
 
     try {
-      await replayAssistantMessage.mutateAsync(messageId);
+      const replayResult = await replayAssistantMessage.mutateAsync(messageId);
+      const hasUnavailableSources = replayResult.warnings.some(
+        (warning) => warning.code === "regeneration_sources_unavailable",
+      );
       setReplayNotice({
         messageId,
-        message: localization.replaySuccess,
-        tone: "success",
+        message: hasUnavailableSources
+          ? localization.replaySourcesUnavailable
+          : localization.replaySuccess,
+        tone: hasUnavailableSources ? "warning" : "success",
       });
-      setStatusAnnouncement(localization.replaySuccessAnnouncement);
+      setStatusAnnouncement(
+        hasUnavailableSources
+          ? localization.replaySourcesUnavailableAnnouncement
+          : localization.replaySuccessAnnouncement,
+      );
     } catch (error) {
       const isConflict = isMyAgentsAPIError(error) && error.status === 409;
       const message =
@@ -1200,7 +1209,9 @@ export function ChatWorkspace() {
                           "mt-3 rounded-lg border px-3 py-2 text-xs leading-5",
                           replayNotice.tone === "success"
                             ? "border-cal-success/20 bg-cal-success/10 text-cal-success"
-                            : "border-cal-error/20 bg-cal-error/10 text-cal-error",
+                            : replayNotice.tone === "warning"
+                              ? "border-cal-warning/25 bg-cal-warning/10 text-cal-ink"
+                              : "border-cal-error/20 bg-cal-error/10 text-cal-error",
                         )}
                       >
                         {replayNotice.message}

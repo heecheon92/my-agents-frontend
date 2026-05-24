@@ -117,6 +117,14 @@ describe("MyAgentsConversationAPI", () => {
           knowledge_base_selection: { mode: "all", knowledge_base_ids: [] },
           resolved_knowledge_base_count: 0,
           citations: [],
+          warnings: [
+            {
+              code: "regeneration_sources_unavailable",
+              message: "missing source",
+              missing_document_ids: ["document-1"],
+              missing_source_filenames: [],
+            },
+          ],
         };
       },
       fetchResponse: async () => new Response(),
@@ -127,6 +135,12 @@ describe("MyAgentsConversationAPI", () => {
     ).resolves.toMatchObject({
       run_id: "run-2",
       reply: "Regenerated answer",
+      warnings: [
+        {
+          code: "regeneration_sources_unavailable",
+          missing_document_ids: ["document-1"],
+        },
+      ],
     });
     expect(calls).toEqual([
       {

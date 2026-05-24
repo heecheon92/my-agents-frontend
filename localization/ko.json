@@ -181,6 +181,8 @@
     "replayStartedAnnouncement": "어시스턴트 메시지를 다시 생성하는 중입니다.",
     "replaySuccess": "다시 생성했습니다. 백엔드 replay 결과로 대화를 새로고침했습니다.",
     "replaySuccessAnnouncement": "어시스턴트 메시지를 다시 생성했습니다.",
+    "replaySourcesUnavailable": "현재 사용 가능한 지식만으로 다시 생성했습니다. 원래 답변에 사용된 일부 출처는 더 이상 사용할 수 없습니다.",
+    "replaySourcesUnavailableAnnouncement": "사용할 수 없는 기존 출처를 제외하고 어시스턴트 메시지를 다시 생성했습니다.",
     "replayFailed": "이 어시스턴트 메시지를 다시 생성하지 못했습니다.",
     "replayFailedAnnouncement": "어시스턴트 메시지 다시 생성에 실패했습니다.",
     "replayConflict": "현재는 최신 어시스턴트 메시지만 다시 생성할 수 있습니다.",

@@ -181,6 +181,8 @@
     "replayStartedAnnouncement": "Regenerating the assistant message.",
     "replaySuccess": "Regenerated. The conversation was refreshed with the backend replay result.",
     "replaySuccessAnnouncement": "Assistant message regenerated.",
+    "replaySourcesUnavailable": "Regenerated using current knowledge only. Some sources from the original answer are no longer available.",
+    "replaySourcesUnavailableAnnouncement": "Assistant message regenerated with unavailable original sources omitted.",
     "replayFailed": "Could not regenerate this assistant message.",
     "replayFailedAnnouncement": "Assistant message regeneration failed.",
     "replayConflict": "Only the latest assistant message can be regenerated right now.",

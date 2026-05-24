@@ -36,6 +36,10 @@ describe("ChatWorkspace assistant message footer", () => {
     expect(ko.chat.viewActivityEvents).toBe("활동 이벤트 보기");
     expect(en.chat.viewLatestCitations).toBe("View latest citations");
     expect(ko.chat.viewLatestCitations).toBe("최신 인용 보기");
+    expect(en.chat.replaySourcesUnavailable).toContain(
+      "current knowledge only",
+    );
+    expect(ko.chat.replaySourcesUnavailable).toContain("현재 사용 가능한 지식");
     expect(en.chat.deleteConversationAction).toBe("Delete");
     expect(ko.chat.deleteConversationAction).toBe("삭제");
     expect(en.chat.deleteConversationConfirm).toContain(
