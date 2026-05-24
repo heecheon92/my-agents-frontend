@@ -1067,6 +1067,7 @@ export function ChatWorkspace() {
                             type="button"
                             size="icon-lg"
                             variant="ghost"
+                            className="min-h-11 min-w-11"
                             onClick={() =>
                               handleReplayAssistantMessage(message.id)
                             }
