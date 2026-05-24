@@ -216,10 +216,26 @@
     },
     "knowledge": {
       "title": "Knowledge bases",
-      "description": "Create and list personal or group retrieval scopes.",
+      "description": "Create Personal KBs for private documents, or Group KBs for documents available to members of a selected group.",
       "nameLabel": "Knowledge base name",
       "createButton": "Create knowledge base",
-      "empty": "No knowledge bases yet."
+      "empty": "No knowledge bases yet.",
+      "scopeLabel": "Knowledge base scope",
+      "scopeHint": "Personal KBs stay private to your account. Group KBs are document retrieval libraries available to the selected group only.",
+      "scopePersonalOption": "Personal knowledge base",
+      "scopeGroupOption": "Group knowledge base",
+      "groupLabel": "Existing group",
+      "groupHint": "Required for Group KBs. The selected group can retrieve this KB's documents; member chat and transcripts stay outside the KB.",
+      "groupDisabledHint": "Choose group scope to select an existing group.",
+      "groupPlaceholder": "Select a group",
+      "loadingGroupsOption": "Loading groups...",
+      "noGroupsTitle": "No groups available",
+      "noGroupsDescription": "Create or join a group before creating a group knowledge base.",
+      "createPersonalButton": "Create personal KB",
+      "createGroupButton": "Create group KB",
+      "scopeBoundaryNote": "Boundary: creating a Group KB shares document retrieval with group members only. It does not publish member chat, transcripts, or private Personal KB attachments.",
+      "listPersonalSubtitle": "Personal KB · private to your account",
+      "listGroupSubtitle": "Group KB · available to selected group members"
     },
     "documents": {
       "title": "Documents",

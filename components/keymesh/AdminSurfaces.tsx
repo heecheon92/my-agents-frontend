@@ -28,6 +28,10 @@ import { useLocalization } from "@/hooks/useLocalization";
 import type { ExtractionRun } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 import { Field, inputClassName } from "./Field";
+import {
+  buildKnowledgeBaseCreateRequest,
+  type KnowledgeBaseCreationScope,
+} from "./knowledge-base-create";
 import { EmptyState, ErrorState, Pill } from "./Status";
 
 type GroupRole = "owner" | "admin" | "editor" | "viewer";
@@ -115,15 +119,31 @@ function wait(ms: number) {
 }
 
 export function KnowledgeSurface() {
+  const groups = useGroups();
   const knowledgeBases = useKnowledgeBases();
   const createKnowledgeBase = useCreateKnowledgeBase();
   const [name, setName] = useState("");
+  const [scope, setScope] = useState<KnowledgeBaseCreationScope>("personal");
+  const [selectedGroupId, setSelectedGroupId] = useState("");
   const { localization } = useLocalization((state) => state.localization.admin);
+  const groupOptions = groups.data ?? [];
+  const createPayload = buildKnowledgeBaseCreateRequest({
+    groupId: selectedGroupId,
+    name,
+    scope,
+  });
+  const isGroupScope = scope === "group";
+  const isSubmitDisabled =
+    createKnowledgeBase.isPending ||
+    groups.isLoading ||
+    !createPayload ||
+    (isGroupScope && groupOptions.length === 0);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!createPayload) return;
     try {
-      await createKnowledgeBase.mutateAsync({ name, scope: "personal" });
+      await createKnowledgeBase.mutateAsync(createPayload);
       setName("");
     } catch {
       // React Query stores the API error on the mutation; render it below.
@@ -147,11 +167,74 @@ export function KnowledgeSurface() {
             required
           />
         </Field>
-        <Button
-          type="submit"
-          disabled={createKnowledgeBase.isPending || !name.trim()}
-        >
-          {localization.knowledge.createButton}
+        <div className="grid gap-3 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)]">
+          <Field
+            label={localization.knowledge.scopeLabel}
+            hint={localization.knowledge.scopeHint}
+          >
+            <select
+              className={inputClassName}
+              value={scope}
+              onChange={(event) => {
+                const nextScope = event.target
+                  .value as KnowledgeBaseCreationScope;
+                setScope(nextScope);
+                if (nextScope === "personal") {
+                  setSelectedGroupId("");
+                }
+              }}
+            >
+              <option value="personal">
+                {localization.knowledge.scopePersonalOption}
+              </option>
+              <option value="group">
+                {localization.knowledge.scopeGroupOption}
+              </option>
+            </select>
+          </Field>
+          <Field
+            label={localization.knowledge.groupLabel}
+            hint={
+              isGroupScope
+                ? localization.knowledge.groupHint
+                : localization.knowledge.groupDisabledHint
+            }
+          >
+            <select
+              aria-invalid={isGroupScope && !selectedGroupId ? true : undefined}
+              className={inputClassName}
+              disabled={!isGroupScope || groups.isLoading}
+              required={isGroupScope}
+              value={selectedGroupId}
+              onChange={(event) => setSelectedGroupId(event.target.value)}
+            >
+              <option value="">
+                {groups.isLoading
+                  ? localization.knowledge.loadingGroupsOption
+                  : localization.knowledge.groupPlaceholder}
+              </option>
+              {groupOptions.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name} · {group.role} · {group.id}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        <p className="rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-xs leading-5 text-cal-muted">
+          {localization.knowledge.scopeBoundaryNote}
+        </p>
+        {isGroupScope && !groups.isLoading && groupOptions.length === 0 ? (
+          <EmptyState
+            title={localization.knowledge.noGroupsTitle}
+            description={localization.knowledge.noGroupsDescription}
+          />
+        ) : null}
+        {groups.error ? <ErrorState error={groups.error} /> : null}
+        <Button type="submit" disabled={isSubmitDisabled}>
+          {isGroupScope
+            ? localization.knowledge.createGroupButton
+            : localization.knowledge.createPersonalButton}
         </Button>
         {createKnowledgeBase.error ? (
           <ErrorState error={createKnowledgeBase.error} />
@@ -162,18 +245,26 @@ export function KnowledgeSurface() {
         error={knowledgeBases.error}
         empty={localization.knowledge.empty}
       >
-        {knowledgeBases.data?.map((kb) => (
-          <ResourceRow
-            key={kb.id}
-            title={kb.name}
-            subtitle={`${kb.scope} · ${kb.id}`}
-            meta={
-              kb.group_id
-                ? `${localization.common.groupPrefix} ${kb.group_id.slice(0, 8)}`
-                : localization.common.scopePersonal
-            }
-          />
-        ))}
+        {knowledgeBases.data?.map((kb) => {
+          const isGroupKnowledgeBase = kb.scope === "group";
+
+          return (
+            <ResourceRow
+              key={kb.id}
+              title={kb.name}
+              subtitle={
+                isGroupKnowledgeBase
+                  ? localization.knowledge.listGroupSubtitle
+                  : localization.knowledge.listPersonalSubtitle
+              }
+              meta={
+                kb.group_id
+                  ? `${localization.common.groupPrefix} ${kb.group_id.slice(0, 8)}`
+                  : localization.common.scopePersonal
+              }
+            />
+          );
+        })}
       </ResourceList>
     </PageCard>
   );
