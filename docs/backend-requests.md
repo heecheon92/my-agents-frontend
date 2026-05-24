@@ -126,12 +126,3 @@ Current backend behavior: Backend pane `%10` reported the target contract: `POST
 Requested backend contract: Keep the guest endpoints same-origin/BFF friendly, return safe `{ detail }` errors for disabled/invalid/expired/limit cases, and own enforcement for 24h access, one chat, 5 prompts, and 3 document creates/uploads.
 Why it matters: Public portfolio demo reviewers need low-friction access without exposing provider secrets or making signup permanently open.
 Frontend workaround, if any: Frontend BFF allowlists the guest endpoints, treats guest login like normal login for cookie/CSRF redaction, displays guest limits in auth/chat UI, and relies on backend safe errors for limit/expiry enforcement.
-
-## 2026-05-24 — Group Knowledge V1 source-boundary OpenAPI
-
-Status: proposed
-Frontend need: Enable the visible Group Chat source-boundary UI and publish request controls without guessing backend contracts.
-Current backend behavior: The frontend can display groups and knowledge bases, but this worker did not receive a hosted OpenAPI document proving `optional_personal_knowledge_base_ids` on conversation runs or publish request create/approve/reject routes.
-Requested backend contract: Hosted OpenAPI for private group-context conversation creation/runs, `optional_personal_knowledge_base_ids`, source metadata counts, and group publish request create/approve/reject routes where approval copies personal content into group-owned knowledge.
-Why it matters: Group Chat must keep transcripts owner-only, make group KB mandatory/fixed, keep optional personal KB attachment private to the run, and avoid pending/rejected publish requests affecting retrieval.
-Frontend workaround, if any: UI shows the Personal Chat vs Group Chat boundary and publish request affordances, but disables group-chat send/create and publish controls until the hosted OpenAPI is available.
