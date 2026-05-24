@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
+import { useCurrentUser } from "@/hooks/use-auth";
 import {
   useAddMember,
   useApprovePublishRequest,
@@ -36,6 +37,7 @@ import {
 import { EmptyState, ErrorState, Pill } from "./Status";
 
 type GroupRole = "owner" | "admin" | "editor" | "viewer";
+type PublishSourceKind = "document" | "knowledge-base";
 
 type UploadQueueStatus =
   | "selected"
@@ -278,10 +280,12 @@ export function KnowledgeSurface() {
 export function DocumentsSurface() {
   const queryClient = useQueryClient();
   const knowledgeBases = useKnowledgeBases();
+  const currentUser = useCurrentUser();
   const [selectedKnowledgeBaseId, setSelectedKnowledgeBaseId] =
     useState<string>();
   const documentKnowledgeBases = writableDocumentKnowledgeBases(
     knowledgeBases.data ?? [],
+    currentUser.data?.id,
   );
   const activeKnowledgeBaseId =
     selectedKnowledgeBaseId &&
@@ -1211,6 +1215,7 @@ function uploadFileTypeLabel(
 export function GroupsSurface() {
   const groups = useGroups();
   const knowledgeBases = useKnowledgeBases();
+  const currentUser = useCurrentUser();
   const createGroup = useCreateGroup();
   const [name, setName] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState<string>();
@@ -1225,6 +1230,10 @@ export function GroupsSurface() {
       knowledgeBase.scope === "group" &&
       (!activeGroupId || knowledgeBase.group_id === activeGroupId),
   );
+  const publishablePersonalKnowledgeBases = writableDocumentKnowledgeBases(
+    knowledgeBases.data ?? [],
+    currentUser.data?.id,
+  );
   const publishRequests = usePublishRequests(activeGroupId);
   const createPublishRequest = useCreatePublishRequest(activeGroupId);
   const approvePublishRequest = useApprovePublishRequest(activeGroupId);
@@ -1234,7 +1243,10 @@ export function GroupsSurface() {
   const [memberRole, setMemberRole] = useState<GroupRole>("viewer");
   const [updateUserId, setUpdateUserId] = useState("");
   const [updateRole, setUpdateRole] = useState<GroupRole>("viewer");
+  const [publishSourceKind, setPublishSourceKind] =
+    useState<PublishSourceKind>("knowledge-base");
   const [sourceDocumentId, setSourceDocumentId] = useState("");
+  const [sourceKnowledgeBaseId, setSourceKnowledgeBaseId] = useState("");
   const [targetKnowledgeBaseId, setTargetKnowledgeBaseId] = useState("");
   const [publishRequestId, setPublishRequestId] = useState("");
   const updateMember = useUpdateMember(activeGroupId, updateUserId);
@@ -1278,11 +1290,17 @@ export function GroupsSurface() {
   ) {
     event.preventDefault();
     try {
-      const request = await createPublishRequest.mutateAsync({
-        source_document_id: sourceDocumentId,
-        target_knowledge_base_id: targetKnowledgeBaseId,
-      });
+      const request =
+        publishSourceKind === "knowledge-base"
+          ? await createPublishRequest.mutateAsync({
+              source_knowledge_base_id: sourceKnowledgeBaseId,
+            })
+          : await createPublishRequest.mutateAsync({
+              source_document_id: sourceDocumentId,
+              target_knowledge_base_id: targetKnowledgeBaseId,
+            });
       setSourceDocumentId("");
+      setSourceKnowledgeBaseId("");
       setTargetKnowledgeBaseId("");
       setPublishRequestId(request.id);
     } catch {
@@ -1463,43 +1481,95 @@ export function GroupsSurface() {
               onSubmit={handleCreatePublishRequest}
               className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
             >
-              <Field
-                label={localization.groups.publishSourceDocumentLabel}
-                hint={localization.groups.publishSourceDocumentHint}
-              >
-                <input
-                  className={inputClassName}
-                  value={sourceDocumentId}
-                  onChange={(event) => setSourceDocumentId(event.target.value)}
-                />
-              </Field>
-              <Field
-                label={localization.groups.publishTargetKnowledgeBaseLabel}
-                hint={localization.groups.publishTargetKnowledgeBaseHint}
-              >
+              <Field label={localization.groups.publishSourceKindLabel}>
                 <select
                   className={inputClassName}
-                  value={targetKnowledgeBaseId}
-                  onChange={(event) =>
-                    setTargetKnowledgeBaseId(event.target.value)
-                  }
+                  value={publishSourceKind}
+                  onChange={(event) => {
+                    const nextKind = event.target.value as PublishSourceKind;
+                    setPublishSourceKind(nextKind);
+                    setSourceDocumentId("");
+                    setSourceKnowledgeBaseId("");
+                    setTargetKnowledgeBaseId("");
+                  }}
                 >
-                  <option value="">
-                    {localization.groups.publishTargetPlaceholder}
+                  <option value="knowledge-base">
+                    {localization.groups.publishSourceKnowledgeBaseOption}
                   </option>
-                  {activeGroupKnowledgeBases.map((knowledgeBase) => (
-                    <option key={knowledgeBase.id} value={knowledgeBase.id}>
-                      {knowledgeBase.name}
-                    </option>
-                  ))}
+                  <option value="document">
+                    {localization.groups.publishSourceDocumentOption}
+                  </option>
                 </select>
               </Field>
+              {publishSourceKind === "knowledge-base" ? (
+                <Field
+                  label={localization.groups.publishSourceKnowledgeBaseLabel}
+                  hint={localization.groups.publishSourceKnowledgeBaseHint}
+                >
+                  <select
+                    className={inputClassName}
+                    value={sourceKnowledgeBaseId}
+                    onChange={(event) =>
+                      setSourceKnowledgeBaseId(event.target.value)
+                    }
+                  >
+                    <option value="">
+                      {
+                        localization.groups
+                          .publishSourceKnowledgeBasePlaceholder
+                      }
+                    </option>
+                    {publishablePersonalKnowledgeBases.map((knowledgeBase) => (
+                      <option key={knowledgeBase.id} value={knowledgeBase.id}>
+                        {knowledgeBase.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              ) : (
+                <>
+                  <Field
+                    label={localization.groups.publishSourceDocumentLabel}
+                    hint={localization.groups.publishSourceDocumentHint}
+                  >
+                    <input
+                      className={inputClassName}
+                      value={sourceDocumentId}
+                      onChange={(event) =>
+                        setSourceDocumentId(event.target.value)
+                      }
+                    />
+                  </Field>
+                  <Field
+                    label={localization.groups.publishTargetKnowledgeBaseLabel}
+                    hint={localization.groups.publishTargetKnowledgeBaseHint}
+                  >
+                    <select
+                      className={inputClassName}
+                      value={targetKnowledgeBaseId}
+                      onChange={(event) =>
+                        setTargetKnowledgeBaseId(event.target.value)
+                      }
+                    >
+                      <option value="">
+                        {localization.groups.publishTargetPlaceholder}
+                      </option>
+                      {activeGroupKnowledgeBases.map((knowledgeBase) => (
+                        <option key={knowledgeBase.id} value={knowledgeBase.id}>
+                          {knowledgeBase.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                </>
+              )}
               <Button
                 type="submit"
                 disabled={
                   !activeGroupId ||
-                  !sourceDocumentId.trim() ||
-                  !targetKnowledgeBaseId ||
+                  (publishSourceKind === "knowledge-base"
+                    ? !sourceKnowledgeBaseId
+                    : !sourceDocumentId.trim() || !targetKnowledgeBaseId) ||
                   createPublishRequest.isPending
                 }
               >

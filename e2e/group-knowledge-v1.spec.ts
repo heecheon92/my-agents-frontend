@@ -16,6 +16,16 @@ const personalKb = {
   scope: "personal",
   owner_user_id: user.id,
   group_id: null,
+  published_group_ids: [],
+  created_at: now,
+};
+const publishedMemberKb = {
+  id: "kb-published-member",
+  name: "Published Member KB",
+  scope: "personal",
+  owner_user_id: "u-member",
+  group_id: null,
+  published_group_ids: [ownerGroup.id],
   created_at: now,
 };
 const groupKb = {
@@ -24,6 +34,7 @@ const groupKb = {
   scope: "group",
   owner_user_id: user.id,
   group_id: ownerGroup.id,
+  published_group_ids: [],
   created_at: now,
 };
 const groupConversation = {
@@ -44,9 +55,11 @@ const publishRequest = {
   target_group_id: ownerGroup.id,
   target_knowledge_base_id: groupKb.id,
   source_document_id: "doc-personal",
+  source_knowledge_base_id: null,
   status: "pending",
   reviewer_user_id: null,
   published_document_id: null,
+  published_knowledge_base_id: null,
   created_at: now,
   reviewed_at: null,
 };
@@ -80,7 +93,7 @@ async function mockGroupKnowledgeApi(
     if (method === "GET" && path === "/auth/me") return json(user);
     if (method === "GET" && path === "/groups") return json([group]);
     if (method === "GET" && path === "/knowledge-bases") {
-      return json([groupKb, personalKb]);
+      return json([groupKb, personalKb, publishedMemberKb]);
     }
     if (method === "GET" && path === "/conversations") {
       return json([groupConversation, personalConversation]);
@@ -121,6 +134,7 @@ async function mockGroupKnowledgeApi(
         status: "approved",
         reviewer_user_id: user.id,
         published_document_id: "doc-group-copy",
+        published_knowledge_base_id: null,
         reviewed_at: now,
       });
     }
@@ -138,6 +152,7 @@ test("Group Chat shows private source boundaries and sends mandatory group selec
   await expect(page.getByText(ko.chat.groupChatMode).first()).toBeVisible();
   await expect(page.getByText(ko.chat.groupChatBoundaryCopy)).toBeVisible();
   await expect(page.getByText("Alpha Shared KB")).toBeVisible();
+  await expect(page.getByText("Published Member KB")).toBeVisible();
   await expect(page.getByText("Private Notes")).toBeVisible();
 
   await page.getByText("Private Notes").click();

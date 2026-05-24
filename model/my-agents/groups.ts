@@ -33,19 +33,22 @@ export const knowledgePublishRequestStatusSchema = z.enum([
 ]);
 
 export const knowledgePublishRequestCreateRequestSchema = z.object({
-  source_document_id: z.string().min(1),
-  target_knowledge_base_id: z.string().min(1),
+  source_document_id: z.string().min(1).optional(),
+  target_knowledge_base_id: z.string().min(1).optional(),
+  source_knowledge_base_id: z.string().min(1).optional(),
 });
 
 export const knowledgePublishRequestSchema = z.object({
   id: z.string().min(1),
   requester_user_id: z.string().min(1),
   target_group_id: z.string().min(1),
-  target_knowledge_base_id: z.string().min(1),
-  source_document_id: z.string().min(1),
+  target_knowledge_base_id: z.string().min(1).nullable(),
+  source_document_id: z.string().min(1).nullable(),
+  source_knowledge_base_id: z.string().min(1).nullable(),
   status: knowledgePublishRequestStatusSchema,
   reviewer_user_id: z.string().nullable(),
   published_document_id: z.string().nullable(),
+  published_knowledge_base_id: z.string().nullable(),
   created_at: z.string(),
   reviewed_at: z.string().nullable(),
 });

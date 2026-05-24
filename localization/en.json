@@ -342,20 +342,26 @@
         "owner": "owner"
       },
       "publishBoundaryTitle": "Publish requests",
-      "publishBoundaryDescription": "Members request a copy from personal knowledge into a group KB; owner/admin approval is required before it becomes a group source.",
+      "publishBoundaryDescription": "Members can publish an entire Personal KB as a mandatory group source, or request a document copy into a Group KB. Owner/admin approval is required before either affects group retrieval.",
       "openApiPendingPill": "OpenAPI ready",
       "publishActiveGroup": "Target group",
       "publishSourceDocumentLabel": "Personal source document ID",
-      "publishSourceDocumentHint": "Only your personal document should be submitted; approval copies it into group-owned knowledge.",
+      "publishSourceDocumentHint": "Use this for a one-document copy into a selected Group KB.",
       "publishTargetKnowledgeBaseLabel": "Target group KB",
-      "publishTargetKnowledgeBaseHint": "Pending/rejected requests have no retrieval effect.",
+      "publishTargetKnowledgeBaseHint": "Only document-copy requests need a target Group KB. Whole-KB requests attach to the group itself.",
       "publishTargetPlaceholder": "Select a group KB",
       "publishRequestButton": "Request publish",
       "publishReviewRequestLabel": "Publish request ID for review",
       "publishReviewHint": "Owner/admin-only approval or rejection; no auto-publish.",
-      "publishApproveButton": "Approve copy",
+      "publishApproveButton": "Approve publish",
       "publishRejectButton": "Reject request",
-      "publishOpenApiNote": "Publish requests now use backend create/approve/reject routes. Pending or rejected requests do not change group retrieval; approval creates a separate group-owned copy."
+      "publishOpenApiNote": "Publish requests now support both whole Personal KB approval and single-document copy approval. Pending or rejected requests do not change group retrieval.",
+      "publishSourceKindLabel": "Publish source type",
+      "publishSourceKnowledgeBaseOption": "Personal KB",
+      "publishSourceDocumentOption": "Single document",
+      "publishSourceKnowledgeBaseLabel": "Personal KB to publish",
+      "publishSourceKnowledgeBaseHint": "Approval shares this whole Personal KB with the group. Future documents in that KB become group sources after ingestion.",
+      "publishSourceKnowledgeBasePlaceholder": "Select a Personal KB"
     }
   },
   "errors": {

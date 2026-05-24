@@ -8,6 +8,7 @@ export const knowledgeBaseSchema = z.object({
   scope: knowledgeBaseScopeSchema,
   owner_user_id: z.string().min(1),
   group_id: z.string().nullable(),
+  published_group_ids: z.array(z.string().min(1)).default([]),
   created_at: z.string().optional(),
 });
 

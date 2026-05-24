@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
+import { useCurrentUser } from "@/hooks/use-auth";
 import {
   useConversation,
   useConversations,
@@ -124,6 +125,7 @@ export function ChatWorkspace() {
   const conversations = useConversations();
   const groups = useGroups();
   const knowledgeBases = useKnowledgeBases();
+  const currentUser = useCurrentUser();
   const createConversation = useCreateConversation();
   const [selectedId, setSelectedId] = useState<string>();
   const activeId = selectedId ?? conversations.data?.[0]?.id;
@@ -192,17 +194,32 @@ export function ChatWorkspace() {
   const draftMessage = draft.trim();
   const hasActiveDraft = draftMessage.length > 0;
   const personalKnowledgeBases = useMemo(
-    () => (knowledgeBases.data ?? []).filter((kb) => kb.scope === "personal"),
-    [knowledgeBases.data],
+    () =>
+      (knowledgeBases.data ?? []).filter(
+        (kb) =>
+          kb.scope === "personal" &&
+          (!currentUser.data?.id || kb.owner_user_id === currentUser.data.id),
+      ),
+    [knowledgeBases.data, currentUser.data?.id],
   );
   const groupKnowledgeBases = useMemo(
     () =>
       (knowledgeBases.data ?? []).filter(
         (kb) =>
-          kb.scope === "group" &&
-          (!selectedGroupId || kb.group_id === selectedGroupId),
+          !selectedGroupId ||
+          (kb.scope === "group" && kb.group_id === selectedGroupId) ||
+          (kb.scope === "personal" &&
+            kb.published_group_ids.includes(selectedGroupId)),
       ),
     [knowledgeBases.data, selectedGroupId],
+  );
+  const optionalPrivateKnowledgeBases = useMemo(
+    () =>
+      personalKnowledgeBases.filter(
+        (kb) =>
+          !selectedGroupId || !kb.published_group_ids.includes(selectedGroupId),
+      ),
+    [personalKnowledgeBases, selectedGroupId],
   );
   const selectedGroup = groups.data?.find(
     (group) => group.id === selectedGroupId,
@@ -1151,12 +1168,12 @@ export function ChatWorkspace() {
                       {localization.optionalPrivateKnowledgeDescription}
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {personalKnowledgeBases.length === 0 ? (
+                      {optionalPrivateKnowledgeBases.length === 0 ? (
                         <span className="rounded-full border border-cal-hairline bg-cal-surface-soft px-3 py-2 text-xs text-cal-muted">
                           {localization.noPersonalKnowledgeBases}
                         </span>
                       ) : null}
-                      {personalKnowledgeBases.map((knowledgeBase) => {
+                      {optionalPrivateKnowledgeBases.map((knowledgeBase) => {
                         const checked =
                           selectedPrivateKnowledgeBaseIds.includes(
                             knowledgeBase.id,

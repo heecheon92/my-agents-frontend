@@ -13,9 +13,11 @@ describe("MyAgentsGroupAPI publish requests", () => {
           target_group_id: "group-1",
           target_knowledge_base_id: "kb-group-1",
           source_document_id: "doc-personal-1",
+          source_knowledge_base_id: null,
           status: "pending",
           reviewer_user_id: null,
           published_document_id: null,
+          published_knowledge_base_id: null,
           created_at: "2026-05-24T07:00:00Z",
           reviewed_at: null,
         };
@@ -53,11 +55,13 @@ describe("MyAgentsGroupAPI publish requests", () => {
           target_group_id: "group-1",
           target_knowledge_base_id: "kb-group-1",
           source_document_id: "doc-personal-1",
+          source_knowledge_base_id: null,
           status: path.endsWith("approve") ? "approved" : "rejected",
           reviewer_user_id: "admin-1",
           published_document_id: path.endsWith("approve")
             ? "doc-group-1"
             : null,
+          published_knowledge_base_id: null,
           created_at: "2026-05-24T07:00:00Z",
           reviewed_at: "2026-05-24T07:05:00Z",
         };
@@ -91,5 +95,41 @@ describe("MyAgentsGroupAPI publish requests", () => {
         init: { method: "POST" },
       },
     ]);
+  });
+
+  it("creates whole personal KB publish requests", async () => {
+    const calls: Array<{ path: string; init?: unknown }> = [];
+    const api = new MyAgentsGroupAPI({
+      fetch: async (path, init) => {
+        calls.push({ path, init });
+        return {
+          id: "request-kb-1",
+          requester_user_id: "user-1",
+          target_group_id: "group-1",
+          target_knowledge_base_id: null,
+          source_document_id: null,
+          source_knowledge_base_id: "kb-personal-1",
+          status: "pending",
+          reviewer_user_id: null,
+          published_document_id: null,
+          published_knowledge_base_id: null,
+          created_at: "2026-05-24T07:00:00Z",
+          reviewed_at: null,
+        };
+      },
+    });
+
+    await expect(
+      api.createPublishRequest("group-1", {
+        source_knowledge_base_id: "kb-personal-1",
+      }),
+    ).resolves.toMatchObject({
+      id: "request-kb-1",
+      source_knowledge_base_id: "kb-personal-1",
+    });
+    expect(calls[0]?.init).toMatchObject({
+      method: "POST",
+      body: { source_knowledge_base_id: "kb-personal-1" },
+    });
   });
 });

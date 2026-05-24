@@ -296,7 +296,9 @@ Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `
 ## 2026-05-24 — group KB creation and publish-only group document boundary
 
 - Added scoped KB creation in the Knowledge surface: users can create private Personal KBs or extra Group KBs only for groups where they are owner/admin. The backend already creates a default Group KB when a group is created, so extra Group KB creation is an admin expansion path rather than a prerequisite.
-- Tightened the Documents surface to list only Personal KBs for direct text/file create and ingestion. Group KBs are intentionally excluded from direct upload/create UI because personal material should enter group retrieval through publish requests and owner/admin approval.
+- Tightened the Documents surface to list only the current user's own Personal KBs for direct text/file create and ingestion. Group KBs and other members' approved published Personal KBs are intentionally excluded from direct upload/create UI because personal material should enter group retrieval through publish requests and owner/admin approval.
+- Extended publish request UI to support both whole-Personal-KB publication and one-document copy publication. Whole Personal KB approval makes that KB a fixed group source; document approval still copies one document into a selected Group KB.
+- Updated Group Chat source display so approved member Personal KBs appear alongside Group KBs as mandatory group sources, while private optional attachments remain limited to the current user's unpublished Personal KBs.
 - Kept the Group creation form compact by placing the group name field and submit action inline on desktop, and fixed Knowledge creation selector alignment with equal-width scope/group controls plus shorter group option labels.
 - Updated bilingual copy and focused tests to make the boundary explicit: Personal KBs stay private and may be attached privately in Group Chat; publishing into Group KB retrieval is an approval workflow, not direct document wiring.
 

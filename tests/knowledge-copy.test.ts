@@ -35,3 +35,25 @@ describe("knowledge-base creation copy", () => {
     expect(copy.listGroupSubtitle).toContain("선택한 그룹 멤버");
   });
 });
+
+describe("group publish copy", () => {
+  it("states whole Personal KB publication and document-copy options in English", () => {
+    const copy = en.admin.groups;
+
+    expect(copy.publishBoundaryDescription).toContain("entire Personal KB");
+    expect(copy.publishBoundaryDescription).toContain("document copy");
+    expect(copy.publishSourceKnowledgeBaseHint).toContain("whole Personal KB");
+    expect(copy.publishTargetKnowledgeBaseHint).toContain(
+      "Only document-copy requests",
+    );
+  });
+
+  it("states whole Personal KB publication and document-copy options in Korean", () => {
+    const copy = ko.admin.groups;
+
+    expect(copy.publishBoundaryDescription).toContain("전체 Personal KB");
+    expect(copy.publishBoundaryDescription).toContain("단일 문서");
+    expect(copy.publishSourceKnowledgeBaseHint).toContain("Personal KB 전체");
+    expect(copy.publishTargetKnowledgeBaseHint).toContain("문서 복사 요청");
+  });
+});
