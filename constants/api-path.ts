@@ -49,6 +49,15 @@ export const API_PATH = {
     member(groupId: string, userId: string) {
       return `${this.members(groupId)}/${userId}`;
     },
+    publishRequests(groupId: string) {
+      return `${this.detail(groupId)}/publish-requests`;
+    },
+    publishRequestApprove(groupId: string, requestId: string) {
+      return `${this.publishRequests(groupId)}/${requestId}/approve`;
+    },
+    publishRequestReject(groupId: string, requestId: string) {
+      return `${this.publishRequests(groupId)}/${requestId}/reject`;
+    },
   },
   knowledgeBases: {
     root: "/knowledge-bases",

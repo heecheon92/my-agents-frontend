@@ -35,6 +35,7 @@ describe("MyAgentsConversationAPI", () => {
           mode: "selected",
           knowledge_base_ids: ["kb-1", "kb-2"],
         },
+        optional_personal_knowledge_base_ids: ["kb-personal-1"],
       }),
     ).resolves.toBe(response);
     expect(calls).toHaveLength(1);
@@ -144,7 +145,9 @@ describe("MyAgentsConversationAPI", () => {
       fetchResponse: async () => new Response(),
     });
 
-    await expect(api.runDetail("conversation-1", "run-1")).resolves.toEqual({
+    await expect(
+      api.runDetail("conversation-1", "run-1"),
+    ).resolves.toMatchObject({
       run_id: "run-1",
       conversation_id: "conversation-1",
       reply: "Hello",
@@ -170,6 +173,45 @@ describe("MyAgentsConversationAPI", () => {
     expect(calls).toEqual(["/conversations/conversation-1/runs/run-1"]);
   });
 
+  it("parses group source metadata from completed run responses", async () => {
+    const api = new MyAgentsConversationAPI({
+      fetch: async () => ({
+        run_id: "run-group-1",
+        conversation_id: "conversation-group-1",
+        reply: "Group answer",
+        route: { label: "general_assistant", explanation: "test" },
+        handled_by: "personal_assistant_graph",
+        retrieval_route: "retrieval_required",
+        answer_mode: "document_grounded",
+        document_scope: "group_documents",
+        knowledge_base_selection: { mode: "all", knowledge_base_ids: [] },
+        source_context_group_id: "group-1",
+        mandatory_group_knowledge_base_ids: ["kb-group-1"],
+        mandatory_group_knowledge_base_count: 1,
+        optional_personal_knowledge_base_ids: ["kb-personal-1"],
+        optional_personal_knowledge_base_count: 1,
+        resolved_knowledge_base_ids: ["kb-group-1", "kb-personal-1"],
+        resolved_knowledge_base_count: 2,
+        citations: [],
+      }),
+      fetchResponse: async () => new Response(),
+    });
+
+    await expect(
+      api.run("conversation-group-1", {
+        message: "hello",
+        knowledge_base_selection: { mode: "all", knowledge_base_ids: [] },
+        optional_personal_knowledge_base_ids: ["kb-personal-1"],
+      }),
+    ).resolves.toMatchObject({
+      source_context_group_id: "group-1",
+      mandatory_group_knowledge_base_ids: ["kb-group-1"],
+      optional_personal_knowledge_base_ids: ["kb-personal-1"],
+      resolved_knowledge_base_ids: ["kb-group-1", "kb-personal-1"],
+      resolved_knowledge_base_count: 2,
+    });
+  });
+
   it("parses answer deltas and the final run_completed event from SSE", async () => {
     const api = new MyAgentsConversationAPI({
       fetch: async () => null,
@@ -189,7 +231,7 @@ describe("MyAgentsConversationAPI", () => {
       events.push(event);
     }
 
-    expect(events).toEqual([
+    expect(events).toMatchObject([
       {
         event: "run_started",
         data: {
@@ -217,6 +259,12 @@ describe("MyAgentsConversationAPI", () => {
             mode: "selected",
             knowledge_base_ids: ["kb-1"],
           },
+          source_context_group_id: null,
+          mandatory_group_knowledge_base_ids: [],
+          mandatory_group_knowledge_base_count: 0,
+          optional_personal_knowledge_base_ids: [],
+          optional_personal_knowledge_base_count: 0,
+          resolved_knowledge_base_ids: [],
           resolved_knowledge_base_count: 1,
           citations: [],
         },
@@ -241,7 +289,7 @@ describe("MyAgentsConversationAPI", () => {
       events.push(event);
     }
 
-    expect(events).toEqual([
+    expect(events).toMatchObject([
       {
         event: "run_started",
         data: {

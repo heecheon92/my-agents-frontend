@@ -29,6 +29,18 @@ describe("API_PATH", () => {
     );
   });
 
+  it("builds group publish request paths", () => {
+    expect(API_PATH.groups.publishRequests("group-1")).toBe(
+      "/groups/group-1/publish-requests",
+    );
+    expect(API_PATH.groups.publishRequestApprove("group-1", "request-1")).toBe(
+      "/groups/group-1/publish-requests/request-1/approve",
+    );
+    expect(API_PATH.groups.publishRequestReject("group-1", "request-1")).toBe(
+      "/groups/group-1/publish-requests/request-1/reject",
+    );
+  });
+
   it("builds document operation paths", () => {
     expect(API_PATH.documents.upload).toBe("/documents/upload");
     expect(API_PATH.documents.permissions("doc-1")).toBe(

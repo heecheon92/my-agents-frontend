@@ -42,6 +42,7 @@ type QueuedMessage = {
   conversationId: string;
   content: string;
   knowledgeBaseSelection: KnowledgeBaseSelection;
+  optionalPersonalKnowledgeBaseIds: string[];
 };
 
 type RunOutcome = "completed" | "cancelled" | "failed";
@@ -173,7 +174,10 @@ export function ChatWorkspace() {
     (group) => group.id === selectedGroupId,
   );
   const isGroupMode = chatMode === "group";
-  const groupChatContractPending = isGroupMode;
+  const groupContextRequired = isGroupMode && !selectedGroupId;
+  const activeOptionalPersonalKnowledgeBaseIds = isGroupMode
+    ? selectedPrivateKnowledgeBaseIds
+    : [];
   const activeKnowledgeBaseSelection: KnowledgeBaseSelection = {
     mode: knowledgeBaseMode,
     knowledge_base_ids:
@@ -219,13 +223,14 @@ export function ChatWorkspace() {
   }
 
   async function handleCreate() {
-    if (isGroupMode) {
-      setStatusAnnouncement(localization.groupChatPendingAnnouncement);
+    if (isGroupMode && !selectedGroupId) {
+      setStatusAnnouncement(localization.groupContextRequired);
       return;
     }
     try {
       const created = await createConversation.mutateAsync({
         title: `${localization.newConversationTitle} ${new Date().toLocaleString(lang)}`,
+        group_id: isGroupMode ? selectedGroupId : null,
       });
       setSelectedId(created.id);
     } catch {
@@ -237,6 +242,7 @@ export function ChatWorkspace() {
     conversationId: string,
     message: string,
     knowledgeBaseSelection: KnowledgeBaseSelection,
+    optionalPersonalKnowledgeBaseIds: string[],
   ): Promise<RunOutcome> {
     if (isStreamingRef.current) return "failed";
 
@@ -260,7 +266,12 @@ export function ChatWorkspace() {
     try {
       for await (const streamEvent of myAgentsAPI.conversations.streamRunEvents(
         conversationId,
-        { message, knowledge_base_selection: knowledgeBaseSelection },
+        {
+          message,
+          knowledge_base_selection: knowledgeBaseSelection,
+          optional_personal_knowledge_base_ids:
+            optionalPersonalKnowledgeBaseIds,
+        },
       )) {
         liveSequence += 1;
         const sequence = liveSequence;
@@ -331,11 +342,13 @@ export function ChatWorkspace() {
     conversationId: string,
     message: string,
     knowledgeBaseSelection: KnowledgeBaseSelection,
+    optionalPersonalKnowledgeBaseIds: string[],
   ): Promise<void> {
     const outcome = await runMessage(
       conversationId,
       message,
       knowledgeBaseSelection,
+      optionalPersonalKnowledgeBaseIds,
     );
 
     if (outcome === "failed") {
@@ -356,6 +369,7 @@ export function ChatWorkspace() {
         pendingImmediateMessage.conversationId,
         pendingImmediateMessage.content,
         pendingImmediateMessage.knowledgeBaseSelection,
+        pendingImmediateMessage.optionalPersonalKnowledgeBaseIds,
       );
       return;
     }
@@ -374,6 +388,7 @@ export function ChatWorkspace() {
         nextQueuedMessage.conversationId,
         nextQueuedMessage.content,
         nextQueuedMessage.knowledgeBaseSelection,
+        nextQueuedMessage.optionalPersonalKnowledgeBaseIds,
       );
     }
   }
@@ -385,7 +400,7 @@ export function ChatWorkspace() {
       !activeId ||
       isCancelling ||
       requiresKnowledgeBaseSelection ||
-      groupChatContractPending
+      groupContextRequired
     ) {
       return;
     }
@@ -399,6 +414,8 @@ export function ChatWorkspace() {
         conversationId: activeId,
         content: draftMessage,
         knowledgeBaseSelection: activeKnowledgeBaseSelection,
+        optionalPersonalKnowledgeBaseIds:
+          activeOptionalPersonalKnowledgeBaseIds,
       };
       setQueuedMessage(nextQueuedMessage);
       setDraft("");
@@ -411,6 +428,7 @@ export function ChatWorkspace() {
       activeId,
       draftMessage,
       activeKnowledgeBaseSelection,
+      activeOptionalPersonalKnowledgeBaseIds,
     );
   }
 
@@ -423,7 +441,7 @@ export function ChatWorkspace() {
       !activeRunId ||
       visibleQueuedMessage ||
       requiresKnowledgeBaseSelection ||
-      groupChatContractPending
+      groupContextRequired
     ) {
       return;
     }
@@ -432,6 +450,7 @@ export function ChatWorkspace() {
       conversationId: activeId,
       content: draftMessage,
       knowledgeBaseSelection: activeKnowledgeBaseSelection,
+      optionalPersonalKnowledgeBaseIds: activeOptionalPersonalKnowledgeBaseIds,
     };
     pendingImmediateMessageRef.current = immediateMessage;
     cancelAcceptedRef.current = false;
@@ -462,6 +481,9 @@ export function ChatWorkspace() {
     setSelectedKnowledgeBaseIds(
       visibleQueuedMessage.knowledgeBaseSelection.knowledge_base_ids,
     );
+    setSelectedPrivateKnowledgeBaseIds(
+      visibleQueuedMessage.optionalPersonalKnowledgeBaseIds,
+    );
     setQueuedMessage(null);
     setStatusAnnouncement(localization.queueEditAnnouncement);
   }
@@ -481,6 +503,7 @@ export function ChatWorkspace() {
       nextQueuedMessage.conversationId,
       nextQueuedMessage.content,
       nextQueuedMessage.knowledgeBaseSelection,
+      nextQueuedMessage.optionalPersonalKnowledgeBaseIds,
     );
   }
 
@@ -558,7 +581,7 @@ export function ChatWorkspace() {
     !hasActiveDraft ||
     isCancelling ||
     requiresKnowledgeBaseSelection ||
-    groupChatContractPending ||
+    groupContextRequired ||
     (isStreaming && Boolean(visibleQueuedMessage));
   const isSendNowDisabled =
     !activeId ||
@@ -568,7 +591,7 @@ export function ChatWorkspace() {
     !activeRunId ||
     Boolean(visibleQueuedMessage) ||
     requiresKnowledgeBaseSelection ||
-    groupChatContractPending;
+    groupContextRequired;
   const sendNowHelper = isCancelling
     ? localization.stoppingCurrentAnswer
     : visibleQueuedMessage
@@ -604,10 +627,15 @@ export function ChatWorkspace() {
   }, [knowledgeBases.data]);
 
   useEffect(() => {
+    if (conversation.data?.group_id) {
+      setChatMode("group");
+      setSelectedGroupId(conversation.data.group_id);
+      return;
+    }
     if (!selectedGroupId && groups.data?.[0]) {
       setSelectedGroupId(groups.data[0].id);
     }
-  }, [groups.data, selectedGroupId]);
+  }, [conversation.data?.group_id, groups.data, selectedGroupId]);
 
   useEffect(() => {
     if (!activeId) return;
@@ -654,9 +682,11 @@ export function ChatWorkspace() {
           <Button
             size="sm"
             onClick={handleCreate}
-            disabled={createConversation.isPending || isGroupMode}
+            disabled={createConversation.isPending || groupContextRequired}
             title={
-              isGroupMode ? localization.groupChatCreateDisabled : undefined
+              groupContextRequired
+                ? localization.groupContextRequired
+                : undefined
             }
           >
             {localization.newButton}
@@ -1107,7 +1137,7 @@ export function ChatWorkspace() {
                       })}
                     </div>
                   </div>
-                  <p className="rounded-lg border border-cal-warning/25 bg-cal-warning/10 p-3 text-xs leading-5 text-cal-body">
+                  <p className="rounded-lg border border-cal-primary/20 bg-cal-primary/10 p-3 text-xs leading-5 text-cal-body">
                     {localization.groupChatOpenApiPending}
                   </p>
                 </div>
@@ -1156,9 +1186,9 @@ export function ChatWorkspace() {
                 {sendNowHelper}
               </p>
             ) : null}
-            {groupChatContractPending ? (
+            {groupContextRequired ? (
               <p className="mt-2 text-xs leading-5 text-cal-muted">
-                {localization.groupChatSendDisabled}
+                {localization.groupContextRequired}
               </p>
             ) : null}
             {showGuestNotice && isStreaming ? (

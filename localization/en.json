@@ -196,11 +196,11 @@
     "optionalPrivateKnowledgeTitle": "Optional private personal KBs",
     "optionalPrivateKnowledgeDescription": "These attachments are per-run and private to you. They never mutate group state and are not visible to other members.",
     "noPersonalKnowledgeBases": "No personal KBs available",
-    "groupChatOpenApiPending": "Backend OpenAPI for optional_personal_knowledge_base_ids and publish approvals is required before this preview can send group-chat runs.",
-    "groupChatSendDisabled": "Group Chat send is disabled until the backend privacy/source OpenAPI is available; use Personal Chat for active runs.",
+    "groupChatOpenApiPending": "Backend OpenAPI is available. Group Chat sends the mandatory group KB plus only the private personal KBs you explicitly attach.",
+    "groupChatSendDisabled": "Choose a group context before sending Group Chat. Personal attachments stay private to this run.",
     "groupComposerPlaceholder": "Group Chat preview — backend OpenAPI required before sending...",
-    "groupChatCreateDisabled": "Group Chat creation is disabled until the backend OpenAPI contract is available.",
-    "groupChatPendingAnnouncement": "Group Chat is preview-only until backend OpenAPI is available."
+    "groupChatCreateDisabled": "Choose a group context before creating Group Chat.",
+    "groupChatPendingAnnouncement": "Choose a group context, then create a private group-source conversation."
   },
   "admin": {
     "common": {
@@ -326,7 +326,7 @@
       },
       "publishBoundaryTitle": "Publish requests",
       "publishBoundaryDescription": "Members request a copy from personal knowledge into a group KB; owner/admin approval is required before it becomes a group source.",
-      "openApiPendingPill": "OpenAPI pending",
+      "openApiPendingPill": "OpenAPI ready",
       "publishActiveGroup": "Target group",
       "publishSourceDocumentLabel": "Personal source document ID",
       "publishSourceDocumentHint": "Only your personal document should be submitted; approval copies it into group-owned knowledge.",
@@ -338,7 +338,7 @@
       "publishReviewHint": "Owner/admin-only approval or rejection; no auto-publish.",
       "publishApproveButton": "Approve copy",
       "publishRejectButton": "Reject request",
-      "publishOpenApiNote": "Controls are intentionally disabled until the hosted backend OpenAPI exposes publish request create/approve/reject routes. The UI avoids member chat, shared transcript, and fine-grained document ACL affordances."
+      "publishOpenApiNote": "Publish requests now use backend create/approve/reject routes. Pending or rejected requests do not change group retrieval; approval creates a separate group-owned copy."
     }
   },
   "errors": {

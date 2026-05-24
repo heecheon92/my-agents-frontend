@@ -3,6 +3,9 @@ import {
   type Group,
   type GroupCreateRequest,
   groupSchema,
+  type KnowledgePublishRequest,
+  type KnowledgePublishRequestCreateRequest,
+  knowledgePublishRequestSchema,
   type MemberPatchRequest,
   type MemberUpsertRequest,
 } from "@/model/my-agents";
@@ -60,5 +63,51 @@ export class MyAgentsGroupAPI {
       method: "PATCH",
       body: payload,
     });
+  }
+
+  async createPublishRequest(
+    groupId: string,
+    payload: KnowledgePublishRequestCreateRequest,
+  ): Promise<KnowledgePublishRequest> {
+    return parseWithSchema(
+      knowledgePublishRequestSchema,
+      await this.client.fetch(API_PATH.groups.publishRequests(groupId), {
+        method: "POST",
+        body: payload,
+      }),
+    );
+  }
+
+  async publishRequests(groupId: string): Promise<KnowledgePublishRequest[]> {
+    return parseArrayWithSchema(
+      knowledgePublishRequestSchema,
+      await this.client.fetch(API_PATH.groups.publishRequests(groupId)),
+    );
+  }
+
+  async approvePublishRequest(
+    groupId: string,
+    requestId: string,
+  ): Promise<KnowledgePublishRequest> {
+    return parseWithSchema(
+      knowledgePublishRequestSchema,
+      await this.client.fetch(
+        API_PATH.groups.publishRequestApprove(groupId, requestId),
+        { method: "POST" },
+      ),
+    );
+  }
+
+  async rejectPublishRequest(
+    groupId: string,
+    requestId: string,
+  ): Promise<KnowledgePublishRequest> {
+    return parseWithSchema(
+      knowledgePublishRequestSchema,
+      await this.client.fetch(
+        API_PATH.groups.publishRequestReject(groupId, requestId),
+        { method: "POST" },
+      ),
+    );
   }
 }

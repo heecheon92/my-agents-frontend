@@ -112,12 +112,12 @@ Frontend workaround, if any: No UI change needed if the backend returns a safe `
 
 ## 2026-05-24 — Group Knowledge V1 OpenAPI gate
 
-Status: blocked
+Status: implemented
 Frontend need: Backend-owned OpenAPI for Group Knowledge V1 before changing frontend API models, clients, hooks, or group-chat request bodies.
-Current backend behavior: Read-only OpenAPI generation from `/Users/heecheonpark/Git/Portfolio/my-agents` with `MY_AGENTS_RESPONSE_MODE=deterministic uv run python - <<'PY' ... main.app.openapi() ... PY` shows `ConversationRunRequest` still contains only `message` and `knowledge_base_selection`; there are no `/groups/{group_id}/publish-requests`, approve, or reject paths.
+Current backend behavior: Read-only OpenAPI generation from `/Users/heecheonpark/Git/Portfolio/my-agents` with `MY_AGENTS_RESPONSE_MODE=deterministic uv run python - <<'PY' ... main.app.openapi() ... PY` now shows `ConversationRunRequest.optional_personal_knowledge_base_ids` and `/groups/{group_id}/publish-requests` create/list plus approve/reject routes.
 Requested backend contract: Expose `ConversationRunRequest.optional_personal_knowledge_base_ids`; source-audit fields/counts on run start/completion/history/detail/events; and publish request create/list/approve/reject routes with request/response schemas for owner/admin-approved copy semantics.
 Why it matters: Group Chat UI must send mandatory group KB selection plus explicit private personal attachments and must not invent publish workflow shapes from backend source inspection. Pending/rejected publish requests must have zero retrieval effect, and approved requests must appear only after backend group-owned copy creation.
-Frontend workaround, if any: Worker-4 repaired its missing team assignment and is holding frontend API/client changes. No model/client changes should be made until a fresh hosted/generated OpenAPI contains the required fields and paths.
+Frontend workaround, if any: Frontend models/services/hooks now use the backend-owned contract; no fallback or invented publish shape remains.
 ## 2026-05-21 — public-demo guest access contract
 
 Status: proposed

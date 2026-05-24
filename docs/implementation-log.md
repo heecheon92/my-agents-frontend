@@ -1,3 +1,12 @@
+## 2026-05-24 — Group Knowledge V1 frontend contract wiring
+
+- Rechecked backend OpenAPI after the backend lane update and confirmed `ConversationRunRequest.optional_personal_knowledge_base_ids` plus publish request create/list/approve/reject routes are present.
+- Updated frontend conversation schemas and streaming request bodies so Group Chat sends fixed group KB selection with explicit private personal KB attachments.
+- Added publish request path constants, Zod models, group API methods, TanStack Query hooks, BFF allowlist coverage, and tests for create/list/approve/reject.
+- Preserved worker-5 source-boundary UX while enabling the previously disabled Group Chat and publish controls against the backend-owned contract.
+
+Verification passed for this log entry: backend OpenAPI gate check confirmed `optional_personal_knowledge_base_ids` plus publish request routes; `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (10 files / 55 tests), `pnpm build`, and `git diff --check` passed.
+
 ## 2026-05-24 — Group Knowledge V1 frontend OpenAPI gate
 
 - Repaired worker-4 team allocation through the supported OMX `create-task`, `write-worker-identity`, and `claim-task` APIs after original task-4 was pre-assigned to worker-1 and claim attempts returned `claim_conflict`.

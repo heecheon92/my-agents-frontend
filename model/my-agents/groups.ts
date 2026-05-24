@@ -26,8 +26,41 @@ export const memberPatchRequestSchema = z.object({
   role: membershipRoleSchema,
 });
 
+export const knowledgePublishRequestStatusSchema = z.enum([
+  "pending",
+  "approved",
+  "rejected",
+]);
+
+export const knowledgePublishRequestCreateRequestSchema = z.object({
+  source_document_id: z.string().min(1),
+  target_knowledge_base_id: z.string().min(1),
+});
+
+export const knowledgePublishRequestSchema = z.object({
+  id: z.string().min(1),
+  requester_user_id: z.string().min(1),
+  target_group_id: z.string().min(1),
+  target_knowledge_base_id: z.string().min(1),
+  source_document_id: z.string().min(1),
+  status: knowledgePublishRequestStatusSchema,
+  reviewer_user_id: z.string().nullable(),
+  published_document_id: z.string().nullable(),
+  created_at: z.string(),
+  reviewed_at: z.string().nullable(),
+});
+
 export type MembershipRole = z.infer<typeof membershipRoleSchema>;
 export type Group = z.infer<typeof groupSchema>;
 export type GroupCreateRequest = z.infer<typeof groupCreateRequestSchema>;
 export type MemberUpsertRequest = z.infer<typeof memberUpsertRequestSchema>;
 export type MemberPatchRequest = z.infer<typeof memberPatchRequestSchema>;
+export type KnowledgePublishRequestStatus = z.infer<
+  typeof knowledgePublishRequestStatusSchema
+>;
+export type KnowledgePublishRequestCreateRequest = z.infer<
+  typeof knowledgePublishRequestCreateRequestSchema
+>;
+export type KnowledgePublishRequest = z.infer<
+  typeof knowledgePublishRequestSchema
+>;

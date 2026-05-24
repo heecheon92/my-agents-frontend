@@ -51,6 +51,9 @@ export const MyAgentsQueryKeys = {
     detail(groupId: string) {
       return ["my-agents", "groups", "detail", groupId] as const;
     },
+    publishRequests(groupId: string) {
+      return ["my-agents", "groups", "publish-requests", groupId] as const;
+    },
   },
   knowledgeBases: {
     list() {

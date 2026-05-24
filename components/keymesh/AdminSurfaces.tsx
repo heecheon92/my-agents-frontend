@@ -6,8 +6,12 @@ import { Button } from "@/components/ui/button";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import {
   useAddMember,
+  useApprovePublishRequest,
   useCreateGroup,
+  useCreatePublishRequest,
   useGroups,
+  usePublishRequests,
+  useRejectPublishRequest,
   useUpdateMember,
 } from "@/hooks/use-groups";
 import {
@@ -1113,6 +1117,10 @@ export function GroupsSurface() {
       knowledgeBase.scope === "group" &&
       (!activeGroupId || knowledgeBase.group_id === activeGroupId),
   );
+  const publishRequests = usePublishRequests(activeGroupId);
+  const createPublishRequest = useCreatePublishRequest(activeGroupId);
+  const approvePublishRequest = useApprovePublishRequest(activeGroupId);
+  const rejectPublishRequest = useRejectPublishRequest(activeGroupId);
   const addMember = useAddMember(activeGroupId);
   const [memberUserId, setMemberUserId] = useState("");
   const [memberRole, setMemberRole] = useState<GroupRole>("viewer");
@@ -1150,6 +1158,39 @@ export function GroupsSurface() {
     try {
       await updateMember.mutateAsync({ role: updateRole });
       setUpdateUserId("");
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
+  }
+
+  async function handleCreatePublishRequest(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    try {
+      const request = await createPublishRequest.mutateAsync({
+        source_document_id: sourceDocumentId,
+        target_knowledge_base_id: targetKnowledgeBaseId,
+      });
+      setSourceDocumentId("");
+      setTargetKnowledgeBaseId("");
+      setPublishRequestId(request.id);
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
+  }
+
+  async function handleApprovePublishRequest() {
+    try {
+      await approvePublishRequest.mutateAsync(publishRequestId);
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
+  }
+
+  async function handleRejectPublishRequest() {
+    try {
+      await rejectPublishRequest.mutateAsync(publishRequestId);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -1294,7 +1335,10 @@ export function GroupsSurface() {
                   : localization.groups.noSelectedDescription}
               </p>
             </div>
-            <form className="mt-4 grid gap-3 border-t border-cal-hairline pt-4">
+            <form
+              onSubmit={handleCreatePublishRequest}
+              className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
+            >
               <Field
                 label={localization.groups.publishSourceDocumentLabel}
                 hint={localization.groups.publishSourceDocumentHint}
@@ -1326,9 +1370,20 @@ export function GroupsSurface() {
                   ))}
                 </select>
               </Field>
-              <Button type="button" disabled>
+              <Button
+                type="submit"
+                disabled={
+                  !activeGroupId ||
+                  !sourceDocumentId.trim() ||
+                  !targetKnowledgeBaseId ||
+                  createPublishRequest.isPending
+                }
+              >
                 {localization.groups.publishRequestButton}
               </Button>
+              {createPublishRequest.error ? (
+                <ErrorState error={createPublishRequest.error} />
+              ) : null}
             </form>
             <form className="mt-4 grid gap-3 border-t border-cal-hairline pt-4">
               <Field
@@ -1342,17 +1397,65 @@ export function GroupsSurface() {
                 />
               </Field>
               <div className="grid gap-2 sm:grid-cols-2">
-                <Button type="button" variant="outline" disabled>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={
+                    !publishRequestId.trim() || approvePublishRequest.isPending
+                  }
+                  onClick={handleApprovePublishRequest}
+                >
                   {localization.groups.publishApproveButton}
                 </Button>
-                <Button type="button" variant="secondary" disabled>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={
+                    !publishRequestId.trim() || rejectPublishRequest.isPending
+                  }
+                  onClick={handleRejectPublishRequest}
+                >
                   {localization.groups.publishRejectButton}
                 </Button>
               </div>
             </form>
-            <p className="mt-4 rounded-lg border border-cal-warning/25 bg-cal-warning/10 p-3 text-sm leading-6 text-cal-body">
-              {localization.groups.publishOpenApiNote}
-            </p>
+            {approvePublishRequest.error || rejectPublishRequest.error ? (
+              <div className="mt-3">
+                <ErrorState
+                  error={
+                    approvePublishRequest.error ?? rejectPublishRequest.error
+                  }
+                />
+              </div>
+            ) : null}
+            <div className="mt-4 rounded-lg border border-cal-primary/20 bg-cal-primary/10 p-3 text-sm leading-6 text-cal-body">
+              <p>{localization.groups.publishOpenApiNote}</p>
+              {publishRequests.error ? (
+                <div className="mt-3">
+                  <ErrorState error={publishRequests.error} />
+                </div>
+              ) : null}
+              {publishRequests.data?.length ? (
+                <div className="mt-3 grid gap-2">
+                  {publishRequests.data.map((request) => (
+                    <button
+                      key={request.id}
+                      type="button"
+                      className="rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-left text-xs leading-5 text-cal-muted"
+                      onClick={() => setPublishRequestId(request.id)}
+                    >
+                      <span className="block font-semibold text-cal-ink">
+                        {request.status} · {request.id}
+                      </span>
+                      <span className="block break-all">
+                        {request.source_document_id} →{" "}
+                        {request.target_knowledge_base_id}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </section>
         </div>
       </div>

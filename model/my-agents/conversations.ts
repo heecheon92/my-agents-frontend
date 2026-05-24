@@ -35,29 +35,45 @@ export const knowledgeBaseSelectionSchema = z.object({
 export const conversationRunRequestSchema = z.object({
   message: z.string().min(1),
   knowledge_base_selection: knowledgeBaseSelectionSchema.optional(),
+  optional_personal_knowledge_base_ids: z.array(z.string().min(1)).optional(),
 });
 
-export const conversationRunResponseSchema = z.object({
-  run_id: z.string().min(1),
-  conversation_id: z.string().min(1),
-  reply: z.string(),
-  route: routeDecisionSchema,
-  handled_by: z.literal("personal_assistant_graph"),
-  citations: z.array(citationSchema).default([]),
-  knowledge_base_selection: knowledgeBaseSelectionSchema.default({
-    mode: "all",
-    knowledge_base_ids: [],
-  }),
+export const runSourceContextSchema = z.object({
+  source_context_group_id: z.string().nullable().default(null),
+  mandatory_group_knowledge_base_ids: z.array(z.string().min(1)).default([]),
+  mandatory_group_knowledge_base_count: z.number().default(0),
+  optional_personal_knowledge_base_ids: z.array(z.string().min(1)).default([]),
+  optional_personal_knowledge_base_count: z.number().default(0),
+  resolved_knowledge_base_ids: z.array(z.string().min(1)).default([]),
   resolved_knowledge_base_count: z.number().default(0),
 });
 
-export const runStartedEventDataSchema = z.object({
-  run_id: z.string().min(1),
-  conversation_id: z.string().min(1),
-  status: z.string(),
-  knowledge_base_selection: knowledgeBaseSelectionSchema.optional(),
-  resolved_knowledge_base_count: z.number().optional(),
-});
+export const conversationRunResponseSchema = z
+  .object({
+    run_id: z.string().min(1),
+    conversation_id: z.string().min(1),
+    reply: z.string(),
+    route: routeDecisionSchema,
+    handled_by: z.literal("personal_assistant_graph"),
+    retrieval_route: z.string().optional(),
+    answer_mode: z.string().optional(),
+    document_scope: z.string().optional(),
+    citations: z.array(citationSchema).default([]),
+    knowledge_base_selection: knowledgeBaseSelectionSchema.default({
+      mode: "all",
+      knowledge_base_ids: [],
+    }),
+  })
+  .merge(runSourceContextSchema);
+
+export const runStartedEventDataSchema = z
+  .object({
+    run_id: z.string().min(1),
+    conversation_id: z.string().min(1),
+    status: z.string(),
+    knowledge_base_selection: knowledgeBaseSelectionSchema.optional(),
+  })
+  .merge(runSourceContextSchema.partial());
 
 export const answerDeltaEventDataSchema = z.object({
   delta: z.string(),
@@ -78,18 +94,19 @@ export const runCancelResponseSchema = z.object({
   status: z.string(),
 });
 
-export const agentRunSummarySchema = z.object({
-  run_id: z.string().min(1),
-  conversation_id: z.string().min(1),
-  status: z.string(),
-  route_label: z.string().nullable(),
-  created_at: z.string(),
-  knowledge_base_selection: knowledgeBaseSelectionSchema.default({
-    mode: "all",
-    knowledge_base_ids: [],
-  }),
-  resolved_knowledge_base_count: z.number().default(0),
-});
+export const agentRunSummarySchema = z
+  .object({
+    run_id: z.string().min(1),
+    conversation_id: z.string().min(1),
+    status: z.string(),
+    route_label: z.string().nullable(),
+    created_at: z.string(),
+    knowledge_base_selection: knowledgeBaseSelectionSchema.default({
+      mode: "all",
+      knowledge_base_ids: [],
+    }),
+  })
+  .merge(runSourceContextSchema);
 
 export const agentEventSchema = z.object({
   id: z.string().min(1),
@@ -114,6 +131,7 @@ export type KnowledgeBaseSelection = z.infer<
 export type ConversationRunRequest = z.infer<
   typeof conversationRunRequestSchema
 >;
+export type RunSourceContext = z.infer<typeof runSourceContextSchema>;
 export type ConversationRunResponse = z.infer<
   typeof conversationRunResponseSchema
 >;
