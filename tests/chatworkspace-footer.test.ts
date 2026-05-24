@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   CHAT_SCROLL_REGION_CLASS_NAME,
   CHAT_WORKSPACE_PANEL_CLASS_NAME,
+  getConversationCardClassName,
   getLatestAssistantMessageId,
   getNextConversationIdAfterDelete,
 } from "@/components/keymesh/ChatWorkspace";
@@ -46,6 +47,18 @@ describe("ChatWorkspace assistant message footer", () => {
       "conversation and all messages",
     );
     expect(ko.chat.deleteConversationConfirm).toContain("모든 메시지");
+  });
+
+  it("keeps selected conversation contrast stable on hover", () => {
+    const activeClassName = getConversationCardClassName(true);
+    const inactiveClassName = getConversationCardClassName(false);
+
+    expect(activeClassName).toContain("bg-cal-primary");
+    expect(activeClassName).toContain("text-white");
+    expect(activeClassName).toContain("hover:bg-cal-primary");
+    expect(activeClassName).toContain("hover:text-white");
+    expect(activeClassName).not.toContain("hover:bg-cal-surface-soft");
+    expect(inactiveClassName).toContain("hover:bg-cal-surface-soft");
   });
 
   it("selects a stable neighboring conversation after deleting the active one", () => {

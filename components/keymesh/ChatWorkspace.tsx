@@ -88,6 +88,15 @@ export function getNextConversationIdAfterDelete(
   );
 }
 
+export function getConversationCardClassName(isActiveConversation: boolean) {
+  return cn(
+    "group/conversation rounded-lg border p-2 transition",
+    isActiveConversation
+      ? "border-cal-primary bg-cal-primary text-white hover:border-cal-primary hover:bg-cal-primary hover:text-white"
+      : "border-cal-hairline bg-cal-canvas hover:border-cal-hairline hover:bg-cal-surface-soft",
+  );
+}
+
 function MessageFooterDisclosure({
   title,
   ariaLabel,
@@ -1036,12 +1045,7 @@ export function ChatWorkspace() {
             return (
               <div
                 key={item.id}
-                className={cn(
-                  "group/conversation rounded-lg border p-2 transition hover:border-cal-hairline hover:bg-cal-surface-soft",
-                  isActiveConversation
-                    ? "border-cal-primary bg-cal-primary text-white"
-                    : "border-cal-hairline bg-cal-canvas",
-                )}
+                className={getConversationCardClassName(isActiveConversation)}
               >
                 <div className="flex min-w-0 items-start gap-2">
                   <button
