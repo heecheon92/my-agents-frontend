@@ -141,6 +141,11 @@
     "noCitationsTitle": "인용이 없습니다",
     "noCitationsDescription": "검색 컨텍스트가 사용되면 RAG 인용이 표시됩니다.",
     "documentLabel": "문서",
+    "messageFooterLabel": "어시스턴트 메시지 작업",
+    "messageEvidenceUnavailable": "실행 증거는 최신 어시스턴트 답변에 연결됩니다.",
+    "viewRunHistory": "실행 기록 보기",
+    "viewActivityEvents": "활동 이벤트 보기",
+    "viewLatestCitations": "최신 인용 보기",
     "roles": {
       "user": "사용자",
       "assistant": "어시스턴트",

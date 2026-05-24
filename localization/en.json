@@ -141,6 +141,11 @@
     "noCitationsTitle": "No citations",
     "noCitationsDescription": "RAG citations appear when retrieved context is used.",
     "documentLabel": "Document",
+    "messageFooterLabel": "Assistant message actions",
+    "messageEvidenceUnavailable": "Run evidence is attached to the latest assistant answer.",
+    "viewRunHistory": "View run history",
+    "viewActivityEvents": "View activity events",
+    "viewLatestCitations": "View latest citations",
     "roles": {
       "user": "user",
       "assistant": "assistant",

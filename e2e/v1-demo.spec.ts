@@ -9,8 +9,36 @@ const seededDocumentTitle = "V1 Portfolio Chat Service Demo";
 const sensitiveStoragePattern =
   /(api[_-]?key|csrf|password|session|sk-[a-zA-Z0-9]|token)/i;
 
-function panelByHeading(page: import("@playwright/test").Page, name: string) {
-  return page.getByRole("heading", { name, exact: true }).locator("..");
+function latestAssistantFooter(page: import("@playwright/test").Page) {
+  return page.getByTestId("assistant-message-footer").last();
+}
+
+async function expectLatestAssistantFooterEvidence(
+  page: import("@playwright/test").Page,
+  eventName: string | RegExp,
+) {
+  const footer = latestAssistantFooter(page);
+  await expect(footer).toBeVisible();
+  await expect(
+    page.locator("aside").filter({ hasText: ko.chat.latestCitations }),
+  ).toHaveCount(0);
+
+  await footer
+    .getByLabel(new RegExp(escapeRegExp(ko.chat.viewRunHistory)))
+    .click();
+  await expect(
+    footer.getByText(ko.chat.runStatuses.completed).first(),
+  ).toBeVisible();
+
+  await footer
+    .getByLabel(new RegExp(escapeRegExp(ko.chat.viewLatestCitations)))
+    .click();
+  await expect(footer.getByText(ko.chat.documentLabel).first()).toBeVisible();
+
+  await footer
+    .getByLabel(new RegExp(escapeRegExp(ko.chat.viewActivityEvents)))
+    .click();
+  await expect(footer.getByText(eventName).first()).toBeVisible();
 }
 
 function escapeRegExp(value: string) {
@@ -210,19 +238,8 @@ test.describe("V1 seeded demo", () => {
       timeout: 90_000,
     });
 
-    await expect(
-      panelByHeading(page, ko.chat.runHistory).getByText(
-        ko.chat.runStatuses.completed,
-      ),
-    ).toBeVisible({ timeout: 15_000 });
-    const citationsPanel = panelByHeading(page, ko.chat.latestCitations);
-    const eventsPanel = panelByHeading(page, ko.chat.activityEvents);
-    await expect(
-      citationsPanel.getByText(ko.chat.documentLabel).first(),
-    ).toBeVisible();
-    await expect(
-      eventsPanel.getByText("retrieval_completed").first(),
-    ).toBeVisible();
+    await expect(latestAssistantFooter(page)).toBeVisible({ timeout: 15_000 });
+    await expectLatestAssistantFooterEvidence(page, "retrieval_completed");
 
     await page.reload();
     await page
@@ -231,12 +248,7 @@ test.describe("V1 seeded demo", () => {
       })
       .click();
     await expect(activeConversationHeading).toHaveText(conversationTitle);
-    await expect(
-      citationsPanel.getByText(ko.chat.documentLabel).first(),
-    ).toBeVisible();
-    await expect(
-      eventsPanel.getByText("retrieval_completed").first(),
-    ).toBeVisible();
+    await expectLatestAssistantFooterEvidence(page, "retrieval_completed");
   });
 });
 
@@ -330,17 +342,8 @@ test.describe("V1 public visitor smoke", () => {
       timeout: 90_000,
     });
 
-    await expect(
-      panelByHeading(page, ko.chat.runHistory).getByText(
-        ko.chat.runStatuses.completed,
-      ),
-    ).toBeVisible({ timeout: 20_000 });
-    const citationsPanel = panelByHeading(page, ko.chat.latestCitations);
-    const eventsPanel = panelByHeading(page, ko.chat.activityEvents);
-    await expect(
-      citationsPanel.getByText(ko.chat.documentLabel).first(),
-    ).toBeVisible();
-    await expect(eventsPanel.getByText(/retrieval_/).first()).toBeVisible();
+    await expect(latestAssistantFooter(page)).toBeVisible({ timeout: 20_000 });
+    await expectLatestAssistantFooterEvidence(page, /retrieval_/);
 
     await page.reload();
     await page
@@ -349,10 +352,7 @@ test.describe("V1 public visitor smoke", () => {
       })
       .click();
     await expect(activeConversationHeading).toHaveText(conversationTitle);
-    await expect(
-      citationsPanel.getByText(ko.chat.documentLabel).first(),
-    ).toBeVisible();
-    await expect(eventsPanel.getByText(/retrieval_/).first()).toBeVisible();
+    await expectLatestAssistantFooterEvidence(page, /retrieval_/);
     await assertBrowserStorageHasNoSecrets(page);
   });
 });

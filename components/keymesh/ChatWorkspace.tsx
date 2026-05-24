@@ -1,7 +1,8 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { RotateCcw } from "lucide-react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import { useCurrentUser } from "@/hooks/use-auth";
@@ -21,6 +22,7 @@ import { useLocalization } from "@/hooks/useLocalization";
 import { cn } from "@/lib/utils";
 import type {
   AgentEvent,
+  AgentRunSummary,
   AnswerDeltaEventData,
   Citation,
   ConversationRunResponse,
@@ -50,6 +52,187 @@ type RunOutcome = "completed" | "cancelled" | "failed";
 type ChatMode = "personal" | "group";
 
 const CHAT_BOTTOM_THRESHOLD_PX = 96;
+
+type ChatLocalization = typeof import("@/localization/en.json")["chat"];
+
+export function getLatestAssistantMessageId(messages: Message[]) {
+  return [...messages].reverse().find((message) => message.role === "assistant")
+    ?.id;
+}
+
+function MessageFooterDisclosure({
+  title,
+  ariaLabel,
+  count,
+  children,
+}: {
+  title: string;
+  ariaLabel: string;
+  count: number;
+  children: ReactNode;
+}) {
+  return (
+    <details className="group/footer min-w-0 rounded-lg border border-cal-hairline bg-white/70 text-cal-ink open:bg-white">
+      <summary
+        aria-label={`${ariaLabel} (${count})`}
+        className="flex min-h-8 cursor-pointer list-none items-center gap-1.5 px-2 text-[11px] font-semibold marker:hidden hover:text-cal-primary"
+      >
+        <span>{title}</span>
+        <span className="rounded-full bg-cal-surface-soft px-1.5 py-0.5 text-[10px] text-cal-muted">
+          {count}
+        </span>
+      </summary>
+      <div className="border-t border-cal-hairline p-2">{children}</div>
+    </details>
+  );
+}
+
+function AssistantEvidenceFooter({
+  localization,
+  lang,
+  isLatestAssistantMessage,
+  isStreaming,
+  replayButton,
+  runs,
+  events,
+  citations,
+}: {
+  localization: ChatLocalization;
+  lang: string;
+  isLatestAssistantMessage: boolean;
+  isStreaming: boolean;
+  replayButton?: ReactNode;
+  runs: AgentRunSummary[];
+  events: Array<AgentEvent | LiveActivityEvent>;
+  citations: Citation[];
+}) {
+  return (
+    <fieldset
+      aria-label={localization.messageFooterLabel}
+      data-testid="assistant-message-footer"
+      className="mt-3 border-t border-cal-hairline/70 pt-2"
+    >
+      <div className="flex flex-wrap items-start gap-2">
+        {replayButton}
+        {isLatestAssistantMessage || isStreaming ? (
+          <>
+            <MessageFooterDisclosure
+              title={localization.runHistory}
+              ariaLabel={localization.viewRunHistory}
+              count={runs.length}
+            >
+              <div className="grid max-h-56 gap-2 overflow-auto pr-1">
+                {runs.length === 0 ? (
+                  <EmptyState
+                    title={localization.noRunsTitle}
+                    description={localization.noRunsDescription}
+                  />
+                ) : null}
+                {runs.map((run) => (
+                  <div
+                    key={run.run_id}
+                    className="rounded-lg border border-cal-hairline p-3 text-sm"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Pill
+                        tone={run.status === "completed" ? "green" : "rose"}
+                      >
+                        {localization.runStatuses[
+                          run.status as keyof typeof localization.runStatuses
+                        ] ?? run.status}
+                      </Pill>
+                      <span className="text-xs text-cal-muted">
+                        {new Date(run.created_at).toLocaleString(lang)}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-cal-muted">
+                      {run.route_label ?? localization.unrouted}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </MessageFooterDisclosure>
+            <MessageFooterDisclosure
+              title={localization.activityEvents}
+              ariaLabel={localization.viewActivityEvents}
+              count={events.length}
+            >
+              <div className="grid max-h-56 gap-2 overflow-auto pr-1">
+                {events.length === 0 ? (
+                  <EmptyState
+                    title={localization.noEventsTitle}
+                    description={localization.noEventsDescription}
+                  />
+                ) : null}
+                {events.map((event) => (
+                  <div
+                    key={event.id}
+                    className="rounded-lg bg-cal-surface-soft p-3 text-sm"
+                  >
+                    <p className="break-words font-medium text-cal-ink">
+                      {event.sequence}. {event.event_type}
+                    </p>
+                    <pre className="mt-2 max-h-40 overflow-auto rounded-xl border border-cal-hairline bg-white p-3 text-xs text-cal-muted">
+                      {JSON.stringify(event.payload, null, 2)}
+                    </pre>
+                  </div>
+                ))}
+              </div>
+            </MessageFooterDisclosure>
+            <MessageFooterDisclosure
+              title={localization.latestCitations}
+              ariaLabel={localization.viewLatestCitations}
+              count={citations.length}
+            >
+              <div className="grid max-h-56 gap-2 overflow-auto pr-1">
+                {citations.length === 0 ? (
+                  <EmptyState
+                    title={localization.noCitationsTitle}
+                    description={localization.noCitationsDescription}
+                  />
+                ) : null}
+                {citations.map((citation) => (
+                  <div
+                    key={citation.id}
+                    className="rounded-lg bg-cal-surface-strong p-3 text-sm text-cal-ink"
+                  >
+                    <p className="font-medium">
+                      {citation.source_filename ?? localization.documentLabel}{" "}
+                      {citation.source_filename
+                        ? citation.source_page
+                          ? `p. ${citation.source_page}`
+                          : ""
+                        : citation.document_id.slice(0, 8)}
+                    </p>
+                    {citation.source_filename ? (
+                      <p className="mt-1 text-xs text-cal-muted">
+                        {localization.documentLabel}{" "}
+                        {citation.document_id.slice(0, 8)}
+                      </p>
+                    ) : null}
+                    {citation.knowledge_base_id ? (
+                      <p className="mt-1 text-xs text-cal-muted">
+                        {localization.knowledgeBaseLabel}{" "}
+                        {citation.knowledge_base_id.slice(0, 8)}
+                      </p>
+                    ) : null}
+                    <p className="mt-1 break-words text-cal-body">
+                      {citation.snippet}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </MessageFooterDisclosure>
+          </>
+        ) : (
+          <p className="self-center text-xs leading-5 text-cal-muted">
+            {localization.messageEvidenceUnavailable}
+          </p>
+        )}
+      </div>
+    </fieldset>
+  );
+}
 
 function safeBackendDetail(value: unknown) {
   if (value && typeof value === "object" && "detail" in value) {
@@ -623,6 +806,7 @@ export function ChatWorkspace() {
     latestCitations.length > 0
       ? latestCitations
       : (runDetail.data?.citations ?? []);
+  const latestAssistantMessageId = getLatestAssistantMessageId(sortedMessages);
   const autoScrollTrigger = `${sortedMessages.length}:${streamedReply.length}`;
   const composerPlaceholder = isStreaming
     ? visibleQueuedMessage
@@ -815,7 +999,7 @@ export function ChatWorkspace() {
         </div>
       </aside>
 
-      <div className="grid min-h-0 min-w-0 gap-4 xl:grid-rows-[minmax(0,1fr)_auto]">
+      <div className="min-h-0 min-w-0">
         <section className="cal-card flex min-h-[36rem] min-w-0 flex-col rounded-xl xl:min-h-0">
           <header className="border-b border-cal-hairline p-4 sm:p-5">
             <p className="cal-label">{localization.activeConversationLabel}</p>
@@ -855,29 +1039,11 @@ export function ChatWorkspace() {
                         : "border-cal-hairline bg-cal-surface-soft text-cal-ink",
                     )}
                   >
-                    <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.08em] opacity-60">
-                        {localization.roles[
-                          message.role as keyof typeof localization.roles
-                        ] ?? message.role}
-                      </p>
-                      {isAssistant ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            handleReplayAssistantMessage(message.id)
-                          }
-                          disabled={replayDisabled}
-                          aria-busy={isReplaying}
-                        >
-                          {isReplaying
-                            ? localization.replayLoading
-                            : localization.replayAction}
-                        </Button>
-                      ) : null}
-                    </div>
+                    <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] opacity-60">
+                      {localization.roles[
+                        message.role as keyof typeof localization.roles
+                      ] ?? message.role}
+                    </p>
                     {isAssistant ? (
                       <AgentMessageRenderer content={message.content} />
                     ) : (
@@ -885,6 +1051,46 @@ export function ChatWorkspace() {
                         {message.content}
                       </p>
                     )}
+                    {isAssistant ? (
+                      <AssistantEvidenceFooter
+                        localization={localization}
+                        lang={lang}
+                        isLatestAssistantMessage={
+                          message.id === latestAssistantMessageId
+                        }
+                        isStreaming={false}
+                        runs={sortedRuns}
+                        events={visibleActivityEvents}
+                        citations={visibleCitations}
+                        replayButton={
+                          <Button
+                            type="button"
+                            size="icon-lg"
+                            variant="ghost"
+                            onClick={() =>
+                              handleReplayAssistantMessage(message.id)
+                            }
+                            disabled={replayDisabled}
+                            aria-busy={isReplaying}
+                            aria-label={
+                              isReplaying
+                                ? localization.replayLoading
+                                : localization.replayAction
+                            }
+                            title={
+                              isReplaying
+                                ? localization.replayLoading
+                                : localization.replayAction
+                            }
+                          >
+                            <RotateCcw
+                              aria-hidden="true"
+                              className={cn(isReplaying ? "animate-spin" : "")}
+                            />
+                          </Button>
+                        }
+                      />
+                    ) : null}
                     {replayNotice?.messageId === message.id ? (
                       <p
                         className={cn(
@@ -912,6 +1118,15 @@ export function ChatWorkspace() {
                       {localization.agentComposing}
                     </p>
                   )}
+                  <AssistantEvidenceFooter
+                    localization={localization}
+                    lang={lang}
+                    isLatestAssistantMessage={true}
+                    isStreaming={isStreaming}
+                    runs={sortedRuns}
+                    events={visibleActivityEvents}
+                    citations={visibleCitations}
+                  />
                 </div>
               ) : null}
             </div>
@@ -1271,124 +1486,6 @@ export function ChatWorkspace() {
             ) : null}
           </form>
         </section>
-
-        <aside
-          aria-label={`${localization.runHistory}, ${localization.activityEvents}, ${localization.latestCitations}`}
-          className="grid min-w-0 gap-3 md:grid-cols-3"
-        >
-          <details className="cal-card group min-w-0 rounded-xl p-4">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-cal-ink marker:hidden">
-              <span>{localization.runHistory}</span>
-              <span className="rounded-full bg-cal-surface-soft px-2 py-1 text-xs text-cal-muted">
-                {sortedRuns.length}
-              </span>
-            </summary>
-            <div className="mt-3 grid max-h-72 gap-2 overflow-auto pr-1">
-              {sortedRuns.length === 0 ? (
-                <EmptyState
-                  title={localization.noRunsTitle}
-                  description={localization.noRunsDescription}
-                />
-              ) : null}
-              {sortedRuns.map((run) => (
-                <div
-                  key={run.run_id}
-                  className="rounded-lg border border-cal-hairline p-3 text-sm"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Pill tone={run.status === "completed" ? "green" : "rose"}>
-                      {localization.runStatuses[
-                        run.status as keyof typeof localization.runStatuses
-                      ] ?? run.status}
-                    </Pill>
-                    <span className="text-xs text-cal-muted">
-                      {new Date(run.created_at).toLocaleString(lang)}
-                    </span>
-                  </div>
-                  <p className="mt-2 text-cal-muted">
-                    {run.route_label ?? localization.unrouted}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </details>
-          <details className="cal-card group min-w-0 rounded-xl p-4">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-cal-ink marker:hidden">
-              <span>{localization.activityEvents}</span>
-              <span className="rounded-full bg-cal-surface-soft px-2 py-1 text-xs text-cal-muted">
-                {visibleActivityEvents.length}
-              </span>
-            </summary>
-            <div className="mt-3 grid max-h-72 gap-2 overflow-auto pr-1">
-              {visibleActivityEvents.length === 0 ||
-              (!latestRunId && !isStreaming) ? (
-                <EmptyState
-                  title={localization.noEventsTitle}
-                  description={localization.noEventsDescription}
-                />
-              ) : null}
-              {visibleActivityEvents.map((event) => (
-                <div
-                  key={event.id}
-                  className="rounded-lg bg-cal-surface-soft p-3 text-sm"
-                >
-                  <p className="break-words font-medium text-cal-ink">
-                    {event.sequence}. {event.event_type}
-                  </p>
-                  <pre className="mt-2 max-h-40 overflow-auto rounded-xl border border-cal-hairline bg-white p-3 text-xs text-cal-muted">
-                    {JSON.stringify(event.payload, null, 2)}
-                  </pre>
-                </div>
-              ))}
-            </div>
-          </details>
-          <details className="cal-card group min-w-0 rounded-xl p-4">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-medium text-cal-ink marker:hidden">
-              <span>{localization.latestCitations}</span>
-              <span className="rounded-full bg-cal-surface-soft px-2 py-1 text-xs text-cal-muted">
-                {visibleCitations.length}
-              </span>
-            </summary>
-            <div className="mt-3 grid max-h-72 gap-2 overflow-auto pr-1">
-              {visibleCitations.length === 0 ? (
-                <EmptyState
-                  title={localization.noCitationsTitle}
-                  description={localization.noCitationsDescription}
-                />
-              ) : null}
-              {visibleCitations.map((citation) => (
-                <div
-                  key={citation.id}
-                  className="rounded-lg bg-cal-surface-strong p-3 text-sm text-cal-ink"
-                >
-                  <p className="font-medium">
-                    {citation.source_filename ?? localization.documentLabel}{" "}
-                    {citation.source_filename
-                      ? citation.source_page
-                        ? `p. ${citation.source_page}`
-                        : ""
-                      : citation.document_id.slice(0, 8)}
-                  </p>
-                  {citation.source_filename ? (
-                    <p className="mt-1 text-xs text-cal-muted">
-                      {localization.documentLabel}{" "}
-                      {citation.document_id.slice(0, 8)}
-                    </p>
-                  ) : null}
-                  {citation.knowledge_base_id ? (
-                    <p className="mt-1 text-xs text-cal-muted">
-                      {localization.knowledgeBaseLabel}{" "}
-                      {citation.knowledge_base_id.slice(0, 8)}
-                    </p>
-                  ) : null}
-                  <p className="mt-1 break-words text-cal-body">
-                    {citation.snippet}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </details>
-        </aside>
       </div>
     </div>
   );
