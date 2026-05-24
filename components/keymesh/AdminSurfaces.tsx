@@ -1112,6 +1112,8 @@ export function GroupsSurface() {
   const [selectedGroupId, setSelectedGroupId] = useState<string>();
   const activeGroupId = selectedGroupId ?? groups.data?.[0]?.id;
   const activeGroup = groups.data?.find((group) => group.id === activeGroupId);
+  const canManageMembers =
+    activeGroup?.role === "owner" || activeGroup?.role === "admin";
   const canReviewPublishRequests =
     activeGroup?.role === "owner" || activeGroup?.role === "admin";
   const activeGroupKnowledgeBases = (knowledgeBases.data ?? []).filter(
@@ -1147,6 +1149,7 @@ export function GroupsSurface() {
 
   async function handleAddMember(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canManageMembers) return;
     try {
       await addMember.mutateAsync({ user_id: memberUserId, role: memberRole });
       setMemberUserId("");
@@ -1157,6 +1160,7 @@ export function GroupsSurface() {
 
   async function handleUpdateMember(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!canManageMembers) return;
     try {
       await updateMember.mutateAsync({ role: updateRole });
       setUpdateUserId("");
@@ -1255,6 +1259,7 @@ export function GroupsSurface() {
                   className={inputClassName}
                   value={memberUserId}
                   onChange={(event) => setMemberUserId(event.target.value)}
+                  disabled={!canManageMembers}
                 />
               </Field>
               <RoleSelect
@@ -1262,11 +1267,15 @@ export function GroupsSurface() {
                 labels={localization.groups.roles}
                 value={memberRole}
                 onChange={setMemberRole}
+                disabled={!canManageMembers}
               />
               <Button
                 type="submit"
                 disabled={
-                  !activeGroupId || !memberUserId.trim() || addMember.isPending
+                  !canManageMembers ||
+                  !activeGroupId ||
+                  !memberUserId.trim() ||
+                  addMember.isPending
                 }
               >
                 {localization.groups.upsertMember}
@@ -1286,6 +1295,7 @@ export function GroupsSurface() {
                   className={inputClassName}
                   value={updateUserId}
                   onChange={(event) => setUpdateUserId(event.target.value)}
+                  disabled={!canManageMembers}
                 />
               </Field>
               <RoleSelect
@@ -1293,11 +1303,13 @@ export function GroupsSurface() {
                 labels={localization.groups.roles}
                 value={updateRole}
                 onChange={setUpdateRole}
+                disabled={!canManageMembers}
               />
               <Button
                 type="submit"
                 variant="outline"
                 disabled={
+                  !canManageMembers ||
                   !activeGroupId ||
                   !updateUserId.trim() ||
                   updateMember.isPending
@@ -1310,6 +1322,11 @@ export function GroupsSurface() {
               <div className="mt-3">
                 <ErrorState error={updateMember.error} />
               </div>
+            ) : null}
+            {!canManageMembers ? (
+              <p className="mt-4 rounded-lg border border-cal-warning/40 bg-cal-warning/10 p-3 text-sm leading-6 text-cal-body">
+                {localization.groups.membershipManagerOnlyHint}
+              </p>
             ) : null}
             <p className="mt-4 rounded-lg border border-cal-hairline bg-cal-surface-strong p-3 text-sm leading-6 text-cal-body">
               {localization.groups.backendNote}
@@ -1504,11 +1521,13 @@ function RoleSelect({
   labels,
   value,
   onChange,
+  disabled = false,
 }: {
   label: string;
   labels: Record<GroupRole, string>;
   value: GroupRole;
   onChange: (value: GroupRole) => void;
+  disabled?: boolean;
 }) {
   return (
     <Field label={label}>
@@ -1516,6 +1535,7 @@ function RoleSelect({
         className={inputClassName}
         value={value}
         onChange={(event) => onChange(event.target.value as GroupRole)}
+        disabled={disabled}
       >
         {Object.entries(labels).map(([role, roleLabel]) => (
           <option key={role} value={role}>

@@ -179,4 +179,13 @@ test("Publish review controls are owner-only in Group admin UI", async ({
   await expect(
     page.getByRole("button", { name: ko.admin.groups.publishRejectButton }),
   ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: ko.admin.groups.upsertMember }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("button", { name: ko.admin.groups.patchRole }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText(ko.admin.groups.membershipManagerOnlyHint),
+  ).toBeVisible();
 });

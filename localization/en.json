@@ -315,6 +315,7 @@
       "upsertMember": "Upsert member",
       "patchMemberLabel": "Patch existing member user id",
       "patchRole": "Patch role",
+      "membershipManagerOnlyHint": "Only group owners and admins can add members or change roles.",
       "backendNote": "Backend currently exposes ID-based member operations. If user search or member listing is needed, add a backend request before changing ../my-agents.",
       "empty": "No groups yet.",
       "roleLabel": "Role",

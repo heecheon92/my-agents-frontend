@@ -315,6 +315,7 @@
       "upsertMember": "멤버 업서트",
       "patchMemberLabel": "패치할 기존 멤버 사용자 ID",
       "patchRole": "역할 패치",
+      "membershipManagerOnlyHint": "그룹 소유자와 관리자만 멤버를 추가하거나 역할을 변경할 수 있습니다.",
       "backendNote": "현재 백엔드는 ID 기반 멤버 작업을 제공합니다. 사용자 검색 또는 멤버 목록이 필요하면 ../my-agents를 변경하기 전에 백엔드 요청을 추가하세요.",
       "empty": "아직 그룹이 없습니다.",
       "roleLabel": "역할",
