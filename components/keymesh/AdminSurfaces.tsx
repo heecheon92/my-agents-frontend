@@ -27,6 +27,7 @@ import {
 import { useLocalization } from "@/hooks/useLocalization";
 import type { ExtractionRun } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
+import { writableDocumentKnowledgeBases } from "./document-knowledge-base";
 import { Field, inputClassName } from "./Field";
 import {
   buildKnowledgeBaseCreateRequest,
@@ -126,7 +127,9 @@ export function KnowledgeSurface() {
   const [scope, setScope] = useState<KnowledgeBaseCreationScope>("personal");
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const { localization } = useLocalization((state) => state.localization.admin);
-  const groupOptions = groups.data ?? [];
+  const groupOptions = (groups.data ?? []).filter(
+    (group) => group.role === "owner" || group.role === "admin",
+  );
   const createPayload = buildKnowledgeBaseCreateRequest({
     groupId: selectedGroupId,
     name,
@@ -167,13 +170,14 @@ export function KnowledgeSurface() {
             required
           />
         </Field>
-        <div className="grid gap-3 md:grid-cols-[minmax(0,0.8fr)_minmax(0,1fr)]">
+        <div className="grid gap-3 md:grid-cols-2 md:items-start">
           <Field
+            className="min-w-0"
             label={localization.knowledge.scopeLabel}
             hint={localization.knowledge.scopeHint}
           >
             <select
-              className={inputClassName}
+              className={`${inputClassName} w-full min-w-0`}
               value={scope}
               onChange={(event) => {
                 const nextScope = event.target
@@ -193,6 +197,7 @@ export function KnowledgeSurface() {
             </select>
           </Field>
           <Field
+            className="min-w-0"
             label={localization.knowledge.groupLabel}
             hint={
               isGroupScope
@@ -202,7 +207,7 @@ export function KnowledgeSurface() {
           >
             <select
               aria-invalid={isGroupScope && !selectedGroupId ? true : undefined}
-              className={inputClassName}
+              className={`${inputClassName} w-full min-w-0`}
               disabled={!isGroupScope || groups.isLoading}
               required={isGroupScope}
               value={selectedGroupId}
@@ -215,7 +220,7 @@ export function KnowledgeSurface() {
               </option>
               {groupOptions.map((group) => (
                 <option key={group.id} value={group.id}>
-                  {group.name} · {group.role} · {group.id}
+                  {group.name} · {group.role}
                 </option>
               ))}
             </select>
@@ -275,8 +280,16 @@ export function DocumentsSurface() {
   const knowledgeBases = useKnowledgeBases();
   const [selectedKnowledgeBaseId, setSelectedKnowledgeBaseId] =
     useState<string>();
+  const documentKnowledgeBases = writableDocumentKnowledgeBases(
+    knowledgeBases.data ?? [],
+  );
   const activeKnowledgeBaseId =
-    selectedKnowledgeBaseId ?? knowledgeBases.data?.[0]?.id;
+    selectedKnowledgeBaseId &&
+    documentKnowledgeBases.some(
+      (knowledgeBase) => knowledgeBase.id === selectedKnowledgeBaseId,
+    )
+      ? selectedKnowledgeBaseId
+      : documentKnowledgeBases[0]?.id;
   const documents = useKnowledgeBaseDocuments(activeKnowledgeBaseId);
   const createDocument = useCreateKnowledgeBaseDocument(activeKnowledgeBaseId);
   const [title, setTitle] = useState("");
@@ -693,7 +706,7 @@ export function DocumentsSurface() {
                   <option value="">
                     {localization.documents.knowledgeBasePlaceholder}
                   </option>
-                  {knowledgeBases.data?.map((knowledgeBase) => (
+                  {documentKnowledgeBases.map((knowledgeBase) => (
                     <option key={knowledgeBase.id} value={knowledgeBase.id}>
                       {knowledgeBase.name}
                     </option>
@@ -709,7 +722,7 @@ export function DocumentsSurface() {
                 <ErrorState error={knowledgeBases.error} />
               ) : null}
               {!knowledgeBases.isLoading &&
-              knowledgeBases.data?.length === 0 ? (
+              documentKnowledgeBases.length === 0 ? (
                 <EmptyState
                   title={localization.documents.noKnowledgeBaseTitle}
                   description={
@@ -1302,11 +1315,11 @@ export function GroupsSurface() {
         <div className="responsive-panel-grid" data-layout="form-aside">
           <form
             onSubmit={handleSubmit}
-            className="cal-card grid gap-3 rounded-xl p-4"
+            className="cal-card grid max-w-2xl gap-3 rounded-xl p-4 sm:grid-cols-[minmax(0,22rem)_auto] sm:items-end sm:justify-start"
           >
-            <Field label={localization.groups.nameLabel}>
+            <Field className="min-w-0" label={localization.groups.nameLabel}>
               <input
-                className={inputClassName}
+                className={`${inputClassName} w-full min-w-0`}
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 required
@@ -1314,6 +1327,7 @@ export function GroupsSurface() {
             </Field>
             <Button
               type="submit"
+              className="w-full sm:w-auto"
               disabled={createGroup.isPending || !name.trim()}
             >
               {localization.groups.createButton}

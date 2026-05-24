@@ -292,3 +292,12 @@ Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `
 - Kept backend-first constraints: no API model/client changes were made, and group-chat create/send is disabled until a hosted backend OpenAPI proves the V1 source contract.
 - Added disabled publish request and owner/admin review controls in `components/keymesh/AdminSurfaces.tsx` so the intended workflow is visible without inventing backend routes.
 - Recorded the missing backend OpenAPI contract in `docs/backend-requests.md`.
+
+## 2026-05-24 — group KB creation and publish-only group document boundary
+
+- Added scoped KB creation in the Knowledge surface: users can create private Personal KBs or extra Group KBs only for groups where they are owner/admin. The backend already creates a default Group KB when a group is created, so extra Group KB creation is an admin expansion path rather than a prerequisite.
+- Tightened the Documents surface to list only Personal KBs for direct text/file create and ingestion. Group KBs are intentionally excluded from direct upload/create UI because personal material should enter group retrieval through publish requests and owner/admin approval.
+- Kept the Group creation form compact by placing the group name field and submit action inline on desktop, and fixed Knowledge creation selector alignment with equal-width scope/group controls plus shorter group option labels.
+- Updated bilingual copy and focused tests to make the boundary explicit: Personal KBs stay private and may be attached privately in Group Chat; publishing into Group KB retrieval is an approval workflow, not direct document wiring.
+
+Verification passed for this log entry: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and `pnpm exec playwright test e2e/group-knowledge-v1.spec.ts` including desktop layout assertions for compact Group creation and aligned Knowledge selectors.

@@ -189,3 +189,44 @@ test("Publish review controls are owner-only in Group admin UI", async ({
     page.getByText(ko.admin.groups.membershipManagerOnlyHint),
   ).toBeVisible();
 });
+
+test("Admin creation controls stay compact and aligned", async ({ page }) => {
+  await mockGroupKnowledgeApi(page);
+  await page.setViewportSize({ width: 1280, height: 720 });
+
+  await page.goto("/groups");
+  const groupNameInput = page.getByRole("textbox", {
+    name: ko.admin.groups.nameLabel,
+  });
+  const createGroupButton = page.getByRole("button", {
+    name: ko.admin.groups.createButton,
+  });
+  await expect(groupNameInput).toBeVisible();
+  await expect(createGroupButton).toBeVisible();
+  const groupNameBox = await groupNameInput.boundingBox();
+  const createGroupBox = await createGroupButton.boundingBox();
+  expect(groupNameBox).not.toBeNull();
+  expect(createGroupBox).not.toBeNull();
+  expect(
+    Math.abs((groupNameBox?.y ?? 0) - (createGroupBox?.y ?? 0)),
+  ).toBeLessThan(12);
+  expect(groupNameBox?.width).toBeLessThanOrEqual(360);
+
+  await page.goto("/knowledge");
+  const scopeSelect = page.getByRole("combobox", {
+    name: ko.admin.knowledge.scopeLabel,
+  });
+  const groupSelect = page.getByRole("combobox", {
+    name: ko.admin.knowledge.groupLabel,
+  });
+  await expect(scopeSelect).toBeVisible();
+  await expect(groupSelect).toBeVisible();
+  const scopeBox = await scopeSelect.boundingBox();
+  const groupBox = await groupSelect.boundingBox();
+  expect(scopeBox).not.toBeNull();
+  expect(groupBox).not.toBeNull();
+  expect(Math.abs((scopeBox?.y ?? 0) - (groupBox?.y ?? 0))).toBeLessThan(4);
+  expect(
+    Math.abs((scopeBox?.height ?? 0) - (groupBox?.height ?? 0)),
+  ).toBeLessThan(2);
+});
