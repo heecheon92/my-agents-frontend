@@ -9,6 +9,7 @@ const user = {
   is_guest: false,
 };
 const ownerGroup = { id: "g-alpha", name: "Alpha Research", role: "owner" };
+const betaGroup = { id: "g-beta", name: "Beta Insights", role: "admin" };
 const viewerGroup = { ...ownerGroup, role: "viewer" };
 const personalKb = {
   id: "kb-personal",
@@ -34,6 +35,15 @@ const groupKb = {
   scope: "group",
   owner_user_id: user.id,
   group_id: ownerGroup.id,
+  published_group_ids: [],
+  created_at: now,
+};
+const betaGroupKb = {
+  id: "kb-beta",
+  name: "Beta Shared Knowledge",
+  scope: "group",
+  owner_user_id: user.id,
+  group_id: betaGroup.id,
   published_group_ids: [],
   created_at: now,
 };
@@ -91,9 +101,9 @@ async function mockGroupKnowledgeApi(
       });
 
     if (method === "GET" && path === "/auth/me") return json(user);
-    if (method === "GET" && path === "/groups") return json([group]);
+    if (method === "GET" && path === "/groups") return json([group, betaGroup]);
     if (method === "GET" && path === "/knowledge-bases") {
-      return json([groupKb, personalKb, publishedMemberKb]);
+      return json([groupKb, betaGroupKb, personalKb, publishedMemberKb]);
     }
     if (method === "GET" && path === "/conversations") {
       return json([groupConversation, personalConversation]);
@@ -155,8 +165,19 @@ test("group knowledge source stays private and sends selected group context", as
   await expect(includeGroupKnowledge).toBeVisible();
   await includeGroupKnowledge.check();
   await expect(page.getByText(ko.chat.groupChatBoundaryCopy)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: ownerGroup.name }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("button", { name: betaGroup.name }),
+  ).toHaveAttribute("aria-pressed", "false");
+  await page.getByRole("button", { name: betaGroup.name }).click();
+  await expect(
+    page.getByRole("button", { name: betaGroup.name }),
+  ).toHaveAttribute("aria-pressed", "true");
   await page.getByText(ko.chat.groupKnowledgeSourceDescription).click();
   await expect(page.getByText("Alpha Shared Knowledge")).toBeVisible();
+  await expect(page.getByText("Beta Shared Knowledge")).toBeVisible();
   await expect(page.getByText("Published Member Knowledge")).toBeVisible();
   await expect(page.getByText("Private Notes")).toBeVisible();
 
@@ -178,7 +199,7 @@ test("group knowledge source stays private and sends selected group context", as
       message: "Use group and private context",
       knowledge_base_selection: {
         mode: "selected",
-        knowledge_base_ids: ["kb-group", "kb-published-member"],
+        knowledge_base_ids: ["kb-group", "kb-beta", "kb-published-member"],
       },
       optional_personal_knowledge_base_ids: ["kb-personal"],
     });

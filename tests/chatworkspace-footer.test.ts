@@ -7,6 +7,7 @@ import {
   getNextConversationIdAfterDelete,
   isActiveAgentRunStatus,
   isConversationRunAlreadyActiveError,
+  REPLAY_ICON_PENDING_CLASS_NAME,
   sanitizeActivityEventPayload,
 } from "@/components/keymesh/ChatWorkspace";
 import en from "@/localization/en.json";
@@ -29,6 +30,12 @@ describe("ChatWorkspace assistant message footer", () => {
     ];
 
     expect(getLatestAssistantMessageId(messages)).toBe("assistant-2");
+  });
+
+  it("spins the replay icon counter-clockwise while regenerating", () => {
+    expect(REPLAY_ICON_PENDING_CLASS_NAME).toBe(
+      "animate-[spin_1s_linear_infinite_reverse]",
+    );
   });
 
   it("keeps footer action labels localized, including Korean regenerate copy", () => {

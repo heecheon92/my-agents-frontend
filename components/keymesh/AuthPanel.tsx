@@ -20,7 +20,6 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
   const [signupEmail, setSignupEmail] = useState<string | null>(null);
   const { localization } = useLocalization((state) => ({
     auth: state.localization.auth,
-    brand: state.localization.brand,
   }));
   const isSignup = activeMode === "signup";
   const active = isSignup ? signup : login;
@@ -59,40 +58,27 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
 
   return (
     <main className="min-h-dvh bg-cal-canvas py-6 sm:py-8">
-      <div className="responsive-container grid min-h-[calc(100svh-3rem)] items-center gap-6 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
-        <section className="cal-card rounded-lg p-5 sm:p-8 lg:p-12">
-          <p className="cal-label">{localization.brand.name}</p>
-          <h1 className="cal-heading cal-fluid-display mt-5 max-w-xl">
-            {localization.auth.heroTitle}
-          </h1>
-          <p className="cal-subcopy cal-fluid-subtitle mt-6 max-w-2xl">
-            {localization.auth.heroDescription}
-          </p>
-          <div className="responsive-card-grid mt-8 text-sm">
-            {localization.auth.features.map((feature) => (
-              <div
-                key={feature}
-                className="rounded-lg border border-cal-hairline bg-cal-canvas p-4 leading-6 text-cal-body"
-              >
-                {feature}
-              </div>
-            ))}
-          </div>
-        </section>
+      <div className="responsive-container flex min-h-[calc(100svh-3rem)] items-center justify-center">
         <form
           onSubmit={handleSubmit}
-          className="cal-product-card rounded-xl p-5 sm:p-6 lg:p-8"
+          className="cal-product-card w-full max-w-md rounded-xl p-5 sm:p-6 lg:p-8"
         >
-          <h2 className="cal-heading cal-fluid-title">
+          <h2
+            className={
+              !isSignup
+                ? "cal-heading text-[clamp(1.5rem,5vw,2rem)] leading-tight tracking-[-0.03em]"
+                : "cal-heading cal-fluid-title"
+            }
+          >
             {isSignup
               ? localization.auth.createAccount
               : localization.auth.welcomeBack}
           </h2>
-          <p className="mt-3 text-sm leading-6 text-cal-muted">
-            {isSignup
-              ? localization.auth.signupDescription
-              : localization.auth.loginDescription}
-          </p>
+          {isSignup ? (
+            <p className="mt-3 text-sm leading-6 text-cal-muted">
+              {localization.auth.signupDescription}
+            </p>
+          ) : null}
           <div className="mt-8 grid gap-4">
             <Field label={localization.auth.email}>
               <input

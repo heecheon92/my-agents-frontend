@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { RotateCcw, Trash2 } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import { useCurrentUser } from "@/hooks/use-auth";
@@ -54,6 +55,9 @@ type RunOutcome = "completed" | "cancelled" | "failed" | "active_conflict";
 type ChatMode = "personal" | "group";
 
 const CHAT_BOTTOM_THRESHOLD_PX = 96;
+
+export const REPLAY_ICON_PENDING_CLASS_NAME =
+  "animate-[spin_1s_linear_infinite_reverse]";
 
 export const CHAT_WORKSPACE_PANEL_CLASS_NAME =
   "cal-card flex h-[calc(100dvh-8rem)] min-h-0 min-w-0 flex-col overflow-hidden rounded-xl xl:h-full";
@@ -451,7 +455,7 @@ export function ChatWorkspace() {
   const [knowledgeBaseMode, setKnowledgeBaseMode] =
     useState<KnowledgeBaseSelectionMode>("all");
   const [chatMode, setChatMode] = useState<ChatMode>("personal");
-  const [selectedGroupId, setSelectedGroupId] = useState<string>();
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [selectedKnowledgeBaseIds, setSelectedKnowledgeBaseIds] = useState<
     string[]
   >([]);
@@ -495,26 +499,32 @@ export function ChatWorkspace() {
     () =>
       (knowledgeBases.data ?? []).filter(
         (kb) =>
-          selectedGroupId &&
-          ((kb.scope === "group" && kb.group_id === selectedGroupId) ||
+          selectedGroupIds.length > 0 &&
+          ((kb.scope === "group" &&
+            kb.group_id !== null &&
+            selectedGroupIds.includes(kb.group_id)) ||
             (kb.scope === "personal" &&
-              kb.published_group_ids.includes(selectedGroupId))),
+              kb.published_group_ids.some((groupId) =>
+                selectedGroupIds.includes(groupId),
+              ))),
       ),
-    [knowledgeBases.data, selectedGroupId],
+    [knowledgeBases.data, selectedGroupIds],
   );
   const optionalPrivateKnowledgeBases = useMemo(
     () =>
       personalKnowledgeBases.filter(
         (kb) =>
-          !selectedGroupId || !kb.published_group_ids.includes(selectedGroupId),
+          !kb.published_group_ids.some((groupId) =>
+            selectedGroupIds.includes(groupId),
+          ),
       ),
-    [personalKnowledgeBases, selectedGroupId],
+    [personalKnowledgeBases, selectedGroupIds],
   );
-  const selectedGroup = groups.data?.find(
-    (group) => group.id === selectedGroupId,
+  const selectedGroups = (groups.data ?? []).filter((group) =>
+    selectedGroupIds.includes(group.id),
   );
   const isGroupMode = chatMode === "group";
-  const groupContextRequired = isGroupMode && !selectedGroupId;
+  const groupContextRequired = isGroupMode && selectedGroupIds.length === 0;
   const selectedGroupKnowledgeBaseIds = getSelectedGroupKnowledgeBaseIds(
     isGroupMode,
     groupKnowledgeBases,
@@ -566,11 +576,15 @@ export function ChatWorkspace() {
     );
   }
 
+  function toggleSelectedGroup(groupId: string) {
+    setSelectedGroupIds((current) =>
+      current.includes(groupId)
+        ? current.filter((id) => id !== groupId)
+        : [...current, groupId],
+    );
+  }
+
   async function handleCreate() {
-    if (isGroupMode && !selectedGroupId) {
-      setStatusAnnouncement(localization.groupContextRequired);
-      return;
-    }
     try {
       const created = await createConversation.mutateAsync({
         title: `${localization.newConversationTitle} ${new Date().toLocaleString(lang)}`,
@@ -1078,19 +1092,23 @@ export function ChatWorkspace() {
   }, [knowledgeBases.data]);
 
   useEffect(() => {
+    if (!groups.data) return;
+    const availableGroupIds = new Set(groups.data.map((group) => group.id));
+    setSelectedGroupIds((current) =>
+      current.filter((id) => availableGroupIds.has(id)),
+    );
+  }, [groups.data]);
+
+  useEffect(() => {
     if (conversation.data?.group_id) {
-      setSelectedGroupId(conversation.data.group_id);
+      setSelectedGroupIds((current) =>
+        current.includes(conversation.data?.group_id ?? "")
+          ? current
+          : [...current, conversation.data?.group_id ?? ""].filter(Boolean),
+      );
       return;
     }
-    if (!selectedGroupId && groups.data?.[0]) {
-      setSelectedGroupId(groups.data[0].id);
-    }
-  }, [
-    conversation.data,
-    conversation.data?.group_id,
-    groups.data,
-    selectedGroupId,
-  ]);
+  }, [conversation.data?.group_id]);
 
   useEffect(() => {
     if (!activeId) return;
@@ -1137,12 +1155,7 @@ export function ChatWorkspace() {
           <Button
             size="sm"
             onClick={handleCreate}
-            disabled={createConversation.isPending || groupContextRequired}
-            title={
-              groupContextRequired
-                ? localization.groupContextRequired
-                : undefined
-            }
+            disabled={createConversation.isPending}
           >
             {localization.newButton}
           </Button>
@@ -1332,7 +1345,11 @@ export function ChatWorkspace() {
                           >
                             <RotateCcw
                               aria-hidden="true"
-                              className={cn(isReplaying ? "animate-spin" : "")}
+                              className={cn(
+                                isReplaying
+                                  ? REPLAY_ICON_PENDING_CLASS_NAME
+                                  : "",
+                              )}
                             />
                           </Button>
                         }
@@ -1556,31 +1573,43 @@ export function ChatWorkspace() {
               ) : null}
               {isGroupMode ? (
                 <div className="mt-3 grid gap-2 rounded-xl border border-cal-primary/20 bg-cal-primary/10 p-3">
-                  <div className="grid gap-2 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:items-end">
-                    <label className="grid gap-1 text-xs font-medium text-cal-muted">
-                      {localization.groupContextLabel}
-                      <select
-                        className={inputClassName}
-                        value={selectedGroupId ?? ""}
-                        onChange={(event) =>
-                          setSelectedGroupId(event.target.value)
-                        }
-                      >
-                        <option value="">
-                          {localization.groupContextPlaceholder}
-                        </option>
-                        {groups.data?.map((group) => (
-                          <option key={group.id} value={group.id}>
-                            {group.name}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                  <div className="grid gap-2">
+                    <div className="grid gap-2">
+                      <fieldset className="grid gap-2">
+                        <legend className="text-xs font-medium text-cal-muted">
+                          {localization.groupContextLabel}
+                        </legend>
+                        <div className="flex flex-wrap gap-2">
+                          {groups.data?.map((group) => (
+                            <button
+                              key={group.id}
+                              type="button"
+                              aria-pressed={selectedGroupIds.includes(group.id)}
+                              onClick={() => toggleSelectedGroup(group.id)}
+                              className="rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cal-primary"
+                            >
+                              <Badge
+                                variant={
+                                  selectedGroupIds.includes(group.id)
+                                    ? "default"
+                                    : "outline"
+                                }
+                                className="min-h-8 cursor-pointer px-3"
+                              >
+                                {group.name}
+                              </Badge>
+                            </button>
+                          ))}
+                        </div>
+                      </fieldset>
+                    </div>
                     <p className="text-xs leading-5 text-cal-muted">
-                      {selectedGroup
+                      {selectedGroups.length > 0
                         ? localization.mandatoryGroupKnowledgeDescription.replace(
-                            "{group}",
-                            selectedGroup.name,
+                            "{groups}",
+                            selectedGroups
+                              .map((group) => group.name)
+                              .join(", "),
                           )
                         : localization.groupContextRequired}
                     </p>
@@ -1608,12 +1637,9 @@ export function ChatWorkspace() {
                         </span>
                       ) : null}
                       {groupKnowledgeBases.map((knowledgeBase) => (
-                        <span
-                          key={knowledgeBase.id}
-                          className="rounded-full border border-cal-primary/20 bg-cal-primary/10 px-3 py-2 text-xs font-medium text-cal-ink"
-                        >
+                        <Badge key={knowledgeBase.id} variant="secondary">
                           {knowledgeBase.name}
-                        </span>
+                        </Badge>
                       ))}
                     </div>
                     <p className="mt-3 text-xs font-semibold text-cal-ink">
