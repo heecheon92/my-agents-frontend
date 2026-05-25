@@ -43,7 +43,7 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | `/login` | `components/keymesh/AuthPanel.tsx` | Login through BFF `/auth/login`. |
 | `/signup` | `components/keymesh/AuthPanel.tsx` | Signup parses the backend `SignupResponse` envelope and shows an account-created handoff before login. |
 | `/chat` | `components/keymesh/ChatWorkspace.tsx` | Anchor journey. Uses conversations, messages, streamed run answer deltas, events, citations, and `All`/selected knowledge-base retrieval scope. |
-| `/documents` | `components/keymesh/AdminSurfaces.tsx` | KB-first document create/list/delete, PDF/Markdown/plain-text upload into the selected knowledge base, KB-scoped ingest, extraction runs, permission patch. |
+| `/documents` | `components/keymesh/AdminSurfaces.tsx` | KB-first document create/list/delete, PDF/Markdown/plain-text drag-and-drop or file-picker upload into the selected knowledge base, KB-scoped ingest, extraction runs, permission patch. |
 | `/knowledge` | `components/keymesh/AdminSurfaces.tsx` | Knowledge-base create/list. Documents are added from `/documents` after choosing a KB. |
 | `/groups` | `components/keymesh/AdminSurfaces.tsx` | Group create/list and ID-based membership role actions. |
 

@@ -7,6 +7,14 @@
 
 Verification passed for this log entry: backend OpenAPI gate check confirmed `optional_personal_knowledge_base_ids` plus publish request routes; `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (10 files / 55 tests), `pnpm build`, and `git diff --check` passed.
 
+## 2026-05-25 — drag-and-drop document upload queue
+
+- Added a drop zone around the existing `/documents` file upload picker so users can drag PDF, Markdown, or plain-text files into the selected Personal KB workflow.
+- Reused the existing multi-file queue, local validation, title derivation, async upload, ingestion polling, retry, and remove behavior; no backend route or API contract changed.
+- Added localized English/Korean drop-zone copy and a disabled drop state when no writable Personal KB is selected.
+
+Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (14 files / 75 tests), `pnpm build`, `pnpm exec playwright test --reporter=line` (5 passed / 2 skipped), and `git diff --check`.
+
 ## 2026-05-24 — Group Knowledge V1 frontend OpenAPI gate
 
 - Repaired worker-4 team allocation through the supported OMX `create-task`, `write-worker-identity`, and `claim-task` APIs after original task-4 was pre-assigned to worker-1 and claim attempts returned `claim_conflict`.

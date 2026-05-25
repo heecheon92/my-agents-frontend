@@ -1,7 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import { useCurrentUser } from "@/hooks/use-auth";
@@ -301,6 +301,8 @@ export function DocumentsSurface() {
   const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
   const [isProcessingQueue, setIsProcessingQueue] = useState(false);
   const [uploadAnnouncement, setUploadAnnouncement] = useState("");
+  const [isUploadDropActive, setIsUploadDropActive] = useState(false);
+  const uploadDragDepthRef = useRef(0);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>();
   const activeDocumentId = selectedDocumentId ?? documents.data?.[0]?.id;
   const activeDocument = documents.data?.find(
@@ -384,8 +386,7 @@ export function DocumentsSurface() {
     return undefined;
   }
 
-  function handleFileSelection(event: React.ChangeEvent<HTMLInputElement>) {
-    const selectedFiles = Array.from(event.target.files ?? []);
+  function addFilesToUploadQueue(selectedFiles: File[]) {
     if (selectedFiles.length === 0) return;
 
     const nextItems = selectedFiles.map((file) => {
@@ -407,7 +408,49 @@ export function DocumentsSurface() {
         String(nextItems.length),
       ),
     );
+  }
+
+  function handleFileSelection(event: React.ChangeEvent<HTMLInputElement>) {
+    addFilesToUploadQueue(Array.from(event.target.files ?? []));
     event.currentTarget.value = "";
+  }
+
+  function handleUploadDragEnter(event: React.DragEvent<HTMLFieldSetElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.dataTransfer.types.includes("Files")) return;
+    event.dataTransfer.dropEffect = hasActiveKnowledgeBase ? "copy" : "none";
+    uploadDragDepthRef.current += 1;
+    if (hasActiveKnowledgeBase) {
+      setIsUploadDropActive(true);
+    }
+  }
+
+  function handleUploadDragOver(event: React.DragEvent<HTMLFieldSetElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = hasActiveKnowledgeBase ? "copy" : "none";
+  }
+
+  function handleUploadDragLeave(event: React.DragEvent<HTMLFieldSetElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    uploadDragDepthRef.current = Math.max(uploadDragDepthRef.current - 1, 0);
+    if (uploadDragDepthRef.current === 0) {
+      setIsUploadDropActive(false);
+    }
+  }
+
+  function handleUploadDrop(event: React.DragEvent<HTMLFieldSetElement>) {
+    event.preventDefault();
+    event.stopPropagation();
+    uploadDragDepthRef.current = 0;
+    setIsUploadDropActive(false);
+    if (!hasActiveKnowledgeBase) {
+      setUploadAnnouncement(localization.documents.knowledgeBaseRequired);
+      return;
+    }
+    addFilesToUploadQueue(Array.from(event.dataTransfer.files));
   }
 
   function handleQueueTitleChange(localId: string, nextTitle: string) {
@@ -783,22 +826,49 @@ export function DocumentsSurface() {
                   {localization.documents.fileUploadHint}
                 </p>
               </div>
-              <Field
-                label={localization.documents.fileLabel}
-                hint={localization.documents.multiFileUploadHint.replace(
-                  "{maxSize}",
-                  formatFileSize(MAX_UPLOAD_BYTES),
-                )}
+              <fieldset
+                data-testid="document-upload-dropzone"
+                onDragEnter={handleUploadDragEnter}
+                onDragOver={handleUploadDragOver}
+                onDragLeave={handleUploadDragLeave}
+                onDrop={handleUploadDrop}
+                aria-disabled={!hasActiveKnowledgeBase}
+                className={`grid gap-3 rounded-xl border border-dashed p-4 transition-colors ${
+                  isUploadDropActive
+                    ? "border-km-accent bg-km-accent/10"
+                    : "border-cal-hairline bg-cal-canvas"
+                } ${hasActiveKnowledgeBase ? "" : "cursor-not-allowed opacity-60"}`}
               >
-                <input
-                  className={inputClassName}
-                  type="file"
-                  accept={UPLOAD_ACCEPT}
-                  multiple
-                  onChange={handleFileSelection}
-                  disabled={!hasActiveKnowledgeBase}
-                />
-              </Field>
+                <legend className="sr-only">
+                  {localization.documents.dropTitle}
+                </legend>
+                <div className="grid gap-1 text-sm leading-6">
+                  <p className="font-semibold text-cal-ink">
+                    {isUploadDropActive
+                      ? localization.documents.dropActiveTitle
+                      : localization.documents.dropTitle}
+                  </p>
+                  <p className="text-cal-muted">
+                    {localization.documents.dropDescription}
+                  </p>
+                </div>
+                <Field
+                  label={localization.documents.fileLabel}
+                  hint={localization.documents.multiFileUploadHint.replace(
+                    "{maxSize}",
+                    formatFileSize(MAX_UPLOAD_BYTES),
+                  )}
+                >
+                  <input
+                    className={inputClassName}
+                    type="file"
+                    accept={UPLOAD_ACCEPT}
+                    multiple
+                    onChange={handleFileSelection}
+                    disabled={!hasActiveKnowledgeBase}
+                  />
+                </Field>
+              </fieldset>
               <p className="sr-only" aria-live="polite">
                 {uploadAnnouncement}
               </p>
