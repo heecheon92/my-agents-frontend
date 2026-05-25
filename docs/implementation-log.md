@@ -3,8 +3,8 @@
 ## 2026-05-25 — Group knowledge copy and chat source reframe
 
 - Reframed service copy so Groups are shared knowledge-base spaces, Knowledge/Documents avoid visible abbreviations, and normal locale values no longer use implementation terms such as backend, OpenAPI, or Group Chat.
-- Reworked the chat source selector into one private assistant conversation with an opt-in "Include group knowledge" control while preserving the existing group_id and optional personal knowledge-base payload behavior after opt-in.
-- Updated copy regression tests and group-knowledge e2e wording to assert the new shared-knowledge mental model.
+- Reworked the chat source selector into one private assistant conversation with a compact "Include group knowledge" checkbox; group knowledge is sent as explicit selected sources for the answer instead of exposing a separate chat mode.
+- Updated copy regression tests and group-knowledge e2e wording to assert the new shared-knowledge mental model, including Korean 개인 지식 베이스 terminology.
 
 Verification passed for this log entry: locale guard script found 0 banned visible terms in English/Korean values; `pnpm lint`, `pnpm typecheck`, `pnpm test` (14 files / 77 tests), `pnpm build`, `pnpm exec playwright test e2e/group-knowledge-v1.spec.ts --config=playwright.worker-1.config.ts` (temporary port 3100 config; 3 Chromium tests), and `git diff --check` passed.
 

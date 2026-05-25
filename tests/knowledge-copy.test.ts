@@ -48,13 +48,11 @@ describe("knowledge-base creation copy", () => {
   it("states the same ownership boundary in Korean", () => {
     const copy = ko.admin.knowledge;
 
-    expect(copy.description).toContain("비공개 지식 베이스는 나만");
+    expect(copy.description).toContain("개인 지식 베이스는 나만");
     expect(copy.description).toContain("공유 승인");
-    expect(copy.scopeHint).toContain("내 계정에만 비공개");
+    expect(copy.scopeHint).toContain("내 계정에서만 사용");
     expect(copy.scopeHint).toContain("승인 공유 요청");
-    expect(copy.scopeBoundaryNote).toContain(
-      "먼저 비공개 지식 베이스에 업로드",
-    );
+    expect(copy.scopeBoundaryNote).toContain("먼저 개인 지식 베이스에 업로드");
     expect(copy.scopeBoundaryNote).toContain("승인이 필요");
     expect(copy.scopeBoundaryNote).toContain("멤버 대화");
     expect(copy.scopeBoundaryNote).toContain("대화 기록");
@@ -89,9 +87,9 @@ describe("group publish copy", () => {
     expect(copy.membershipActions).toBe("사람과 역할");
     expect(copy.memberIdNote).toContain("사용자 ID를 붙여넣어");
     expect(copy.publishBoundaryTitle).toBe("공유 지식");
-    expect(copy.publishBoundaryDescription).toContain("비공개 지식 베이스");
+    expect(copy.publishBoundaryDescription).toContain("개인 지식 베이스");
     expect(copy.publishSourceKnowledgeBaseHint).toContain(
-      "비공개 지식 베이스 전체",
+      "개인 지식 베이스 전체",
     );
     expect(copy.publishTargetKnowledgeBaseHint).toContain("문서 복사 요청");
   });

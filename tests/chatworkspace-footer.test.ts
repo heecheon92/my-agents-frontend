@@ -7,6 +7,7 @@ import {
   getNextConversationIdAfterDelete,
   isActiveAgentRunStatus,
   isConversationRunAlreadyActiveError,
+  sanitizeActivityEventPayload,
 } from "@/components/keymesh/ChatWorkspace";
 import en from "@/localization/en.json";
 import ko from "@/localization/ko.json";
@@ -50,6 +51,27 @@ describe("ChatWorkspace assistant message footer", () => {
       "conversation and all messages",
     );
     expect(ko.chat.deleteConversationConfirm).toContain("모든 메시지");
+  });
+
+  it("hides internal route details from activity evidence payloads", () => {
+    const sanitized = sanitizeActivityEventPayload({
+      route: { label: "general_assistant", explanation: "test" },
+      retrieval_route: "retrieval_required",
+      handled_by: "personal_assistant_graph",
+      route_label: "general_assistant",
+      reply: "Visible answer",
+      nested: { route: "internal", safe: "kept" },
+    });
+
+    expect(JSON.stringify(sanitized)).not.toMatch(
+      /route|retrieval_route|handled_by|general_assistant|personal_assistant_graph/,
+    );
+    expect(sanitized).toEqual({
+      reply: "Visible answer",
+      nested: { safe: "kept" },
+    });
+    expect(en.chat.runEvidenceLabel).toBe("Run evidence");
+    expect(ko.chat.activityPayloadHidden).toBe("내부 처리 정보는 숨김");
   });
 
   it("keeps selected conversation contrast stable on hover", () => {

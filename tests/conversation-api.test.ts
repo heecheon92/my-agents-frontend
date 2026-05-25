@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildActiveKnowledgeBaseSelection,
-  hasSourceContextMismatch,
-} from "@/components/keymesh/ChatWorkspace";
+import { buildActiveKnowledgeBaseSelection } from "@/components/keymesh/ChatWorkspace";
 import { MyAgentsConversationAPI } from "@/services/my-agents/MyAgentsConversationAPI";
 
 function streamResponse(chunks: string[]) {
@@ -349,14 +346,18 @@ describe("MyAgentsConversationAPI", () => {
 });
 
 describe("group knowledge source selection", () => {
-  it("forces mandatory all-mode after switching from personal selected mode", () => {
+  it("uses selected group knowledge bases when group knowledge is included", () => {
     expect(
       buildActiveKnowledgeBaseSelection({
         isGroupMode: true,
         knowledgeBaseMode: "selected",
         selectedKnowledgeBaseIds: ["kb-personal-stale"],
+        groupKnowledgeBaseIds: ["kb-group", "kb-published"],
       }),
-    ).toEqual({ mode: "all", knowledge_base_ids: [] });
+    ).toEqual({
+      mode: "selected",
+      knowledge_base_ids: ["kb-group", "kb-published"],
+    });
   });
 
   it("preserves selected private mode when group knowledge is not included", () => {
@@ -367,34 +368,5 @@ describe("group knowledge source selection", () => {
         selectedKnowledgeBaseIds: ["kb-personal"],
       }),
     ).toEqual({ mode: "selected", knowledge_base_ids: ["kb-personal"] });
-  });
-
-  it("detects active conversation/source mode mismatch before send", () => {
-    expect(
-      hasSourceContextMismatch({
-        conversationGroupId: null,
-        isGroupMode: true,
-        selectedGroupId: "group-1",
-      }),
-    ).toBe(true);
-    expect(
-      hasSourceContextMismatch({
-        conversationGroupId: "group-1",
-        isGroupMode: false,
-      }),
-    ).toBe(true);
-    expect(
-      hasSourceContextMismatch({
-        conversationGroupId: "group-1",
-        isGroupMode: true,
-        selectedGroupId: "group-1",
-      }),
-    ).toBe(false);
-    expect(
-      hasSourceContextMismatch({
-        conversationGroupId: null,
-        isGroupMode: false,
-      }),
-    ).toBe(false);
   });
 });

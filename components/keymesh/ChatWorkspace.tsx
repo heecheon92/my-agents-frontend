@@ -60,10 +60,45 @@ export const CHAT_WORKSPACE_PANEL_CLASS_NAME =
 export const CHAT_SCROLL_REGION_CLASS_NAME = "min-h-0 flex-1 overflow-auto p-4";
 
 type ChatLocalization = typeof import("@/localization/en.json")["chat"];
+const INTERNAL_ACTIVITY_PAYLOAD_KEYS = new Set([
+  "handled_by",
+  "retrieval_route",
+  "route",
+  "route_label",
+]);
 
 export function getLatestAssistantMessageId(messages: Message[]) {
   return [...messages].reverse().find((message) => message.role === "assistant")
     ?.id;
+}
+
+export function sanitizeActivityEventPayload(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map(sanitizeActivityEventPayload);
+  }
+  if (!value || typeof value !== "object") return value;
+
+  const sanitizedEntries = Object.entries(value)
+    .filter(([key]) => !INTERNAL_ACTIVITY_PAYLOAD_KEYS.has(key))
+    .map(([key, entryValue]) => [
+      key,
+      sanitizeActivityEventPayload(entryValue),
+    ]);
+
+  return Object.fromEntries(sanitizedEntries);
+}
+
+function formatActivityEventPayload(value: unknown, fallbackLabel: string) {
+  const sanitized = sanitizeActivityEventPayload(value);
+  if (
+    sanitized &&
+    typeof sanitized === "object" &&
+    !Array.isArray(sanitized) &&
+    Object.keys(sanitized).length === 0
+  ) {
+    return fallbackLabel;
+  }
+  return JSON.stringify(sanitized, null, 2);
 }
 
 export function getNextConversationIdAfterDelete(
@@ -183,7 +218,7 @@ function AssistantEvidenceFooter({
                       </span>
                     </div>
                     <p className="mt-2 text-cal-muted">
-                      {run.route_label ?? localization.unclassified}
+                      {localization.runEvidenceLabel}
                     </p>
                   </div>
                 ))}
@@ -210,7 +245,10 @@ function AssistantEvidenceFooter({
                       {event.sequence}. {event.event_type}
                     </p>
                     <pre className="mt-2 max-h-40 overflow-auto rounded-xl border border-cal-hairline bg-white p-3 text-xs text-cal-muted">
-                      {JSON.stringify(event.payload, null, 2)}
+                      {formatActivityEventPayload(
+                        event.payload,
+                        localization.activityPayloadHidden,
+                      )}
                     </pre>
                   </div>
                 ))}
@@ -326,32 +364,28 @@ function describeKnowledgeBaseSelection(
     : localization.knowledgeSourceQueuedFallback;
 }
 
-export function hasSourceContextMismatch({
-  conversationGroupId,
-  isGroupMode,
-  selectedGroupId,
-}: {
-  conversationGroupId: string | null | undefined;
-  isGroupMode: boolean;
-  selectedGroupId?: string;
-}) {
-  const activeConversationGroupId = conversationGroupId ?? null;
+function getSelectedGroupKnowledgeBaseIds(
+  isGroupMode: boolean,
+  groupKnowledgeBases: KnowledgeBase[],
+) {
   return isGroupMode
-    ? activeConversationGroupId !== (selectedGroupId ?? null)
-    : activeConversationGroupId !== null;
+    ? groupKnowledgeBases.map((knowledgeBase) => knowledgeBase.id)
+    : [];
 }
 
 export function buildActiveKnowledgeBaseSelection({
   isGroupMode,
   knowledgeBaseMode,
   selectedKnowledgeBaseIds,
+  groupKnowledgeBaseIds = [],
 }: {
   isGroupMode: boolean;
   knowledgeBaseMode: KnowledgeBaseSelectionMode;
   selectedKnowledgeBaseIds: string[];
+  groupKnowledgeBaseIds?: string[];
 }): KnowledgeBaseSelection {
   if (isGroupMode) {
-    return { mode: "all", knowledge_base_ids: [] };
+    return { mode: "selected", knowledge_base_ids: groupKnowledgeBaseIds };
   }
   return {
     mode: knowledgeBaseMode,
@@ -461,10 +495,10 @@ export function ChatWorkspace() {
     () =>
       (knowledgeBases.data ?? []).filter(
         (kb) =>
-          !selectedGroupId ||
-          (kb.scope === "group" && kb.group_id === selectedGroupId) ||
-          (kb.scope === "personal" &&
-            kb.published_group_ids.includes(selectedGroupId)),
+          selectedGroupId &&
+          ((kb.scope === "group" && kb.group_id === selectedGroupId) ||
+            (kb.scope === "personal" &&
+              kb.published_group_ids.includes(selectedGroupId))),
       ),
     [knowledgeBases.data, selectedGroupId],
   );
@@ -481,13 +515,10 @@ export function ChatWorkspace() {
   );
   const isGroupMode = chatMode === "group";
   const groupContextRequired = isGroupMode && !selectedGroupId;
-  const sourceContextMismatch = conversation.data
-    ? hasSourceContextMismatch({
-        conversationGroupId: conversation.data?.group_id,
-        isGroupMode,
-        selectedGroupId,
-      })
-    : false;
+  const selectedGroupKnowledgeBaseIds = getSelectedGroupKnowledgeBaseIds(
+    isGroupMode,
+    groupKnowledgeBases,
+  );
   const activeOptionalPersonalKnowledgeBaseIds = isGroupMode
     ? selectedPrivateKnowledgeBaseIds
     : [];
@@ -495,6 +526,7 @@ export function ChatWorkspace() {
     isGroupMode,
     knowledgeBaseMode,
     selectedKnowledgeBaseIds,
+    groupKnowledgeBaseIds: selectedGroupKnowledgeBaseIds,
   });
   const requiresKnowledgeBaseSelection =
     !isGroupMode &&
@@ -542,7 +574,7 @@ export function ChatWorkspace() {
     try {
       const created = await createConversation.mutateAsync({
         title: `${localization.newConversationTitle} ${new Date().toLocaleString(lang)}`,
-        group_id: isGroupMode ? selectedGroupId : null,
+        group_id: null,
       });
       setSelectedId(created.id);
     } catch {
@@ -767,8 +799,7 @@ export function ChatWorkspace() {
       !activeId ||
       isCancelling ||
       requiresKnowledgeBaseSelection ||
-      groupContextRequired ||
-      sourceContextMismatch
+      groupContextRequired
     ) {
       return;
     }
@@ -809,8 +840,7 @@ export function ChatWorkspace() {
       !activeRunId ||
       visibleQueuedMessage ||
       requiresKnowledgeBaseSelection ||
-      groupContextRequired ||
-      sourceContextMismatch
+      groupContextRequired
     ) {
       return;
     }
@@ -961,7 +991,6 @@ export function ChatWorkspace() {
     isCancelling ||
     requiresKnowledgeBaseSelection ||
     groupContextRequired ||
-    sourceContextMismatch ||
     (conversationIsBusy && Boolean(visibleQueuedMessage));
   const isSendNowDisabled =
     !activeId ||
@@ -971,8 +1000,7 @@ export function ChatWorkspace() {
     !activeRunId ||
     Boolean(visibleQueuedMessage) ||
     requiresKnowledgeBaseSelection ||
-    groupContextRequired ||
-    sourceContextMismatch;
+    groupContextRequired;
   const sendNowHelper = isCancelling
     ? localization.stoppingCurrentAnswer
     : visibleQueuedMessage
@@ -1051,7 +1079,6 @@ export function ChatWorkspace() {
 
   useEffect(() => {
     if (conversation.data?.group_id) {
-      setChatMode("group");
       setSelectedGroupId(conversation.data.group_id);
       return;
     }
@@ -1419,40 +1446,28 @@ export function ChatWorkspace() {
                     {localization.knowledgeSourceTitle}
                   </p>
                   <p className="mt-1 text-xs leading-5 text-cal-muted">
-                    {isGroupMode
-                      ? localization.groupKnowledgeSourceDescription
-                      : localization.knowledgeSourceDescription}
+                    {localization.knowledgeSourceDescription}
                   </p>
                 </div>
-                <div className="flex shrink-0 flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={chatMode === "personal" ? "secondary" : "ghost"}
-                    onClick={() => setChatMode("personal")}
-                  >
-                    {localization.personalChatMode}
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant={chatMode === "group" ? "secondary" : "ghost"}
-                    onClick={() => setChatMode("group")}
-                  >
-                    {localization.groupChatMode}
-                  </Button>
-                </div>
+                <label className="flex shrink-0 cursor-pointer items-center gap-2 rounded-full border border-cal-hairline bg-cal-canvas px-3 py-2 text-xs font-semibold text-cal-ink">
+                  <input
+                    type="checkbox"
+                    checked={isGroupMode}
+                    onChange={(event) =>
+                      setChatMode(event.target.checked ? "group" : "personal")
+                    }
+                  />
+                  {localization.includeGroupKnowledgeLabel}
+                </label>
               </div>
               <div className="mt-3 grid gap-2 rounded-xl border border-cal-hairline bg-cal-canvas p-3">
                 <div className="flex flex-wrap gap-2">
-                  <Pill tone={isGroupMode ? "blue" : "green"}>
-                    {isGroupMode
-                      ? localization.privateGroupTranscriptPill
-                      : localization.personalTranscriptPill}
+                  <Pill tone="green">
+                    {localization.personalTranscriptPill}
                   </Pill>
-                  <Pill tone="slate">
+                  <Pill tone={isGroupMode ? "blue" : "slate"}>
                     {isGroupMode
-                      ? localization.noSharedTranscriptPill
+                      ? localization.groupChatMode
                       : localization.personalSourcesPill}
                   </Pill>
                 </div>
@@ -1540,40 +1555,28 @@ export function ChatWorkspace() {
                 </div>
               ) : null}
               {isGroupMode ? (
-                <div className="mt-3 grid gap-3">
-                  <label className="grid gap-1 text-xs font-medium text-cal-muted">
-                    {localization.groupContextLabel}
-                    <select
-                      className={inputClassName}
-                      value={selectedGroupId ?? ""}
-                      onChange={(event) =>
-                        setSelectedGroupId(event.target.value)
-                      }
-                    >
-                      <option value="">
-                        {localization.groupContextPlaceholder}
-                      </option>
-                      {groups.data?.map((group) => (
-                        <option key={group.id} value={group.id}>
-                          {group.name}
+                <div className="mt-3 grid gap-2 rounded-xl border border-cal-primary/20 bg-cal-primary/10 p-3">
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,12rem)_minmax(0,1fr)] sm:items-end">
+                    <label className="grid gap-1 text-xs font-medium text-cal-muted">
+                      {localization.groupContextLabel}
+                      <select
+                        className={inputClassName}
+                        value={selectedGroupId ?? ""}
+                        onChange={(event) =>
+                          setSelectedGroupId(event.target.value)
+                        }
+                      >
+                        <option value="">
+                          {localization.groupContextPlaceholder}
                         </option>
-                      ))}
-                    </select>
-                  </label>
-                  {groups.isLoading ? (
-                    <p className="text-xs text-cal-muted">
-                      {localization.loadingGroups}
-                    </p>
-                  ) : null}
-                  {groups.error ? <ErrorState error={groups.error} /> : null}
-                  <div className="rounded-xl border border-cal-hairline bg-cal-canvas p-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className="font-semibold text-cal-ink">
-                        {localization.mandatoryGroupKnowledgeTitle}
-                      </p>
-                      <Pill tone="blue">{localization.fixedSourcePill}</Pill>
-                    </div>
-                    <p className="mt-1 text-xs leading-5 text-cal-muted">
+                        {groups.data?.map((group) => (
+                          <option key={group.id} value={group.id}>
+                            {group.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <p className="text-xs leading-5 text-cal-muted">
                       {selectedGroup
                         ? localization.mandatoryGroupKnowledgeDescription.replace(
                             "{group}",
@@ -1581,6 +1584,23 @@ export function ChatWorkspace() {
                           )
                         : localization.groupContextRequired}
                     </p>
+                  </div>
+                  {groups.isLoading ? (
+                    <p className="text-xs text-cal-muted">
+                      {localization.loadingGroups}
+                    </p>
+                  ) : null}
+                  {groups.error ? <ErrorState error={groups.error} /> : null}
+                  <details className="rounded-lg border border-cal-primary/20 bg-cal-canvas p-2">
+                    <summary className="cursor-pointer text-xs font-semibold text-cal-ink">
+                      {localization.groupKnowledgeSourceDescription}
+                    </summary>
+                    <div className="mt-3 flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold text-cal-ink">
+                        {localization.mandatoryGroupKnowledgeTitle}
+                      </span>
+                      <Pill tone="blue">{localization.fixedSourcePill}</Pill>
+                    </div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {groupKnowledgeBases.length === 0 ? (
                         <span className="rounded-full border border-cal-hairline bg-cal-surface-soft px-3 py-2 text-xs text-cal-muted">
@@ -1596,9 +1616,7 @@ export function ChatWorkspace() {
                         </span>
                       ))}
                     </div>
-                  </div>
-                  <div className="rounded-xl border border-cal-hairline bg-cal-canvas p-3">
-                    <p className="font-semibold text-cal-ink">
+                    <p className="mt-3 text-xs font-semibold text-cal-ink">
                       {localization.optionalPrivateKnowledgeTitle}
                     </p>
                     <p className="mt-1 text-xs leading-5 text-cal-muted">
@@ -1638,8 +1656,8 @@ export function ChatWorkspace() {
                         );
                       })}
                     </div>
-                  </div>
-                  <p className="rounded-lg border border-cal-primary/20 bg-cal-primary/10 p-3 text-xs leading-5 text-cal-body">
+                  </details>
+                  <p className="text-xs leading-5 text-cal-body">
                     {localization.groupChatOpenApiPending}
                   </p>
                 </div>
