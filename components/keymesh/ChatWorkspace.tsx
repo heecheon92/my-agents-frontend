@@ -183,7 +183,7 @@ function AssistantEvidenceFooter({
                       </span>
                     </div>
                     <p className="mt-2 text-cal-muted">
-                      {run.route_label ?? localization.unrouted}
+                      {run.route_label ?? localization.unclassified}
                     </p>
                   </div>
                 ))}

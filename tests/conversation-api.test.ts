@@ -348,7 +348,7 @@ describe("MyAgentsConversationAPI", () => {
   });
 });
 
-describe("Group Chat source selection", () => {
+describe("group knowledge source selection", () => {
   it("forces mandatory all-mode after switching from personal selected mode", () => {
     expect(
       buildActiveKnowledgeBaseSelection({
@@ -359,7 +359,7 @@ describe("Group Chat source selection", () => {
     ).toEqual({ mode: "all", knowledge_base_ids: [] });
   });
 
-  it("preserves selected personal mode outside Group Chat", () => {
+  it("preserves selected private mode when group knowledge is not included", () => {
     expect(
       buildActiveKnowledgeBaseSelection({
         isGroupMode: false,

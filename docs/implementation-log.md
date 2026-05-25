@@ -1,5 +1,13 @@
 ## 2026-05-24 — Group Knowledge V1 frontend contract wiring
 
+## 2026-05-25 — Group knowledge copy and chat source reframe
+
+- Reframed service copy so Groups are shared knowledge-base spaces, Knowledge/Documents avoid visible abbreviations, and normal locale values no longer use implementation terms such as backend, OpenAPI, or Group Chat.
+- Reworked the chat source selector into one private assistant conversation with an opt-in "Include group knowledge" control while preserving the existing group_id and optional personal knowledge-base payload behavior after opt-in.
+- Updated copy regression tests and group-knowledge e2e wording to assert the new shared-knowledge mental model.
+
+Verification passed for this log entry: locale guard script found 0 banned visible terms in English/Korean values; `pnpm lint`, `pnpm typecheck`, `pnpm test` (14 files / 77 tests), `pnpm build`, `pnpm exec playwright test e2e/group-knowledge-v1.spec.ts --config=playwright.worker-1.config.ts` (temporary port 3100 config; 3 Chromium tests), and `git diff --check` passed.
+
 - Rechecked backend OpenAPI after the backend lane update and confirmed `ConversationRunRequest.optional_personal_knowledge_base_ids` plus publish request create/list/approve/reject routes are present.
 - Updated frontend conversation schemas and streaming request bodies so Group Chat sends fixed group KB selection with explicit private personal KB attachments.
 - Added publish request path constants, Zod models, group API methods, TanStack Query hooks, BFF allowlist coverage, and tests for create/list/approve/reject.

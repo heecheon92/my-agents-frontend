@@ -1432,9 +1432,18 @@ export function GroupsSurface() {
                 <p className="font-medium text-cal-ink">
                   {localization.groups.activeGroupLabel}
                 </p>
-                <p className="mt-2 break-all rounded-lg bg-cal-canvas p-2 font-mono text-xs text-cal-muted">
-                  ID: {activeGroupId}
+                <p className="mt-1 text-sm text-cal-body">
+                  {activeGroup?.name ??
+                    localization.groups.noSelectedDescription}
                 </p>
+                <details className="mt-2 rounded-lg bg-cal-canvas p-2 text-xs text-cal-muted">
+                  <summary className="cursor-pointer font-medium text-cal-ink">
+                    {localization.groups.advancedGroupDetails}
+                  </summary>
+                  <p className="mt-2 break-all font-mono">
+                    {localization.groups.groupIdLabel}: {activeGroupId}
+                  </p>
+                </details>
               </div>
             ) : (
               <EmptyState
@@ -1521,7 +1530,7 @@ export function GroupsSurface() {
               </p>
             ) : null}
             <p className="mt-4 rounded-lg border border-cal-hairline bg-cal-surface-strong p-3 text-sm leading-6 text-cal-body">
-              {localization.groups.backendNote}
+              {localization.groups.memberIdNote}
             </p>
           </section>
           <section className="cal-card rounded-xl p-4">
@@ -1534,16 +1543,14 @@ export function GroupsSurface() {
                   {localization.groups.publishBoundaryDescription}
                 </p>
               </div>
-              <Pill tone="amber">{localization.groups.openApiPendingPill}</Pill>
+              <Pill tone="green">{localization.groups.openApiPendingPill}</Pill>
             </div>
             <div className="mt-4 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm">
               <p className="font-medium text-cal-ink">
                 {localization.groups.publishActiveGroup}
               </p>
-              <p className="mt-2 break-all rounded-lg bg-cal-canvas p-2 font-mono text-xs text-cal-muted">
-                {activeGroup
-                  ? `${activeGroup.name} · ${activeGroup.id}`
-                  : localization.groups.noSelectedDescription}
+              <p className="mt-2 rounded-lg bg-cal-canvas p-2 text-sm text-cal-body">
+                {activeGroup?.name ?? localization.groups.noSelectedDescription}
               </p>
             </div>
             <form
@@ -1745,7 +1752,7 @@ export function GroupsSurface() {
           >
             <ResourceRow
               title={group.name}
-              subtitle={group.id}
+              subtitle={localization.groups.sharedKnowledgeSpaceLabel}
               meta={
                 localization.groups.roles[
                   group.role as keyof typeof localization.groups.roles

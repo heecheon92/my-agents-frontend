@@ -21,7 +21,7 @@ const personalKb = {
 };
 const publishedMemberKb = {
   id: "kb-published-member",
-  name: "Published Member KB",
+  name: "Published Member Knowledge",
   scope: "personal",
   owner_user_id: "u-member",
   group_id: null,
@@ -30,7 +30,7 @@ const publishedMemberKb = {
 };
 const groupKb = {
   id: "kb-group",
-  name: "Alpha Shared KB",
+  name: "Alpha Shared Knowledge",
   scope: "group",
   owner_user_id: user.id,
   group_id: ownerGroup.id,
@@ -39,13 +39,13 @@ const groupKb = {
 };
 const groupConversation = {
   id: "c-group",
-  title: "Alpha Group Chat",
+  title: "Alpha group knowledge source",
   owner_user_id: user.id,
   group_id: ownerGroup.id,
 };
 const personalConversation = {
   id: "c-personal",
-  title: "Personal Chat",
+  title: "Private conversation",
   owner_user_id: user.id,
   group_id: null,
 };
@@ -143,21 +143,23 @@ async function mockGroupKnowledgeApi(
   return requests;
 }
 
-test("Group Chat shows private source boundaries and sends mandatory group selection", async ({
+test("group knowledge source stays private and sends selected group context", async ({
   page,
 }) => {
   const requests = await mockGroupKnowledgeApi(page);
   await page.goto("/chat");
 
-  await expect(page.getByText(ko.chat.groupChatMode).first()).toBeVisible();
+  await expect(
+    page.getByText(ko.chat.includeGroupKnowledgeLabel).first(),
+  ).toBeVisible();
   await expect(page.getByText(ko.chat.groupChatBoundaryCopy)).toBeVisible();
-  await expect(page.getByText("Alpha Shared KB")).toBeVisible();
-  await expect(page.getByText("Published Member KB")).toBeVisible();
+  await expect(page.getByText("Alpha Shared Knowledge")).toBeVisible();
+  await expect(page.getByText("Published Member Knowledge")).toBeVisible();
   await expect(page.getByText("Private Notes")).toBeVisible();
 
   await page.getByText("Private Notes").click();
   await page
-    .getByPlaceholder(ko.chat.groupComposerPlaceholder)
+    .getByPlaceholder(ko.chat.composerPlaceholder)
     .fill("Use group and private context");
   await page.getByRole("button", { name: ko.chat.send }).click();
 
