@@ -325,5 +325,26 @@ describe("MyAgentsDocumentAPI", () => {
       stage: "embedding",
       progress_percent: 45,
     });
+
+    expect(
+      extractionRunSchema.parse({
+        id: "run-2",
+        document_id: "doc-1",
+        status: "running",
+        stage: "metadata",
+        progress_percent: 95,
+        chunk_count: 8,
+        entity_count: 3,
+        relationship_count: 2,
+        error: null,
+        started_at: "2026-05-22T00:00:00Z",
+        completed_at: null,
+      }),
+    ).toMatchObject({
+      id: "run-2",
+      status: "running",
+      stage: "metadata",
+      progress_percent: 95,
+    });
   });
 });

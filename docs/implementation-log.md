@@ -7,6 +7,17 @@
 
 Verification passed for this log entry: backend OpenAPI gate check confirmed `optional_personal_knowledge_base_ids` plus publish request routes; `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (10 files / 55 tests), `pnpm build`, and `git diff --check` passed.
 
+## 2026-05-25 — Queue prompts when backend reports active run
+
+- Treated backend `409 conversation run already active` as a queue handoff instead of a visible run failure. The draft is preserved as the conversation's queued next message when another run is already active.
+- Added server-active run awareness to the chat composer: running/cancelling runs show the assistant composing placeholder, switch the primary action to queue-next behavior, poll only run status while active, refresh messages once the run clears, and send the queued prompt once for that cleared run.
+- Added unit coverage for active-run status/error detection.
+
+## 2026-05-25 — Accept metadata extraction stage
+
+- Updated the frontend extraction-run schema to accept the backend's new `metadata` stage emitted while document metadata profiles are generated for retrieval.
+- Added document API regression coverage so Zod parsing no longer fails during markdown/PDF/text ingestion polling.
+
 ## 2026-05-25 — drag-and-drop document upload queue
 
 - Added a drop zone around the existing `/documents` file upload picker so users can drag PDF, Markdown, or plain-text files into the selected Personal KB workflow.

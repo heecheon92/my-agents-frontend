@@ -82,6 +82,7 @@ export const extractionRunStageSchema = z.enum([
   "embedding",
   "indexing",
   "entities",
+  "metadata",
   "completed",
   "failed",
 ]);

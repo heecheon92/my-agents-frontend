@@ -5,10 +5,13 @@ import {
   getConversationCardClassName,
   getLatestAssistantMessageId,
   getNextConversationIdAfterDelete,
+  isActiveAgentRunStatus,
+  isConversationRunAlreadyActiveError,
 } from "@/components/keymesh/ChatWorkspace";
 import en from "@/localization/en.json";
 import ko from "@/localization/ko.json";
 import type { Message } from "@/model/my-agents";
+import { MyAgentsAPIError } from "@/services/my-agents/MyAgentsAPIError";
 
 const baseMessage = {
   conversation_id: "conversation-1",
@@ -76,6 +79,42 @@ describe("ChatWorkspace assistant message footer", () => {
     expect(
       getNextConversationIdAfterDelete([{ id: "only" }], "only", "only"),
     ).toBeUndefined();
+  });
+
+  it("detects server-active conversation runs for queue fallback", () => {
+    expect(isActiveAgentRunStatus("running")).toBe(true);
+    expect(isActiveAgentRunStatus("cancelling")).toBe(true);
+    expect(isActiveAgentRunStatus("completed")).toBe(false);
+
+    expect(
+      isConversationRunAlreadyActiveError(
+        new MyAgentsAPIError({
+          message: "conflict",
+          status: 409,
+          detail: "conflict",
+          body: { message: "conversation run already active" },
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      isConversationRunAlreadyActiveError(
+        new MyAgentsAPIError({
+          message: "conflict",
+          status: 409,
+          detail: "conflict",
+          body: "conversation run already active",
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      isConversationRunAlreadyActiveError(
+        new MyAgentsAPIError({
+          message: "other conflict",
+          status: 409,
+          detail: "other conflict",
+        }),
+      ),
+    ).toBe(false);
   });
 
   it("keeps the chat transcript viewport-bounded and internally scrollable", () => {

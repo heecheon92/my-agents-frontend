@@ -50,7 +50,7 @@ type QueuedMessage = {
   optionalPersonalKnowledgeBaseIds: string[];
 };
 
-type RunOutcome = "completed" | "cancelled" | "failed";
+type RunOutcome = "completed" | "cancelled" | "failed" | "active_conflict";
 type ChatMode = "personal" | "group";
 
 const CHAT_BOTTOM_THRESHOLD_PX = 96;
@@ -271,6 +271,26 @@ function AssistantEvidenceFooter({
   );
 }
 
+export function isActiveAgentRunStatus(status: string) {
+  return status === "running" || status === "cancelling";
+}
+
+export function isConversationRunAlreadyActiveError(error: unknown) {
+  if (!isMyAgentsAPIError(error) || error.status !== 409) return false;
+  const details = [error.detail, error.message];
+  if (typeof error.body === "string") {
+    details.push(error.body);
+  }
+  if (error.body && typeof error.body === "object") {
+    const body = error.body as { detail?: unknown; message?: unknown };
+    if (typeof body.detail === "string") details.push(body.detail);
+    if (typeof body.message === "string") details.push(body.message);
+  }
+  return details.some((detail) =>
+    detail?.toLowerCase().includes("conversation run already active"),
+  );
+}
+
 function safeBackendDetail(value: unknown) {
   if (value && typeof value === "object" && "detail" in value) {
     const detail = (value as { detail?: unknown }).detail;
@@ -361,7 +381,11 @@ export function ChatWorkspace() {
         new Date(left.created_at).getTime(),
     );
   }, [runs.data]);
-  const latestRunId = sortedRuns[0]?.run_id;
+  const serverActiveRun = sortedRuns.find((run) =>
+    isActiveAgentRunStatus(run.status),
+  );
+  const serverActiveRunId = serverActiveRun?.run_id ?? null;
+  const latestRunId = serverActiveRun ? undefined : sortedRuns[0]?.run_id;
   const runDetail = useRunDetail(activeId, latestRunId);
   const events = useRunEvents(activeId, latestRunId);
   const [draft, setDraft] = useState("");
@@ -406,6 +430,16 @@ export function ChatWorkspace() {
   const queuedMessageRef = useRef<QueuedMessage | null>(null);
   const pendingImmediateMessageRef = useRef<QueuedMessage | null>(null);
   const cancelAcceptedRef = useRef(false);
+  const previousServerActiveRunIdRef = useRef<string | null>(null);
+  const autoReplayAttemptedRunIdsRef = useRef<Set<string>>(new Set());
+  const runMessageAndContinueRef = useRef<
+    (
+      conversationId: string,
+      message: string,
+      knowledgeBaseSelection: KnowledgeBaseSelection,
+      optionalPersonalKnowledgeBaseIds: string[],
+    ) => Promise<void>
+  >(async () => undefined);
   const { lang, localization } = useLocalization(
     (state) => state.localization.chat,
   );
@@ -466,6 +500,7 @@ export function ChatWorkspace() {
     !isGroupMode &&
     knowledgeBaseMode === "selected" &&
     selectedKnowledgeBaseIds.length === 0;
+  const conversationIsBusy = isStreaming || Boolean(serverActiveRun);
 
   function setQueuedMessage(nextQueuedMessage: QueuedMessage | null) {
     queuedMessageRef.current = nextQueuedMessage;
@@ -634,6 +669,11 @@ export function ChatWorkspace() {
       setStreamedReply("");
       return cancelled ? "cancelled" : "completed";
     } catch (error) {
+      if (isConversationRunAlreadyActiveError(error)) {
+        setOptimisticMessage(null);
+        setStreamError(null);
+        return "active_conflict";
+      }
       setStreamError(error);
       return "failed";
     } finally {
@@ -655,6 +695,26 @@ export function ChatWorkspace() {
       knowledgeBaseSelection,
       optionalPersonalKnowledgeBaseIds,
     );
+
+    if (outcome === "active_conflict") {
+      if (queuedMessageRef.current?.conversationId === conversationId) {
+        setDraft(message);
+        setStatusAnnouncement(localization.queueAlreadyExistsAnnouncement);
+      } else {
+        setQueuedMessage({
+          conversationId,
+          content: message,
+          knowledgeBaseSelection,
+          optionalPersonalKnowledgeBaseIds,
+        });
+        setStatusAnnouncement(localization.queuedAnnouncement);
+      }
+      await queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.conversations.runs(conversationId),
+      });
+      resetImmediateState();
+      return;
+    }
 
     if (outcome === "failed") {
       const pendingImmediateMessage = pendingImmediateMessageRef.current;
@@ -698,6 +758,8 @@ export function ChatWorkspace() {
     }
   }
 
+  runMessageAndContinueRef.current = runMessageAndContinue;
+
   async function handleSend(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (
@@ -711,7 +773,7 @@ export function ChatWorkspace() {
       return;
     }
 
-    if (isStreaming) {
+    if (conversationIsBusy) {
       if (visibleQueuedMessage) {
         setStatusAnnouncement(localization.queueAlreadyExistsAnnouncement);
         return;
@@ -802,7 +864,7 @@ export function ChatWorkspace() {
   }
 
   async function handleSendQueuedMessage() {
-    if (!visibleQueuedMessage || isStreaming) return;
+    if (!visibleQueuedMessage || conversationIsBusy) return;
     const nextQueuedMessage = visibleQueuedMessage;
     setQueuedMessage(null);
     setStatusAnnouncement(localization.queuedSentAnnouncement);
@@ -817,7 +879,7 @@ export function ChatWorkspace() {
   async function handleReplayAssistantMessage(messageId: string) {
     if (
       !activeId ||
-      isStreaming ||
+      conversationIsBusy ||
       isCancelling ||
       replayAssistantMessage.isPending
     ) {
@@ -883,14 +945,14 @@ export function ChatWorkspace() {
       : (runDetail.data?.citations ?? []);
   const latestAssistantMessageId = getLatestAssistantMessageId(sortedMessages);
   const autoScrollTrigger = `${sortedMessages.length}:${streamedReply.length}`;
-  const composerPlaceholder = isStreaming
+  const composerPlaceholder = conversationIsBusy
     ? visibleQueuedMessage
       ? localization.queuedComposerPlaceholder
       : localization.streamingComposerPlaceholder
     : isGroupMode
       ? localization.groupComposerPlaceholder
       : localization.composerPlaceholder;
-  const primaryActionLabel = isStreaming
+  const primaryActionLabel = conversationIsBusy
     ? localization.queueNext
     : localization.send;
   const isPrimaryActionDisabled =
@@ -900,7 +962,7 @@ export function ChatWorkspace() {
     requiresKnowledgeBaseSelection ||
     groupContextRequired ||
     sourceContextMismatch ||
-    (isStreaming && Boolean(visibleQueuedMessage));
+    (conversationIsBusy && Boolean(visibleQueuedMessage));
   const isSendNowDisabled =
     !activeId ||
     !hasActiveDraft ||
@@ -928,6 +990,48 @@ export function ChatWorkspace() {
     if (!scrollElement) return;
     shouldAutoScrollRef.current = isNearScrollBottom(scrollElement);
   }
+
+  useEffect(() => {
+    if (!activeId || !serverActiveRunId) return;
+    previousServerActiveRunIdRef.current = serverActiveRunId;
+    const intervalId = window.setInterval(() => {
+      void queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.conversations.runs(activeId),
+      });
+    }, 2000);
+    return () => window.clearInterval(intervalId);
+  }, [activeId, queryClient, serverActiveRunId]);
+
+  useEffect(() => {
+    if (!activeId || serverActiveRunId || isStreaming || isCancelling) return;
+    const previousServerActiveRunId = previousServerActiveRunIdRef.current;
+    if (!previousServerActiveRunId) return;
+    previousServerActiveRunIdRef.current = null;
+    void queryClient.invalidateQueries({
+      queryKey: MyAgentsQueryKeys.conversations.messages(activeId),
+    });
+    const nextQueuedMessage = queuedMessageRef.current;
+    if (nextQueuedMessage?.conversationId !== activeId) return;
+    if (autoReplayAttemptedRunIdsRef.current.has(previousServerActiveRunId))
+      return;
+    autoReplayAttemptedRunIdsRef.current.add(previousServerActiveRunId);
+    queuedMessageRef.current = null;
+    setQueuedMessageState(null);
+    setStatusAnnouncement(localization.queuedSentAnnouncement);
+    void runMessageAndContinueRef.current(
+      nextQueuedMessage.conversationId,
+      nextQueuedMessage.content,
+      nextQueuedMessage.knowledgeBaseSelection,
+      nextQueuedMessage.optionalPersonalKnowledgeBaseIds,
+    );
+  }, [
+    activeId,
+    isCancelling,
+    isStreaming,
+    localization,
+    queryClient,
+    serverActiveRunId,
+  ]);
 
   useEffect(() => {
     setShowGuestNotice(
@@ -1041,7 +1145,7 @@ export function ChatWorkspace() {
             const isActiveConversation = activeId === item.id;
             const deleteDisabled =
               deleteConversation.isPending ||
-              (isActiveConversation && (isStreaming || isCancelling));
+              (isActiveConversation && (conversationIsBusy || isCancelling));
             return (
               <div
                 key={item.id}
@@ -1141,7 +1245,7 @@ export function ChatWorkspace() {
                 const isAssistant = message.role === "assistant";
                 const isReplaying = replayingMessageId === message.id;
                 const replayDisabled =
-                  isStreaming ||
+                  conversationIsBusy ||
                   isCancelling ||
                   replayAssistantMessage.isPending;
                 return (
@@ -1224,7 +1328,7 @@ export function ChatWorkspace() {
                   </div>
                 );
               })}
-              {isStreaming || streamedReply ? (
+              {conversationIsBusy || streamedReply ? (
                 <div className="max-w-[88%] overflow-hidden rounded-xl border border-cal-hairline bg-cal-surface-soft px-4 py-3 text-sm leading-6 text-cal-ink sm:max-w-[78%]">
                   <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
                     {localization.roles.assistant}
@@ -1240,7 +1344,7 @@ export function ChatWorkspace() {
                     localization={localization}
                     lang={lang}
                     isLatestAssistantMessage={true}
-                    isStreaming={isStreaming}
+                    isStreaming={conversationIsBusy}
                     runs={sortedRuns}
                     events={visibleActivityEvents}
                     citations={visibleCitations}
@@ -1278,7 +1382,7 @@ export function ChatWorkspace() {
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-wrap gap-2">
-                    {!isStreaming ? (
+                    {!conversationIsBusy ? (
                       <Button
                         type="button"
                         variant="secondary"
@@ -1549,7 +1653,7 @@ export function ChatWorkspace() {
                 placeholder={composerPlaceholder}
                 disabled={!activeId || isCancelling}
                 aria-describedby={
-                  isStreaming ? "chat-steering-helper" : undefined
+                  conversationIsBusy ? "chat-steering-helper" : undefined
                 }
               />
               <div className="grid gap-2 sm:grid-cols-2">
@@ -1576,7 +1680,7 @@ export function ChatWorkspace() {
                 ) : null}
               </div>
             </div>
-            {isStreaming ? (
+            {conversationIsBusy ? (
               <p
                 id="chat-steering-helper"
                 className="mt-2 text-xs leading-5 text-cal-muted"
