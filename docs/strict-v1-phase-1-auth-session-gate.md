@@ -17,7 +17,7 @@ Read-only backend evidence checked from `../my-agents`:
 - `tests/test_auth_api.py` covers signup, unverified login rejection, verified login, `/auth/me`, logout without CSRF rejection, logout with `X-CSRF-Token`, duplicate signup, invalid login, password reset, and auth attempt rate limiting.
 - `tests/test_cors_api.py` covers credentialed CORS for explicit frontend origins and absence of CORS headers when no origins are configured.
 - `my_agents/api/auth.py` currently returns the existing backend error details `email verification required`, `too many auth attempts`, `invalid CSRF token`, and `authentication required` through standard FastAPI `{ detail }` error bodies.
-- `docs/portfolio-chat-service/10-frontend-demo-runbook.md` documents host consistency for `localhost` versus `127.0.0.1`, explicit `MY_AGENTS_CORS_ALLOWED_ORIGINS`, and local-only `MY_AGENTS_AUTH_DEV_OUTBOX_ENABLED=true`.
+- `docs/product-chat-service/en/10-frontend-demo-runbook.md` documents host consistency for `localhost` versus `127.0.0.1`, explicit `MY_AGENTS_CORS_ALLOWED_ORIGINS`, and local-only `MY_AGENTS_AUTH_DEV_OUTBOX_ENABLED=true`.
 
 These are consumed as existing contracts/evidence only; this frontend pass does not add or assume new backend response fields.
 
@@ -43,7 +43,7 @@ These are consumed as existing contracts/evidence only; this frontend pass does 
 
 ## Recommended next frontend gate
 
-Before final strict V1 signoff or after any further backend auth/session changes, rerun the V1 local demo smoke with the backend configured exactly as documented in `../my-agents/docs/portfolio-chat-service/10-frontend-demo-runbook.md`:
+Before final strict V1 signoff or after any further backend auth/session changes, rerun the V1 local demo smoke with the backend configured exactly as documented in `../my-agents/docs/product-chat-service/en/10-frontend-demo-runbook.md`:
 
 ```bash
 MY_AGENTS_BACKEND_URL=http://localhost:8000 pnpm dev

@@ -1,6 +1,6 @@
 # Public Demo Release Runbook
 
-This runbook is the operator checklist for moving the portfolio demo from local proof to preview proof and, only after explicit owner confirmation, public production proof. It intentionally avoids committing secrets, causing spend, or performing destructive production actions.
+This runbook is the operator checklist for moving the public demo from local proof to preview proof and, only after explicit owner confirmation, public production proof. It intentionally avoids committing secrets, causing spend, or performing destructive production actions.
 
 ## Release gates
 
@@ -20,9 +20,9 @@ flowchart LR
 
 Do not run production deployment, production migrations, provider activation, or paid API operations from an agent session without explicit owner confirmation.
 
-## Public portfolio demo P0 scope
+## Public demo P0 scope
 
-This launch target is a hosted reviewer-facing portfolio demo with safe limits, not a full SaaS launch. P0 frontend readiness means the existing product UI is proven against current backend contracts and deployed preview topology; it does not require new product features beyond fixing evidence failures.
+This launch target is a hosted reviewer-facing public demo with safe limits, not a full SaaS launch. P0 frontend readiness means the existing product UI is proven against current backend contracts and deployed preview topology; it does not require new product features beyond fixing evidence failures.
 
 Must be done before reviewer access:
 
@@ -35,7 +35,7 @@ Must be done before reviewer access:
 7. Verify streamed answer, citations, redacted activity events, and refresh persistence.
 8. Produce a redacted evidence bundle with commit SHAs, command outputs, smoke topology, provider decisions, and known limitations.
 
-Explicitly out of scope for first public portfolio demo:
+Explicitly out of scope for first public demo:
 
 - Full SaaS hardening, multi-tenant admin UX, account deletion/export self-service, billing, analytics, monitoring, OAuth, or arbitrary file support.
 - Always-open public registration after the reviewer window. The backend-owned `MY_AGENTS_AUTH_SIGNUP_ENABLED=false` switch is the preferred abuse-control/rollback path after the backend change is deployed.
@@ -89,7 +89,7 @@ Task 5 evaluation status as of 2026-05-20:
 | Frontend UI packages | No new dependency. | Existing Next.js, React, TanStack Query, Playwright, Vitest, Biome, and local UI primitives already cover the public visitor proof and evidence workflow. | Re-evaluate only if a specific UX/reliability gap appears in preview smoke. |
 | Email/account provider | Backend-owned generic SMTP path; no frontend SDK. | Visitor verification should remain a backend contract so browser code never handles provider tokens or SMTP secrets. | Provider secrets, live sender identity, and spend are owner-gated. |
 | Database/hosting provider | No frontend package change. | Frontend needs hosted HTTPS origins and OpenAPI URL, not provider SDK access. | Preview/production deploy, migrations, and provider dashboards are owner-gated. |
-| Analytics/monitoring | No dependency for this milestone. | Evidence bundles and host logs are sufficient for portfolio smoke; adding analytics would create privacy/cost review work. | Add only through a future provider record with privacy and rollback review. |
+| Analytics/monitoring | No dependency for this milestone. | Evidence bundles and host logs are sufficient for public demo smoke; adding analytics would create privacy/cost review work. | Add only through a future provider record with privacy and rollback review. |
 
 Dependency rule for this milestone: do not add a package or provider integration unless it directly improves public visitor UX or deployment reliability and the provider record below is filled with cost, secret, rollback, and offline-test boundaries.
 
@@ -151,7 +151,7 @@ Use this checklist to close the verification/evidence lane before marking previe
 
 Use this public-facing limitation copy in launch notes, README handoff, or UI surfaces as appropriate:
 
-> This is a portfolio demo. Do not upload secrets, credentials, medical/legal/financial records, or sensitive personal documents. Demo emails, uploaded documents, conversations, citations, and activity events may be retained until manual cleanup. Account deletion/export is not implemented yet; contact the operator for cleanup.
+> This is a public demo. Do not upload secrets, credentials, medical/legal/financial records, or sensitive personal documents. Demo emails, uploaded documents, conversations, citations, and activity events may be retained until manual cleanup. Account deletion/export is not implemented yet; contact the operator for cleanup.
 
 Operator cleanup path until self-service deletion exists:
 

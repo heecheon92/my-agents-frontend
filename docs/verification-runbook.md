@@ -102,7 +102,7 @@ pnpm exec playwright test e2e/v1-demo.spec.ts
 
 The backend local demo seed helper currently provides the verified account
 `test@test.com`, password `correct horse battery staple`, and seeded text document
-`V1 Portfolio Chat Service Demo`.
+`V1 Product Chat Service Demo`.
 
 Expected seeded text flow: login -> create or choose a knowledge base -> add a text
 document under that knowledge base -> bodyless KB-scoped ingest through the BFF ->
@@ -132,7 +132,7 @@ Example for a preview environment that allows login immediately after signup:
 ```bash
 MY_AGENTS_BACKEND_URL=https://preview-api.example.invalid \
 V1_PUBLIC_VISITOR_SMOKE=1 \
-V1_PUBLIC_VISITOR_EMAIL_TEMPLATE='portfolio-smoke+{nonce}@example.invalid' \
+V1_PUBLIC_VISITOR_EMAIL_TEMPLATE='demo-smoke+{nonce}@example.invalid' \
 V1_PUBLIC_VISITOR_PASSWORD='use-a-preview-only-password' \
 pnpm exec playwright test e2e/v1-demo.spec.ts -g 'public visitor'
 ```
@@ -142,7 +142,7 @@ Example when the provider requires an activation link fetched by an operator-own
 ```bash
 MY_AGENTS_BACKEND_URL=https://preview-api.example.invalid \
 V1_PUBLIC_VISITOR_SMOKE=1 \
-V1_PUBLIC_VISITOR_EMAIL_TEMPLATE='portfolio-smoke+{nonce}@example.invalid' \
+V1_PUBLIC_VISITOR_EMAIL_TEMPLATE='demo-smoke+{nonce}@example.invalid' \
 V1_PUBLIC_VISITOR_PASSWORD='use-a-preview-only-password' \
 V1_PUBLIC_VISITOR_VERIFICATION_MODE=provider-command \
 V1_PUBLIC_VISITOR_VERIFICATION_COMMAND='./scripts/print-preview-verification-link.sh' \

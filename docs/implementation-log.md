@@ -41,7 +41,7 @@ Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `
 - Confirmed the current backend OpenAPI is not ready for frontend integration: `ConversationRunRequest` lacks `optional_personal_knowledge_base_ids`, and publish request create/list/approve/reject routes are absent.
 - Logged the exact backend contract gap in `docs/backend-requests.md`; frontend model/client/hook/group-chat request-body changes remain blocked until the backend OpenAPI exposes the required contract.
 
-Verification for this log entry: read-only backend OpenAPI generation; `git -C /Users/heecheonpark/Git/Portfolio/my-agents status --short` returned clean before inspection. Frontend verification pending because this pass intentionally made documentation-only blocker notes and did not change runtime code.
+Verification for this log entry: read-only backend OpenAPI generation; `git -C /Users/heecheonpark/Git/my-agents status --short` returned clean before inspection. Frontend verification pending because this pass intentionally made documentation-only blocker notes and did not change runtime code.
 
 ## 2026-05-20 — document delete frontend wiring
 
@@ -172,7 +172,7 @@ Verification for this log entry: docs-only change; `pnpm lint`, `pnpm exec tsc -
 
 ## 2026-05-20 — worker-3 verification/evidence coverage probe
 
-- Reviewed the production orchestration test spec against backend `/Users/heecheonpark/Git/Portfolio/my-agents` and frontend `/Users/heecheonpark/Git/Portfolio/my-agents-frontend` test surfaces.
+- Reviewed the production orchestration test spec against backend `/Users/heecheonpark/Git/my-agents` and frontend `/Users/heecheonpark/Git/my-agents-frontend` test surfaces.
 - Confirmed backend coverage commands and smoke helper: `uv run pytest -q`, `uv run ruff check . --no-cache`, `uv run ruff format --check .`, and `uv run python -m scripts.local_demo_smoke --base-url http://localhost:8000 --timeout 120`.
 - Confirmed frontend coverage commands and smoke specs: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build`, `e2e/home.spec.ts`, and `e2e/v1-demo.spec.ts`.
 - Added release-runbook checklist items for public visitor proof gaps: provider activation evidence, hosted Playwright topology, text-document vs PDF branch declaration, `/assistant/chat` exclusion evidence, and event/log redaction proof.

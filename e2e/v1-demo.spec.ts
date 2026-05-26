@@ -5,7 +5,7 @@ import ko from "@/localization/ko.json";
 const demoEmail = process.env.V1_DEMO_EMAIL;
 const demoPassword = process.env.V1_DEMO_PASSWORD;
 const publicVisitorSmoke = process.env.V1_PUBLIC_VISITOR_SMOKE === "1";
-const seededDocumentTitle = "V1 Portfolio Chat Service Demo";
+const seededDocumentTitle = "V1 Product Chat Service Demo";
 const sensitiveStoragePattern =
   /(api[_-]?key|csrf|password|session|sk-[a-zA-Z0-9]|token)/i;
 
@@ -192,7 +192,7 @@ test.describe("V1 seeded demo", () => {
   }) => {
     test.setTimeout(120_000);
     const prompt =
-      "How does the portfolio chat service stream answers and persist app state?";
+      "How does the product chat service stream answers and persist app state?";
 
     await page.goto("/login");
     await page.getByLabel(ko.auth.email).fill(demoEmail ?? "");

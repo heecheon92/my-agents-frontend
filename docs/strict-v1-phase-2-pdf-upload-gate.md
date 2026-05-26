@@ -27,7 +27,7 @@ The backend-owned contract now exposes:
 - Document list displays backend source metadata for PDF/text documents.
 - Citation panel shows backend-provided source filename and page when present, while keeping document id fallback for old citations.
 
-## Remaining gates for public portfolio demo P0
+## Remaining gates for public demo P0
 
 - The hosted or local backend used for final evidence must expose the Phase 2 upload contract in its active OpenAPI/runtime. This frontend doc does not claim that any currently running backend instance has been restarted or deployed.
 - Final browser evidence should upload a supported PDF, Markdown, or plain-text file through the product UI, ingest it, and show source metadata/citations. If the launch gate intentionally uses the JSON text-document fallback instead, record that fallback and reason in `docs/public-demo-release-runbook.md` evidence bundle fields.
