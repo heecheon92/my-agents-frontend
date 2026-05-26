@@ -4,7 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useGuestLogin, useLogin, useSignup } from "@/hooks/use-auth";
+import {
+  useGuestAccessRequest,
+  useGuestCodeLogin,
+  useLogin,
+  useSignup,
+} from "@/hooks/use-auth";
 import { useLocalization } from "@/hooks/useLocalization";
 import { Field, inputClassName } from "./Field";
 import { ErrorState } from "./Status";
@@ -13,20 +18,42 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
   const router = useRouter();
   const login = useLogin();
   const signup = useSignup();
-  const guestLogin = useGuestLogin();
+  const guestAccessRequest = useGuestAccessRequest();
+  const guestCodeLogin = useGuestCodeLogin();
   const [activeMode, setActiveMode] = useState(mode);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [guestEmail, setGuestEmail] = useState("");
+  const [guestCode, setGuestCode] = useState("");
+  const [guestRequestEmail, setGuestRequestEmail] = useState<string | null>(
+    null,
+  );
   const [signupEmail, setSignupEmail] = useState<string | null>(null);
   const { localization } = useLocalization((state) => ({
     auth: state.localization.auth,
   }));
   const isSignup = activeMode === "signup";
   const active = isSignup ? signup : login;
+  const isGuestPending =
+    guestAccessRequest.isPending || guestCodeLogin.isPending;
 
-  async function handleGuestLogin() {
+  async function handleGuestAccessRequest(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    const trimmedEmail = guestEmail.trim();
     try {
-      await guestLogin.mutateAsync();
+      await guestAccessRequest.mutateAsync({ email: trimmedEmail });
+      setGuestRequestEmail(trimmedEmail);
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
+  }
+
+  async function handleGuestCodeLogin(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    try {
+      await guestCodeLogin.mutateAsync(guestCode.trim());
       router.push("/chat?guest=1");
     } catch {
       // React Query stores the API error on the mutation; render it below.
@@ -59,10 +86,7 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
   return (
     <main className="min-h-dvh bg-cal-canvas py-6 sm:py-8">
       <div className="responsive-container flex min-h-[calc(100svh-3rem)] items-center justify-center">
-        <form
-          onSubmit={handleSubmit}
-          className="cal-product-card w-full max-w-md rounded-xl p-5 sm:p-6 lg:p-8"
-        >
+        <section className="cal-product-card w-full max-w-md rounded-xl p-5 sm:p-6 lg:p-8">
           <h2
             className={
               !isSignup
@@ -79,7 +103,7 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
               {localization.auth.signupDescription}
             </p>
           ) : null}
-          <div className="mt-8 grid gap-4">
+          <form onSubmit={handleSubmit} className="mt-8 grid gap-4">
             <Field label={localization.auth.email}>
               <input
                 className={inputClassName}
@@ -127,16 +151,10 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
                 title={localization.auth.authenticationFailed}
               />
             ) : null}
-            {guestLogin.error ? (
-              <ErrorState
-                error={guestLogin.error}
-                title={localization.auth.guestFailed}
-              />
-            ) : null}
             <Button
               type="submit"
               size="lg"
-              disabled={active.isPending || guestLogin.isPending}
+              disabled={active.isPending || isGuestPending}
             >
               {active.isPending
                 ? localization.auth.working
@@ -144,25 +162,106 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
                   ? localization.auth.signupSubmit
                   : localization.auth.loginSubmit}
             </Button>
-            <div className="grid gap-3 rounded-lg border border-cal-hairline bg-cal-surface-soft p-4 text-sm text-cal-muted">
-              <div>
-                <p className="font-semibold text-cal-ink">
-                  {localization.auth.guestTitle}
+          </form>
+          <div className="mt-4 grid gap-4 rounded-lg border border-cal-hairline bg-cal-surface-soft p-4 text-sm text-cal-muted">
+            <div>
+              <p className="font-semibold text-cal-ink">
+                {localization.auth.guestTitle}
+              </p>
+              <p className="mt-1 leading-6">
+                {localization.auth.guestDescription}
+              </p>
+            </div>
+            {guestAccessRequest.error ? (
+              <ErrorState
+                error={guestAccessRequest.error}
+                title={localization.auth.guestFailed}
+              />
+            ) : null}
+            <form onSubmit={handleGuestAccessRequest} className="grid gap-3">
+              <Field
+                label={localization.auth.guestEmailLabel}
+                hint={localization.auth.guestEmailHint}
+              >
+                <input
+                  className={inputClassName}
+                  type="email"
+                  autoComplete="email"
+                  value={guestEmail}
+                  onChange={(event) => {
+                    setGuestEmail(event.target.value);
+                    setGuestRequestEmail(null);
+                  }}
+                  required
+                />
+              </Field>
+              <Button
+                type="submit"
+                variant="outline"
+                disabled={guestAccessRequest.isPending || active.isPending}
+              >
+                {guestAccessRequest.isPending
+                  ? localization.auth.working
+                  : localization.auth.guestRequestSubmit}
+              </Button>
+            </form>
+            {guestRequestEmail ? (
+              <output
+                aria-live="polite"
+                className="rounded-lg border border-cal-success/20 bg-cal-success/5 p-4 text-sm text-cal-success"
+              >
+                <p className="font-semibold">
+                  {localization.auth.guestRequestReceivedTitle}
                 </p>
                 <p className="mt-1 leading-6">
-                  {localization.auth.guestDescription}
+                  {localization.auth.guestRequestReceivedDescription.replace(
+                    "{email}",
+                    guestRequestEmail,
+                  )}
+                </p>
+              </output>
+            ) : null}
+            <div className="grid gap-3 border-t border-cal-hairline pt-4">
+              <div>
+                <p className="font-semibold text-cal-ink">
+                  {localization.auth.guestCodeTitle}
+                </p>
+                <p className="mt-1 leading-6">
+                  {localization.auth.guestCodeDescription}
                 </p>
               </div>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={guestLogin.isPending || active.isPending}
-                onClick={handleGuestLogin}
-              >
-                {guestLogin.isPending
-                  ? localization.auth.working
-                  : localization.auth.guestSubmit}
-              </Button>
+              {guestCodeLogin.error ? (
+                <ErrorState
+                  error={guestCodeLogin.error}
+                  title={localization.auth.guestFailed}
+                />
+              ) : null}
+              <form onSubmit={handleGuestCodeLogin} className="grid gap-3">
+                <Field
+                  label={localization.auth.guestCodeLabel}
+                  hint={localization.auth.guestCodeHint}
+                >
+                  <input
+                    className={inputClassName}
+                    type="text"
+                    autoComplete="one-time-code"
+                    value={guestCode}
+                    onChange={(event) => {
+                      setGuestCode(event.target.value);
+                    }}
+                    required
+                  />
+                </Field>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={guestCodeLogin.isPending || active.isPending}
+                >
+                  {guestCodeLogin.isPending
+                    ? localization.auth.working
+                    : localization.auth.guestCodeSubmit}
+                </Button>
+              </form>
             </div>
           </div>
           <p className="mt-6 text-sm text-cal-muted">
@@ -178,7 +277,7 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
                 : localization.auth.signupLink}
             </Link>
           </p>
-        </form>
+        </section>
       </div>
     </main>
   );

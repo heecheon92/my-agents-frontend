@@ -2,6 +2,7 @@ import { API_PATH } from "@/constants/api-path";
 import {
   type AcceptedResponse,
   acceptedResponseSchema,
+  type GuestAccessRequest,
   guestAccessResponseSchema,
   type LoginRequest,
   type LoginResponse,
@@ -50,9 +51,12 @@ export class MyAgentsAuthAPI {
     return parseWithSchema(loginResponseSchema, value);
   }
 
-  async requestGuestAccess() {
+  async requestGuestAccess(
+    payload: GuestAccessRequest,
+  ): Promise<AcceptedResponse> {
     const value = await this.client.fetch(API_PATH.auth.guestRequest, {
       method: "POST",
+      body: payload,
     });
     return parseWithSchema(guestAccessResponseSchema, value);
   }
@@ -63,11 +67,6 @@ export class MyAgentsAuthAPI {
       body: { code },
     });
     return parseWithSchema(loginResponseSchema, value);
-  }
-
-  async continueAsGuest(): Promise<LoginResponse> {
-    const ticket = await this.requestGuestAccess();
-    return this.loginGuest(ticket.code);
   }
 
   async requestPasswordReset(

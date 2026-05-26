@@ -24,7 +24,7 @@ describe("MyAgentsAuthAPI", () => {
     });
   });
 
-  it("requests and redeems guest access through the auth endpoints", async () => {
+  it("requests guest access by email and redeems codes separately", async () => {
     const calls: Array<{
       path: string;
       init?: { method?: string; body?: unknown };
@@ -32,15 +32,21 @@ describe("MyAgentsAuthAPI", () => {
     const api = new MyAgentsAuthAPI({
       fetch: async (path, init) => {
         calls.push({ path, init });
-        if (path === "/auth/guest/request") return { code: "guest-code" };
+        if (path === "/auth/guest/request") return { status: "accepted" };
         if (path === "/auth/guest/login") return { user };
         return null;
       },
     });
 
-    await expect(api.continueAsGuest()).resolves.toEqual({ user });
+    await expect(
+      api.requestGuestAccess({ email: "guest@example.com" }),
+    ).resolves.toEqual({ status: "accepted" });
+    await expect(api.loginGuest("guest-code")).resolves.toEqual({ user });
     expect(calls).toEqual([
-      { path: "/auth/guest/request", init: { method: "POST" } },
+      {
+        path: "/auth/guest/request",
+        init: { method: "POST", body: { email: "guest@example.com" } },
+      },
       {
         path: "/auth/guest/login",
         init: { method: "POST", body: { code: "guest-code" } },

@@ -330,3 +330,11 @@ Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `
 - Updated bilingual copy and focused tests to make the boundary explicit: Personal KBs stay private and may be attached privately in Group Chat; publishing into Group KB retrieval is an approval workflow, not direct document wiring.
 
 Verification passed for this log entry: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm build`, and `pnpm exec playwright test e2e/group-knowledge-v1.spec.ts` including desktop layout assertions for compact Group creation and aligned Knowledge selectors.
+
+## 2026-05-26 — email-based guest access request flow
+
+- Split the frontend guest flow into email request and code redemption steps. The auth panel now sends `{ email }` to `POST /auth/guest/request`, shows a generic accepted/check-email message, and leaves `POST /auth/guest/login` as the only code redemption path.
+- Updated guest auth schemas, client methods, TanStack mutations, bilingual copy, and public-demo docs to stop expecting a returned guest code from the request endpoint.
+- Added focused API/model coverage plus an auth-page browser check that verifies the email request body, generic accepted message, and absence of automatic guest-code redemption.
+
+Verification passed for this log entry: `pnpm lint`, `pnpm exec vitest run tests/auth-model.test.ts tests/auth-api.test.ts`, `pnpm exec vitest run`, `pnpm exec playwright test e2e/auth-panel.spec.ts`, `pnpm exec tsc --noEmit`, `pnpm build`, and `git diff --check`.

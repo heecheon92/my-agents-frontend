@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import type {
+  GuestAccessRequest,
   LoginRequest,
   PasswordResetConfirmRequest,
   PasswordResetRequest,
@@ -40,10 +41,17 @@ export function useLogin() {
   });
 }
 
-export function useGuestLogin() {
+export function useGuestAccessRequest() {
+  return useMutation({
+    mutationFn: (payload: GuestAccessRequest) =>
+      myAgentsAPI.auth.requestGuestAccess(payload),
+  });
+}
+
+export function useGuestCodeLogin() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => myAgentsAPI.auth.continueAsGuest(),
+    mutationFn: (code: string) => myAgentsAPI.auth.loginGuest(code),
     onSuccess: (data) => {
       queryClient.setQueryData(MyAgentsQueryKeys.auth.me(), data.user);
     },

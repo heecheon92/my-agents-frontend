@@ -120,7 +120,7 @@ Production config must assert `MY_AGENTS_AUTH_DEV_OUTBOX_ENABLED=false`; the pub
 
 The final visitor proof must exercise the selected reviewer access path and fail loudly if required hosted/provider variables are absent.
 
-1. Preferred path: click **Continue as guest**, request a one-time guest code through `POST /auth/guest/request`, redeem it through `POST /auth/guest/login`, and receive the normal session cookie + CSRF flow through the BFF.
+1. Preferred path: enter a reviewer email, click **Request guest access**, confirm the generic accepted/check-email message from `POST /auth/guest/request`, redeem the delivered one-time guest code through `POST /auth/guest/login`, and receive the normal session cookie + CSRF flow through the BFF.
 2. If full signup remains enabled instead, create a unique visitor account through the public UI and complete account verification through the configured provider flow or documented preview-safe operator step.
 3. Refresh; `/auth/me` must restore the session. Guest users may have `email: null`, `is_guest: true`, and `guest_expires_at`.
 4. Inspect browser `localStorage` and `sessionStorage`; they must not contain session cookies, CSRF tokens, provider tokens, raw passwords, or API keys.

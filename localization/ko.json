@@ -61,9 +61,18 @@
     "signupSuccessTitle": "계정을 만들었습니다",
     "signupSuccessDescription": "{email} 계정을 만들었습니다. 이제 이 계정으로 로그인할 수 있습니다.",
     "guestTitle": "공개 데모 게스트 입장",
-    "guestDescription": "24시간 게스트 세션으로 계속합니다. 대화 1개, 프롬프트 최대 5개, 문서 업로드 최대 3개까지 사용할 수 있으며 제한은 자동으로 적용됩니다.",
-    "guestSubmit": "게스트로 계속하기",
-    "guestFailed": "게스트 입장에 실패했습니다"
+    "guestDescription": "이메일을 입력해 일회용 게스트 코드를 요청하세요. 게스트 세션은 24시간 동안 유지되며 대화 1개, 프롬프트 최대 5개, 문서 업로드 최대 3개로 제한됩니다.",
+    "guestFailed": "게스트 입장에 실패했습니다",
+    "guestEmailLabel": "게스트 이메일",
+    "guestEmailHint": "승인되면 운영자가 이 주소로 게스트 입장 코드를 보냅니다.",
+    "guestRequestSubmit": "게스트 입장 요청하기",
+    "guestRequestReceivedTitle": "게스트 요청을 받았습니다",
+    "guestRequestReceivedDescription": "{email} 주소가 대상이면 운영자가 해당 받은편지함으로 게스트 코드를 보냅니다. 이메일 자동화가 연결되기 전까지는 수동 단계일 수 있습니다.",
+    "guestCodeTitle": "게스트 코드가 있나요?",
+    "guestCodeDescription": "이메일로 받은 코드를 입력해 제한된 데모 세션을 시작하세요.",
+    "guestCodeLabel": "게스트 입장 코드",
+    "guestCodeHint": "코드는 1회용이며 자동으로 만료됩니다.",
+    "guestCodeSubmit": "게스트 코드 사용하기"
   },
   "service": {
     "nav": {

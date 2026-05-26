@@ -61,9 +61,18 @@
     "signupSuccessTitle": "Account created",
     "signupSuccessDescription": "We created {email}. You can now log in with this account.",
     "guestTitle": "Public demo guest access",
-    "guestDescription": "Continue with a 24-hour guest session: one chat, up to 5 prompts, and up to 3 document uploads. Limits are enforced automatically.",
-    "guestSubmit": "Continue as guest",
-    "guestFailed": "Guest access failed"
+    "guestDescription": "Enter an email to request a one-time guest code. Guest sessions last 24 hours and are limited to one chat, up to 5 prompts, and up to 3 document uploads.",
+    "guestFailed": "Guest access failed",
+    "guestEmailLabel": "Guest email",
+    "guestEmailHint": "If approved, the operator will send a guest access code to this address.",
+    "guestRequestSubmit": "Request guest access",
+    "guestRequestReceivedTitle": "Guest request received",
+    "guestRequestReceivedDescription": "If {email} is eligible, the operator will send a guest code to that inbox. Until email automation is wired, this may be a manual step.",
+    "guestCodeTitle": "Have a guest code?",
+    "guestCodeDescription": "Redeem the code from your email to start the limited demo session.",
+    "guestCodeLabel": "Guest access code",
+    "guestCodeHint": "Codes are one-time use and expire automatically.",
+    "guestCodeSubmit": "Redeem guest code"
   },
   "service": {
     "nav": {

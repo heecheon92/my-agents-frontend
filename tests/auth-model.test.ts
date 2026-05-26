@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   acceptedResponseSchema,
   backendLoginResponseSchema,
+  guestAccessRequestSchema,
   guestAccessResponseSchema,
   guestLoginRequestSchema,
   loginResponseSchema,
@@ -42,15 +43,14 @@ describe("auth response schemas", () => {
     });
   });
 
-  it("parses guest access ticket responses and redeem requests", () => {
+  it("parses guest access email requests, acknowledgements, and code redeem requests", () => {
     expect(
-      guestAccessResponseSchema.parse({
-        code: "guest-code",
-        expires_at: "2026-05-22T00:00:00Z",
-      }),
+      guestAccessRequestSchema.parse({ email: "guest@example.com" }),
     ).toEqual({
-      code: "guest-code",
-      expires_at: "2026-05-22T00:00:00Z",
+      email: "guest@example.com",
+    });
+    expect(guestAccessResponseSchema.parse({})).toEqual({
+      status: "accepted",
     });
     expect(guestLoginRequestSchema.parse({ code: "guest-code" })).toEqual({
       code: "guest-code",
