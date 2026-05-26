@@ -1,0 +1,34 @@
+#!/bin/sh
+
+. "$(dirname "$0")/pnpm.sh"
+
+echo "Running typescript syntax check test."
+
+run_pnpm exec tsc --p .
+tscStatus=$?
+
+if [ $tscStatus -ne 0 ]; then
+    echo "Typescript typechecking has failed."
+    echo "Please fix the errors before merging the commit."
+    exit 1
+fi
+
+run_pnpm exec biome format
+pretStatus=$?
+
+if [ $pretStatus -ne 0 ]; then
+    echo "Files do not align with Biome code convention."
+    echo "Please run 'npm run pret:fix' before merging the commit."
+    exit 1
+fi
+
+run_pnpm exec biome lint
+lintStatus=$?
+
+if [ $tscStatus -eq 0 ] && [ $pretStatus -eq 0 ] && [ $lintStatus -eq 0 ]; then
+    exit 0
+else
+    echo "Linting has failed."
+    echo "Please fix the errors before merging the commit."
+    exit 1
+fi

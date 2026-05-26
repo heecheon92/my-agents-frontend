@@ -8,13 +8,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 This repository is the frontend companion for the backend-only `my-agents` FastAPI + LangGraph service in `../my-agents`.
 
-The product is a portfolio-grade AI chat service UI: authenticated users manage conversations, documents, citations, and visible agent activity events backed by the FastAPI API. Keep this repo focused on frontend code and frontend-facing integration only.
+The product is a polished AI chat service UI: authenticated users manage conversations, documents, citations, and visible agent activity events backed by the FastAPI API. Keep this repo focused on frontend code and frontend-facing integration only.
 
 ## Product intent
 
 - Build a polished frontend for the `my-agents` backend without moving backend logic into the UI repo.
 - Demonstrate a real AI product surface: login, conversations, server-owned transcripts, run history, citations, document/knowledge workflows, and redacted agent activity timelines.
-- Keep the UI credible for portfolio/interview review: accessible, testable, responsive, and honest about implemented backend capabilities.
+- Keep the UI credible for product review: accessible, testable, responsive, and honest about implemented backend capabilities.
 
 ## Current stack
 
@@ -37,7 +37,24 @@ The product is a portfolio-grade AI chat service UI: authenticated users manage 
 - Do **not** add FastAPI, Python, Alembic, SQLAlchemy, or backend migration code here.
 - Do **not** add another LLM provider integration in this repo.
 - Do **not** commit real secrets or local `.env*` files.
-- Treat backend API contracts as external service contracts. If a backend route is missing, document the needed contract or implement it in `../my-agents` only when explicitly working there.
+- Treat backend API contracts as external service contracts.
+- Frontend work may inspect `../my-agents` for context and behavior, but must not modify backend files from this repo unless the user explicitly approves backend work.
+- Do not generate or update frontend API models from backend source-file inspection. For API contracts, use the backend's hosted OpenAPI document as the source of truth.
+- If a backend route or behavior is missing, first record the needed contract in `docs/backend-requests.md` and report it to the user. Do not silently patch the backend from a frontend task.
+
+## Backend collaboration workflow
+
+This frontend repository may use `../my-agents` as read-only implementation context, but not as the source of truth for generated frontend API contracts. The source of truth for API models is the backend's hosted OpenAPI document.
+
+Rules for future agents working from this frontend repo:
+
+- You may inspect backend files in `../my-agents` to understand implementation behavior, but do not derive or generate frontend request/response models from source inspection.
+- Before creating or changing frontend API models, ask the user to host the backend OpenAPI server and provide the OpenAPI URL, normally `http://localhost:8000/openapi.json` or a docs URL such as `http://localhost:8000/docs`.
+- If the user already provided an OpenAPI URL in the current task, use that URL directly. Otherwise, stop API model generation and ask for the hosted OpenAPI URL instead of guessing from backend source.
+- You must not edit, format, commit, or push backend files from a frontend task.
+- If a frontend task exposes a backend gap, record it in `docs/backend-requests.md` and report it to the user before any backend implementation is attempted.
+- Backend changes require an explicit user instruction that switches scope to the backend project.
+- Keep frontend code resilient to documented backend gaps with honest loading, empty, disabled, or TODO states rather than inventing fake backend behavior.
 
 ## Backend API contract this UI targets
 
@@ -113,10 +130,13 @@ Build in this order unless the user requests otherwise:
 - Use TanStack Query for client-visible server state: current user, conversations, messages, runs, events, documents.
 - Keep query keys stable and colocated in feature/api modules.
 - Use optimistic updates sparingly; prefer correctness for auth and chat history.
-- Treat backend response models as source of truth. If the UI needs a field that is missing, add an explicit TODO or backend contract note rather than inventing fake data.
+- Treat the hosted OpenAPI response models as source of truth. If the UI needs a field that is missing, add an explicit TODO or backend contract note rather than inventing fake data.
 
 ## Design and accessibility rules
 
+- Read `DESIGN.md` before UI/theme/layout work; treat it as the active design contract for visual language, component states, accessibility, responsive behavior, and content voice.
+- Apply the repo-local `responsive-design` skill for UI/layout work: start mobile-first, prefer fluid typography/spacing tokens, use container-query-ready component wrappers for reusable panels, prevent horizontal overflow, and keep touch targets comfortable before adding desktop-only refinements.
+- If requested UI conflicts with `DESIGN.md`, update `DESIGN.md` or add an open question before implementing the exception.
 - Build accessible, keyboard-navigable UI by default.
 - Prefer simple, readable layouts over decorative AI-dashboard noise.
 - Korean and English text should be legible; avoid tiny body text. Use at least comfortable default body sizing unless a component has a clear accessibility reason.
@@ -186,6 +206,9 @@ Do not expose secrets through `NEXT_PUBLIC_*`. Anything prefixed `NEXT_PUBLIC_` 
 
 - Update `README.md` when setup commands, environment variables, routes, or user-facing behavior change.
 - Add short architecture notes under a docs folder if frontend/backend integration becomes non-obvious.
+- Maintain `docs/implementation-log.md` during substantial frontend work so future manual work can follow the sequence, rationale, verification evidence, and remaining risks.
+- Maintain `docs/backend-requests.md` for frontend-discovered backend contract gaps.
+- Keep `docs/agent-onboarding.md`, `docs/frontend-architecture.md`, `docs/security-and-backend-boundary.md`, and `docs/verification-runbook.md` current when architecture, security, setup, or verification workflow changes.
 - Use Mermaid diagrams when they clarify routing, auth/session flow, or chat/run state transitions.
 - Keep docs honest: do not claim streaming, OAuth, production deployment, or advanced document upload until implemented and tested.
 

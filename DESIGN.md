@@ -1,0 +1,316 @@
+# Design
+
+## Source of truth
+- Status: Active
+- Last refreshed: 2026-05-22
+- Primary product surfaces:
+  - Public entry: `/` marketing/entry page.
+  - Auth: `/login`, `/signup` through `components/keymesh/AuthPanel.tsx`.
+  - Protected service shell: `app/(service)/layout.tsx` through `components/keymesh/ServiceShell.tsx`.
+  - Anchor workspace: `/chat` through `components/keymesh/ChatWorkspace.tsx`.
+  - Operations/admin surfaces: `/documents`, `/knowledge`, `/groups` through `components/keymesh/AdminSurfaces.tsx`.
+- Evidence reviewed:
+  - `AGENTS.md` product intent, frontend boundary, design/accessibility rules, and verification commands.
+  - `app/globals.css` Tailwind v4 theme, semantic variables, inherited `cal-*` aliases, fluid type/spacing helpers, responsive primitives, card helpers.
+  - `app/layout.tsx`, `app/page.tsx`, `app/(service)/layout.tsx`, `app/(service)/*/page.tsx` route structure.
+  - `components/keymesh/ServiceShell.tsx`, `ChatWorkspace.tsx`, `AdminSurfaces.tsx`, `AuthPanel.tsx`, `Field.tsx`, `Status.tsx`.
+  - `components/ui/button.tsx` Base UI button primitive and current variants.
+  - `docs/frontend-architecture.md`, `docs/agent-onboarding.md`, `docs/security-and-backend-boundary.md`, `docs/verification-runbook.md`, `docs/implementation-log.md`.
+  - `localization/en.json`, `localization/ko.json` bilingual product copy and route labels.
+  - Frontend engineering feedback from 2026-05-22: feasible with current Tailwind v4/local components; biggest issues are Cal.com framing, dense chat/admin layouts, thin reusable component layer, and ad hoc Tailwind strings.
+
+## Brand
+- Personality:
+  - A calm AI operations console: exact, evidence-forward, composed under load, and credible enough for security/product review.
+  - Editorial rather than dashboard-noisy: dense information is allowed, but hierarchy must feel curated, not crammed.
+  - The visual metaphor is **instrument panel + knowledge dossier**: transcripts, citations, events, documents, and permissions should feel connected as operational evidence.
+- Trust signals:
+  - Clear session/auth state, explicit backend-owned limits, honest disabled/empty states, no fake capability claims.
+  - Visible provenance: citations are close to answers; run events are visible as redacted operational facts; document source metadata is legible.
+  - Calm severity language: warnings and errors explain the safe next step without exposing secrets, stack traces, tokens, or chain-of-thought.
+- Avoid:
+  - The previous Cal.com/calendar-product framing, including calendar mockup motifs or Cal.com-specific naming in design rationale.
+  - Generic AI gradients, purple-on-white SaaS tropes, glassmorphism, floating orb illustrations, decorative chat bubbles without provenance.
+  - Overly tiny dashboard text, low-contrast gray-on-gray metadata, hidden overflow that clips IDs or code/pre blocks, or desktop-only navigation.
+  - Glassy/gradient AI-dashboard noise, broad data-flow rewrites for visual polish, untested dark mode, and fixed-height mobile layouts that trap overflow.
+
+## Product goals
+- Goals:
+  - Make chat with server-owned runs the obvious primary journey.
+  - Let users understand what the backend did: messages, run status, event trail, citations, and document sources should be visible in one coherent workspace.
+  - Make document, knowledge-base, group, membership, and permission workflows usable even while some backend contracts remain ID-based.
+  - Support Korean and English with comfortable typography, wrapping, and no hardcoded user-facing strings.
+  - Give frontend engineers a stable theme/component contract that can be implemented with current Next.js, Tailwind v4, Base UI/shadcn-style primitives, and no new component library.
+  - Reduce future UI churn by moving repeated panel/list/message patterns out of ad hoc Tailwind strings and into small repo-native primitives.
+- Non-goals:
+  - Do not move backend logic, API contract invention, or OpenAPI generation into design work.
+  - Do not design hidden chain-of-thought, raw provider traces, or unsafe debug payload exposure.
+  - Do not introduce a second UI kit, charting dependency, animation dependency, or design-token runtime unless explicitly approved later.
+  - Do not rewrite data flow, query hooks, BFF behavior, or backend contracts as part of visual cleanup.
+  - Do not add or advertise dark mode until it has an explicit design pass and viewport/accessibility verification.
+  - Do not claim streaming, upload types, provider verification, OAuth, production release, or document intelligence beyond implemented and tested backend behavior.
+- Success signals:
+  - A new user can answer: “Am I authenticated?”, “Which conversation am I in?”, “What did the agent do?”, “What sources support this answer?”, and “What can I do next?” without reading docs.
+  - Narrow, tablet, and desktop layouts remain readable without horizontal page overflow.
+  - Chat feels like the product center; admin surfaces feel like supporting control rooms, not afterthought forms.
+  - Component states are consistent across auth, chat, documents, knowledge, and groups.
+
+## Personas and jobs
+- Primary personas:
+  - Product owner/reviewer validating that `my-agents` is a real AI product surface rather than a backend smoke UI.
+  - Authenticated knowledge worker using documents and conversations to inspect answer provenance.
+  - Frontend engineer extending the UI while respecting backend and security boundaries.
+  - Demo visitor or guest user trying a constrained public flow with clear limits.
+- User jobs:
+  - Sign up, log in, log out, restore a session, or continue as a limited guest.
+  - Create/select a conversation, send a message, stream the response, queue or steer a next prompt, and understand run outcome.
+  - Inspect redacted activity events and citations tied to the latest run.
+  - Create/upload documents, ingest them, monitor extraction progress, and confirm source metadata.
+  - Create knowledge bases, groups, and ID-based membership/permission changes without mistaking rough backend contracts for polished search/list UX.
+- Key contexts of use:
+  - Local development and review, with backend at `http://127.0.0.1:8000` or `http://localhost:8000` depending on configured CORS.
+  - Public/demo review where privacy, redaction, honest guest limits, and no-secret browser storage matter.
+  - Bilingual screens where Korean copy may be longer and should not break dense control surfaces.
+
+## Information architecture
+- Primary navigation:
+  - Protected app navigation is task-oriented: Chat, Documents, Knowledge, Groups.
+  - Chat is first and should be visually weighted as the default route from the service index.
+  - Mobile navigation remains horizontal-scrollable or transformed into an accessible compact pattern; it must not disappear below desktop.
+- Core routes/screens:
+  - `/`: Entry page that promises a backend-wired AI console, not a generic marketing site.
+  - `/login` and `/signup`: Two-panel trust/auth experience with guest path and account-created handoff.
+  - `/chat`: Transcript-first workspace with conversation list, composer, and progressively disclosed run history/activity/citations inspector.
+  - `/documents`: Create/upload queue + selected document actions + document list + extraction run status.
+  - `/knowledge`: Create/list knowledge bases.
+  - `/groups`: Create/list groups and ID-based member role actions.
+- Content hierarchy:
+  - Level 1: Page purpose and current user/session context.
+  - Level 2: Primary action for the route, e.g. create conversation, send message, upload/ingest document.
+  - Level 3: Progressive evidence, e.g. run status, event payload, citation snippet, document IDs, permissions; reveal in panels/tabs/accordions before forcing all metadata onscreen.
+  - Level 4: Backend limitation notes and safe recovery paths.
+
+## Design principles
+- Principle 1: Evidence stays attached to action.
+  - A response is incomplete without nearby citations and activity evidence.
+  - A document action is incomplete without visible status/progress and source metadata.
+- Principle 2: Calm density beats decorative emptiness.
+  - Use structured panes, captions, dividers, chips, and restrained color to make dense information scannable.
+  - Keep whitespace generous enough for readability, but avoid empty hero/dashboard templates that hide product capability.
+- Principle 3: Honest system boundaries build trust.
+  - Surface backend-owned constraints, guest limits, ID-based workflows, and unavailable capabilities directly in UI states.
+  - Prefer disabled states, backend-request notes, and clear empty states over mocked affordances.
+- Principle 4: Mobile-first does not mean feature-reduced.
+  - Every route must expose navigation, primary action, error recovery, and essential evidence on narrow screens.
+  - Desktop refinements may add simultaneous panes; they must not be required to complete core jobs.
+- Tradeoffs:
+  - Prioritize transcript-first chat polish over equal visual richness in admin surfaces, but use the same tokens and state language everywhere.
+  - Keep the current CSS/token implementation lightweight; rename or migrate legacy `cal-*` aliases only when a UI-code task explicitly includes it.
+  - Accept ID-heavy admin workflows until backend search/member-list contracts exist; design should make the limitation clear without shaming the product.
+  - Prefer progressive disclosure over always-visible density for inspectors and admin action panels; default view should show the task and the most relevant evidence first.
+
+## Visual language
+- Color:
+  - Direction: **ink, parchment, and signal** — off-white canvas, deep graphite/navy text, quiet gray surfaces, and a small set of high-signal accents.
+  - Recommended semantic palette for future token work:
+    - `canvas`: `#fbfaf7` warm off-white for page backgrounds.
+    - `surface`: `#ffffff` for primary cards and inputs.
+    - `surface-muted`: `#f1f0eb` for secondary panels and empty states.
+    - `surface-strong`: `#e3e0d8` for progress tracks, selected-neutral fills, and separators.
+    - `ink`: `#141617` for primary text and primary controls.
+    - `body`: `#3f4542` for readable body copy.
+    - `muted`: `#69716c` for metadata; avoid going lighter for essential text.
+    - `hairline`: `#d8d5cc` for borders.
+    - `primary`: `#14213d` deep navy for app identity and main CTAs.
+    - `primary-active`: `#0b162d` for hover/active.
+    - `accent`: `#0f766e` teal for active evidence, streaming, citations, and links when not primary navigation.
+    - `success`: `#15803d`, `warning`: `#b45309`, `error`: `#b91c1c`, `info`: `#2563eb`.
+  - Current implementation note: `app/globals.css` exposes inherited `cal-*` custom properties and Tailwind aliases. Future UI work may map these variables to the semantic palette above without adding dependencies; do not mention Cal.com in user-facing rationale.
+- Typography:
+  - Current implementation uses Next `Geist` and `Geist_Mono`; it is serviceable but not distinctive enough for the final product voice.
+  - Preferred future direction, still dependency-free through `next/font/google` if implemented later:
+    - Display/section headings: `IBM Plex Sans KR` or `Noto Serif KR` for Korean-capable authority. Use weight 600/700, tight but not extreme tracking.
+    - Body/UI: `IBM Plex Sans KR` for bilingual legibility and product-console restraint.
+    - Monospace/event payloads: `IBM Plex Mono` or current `Geist_Mono` if font scope stays minimal.
+  - Type rules: body text defaults to at least 16px; metadata may use 13px only when nonessential and high contrast; event JSON/code uses 12-13px with scroll containment.
+- Spacing/layout rhythm:
+  - Keep existing fluid spacing tokens as useful: `--space-fluid-xs` through `--space-fluid-xl` and `--text-fluid-*` support responsive scale.
+  - Use a 4px base rhythm with common steps 8, 12, 16, 24, 32, 48.
+  - Standard panels use 16px padding on mobile, 20-24px on tablet, 24-32px on desktop depending on density.
+  - Chat transcript should breathe more than inspectors; inspector cards can be denser if labels and dividers are clear.
+- Shape/radius/elevation:
+  - Controls: 10px radius for inputs/buttons; cards: 16px; major workspace panes: 20px.
+  - Use borders more than shadows. Shadows should be subtle and reserved for active/floating surfaces, e.g. `0 10px 30px rgb(20 22 23 / 0.08)`.
+  - Selected items may invert with primary navy, but avoid full-black selection unless contrast requires it.
+- Motion:
+  - Motion is functional: streaming answer presence, queued prompt reveal, upload progress, focus/hover, route/shell entrance.
+  - Use short timings: 120-180ms for hover/focus, 200-260ms for panel reveal, easing `cubic-bezier(0.2, 0.8, 0.2, 1)`.
+  - Respect `prefers-reduced-motion`; progress and streaming affordances must still be understandable without animation.
+- Imagery/iconography:
+  - Prefer product artifacts and evidence cards over illustrations.
+  - Icons should be sparse, line-based, and paired with text for primary actions.
+  - Entry/auth decorative modules should preview real concepts: transcript, event steps, citations, upload queue — not a calendar grid.
+
+## Components
+- Existing components to reuse:
+  - `components/ui/button.tsx` as the only generic button primitive.
+  - `components/keymesh/Field.tsx` and `inputClassName` for labels, inputs, textareas, selects, file inputs.
+  - `components/keymesh/Status.tsx` for `EmptyState`, `ErrorState`, `Pill`.
+  - Existing `responsive-*`, `cal-card`, `cal-product-card`, `cal-heading`, `cal-label`, `cal-subcopy` helpers until a code task renames or remaps them.
+- New/changed components:
+  - Future implementation should extract app-specific primitives before adding abstractions:
+    - `WorkspacePanel`: consistent card shell with title, description, optional action, and scroll containment.
+    - `EvidenceCard`: citation/event/source metadata display with type label, provenance, and snippet/body.
+    - `TimelineStep`: redacted agent activity row with sequence, event type, timestamp when available, and safe payload preview.
+    - `DocumentQueueItem`: standardized upload/ingest row state; current `UploadQueueRow` already points in this direction.
+    - `ResourceList` / `ResourceRow`: reusable list and selectable-row primitives for conversations, documents, knowledge bases, and groups.
+    - `MessageBubble` / `ComposerBar`: transcript primitives that keep Markdown-safe assistant rendering, plain-text user messages, queued state, and send/stop affordances consistent.
+    - `ShellIdentity`: brand/session block to reduce duplication between desktop sidebar and mobile header.
+  - Do not add these until implementation work needs them; this document defines direction, not a required refactor.
+- Variants and states:
+  - Buttons:
+    - Primary: one main action per panel where possible; filled primary navy/ink.
+    - Secondary/outline: safe alternatives, cancel/edit, navigation-adjacent actions.
+    - Ghost: low-emphasis text actions only; must keep a visible focus ring.
+    - Destructive: red-tinted background with explicit confirmation for irreversible local UI actions.
+  - Fields:
+    - Always visible labels; placeholders are examples, not labels.
+    - Hints explain backend constraints, accepted formats, guest limits, or ID expectations.
+    - Focus ring must be visible against both canvas and muted panels.
+  - Status/Pill:
+    - Use semantic tones consistently: success/completed, warning/queued or limited, error/failed/destructive, info/streaming or active evidence, neutral/default.
+    - A pill should never be the only way to understand an important state; include text in row context.
+  - Chat bubbles:
+    - User messages can use primary fill; assistant messages should use readable surface with renderer-safe Markdown.
+    - Assistant content can include headings/lists/code; user content remains literal text.
+    - Assistant message footers own answer-specific evidence actions. The compact footer should stay attached to the rendered answer, not drift into a global inspector.
+    - Footer actions must remain keyboard reachable with visible focus, expose accessible names even when rendered as icons, and keep the `다시 생성` / `Regenerate` action at least 44px tall on touch layouts.
+    - Footer evidence actions should progressively disclose that message's run details, redacted activity events, and citations without requiring users to leave the transcript reading path.
+    - Empty footer evidence states should explain that events/citations appear after a run, and disabled replay states should be explained by status copy or button state near the affected message.
+  - Event payloads:
+    - Keep raw-looking JSON visually contained and clearly labeled as redacted backend payload; long payloads scroll inside the card.
+    - Prefer summary-first rows with an optional expanded payload over raw JSON-first cards.
+- Token/component ownership:
+  - `DESIGN.md` owns brand, IA, visual language, component rules, and open questions.
+  - `app/globals.css` owns CSS custom properties, Tailwind v4 theme aliases, responsive helpers, and low-level helper classes.
+  - `components/ui/` owns generic primitives.
+  - `components/keymesh/` owns app-specific shells, workspaces, feature surfaces, and any extracted panel/list/message primitives.
+  - `localization/*.json` owns user-visible copy in Korean and English.
+
+## Accessibility
+- Target standard:
+  - WCAG 2.2 AA for contrast, focus, keyboard access, labels, and error identification.
+  - Prefer AA+ contrast for metadata because the product is evidence-heavy.
+- Keyboard/focus behavior:
+  - All buttons, links, form controls, nav items, selected conversation/document/group rows, and upload queue actions must be keyboard reachable.
+  - `focus-visible` ring should be obvious: at least 2-3px visual treatment with sufficient offset or contrast.
+  - Chat auto-scroll must not trap users or fight manual scroll position; current near-bottom behavior is correct and should be preserved.
+- Contrast/readability:
+  - Do not use essential text below 13px; prefer 14-16px for admin metadata and 16px+ for form input text.
+  - Error/success/warning states must not rely on color alone; include labels or explanatory copy.
+  - Code/pre/event payload text needs enough contrast and internal scrolling.
+- Screen-reader semantics:
+  - Preserve `aria-live` for streaming/queued/upload announcements.
+  - Loading, empty, error, and success messages should be announced where they change task state.
+  - Use semantic headings in each panel; avoid skipping from page h1 to unlabeled dense sections.
+- Reduced motion and sensory considerations:
+  - Wrap future animations in `prefers-reduced-motion` fallbacks.
+  - Avoid flashing streaming indicators; use steady progress/typing affordances.
+  - Keep destructive confirmations clear and not purely color-coded.
+
+## Responsive behavior
+- Supported breakpoints/devices:
+  - Mobile baseline: 360-430px wide, touch-first.
+  - Tablet: around 768px.
+  - Desktop: 1280px.
+  - Wide desktop: 1536px+ for multi-pane chat inspection.
+- Layout adaptations:
+  - Global/service shell:
+    - Mobile: visible header, logout, horizontally reachable primary nav, route content stacked.
+    - Desktop: persistent sidebar with brand, nav, session card, content region with bounded padding.
+  - Auth:
+    - Mobile: form should appear before excessive explanation if conversion suffers; current two-panel stack is acceptable but should be tested for scroll length.
+    - Desktop: trust/feature panel + form panel side by side.
+  - Chat:
+    - Mobile: transcript/composer should be the primary reading path after a conversation is selected; conversation list and inspectors may stack or collapse, but no route-critical panel may require horizontal scroll.
+    - Desktop: left conversation list; main column with transcript/composer and an inspector band that can be progressively disclosed.
+    - Wide desktop: run history, activity events, and citations can sit side by side, with activity events receiving the widest column, but the transcript remains the dominant surface.
+  - Admin surfaces:
+    - Use current container-query-ready `responsive-panel-grid[data-layout="form-aside"]`; forms and selected-action panels split only when the container is wide enough.
+    - De-emphasize admin-heavy density with grouped sections, collapsible/secondary action areas, and clear selected-resource context.
+    - Resource rows must wrap IDs and filenames without page overflow.
+- Touch/hover differences:
+  - Touch targets should be at least 44px high for primary controls; compact icon actions need labels or accessible names.
+  - Hover styles are enhancements only; selected/current state must be visible without hover.
+
+## Interaction states
+- Loading:
+  - Use human-readable loading copy, not spinners alone.
+  - For shell auth restore, show clear “restoring session” state and avoid a blank protected page.
+  - For lists, maintain panel structure so layout does not jump dramatically.
+- Empty:
+  - Empty states should name the missing thing and the next action, e.g. create conversation, upload document, select a group.
+  - Empty evidence panels should explain that events/citations appear after a run, not imply failure.
+- Error:
+  - Use safe backend `{ detail }` when available; never expose stack traces, raw tokens, CSRF/session IDs, or provider secrets.
+  - Errors appear close to the failed control or panel.
+  - For failed stream/upload, preserve recoverable user input where possible.
+- Success:
+  - Success states should confirm the user-visible result and next step, e.g. account created then log in, upload completed then ingest/inspect.
+  - Avoid toast-only success for workflow-critical transitions; persistent inline status is better.
+- Disabled:
+  - Disabled actions require visible context through labels, hints, or helper text when the reason is not obvious.
+  - Do not hide backend-limited actions; show honest disabled or empty states unless the route is truly unavailable.
+- Offline/slow network, if applicable:
+  - No offline mode is currently promised.
+  - Slow streaming/upload should show progress or pending copy and allow safe cancellation/removal only when supported.
+
+## Content voice
+- Tone:
+  - Precise, calm, operational, and transparent.
+  - Short sentences for controls; explanatory but not apologetic for backend limitations.
+  - Bilingual copy should preserve meaning, not line length; design must adapt to longer Korean or English strings.
+- Terminology:
+  - Use “conversation”, “run”, “activity event”, “citation”, “document”, “knowledge base”, “group”, “permission”, “guest session”.
+  - “Agent activity” means redacted operational events, not chain-of-thought.
+  - “Source” means document filename/page/snippet when backend supplies it.
+- Microcopy rules:
+  - Avoid “magic”, “brain”, “thinking”, “autonomous reasoning trace”, or claims of hidden intelligence.
+  - Say what happened and what to do next: “Run failed. Try again or edit the message.”
+  - For ID-based fields, explicitly ask for “user ID” or “group ID”; do not imply user search exists.
+  - Keep user-visible strings in `localization/ko.json` and `localization/en.json`.
+
+## Implementation constraints
+- Framework/styling system:
+  - Next.js 16 App Router, React 19, TypeScript, Tailwind CSS v4, Base UI/shadcn-style local components.
+  - En/ko localization, backend-owned auth/guest/upload limits, and the safe assistant Markdown rendering boundary are hard constraints.
+  - No new dependencies or backend edits from design/UI work unless the user explicitly approves a later implementation scope.
+  - Read local Next.js 16 docs before route/cookie/cache/server behavior changes; design-only changes should not touch these.
+- Design-token constraints:
+  - Preserve useful existing fluid type/spacing and responsive helper tokens.
+  - Current class names include `cal-*` because of prior theme work. Future frontend implementation may either:
+    - remap existing `cal-*` CSS variables to this product-specific palette with minimal code churn, or
+    - introduce semantic aliases such as `--surface`, `--ink`, `--signal-*` while keeping backward-compatible Tailwind aliases during migration.
+  - Do not perform a broad token rename without tests/build and a visual smoke.
+  - Prefer semantic status colors used sparingly and consistently over decorative color variety.
+- Performance constraints:
+  - Keep CSS and component primitives lightweight; improve reuse with small local primitives before creating new abstractions.
+  - Prefer CSS transitions and existing Tailwind utilities; do not add animation/chart libraries for polish.
+  - Event payloads and Markdown rendering must remain safe and bounded; preserve the assistant-only Markdown boundary and plain-text user message behavior.
+- Compatibility constraints:
+  - Must remain responsive across 360px, 390px, 768px, 1280px, and 1536px+ checks.
+  - Must support Korean and English strings from localization dictionaries.
+  - Must preserve backend boundary and BFF security assumptions.
+- Test/screenshot expectations:
+  - Documentation-only changes: `git diff --check` is sufficient unless docs alter commands/contracts.
+  - UI/theme/layout changes: run `pnpm lint`, `pnpm exec tsc --noEmit`, relevant Vitest/Playwright checks, `pnpm build`, and inspect relevant pages in a browser when possible.
+  - Responsive visual work should verify no horizontal overflow at narrow/tablet/desktop widths and record evidence in `docs/implementation-log.md` for substantial changes.
+  - Fixed-height desktop shells must degrade safely on mobile; test scroll regions so transcript, composer, and inspectors do not become overflow traps.
+
+## Open questions
+- [ ] Product owner / brand name: Should the visible product remain `my-agents`, or should the UI adopt a more ownable service name such as “Keymesh” while keeping repository/API names unchanged? Impact: brand lockup, metadata, copy, and nav identity.
+- [ ] Product owner / typography approval: Is a later `next/font/google` switch to `IBM Plex Sans KR` acceptable for a more distinctive bilingual voice, or must the app retain Geist for Vercel/default consistency? Impact: visual personality and Korean/English rendering.
+- [ ] Frontend owner / token migration: Should future implementation keep `cal-*` class names as compatibility aliases or migrate them to product-neutral names? Impact: diff size and risk during UI polish.
+- [ ] Frontend owner / primitive extraction: Which primitive should be extracted first after token work: `WorkspacePanel`, `ResourceList`, `MessageBubble`, or `EvidenceCard`? Impact: reduces ad hoc class strings without forcing a large refactor.
+- [ ] Backend/product owner / event display contract: Which event payload keys are guaranteed safe and stable for public display? Impact: activity timeline formatting and redaction confidence.
+- [ ] Backend/product owner / admin UX: Will user search/member listing arrive, or should ID-based group/permission workflows remain first-class? Impact: layout priority and field guidance.

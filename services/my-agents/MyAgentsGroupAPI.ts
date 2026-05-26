@@ -1,0 +1,113 @@
+import { API_PATH } from "@/constants/api-path";
+import {
+  type Group,
+  type GroupCreateRequest,
+  groupSchema,
+  type KnowledgePublishRequest,
+  type KnowledgePublishRequestCreateRequest,
+  knowledgePublishRequestSchema,
+  type MemberPatchRequest,
+  type MemberUpsertRequest,
+} from "@/model/my-agents";
+import { type MyAgentsFetchClient, myAgentsFetchClient } from "./fetch-client";
+import { parseArrayWithSchema, parseWithSchema } from "./parser";
+
+export class MyAgentsGroupAPI {
+  constructor(
+    private readonly client: Pick<
+      MyAgentsFetchClient,
+      "fetch"
+    > = myAgentsFetchClient,
+  ) {}
+
+  async create(payload: GroupCreateRequest): Promise<Group> {
+    return parseWithSchema(
+      groupSchema,
+      await this.client.fetch(API_PATH.groups.root, {
+        method: "POST",
+        body: payload,
+      }),
+    );
+  }
+
+  async list(): Promise<Group[]> {
+    return parseArrayWithSchema(
+      groupSchema,
+      await this.client.fetch(API_PATH.groups.root),
+    );
+  }
+
+  async detail(groupId: string): Promise<Group> {
+    return parseWithSchema(
+      groupSchema,
+      await this.client.fetch(API_PATH.groups.detail(groupId)),
+    );
+  }
+
+  async addMember(
+    groupId: string,
+    payload: MemberUpsertRequest,
+  ): Promise<void> {
+    await this.client.fetch(API_PATH.groups.members(groupId), {
+      method: "POST",
+      body: payload,
+    });
+  }
+
+  async updateMember(
+    groupId: string,
+    userId: string,
+    payload: MemberPatchRequest,
+  ): Promise<void> {
+    await this.client.fetch(API_PATH.groups.member(groupId, userId), {
+      method: "PATCH",
+      body: payload,
+    });
+  }
+
+  async createPublishRequest(
+    groupId: string,
+    payload: KnowledgePublishRequestCreateRequest,
+  ): Promise<KnowledgePublishRequest> {
+    return parseWithSchema(
+      knowledgePublishRequestSchema,
+      await this.client.fetch(API_PATH.groups.publishRequests(groupId), {
+        method: "POST",
+        body: payload,
+      }),
+    );
+  }
+
+  async publishRequests(groupId: string): Promise<KnowledgePublishRequest[]> {
+    return parseArrayWithSchema(
+      knowledgePublishRequestSchema,
+      await this.client.fetch(API_PATH.groups.publishRequests(groupId)),
+    );
+  }
+
+  async approvePublishRequest(
+    groupId: string,
+    requestId: string,
+  ): Promise<KnowledgePublishRequest> {
+    return parseWithSchema(
+      knowledgePublishRequestSchema,
+      await this.client.fetch(
+        API_PATH.groups.publishRequestApprove(groupId, requestId),
+        { method: "POST" },
+      ),
+    );
+  }
+
+  async rejectPublishRequest(
+    groupId: string,
+    requestId: string,
+  ): Promise<KnowledgePublishRequest> {
+    return parseWithSchema(
+      knowledgePublishRequestSchema,
+      await this.client.fetch(
+        API_PATH.groups.publishRequestReject(groupId, requestId),
+        { method: "POST" },
+      ),
+    );
+  }
+}
