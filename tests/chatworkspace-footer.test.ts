@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
   CHAT_SCROLL_REGION_CLASS_NAME,
   CHAT_WORKSPACE_PANEL_CLASS_NAME,
   getConversationCardClassName,
@@ -7,6 +8,7 @@ import {
   getNextConversationIdAfterDelete,
   isActiveAgentRunStatus,
   isConversationRunAlreadyActiveError,
+  isObservedActiveRunStale,
   REPLAY_ICON_PENDING_CLASS_NAME,
   sanitizeActivityEventPayload,
 } from "@/components/keymesh/ChatWorkspace";
@@ -52,6 +54,14 @@ describe("ChatWorkspace assistant message footer", () => {
       "current knowledge only",
     );
     expect(ko.chat.replaySourcesUnavailable).toContain("현재 사용 가능한 지식");
+    expect(en.chat.activeRunStale).toContain("interrupted");
+    expect(ko.chat.activeRunStale).toContain("중단");
+    expect(en.chat.activeRunStaleHelper).toContain("service");
+    expect(ko.chat.activeRunStaleHelper).toContain("서버");
+    expect(en.chat.runStatuses.cancelling).toBe("cancelling");
+    expect(ko.chat.runStatuses.cancelled).toBe("취소됨");
+    expect(en.chat.replayFailedAnnouncement).toContain("refreshed");
+    expect(ko.chat.replayFailedAnnouncement).toContain("새로고침");
     expect(en.chat.deleteConversationAction).toBe("Delete");
     expect(ko.chat.deleteConversationAction).toBe("삭제");
     expect(en.chat.deleteConversationConfirm).toContain(
@@ -143,6 +153,35 @@ describe("ChatWorkspace assistant message footer", () => {
           detail: "other conflict",
         }),
       ),
+    ).toBe(false);
+  });
+
+  it("detects a repeatedly observed active run as stale for interrupted-run UX", () => {
+    const observedAt = 1_000;
+
+    expect(
+      isObservedActiveRunStale({
+        activeRunId: "run-1",
+        observedRunId: "run-1",
+        observedAt,
+        now: observedAt + ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
+      }),
+    ).toBe(true);
+    expect(
+      isObservedActiveRunStale({
+        activeRunId: "run-1",
+        observedRunId: "run-1",
+        observedAt,
+        now: observedAt + ACTIVE_RUN_STALE_NOTICE_AFTER_MS - 1,
+      }),
+    ).toBe(false);
+    expect(
+      isObservedActiveRunStale({
+        activeRunId: "run-2",
+        observedRunId: "run-1",
+        observedAt,
+        now: observedAt + ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
+      }),
     ).toBe(false);
   });
 

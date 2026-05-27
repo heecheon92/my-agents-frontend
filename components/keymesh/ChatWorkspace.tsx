@@ -55,6 +55,7 @@ type RunOutcome = "completed" | "cancelled" | "failed" | "active_conflict";
 type ChatMode = "personal" | "group";
 
 const CHAT_BOTTOM_THRESHOLD_PX = 96;
+export const ACTIVE_RUN_STALE_NOTICE_AFTER_MS = 30_000;
 
 export const REPLAY_ICON_PENDING_CLASS_NAME =
   "animate-[spin_1s_linear_infinite_reverse]";
@@ -317,6 +318,27 @@ export function isActiveAgentRunStatus(status: string) {
   return status === "running" || status === "cancelling";
 }
 
+export function isObservedActiveRunStale({
+  activeRunId,
+  observedRunId,
+  observedAt,
+  now,
+  thresholdMs = ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
+}: {
+  activeRunId: string | null;
+  observedRunId: string | null;
+  observedAt: number | null;
+  now: number;
+  thresholdMs?: number;
+}) {
+  return Boolean(
+    activeRunId &&
+      activeRunId === observedRunId &&
+      observedAt !== null &&
+      now - observedAt >= thresholdMs,
+  );
+}
+
 export function isConversationRunAlreadyActiveError(error: unknown) {
   if (!isMyAgentsAPIError(error) || error.status !== 409) return false;
   const details = [error.detail, error.message];
@@ -436,6 +458,11 @@ export function ChatWorkspace() {
     null,
   );
   const [statusAnnouncement, setStatusAnnouncement] = useState("");
+  const [activeRunClock, setActiveRunClock] = useState(() => Date.now());
+  const [observedServerActiveRun, setObservedServerActiveRun] = useState<{
+    runId: string;
+    observedAt: number;
+  } | null>(null);
   const [replayingMessageId, setReplayingMessageId] = useState<string | null>(
     null,
   );
@@ -543,6 +570,12 @@ export function ChatWorkspace() {
     knowledgeBaseMode === "selected" &&
     selectedKnowledgeBaseIds.length === 0;
   const conversationIsBusy = isStreaming || Boolean(serverActiveRun);
+  const serverActiveRunIsStale = isObservedActiveRunStale({
+    activeRunId: serverActiveRunId,
+    observedRunId: observedServerActiveRun?.runId ?? null,
+    observedAt: observedServerActiveRun?.observedAt ?? null,
+    now: activeRunClock,
+  });
 
   function setQueuedMessage(nextQueuedMessage: QueuedMessage | null) {
     queuedMessageRef.current = nextQueuedMessage;
@@ -1019,9 +1052,11 @@ export function ChatWorkspace() {
     ? localization.stoppingCurrentAnswer
     : visibleQueuedMessage
       ? localization.sendNowQueuedBlocked
-      : !activeRunId && isStreaming
-        ? localization.sendNowWaitingForRun
-        : localization.sendNowHelper;
+      : serverActiveRunIsStale
+        ? localization.activeRunStaleHelper
+        : !activeRunId && isStreaming
+          ? localization.sendNowWaitingForRun
+          : localization.sendNowHelper;
   const queuedHelper =
     streamError && !isStreaming
       ? localization.queuedAfterFailureHelper
@@ -1043,6 +1078,27 @@ export function ChatWorkspace() {
     }, 2000);
     return () => window.clearInterval(intervalId);
   }, [activeId, queryClient, serverActiveRunId]);
+
+  useEffect(() => {
+    if (!serverActiveRunId) {
+      setObservedServerActiveRun(null);
+      return;
+    }
+    setActiveRunClock(Date.now());
+    setObservedServerActiveRun((current) =>
+      current?.runId === serverActiveRunId
+        ? current
+        : { runId: serverActiveRunId, observedAt: Date.now() },
+    );
+  }, [serverActiveRunId]);
+
+  useEffect(() => {
+    if (!serverActiveRunId) return;
+    const intervalId = window.setInterval(() => {
+      setActiveRunClock(Date.now());
+    }, 2000);
+    return () => window.clearInterval(intervalId);
+  }, [serverActiveRunId]);
 
   useEffect(() => {
     if (!activeId || serverActiveRunId || isStreaming || isCancelling) return;
@@ -1381,7 +1437,9 @@ export function ChatWorkspace() {
                     <AgentMessageRenderer content={streamedReply} />
                   ) : (
                     <p className="whitespace-pre-wrap break-words">
-                      {localization.agentComposing}
+                      {serverActiveRunIsStale
+                        ? localization.activeRunStale
+                        : localization.agentComposing}
                     </p>
                   )}
                   <AssistantEvidenceFooter

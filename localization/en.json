@@ -187,6 +187,8 @@
     "runStatuses": {
       "completed": "completed",
       "failed": "failed",
+      "cancelled": "cancelled",
+      "cancelling": "cancelling",
       "running": "running",
       "pending": "pending"
     },
@@ -211,7 +213,7 @@
     "replaySourcesUnavailable": "Regenerated using current knowledge only. Some sources from the original answer are no longer available.",
     "replaySourcesUnavailableAnnouncement": "Assistant message regenerated with unavailable original sources omitted.",
     "replayFailed": "Could not regenerate this assistant message.",
-    "replayFailedAnnouncement": "Assistant message regeneration failed.",
+    "replayFailedAnnouncement": "Assistant message regeneration failed. Conversation state was refreshed.",
     "replayConflict": "Only the latest assistant message can be regenerated right now.",
     "replayConflictAnnouncement": "This assistant message cannot be regenerated because it is not the latest replayable answer.",
     "groupChatMode": "Group knowledge",
@@ -240,7 +242,9 @@
     "unclassified": "not classified",
     "runEvidenceLabel": "Run evidence",
     "activityPayloadHidden": "Internal routing details hidden",
-    "groupChatCreateDisabled": "Choose at least one group before including group knowledge."
+    "groupChatCreateDisabled": "Choose at least one group before including group knowledge.",
+    "activeRunStale": "This answer appears interrupted. Checking run status…",
+    "activeRunStaleHelper": "This answer may have been interrupted. We are checking the service now; if it fails, you can retry or send your queued message."
   },
   "admin": {
     "common": {
