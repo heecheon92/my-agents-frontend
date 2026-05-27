@@ -7,11 +7,21 @@ import type {
   DocumentCreateRequest,
   DocumentPermissionPatchRequest,
   DocumentUploadRequest,
+  ExtractionRun,
   KnowledgeBaseCreateRequest,
   KnowledgeBaseDocumentCreateRequest,
   KnowledgeBaseDocumentUploadRequest,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
+
+const ACTIVE_EXTRACTION_REFETCH_INTERVAL_MS = 1000;
+
+function hasActiveExtractionRun(runs: ExtractionRun[] | undefined) {
+  return (
+    runs?.some((run) => run.status === "pending" || run.status === "running") ??
+    false
+  );
+}
 
 export function useKnowledgeBases() {
   return useQuery({
@@ -197,6 +207,10 @@ export function useExtractionRuns(documentId?: string) {
     queryKey: MyAgentsQueryKeys.documents.extractionRuns(documentId ?? ""),
     queryFn: () => myAgentsAPI.documents.extractionRuns(documentId ?? ""),
     enabled: Boolean(documentId),
+    refetchInterval: (query) =>
+      hasActiveExtractionRun(query.state.data as ExtractionRun[] | undefined)
+        ? ACTIVE_EXTRACTION_REFETCH_INTERVAL_MS
+        : false,
   });
 }
 
@@ -215,6 +229,10 @@ export function useKnowledgeBaseExtractionRuns(
         documentId ?? "",
       ),
     enabled: Boolean(knowledgeBaseId && documentId),
+    refetchInterval: (query) =>
+      hasActiveExtractionRun(query.state.data as ExtractionRun[] | undefined)
+        ? ACTIVE_EXTRACTION_REFETCH_INTERVAL_MS
+        : false,
   });
 }
 

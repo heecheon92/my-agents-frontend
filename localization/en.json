@@ -338,6 +338,7 @@
       "uploadProcessingButton": "Processing files...",
       "guestUploadLimitHint": "Guest demo uploads are limited automatically; each accepted file counts toward the 3-document upload cap.",
       "stageLabel": "Stage",
+      "ingestionLoading": "Ingestion in progress",
       "uploadStatusLabels": {
         "selected": "Selected",
         "uploading": "Uploading",

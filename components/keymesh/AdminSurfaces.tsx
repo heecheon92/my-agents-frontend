@@ -19,7 +19,7 @@ import {
   useCreateKnowledgeBase,
   useCreateKnowledgeBaseDocument,
   useDeleteKnowledgeBaseDocument,
-  useIngestKnowledgeBaseDocument,
+  useIngestKnowledgeBaseDocumentAsync,
   useKnowledgeBaseDocuments,
   useKnowledgeBaseExtractionRuns,
   useKnowledgeBases,
@@ -106,10 +106,6 @@ function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
-
-function queueProgressFromExtraction(progressPercent: number) {
-  return 40 + Math.round(Math.min(Math.max(progressPercent, 0), 100) * 0.6);
 }
 
 function safeErrorMessage(error: unknown, fallback: string) {
@@ -312,7 +308,7 @@ export function DocumentsSurface() {
     activeKnowledgeBaseId,
     activeDocumentId,
   );
-  const ingest = useIngestKnowledgeBaseDocument(
+  const ingest = useIngestKnowledgeBaseDocumentAsync(
     activeKnowledgeBaseId,
     activeDocumentId,
   );
@@ -357,6 +353,17 @@ export function DocumentsSurface() {
     .replace("{total}", String(uploadQueue.length));
   const isKnowledgeBaseSelectionLocked =
     isProcessingQueue || pendingQueueCount > 0;
+  const activeDocumentHasIngestion = Boolean(
+    extractionRuns.data?.some((run) => isActiveExtractionRunStatus(run.status)),
+  );
+  const activeIngestionDocumentIds = new Set(
+    uploadQueue
+      .filter((item) => item.documentId && isUploadQueueItemBusy(item.status))
+      .map((item) => item.documentId as string),
+  );
+  if (activeDocumentId && activeDocumentHasIngestion) {
+    activeIngestionDocumentIds.add(activeDocumentId);
+  }
 
   function updateQueueItem(
     localId: string,
@@ -468,7 +475,7 @@ export function DocumentsSurface() {
     updateQueueItem(localId, (item) => ({
       status: item.documentId ? "uploaded" : "selected",
       error: undefined,
-      progressPercent: item.documentId ? Math.max(item.progressPercent, 35) : 0,
+      progressPercent: 0,
     }));
   }
 
@@ -509,7 +516,7 @@ export function DocumentsSurface() {
       updateQueueItem(localId, {
         extractionRunId: run.id,
         status: run.status === "failed" ? "failed" : "ingesting",
-        progressPercent: queueProgressFromExtraction(run.progress_percent),
+        progressPercent: 0,
         error: run.error ?? undefined,
       });
       if (TERMINAL_EXTRACTION_STATUSES.has(run.status)) break;
@@ -560,14 +567,14 @@ export function DocumentsSurface() {
         updateQueueItem(item.localId, {
           documentId: uploaded.id,
           status: "uploaded",
-          progressPercent: 35,
+          progressPercent: 0,
         });
         await refreshDocumentQueries(uploaded.id);
       }
 
       updateQueueItem(item.localId, {
         status: "queued",
-        progressPercent: 40,
+        progressPercent: 0,
         error: undefined,
       });
       const run = await myAgentsAPI.documents.ingestAsyncInKnowledgeBase(
@@ -577,7 +584,7 @@ export function DocumentsSurface() {
       updateQueueItem(item.localId, {
         extractionRunId: run.id,
         status: run.status === "pending" ? "queued" : "ingesting",
-        progressPercent: queueProgressFromExtraction(run.progress_percent),
+        progressPercent: 0,
       });
 
       const completedRun = TERMINAL_EXTRACTION_STATUSES.has(run.status)
@@ -587,7 +594,7 @@ export function DocumentsSurface() {
       if (completedRun?.status === "completed") {
         updateQueueItem(item.localId, {
           status: "completed",
-          progressPercent: 100,
+          progressPercent: 0,
           error: undefined,
         });
         setUploadAnnouncement(
@@ -603,9 +610,7 @@ export function DocumentsSurface() {
       updateQueueItem(item.localId, {
         status: "failed",
         error: completedRun?.error ?? localization.documents.uploadFailed,
-        progressPercent: completedRun
-          ? queueProgressFromExtraction(completedRun.progress_percent)
-          : 0,
+        progressPercent: 0,
       });
       setUploadAnnouncement(
         localization.documents.uploadFailedAnnouncement.replace(
@@ -972,9 +977,15 @@ export function DocumentsSurface() {
             <Button
               className="mt-4 w-full"
               onClick={() => ingest.mutate()}
-              disabled={!activeDocumentId || ingest.isPending}
+              disabled={
+                !activeDocumentId ||
+                ingest.isPending ||
+                activeDocumentHasIngestion
+              }
             >
-              {localization.documents.runIngest}
+              {activeDocumentHasIngestion
+                ? localization.documents.ingestionLoading
+                : localization.documents.runIngest}
             </Button>
             {ingest.error ? (
               <div className="mt-3">
@@ -1054,27 +1065,15 @@ export function DocumentsSurface() {
                     <Pill tone={extractionRunTone(run.status)}>
                       {run.status}
                     </Pill>
-                    <span className="text-xs text-cal-muted">
-                      {run.progress_percent}%
-                    </span>
+                    {isActiveExtractionRunStatus(run.status) ? (
+                      <InlineLoadingIndicator
+                        label={localization.documents.ingestionLoading}
+                      />
+                    ) : null}
                   </div>
                   <p className="mt-2 break-all font-mono text-xs text-cal-muted">
                     ID: {run.id}
                   </p>
-                  <div
-                    className="mt-2 h-2 overflow-hidden rounded-full bg-cal-surface-strong"
-                    role="progressbar"
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={Math.min(run.progress_percent, 100)}
-                  >
-                    <div
-                      className={`h-full rounded-full ${extractionProgressClassName(run.status)}`}
-                      style={{
-                        width: `${Math.min(run.progress_percent, 100)}%`,
-                      }}
-                    />
-                  </div>
                   <p className="mt-2 text-cal-muted">
                     {run.chunk_count} {localization.common.chunks} ·{" "}
                     {run.entity_count} {localization.common.entities} ·{" "}
@@ -1114,6 +1113,13 @@ export function DocumentsSurface() {
                 <span className="mt-1 block break-words text-xs opacity-70">
                   {documentMeta(doc, localization)}
                 </span>
+                {activeIngestionDocumentIds.has(doc.id) ? (
+                  <span className="mt-2 inline-flex">
+                    <InlineLoadingIndicator
+                      label={localization.documents.ingestionLoading}
+                    />
+                  </span>
+                ) : null}
               </button>
             ))}
           </ResourceList>
@@ -1140,6 +1146,7 @@ function UploadQueueRow({
     fileTitleLabel: string;
     retryUpload: string;
     removeUpload: string;
+    ingestionLoading: string;
   };
   onTitleChange: (localId: string, title: string) => void;
   onRemove: (localId: string) => void;
@@ -1147,7 +1154,7 @@ function UploadQueueRow({
   disabled: boolean;
 }) {
   const canEdit = !disabled && ["selected", "failed"].includes(item.status);
-  const progress = Math.min(Math.max(item.progressPercent, 0), 100);
+  const isBusy = isUploadQueueItemBusy(item.status);
 
   return (
     <article className="rounded-xl border border-cal-hairline bg-cal-canvas p-3 text-sm">
@@ -1157,6 +1164,9 @@ function UploadQueueRow({
             <Pill tone={uploadStatusTone(item.status)}>
               {localization.uploadStatusLabels[item.status]}
             </Pill>
+            {isBusy ? (
+              <InlineLoadingIndicator label={localization.ingestionLoading} />
+            ) : null}
             <span className="rounded-full bg-cal-surface-soft px-2 py-1 text-xs font-medium text-cal-muted">
               {uploadFileTypeLabel(item.file, localization)}
             </span>
@@ -1212,18 +1222,6 @@ function UploadQueueRow({
           </Button>
         </div>
       </div>
-      <div
-        className="mt-3 h-2 overflow-hidden rounded-full bg-cal-surface-strong"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={progress}
-      >
-        <div
-          className={`h-full rounded-full transition-all ${uploadProgressClassName(item.status)}`}
-          style={{ width: `${progress}%` }}
-        />
-      </div>
       {item.error ? (
         <p className="mt-2 break-words text-xs text-cal-error">{item.error}</p>
       ) : null}
@@ -1239,13 +1237,6 @@ function uploadStatusTone(status: UploadQueueStatus): StatusTone {
   return "slate";
 }
 
-function uploadProgressClassName(status: UploadQueueStatus) {
-  if (status === "completed") return "bg-cal-success";
-  if (status === "failed") return "bg-cal-error";
-  if (status === "queued" || status === "uploaded") return "bg-cal-warning";
-  return "bg-cal-primary";
-}
-
 function extractionRunTone(status: string): StatusTone {
   if (status === "completed") return "green";
   if (status === "failed") return "rose";
@@ -1253,11 +1244,26 @@ function extractionRunTone(status: string): StatusTone {
   return "blue";
 }
 
-function extractionProgressClassName(status: string) {
-  if (status === "completed") return "bg-cal-success";
-  if (status === "failed") return "bg-cal-error";
-  if (status === "pending") return "bg-cal-warning";
-  return "bg-cal-primary";
+function isActiveExtractionRunStatus(status: string) {
+  return status === "pending" || status === "running";
+}
+
+function isUploadQueueItemBusy(status: UploadQueueStatus) {
+  return (
+    status === "uploading" || status === "queued" || status === "ingesting"
+  );
+}
+
+function InlineLoadingIndicator({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-cal-muted">
+      <span
+        aria-hidden="true"
+        className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent"
+      />
+      {label}
+    </span>
+  );
 }
 
 function uploadFileTypeLabel(

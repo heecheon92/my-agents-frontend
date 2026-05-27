@@ -338,6 +338,7 @@
       "uploadProcessingButton": "파일 처리 중...",
       "guestUploadLimitHint": "게스트 데모 업로드 제한은 자동으로 적용되며, 수락된 각 파일은 문서 업로드 3개 제한에 포함됩니다.",
       "stageLabel": "단계",
+      "ingestionLoading": "수집 진행 중",
       "uploadStatusLabels": {
         "selected": "선택됨",
         "uploading": "업로드 중",
