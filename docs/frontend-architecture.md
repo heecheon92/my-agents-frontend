@@ -22,7 +22,8 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | `app/` | Next.js App Router pages, layouts, providers, and route handlers. |
 | `app/api/my-agents/[...path]/route.ts` | Same-origin BFF for approved backend routes. |
 | `components/ui/` | Generic shadcn/Base UI-style primitives. |
-| `components/keymesh/` | App-specific product components and surfaces. |
+| `components/` | App-specific product components and surfaces. |
+| `components/chat/` | Ask workspace subcomponents: conversation list, transcript, message bubble, evidence panel, knowledge selector, and composer. |
 | `constants/` | API paths, query keys, HTTP/header constants. |
 | `model/my-agents/` | Zod schemas and inferred TypeScript types for backend contracts. |
 | `services/my-agents/` | Typed service classes that call the BFF. |
@@ -40,12 +41,12 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | Route | Component | Notes |
 | --- | --- | --- |
 | `/` | `app/page.tsx` | Marketing/landing entry point. |
-| `/login` | `components/keymesh/AuthPanel.tsx` | Login through BFF `/auth/login`. |
-| `/signup` | `components/keymesh/AuthPanel.tsx` | Signup parses the backend `SignupResponse` envelope and shows an account-created handoff before login. |
-| `/chat` | `components/keymesh/ChatWorkspace.tsx` | Anchor journey. Uses conversations, messages, streamed run answer deltas, events, citations, and `All`/selected knowledge-base retrieval scope. |
-| `/documents` | `components/keymesh/AdminSurfaces.tsx` | KB-first document create/list/delete, PDF/Markdown/plain-text drag-and-drop or file-picker upload into the selected knowledge base, KB-scoped ingest, extraction runs, permission patch. |
-| `/knowledge` | `components/keymesh/AdminSurfaces.tsx` | Knowledge-base create/list. Documents are added from `/documents` after choosing a KB. |
-| `/groups` | `components/keymesh/AdminSurfaces.tsx` | Group create/list and ID-based membership role actions. |
+| `/login` | `components/AuthPanel.tsx` | Login through BFF `/auth/login`. |
+| `/signup` | `components/AuthPanel.tsx` | Signup parses the backend `SignupResponse` envelope and shows an account-created handoff before login. |
+| `/chat` | `components/ChatWorkspace.tsx` + `components/chat/*` | Anchor Ask journey. Uses conversations, messages, streamed answers, citations near assistant replies, a compact top-of-chat knowledge selector, and collapsed response evidence/work history. |
+| `/documents` | `components/AdminSurfaces.tsx` | “Add sources” journey. Adds text/files to a selected knowledge space; low-level permission and processing details are behind Advanced disclosure. |
+| `/knowledge` | `components/AdminSurfaces.tsx` | “Knowledge” journey. Creates/lists personal and team knowledge spaces and explains add sources → ask → inspect citations. |
+| `/groups` | `components/AdminSurfaces.tsx` | “Teams” journey. Manages shared knowledge requests and keeps raw ID-based member controls in Advanced disclosure. |
 
 All service routes live under `app/(service)/layout.tsx`, which renders `ServiceShell` and restores auth through `/auth/me`.
 
@@ -56,7 +57,7 @@ flowchart TD
     Model[model/my-agents Zod schemas] --> Services[services/my-agents classes]
     Constants[constants/api-path + query-keys] --> Services
     Services --> Hooks[hooks/use-*]
-    Hooks --> Components[components/keymesh]
+    Hooks --> Components[components]
     Components --> Pages[app route pages]
 ```
 
@@ -66,7 +67,7 @@ When adding or changing a backend-backed feature:
 2. Add or update `constants/api-path.ts` and `constants/query-keys.ts`.
 3. Add a method to the matching service class in `services/my-agents/`.
 4. Add or update a TanStack Query hook in `hooks/`.
-5. Build the UI in `components/keymesh/` and route page in `app/`.
+5. Build the UI in `components/` and route page in `app/`.
 6. Add tests for path/query/parser/security behavior when relevant.
 
 ## Endpoint coverage
@@ -124,7 +125,7 @@ The BFF allowlist currently covers:
 Before changing UI/theme/layout code:
 
 1. Read the relevant `DESIGN.md` sections.
-2. Reuse existing `components/keymesh/` and `components/ui/` primitives first.
+2. Reuse existing `components/` and `components/ui/` primitives first.
 3. Apply `.agents/skills/responsive-design/SKILL.md`: mobile-first defaults, fluid type/spacing, container-query-ready reusable panels, overflow protection, and touch-target checks.
 4. Map new visual values back to `DESIGN.md` tokens or add/update an explicit design note.
 5. Keep user-visible strings in `localization/ko.json` and `localization/en.json`.
@@ -133,12 +134,13 @@ Before changing UI/theme/layout code:
 The UI should stay polished but not noisy:
 
 - Use readable spacing, generous body text, and clear empty/error/loading states.
-- Keep chat as the primary product anchor surface.
-- Keep admin surfaces honest and usable even when backend contracts are ID-based.
-- Prefer `components/keymesh/` extraction over large route-page component trees.
+- Keep Ask/chat as the primary product anchor surface.
+- Treat Documents/Add sources and Knowledge as one mental model: sources live inside knowledge spaces and then power cited answers.
+- Keep admin surfaces honest and usable even when backend contracts are ID-based, but hide raw IDs in Advanced disclosure by default.
+- Prefer `components/` extraction over large route-page component trees.
 
 ## Assistant output rendering
 
-Assistant-authored chat content is rendered through `components/keymesh/AgentMessageRenderer.tsx`, which currently delegates Markdown strings to `components/keymesh/AgentMarkdown.tsx`. User-authored messages stay plain text by default.
+Assistant-authored chat content is rendered through `components/AgentMessageRenderer.tsx`, which currently delegates Markdown strings to `components/AgentMarkdown.tsx`. User-authored messages stay plain text by default.
 
 Supported Markdown is intentionally compact for chat bubbles: paragraphs, headings, strong text, unordered/ordered lists, inline code, code blocks, and safe external links. Raw HTML is not enabled; do not add `rehype-raw`, `dangerouslySetInnerHTML`, executable diagram specs, or arbitrary chart JavaScript. Future chart/graph/diagram/table/tool-result cards should enter through the `AgentArtifact` boundary with backend-validated JSON contracts before any rich renderer is added.

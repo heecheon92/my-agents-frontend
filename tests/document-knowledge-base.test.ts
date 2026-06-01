@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { writableDocumentKnowledgeBases } from "@/components/keymesh/document-knowledge-base";
+import { writableDocumentKnowledgeBases } from "@/components/document-knowledge-base";
 import type { KnowledgeBase } from "@/model/my-agents";
 
 function knowledgeBase(partial: Partial<KnowledgeBase>): KnowledgeBase {

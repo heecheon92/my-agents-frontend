@@ -4,14 +4,15 @@ Use this file first when a fresh Codex session starts in `my-agents-frontend`.
 
 ## Mission
 
-`my-agents-frontend` is the frontend companion for the backend service in `../my-agents`. The product is a polished AI service console where authenticated users can:
+`my-agents-frontend` is the frontend companion for the backend service in `../my-agents`. The product is a user-facing AI workspace where authenticated users can:
 
 - sign up, log in, log out, and restore session state;
-- manage conversations and send messages through product run endpoints;
-- inspect server-owned transcripts, run history, redacted agent events, and citations;
-- manage documents, knowledge bases, groups, memberships, and document permissions through available backend contracts.
+- add/manage knowledge sources;
+- ask questions through product run endpoints;
+- inspect citations beside answers and open work history only when needed;
+- manage knowledge spaces, teams, memberships, and document permissions through available backend contracts.
 
-The frontend should remain understandable for manual maintenance. Its structure uses project-local conventions: top-level `constants/`, `model/`, `services/`, `server/`, `providers/`, `hooks/`, and app-specific `components/keymesh/`.
+The frontend should remain understandable for manual maintenance. Its structure uses project-local conventions: top-level `constants/`, `model/`, `services/`, `server/`, `providers/`, `hooks/`, and app-specific `components/`.
 
 ## Current implementation status
 
@@ -20,8 +21,8 @@ The first full frontend queue has been implemented and verified:
 - Project-local service/model/query foundation.
 - Next BFF route handler at `app/api/my-agents/[...path]/route.ts`.
 - Auth shell and protected service layout.
-- Chat anchor journey using `/conversations/{id}/runs`.
-- Documents, knowledge bases, groups, membership, and permission surfaces.
+- Ask anchor journey using `/conversations/{id}/runs`, split into smaller chat UI components under `components/chat/`.
+- Add sources, Knowledge, and Teams surfaces with raw ID/processing controls moved into Advanced disclosure where possible.
 - Unit tests for path builders, query keys, BFF proxy policy, browser-safe auth response shape, and no-body mutation headers.
 
 For chronological details, read `docs/implementation-log.md`.

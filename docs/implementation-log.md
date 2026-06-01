@@ -1,3 +1,13 @@
+## 2026-06-01 — User-facing AI workspace UI polish
+
+- Reframed the protected shell around Ask, Add sources, Knowledge, and Teams; the sidebar session card now stays concise instead of listing internal proof bullets.
+- Split the Ask workspace into focused chat UI components under `components/chat/`: conversation sidebar, transcript, message bubble, response evidence panel, knowledge-source selector, and composer bar.
+- Kept citations attached to assistant answers as a compact count/label disclosure, with full source cards, answer history, and activity details opt-in; raw run/source IDs are only shown from advanced details.
+- Reframed Documents/Knowledge as one journey: knowledge spaces contain sources, Add sources prepares files/text for Ask, and permission/processing internals are behind Advanced sections.
+- Updated Korean/English product copy, README, architecture/onboarding/runbook notes, and the design contract to match the user-facing workspace direction.
+
+Verification passed for this log entry: `pnpm lint`, `pnpm typecheck`, `pnpm test` (15 files / 80 tests), `pnpm build`, `pnpm exec playwright test --reporter=line` (9 passed / 2 skipped, including compact citation disclosure coverage), browser smoke of `/chat` unauthenticated gate and `/login` at `http://localhost:3000` with no horizontal overflow (`/login` zero browser console errors; `/chat` only the expected unauthenticated `/auth/me` 401), backend boundary check, and `git diff --check`.
+
 ## 2026-05-24 — Group Knowledge V1 frontend contract wiring
 
 ## 2026-05-25 — Group knowledge copy and chat source reframe
@@ -289,7 +299,7 @@ Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `
 - Aligned extraction-run rows with the same status/progress treatment and explicit run IDs, while preserving backend-owned upload limits and existing ID-only permission/member contracts.
 - Re-checked `AdminSurfaces.handleFileSelection` and found only one `event.currentTarget.value = ""` reset, so no duplicate reset was removed.
 
-Verification passed for this log entry: `pnpm install --frozen-lockfile`, `pnpm exec biome check --write components/keymesh/AdminSurfaces.tsx`, `pnpm exec tsc --noEmit`, `pnpm lint`, `pnpm exec vitest run tests/document-api.test.ts tests/api-path.test.ts tests/proxy-policy.test.ts`, `pnpm exec vitest run`, `pnpm build`, and `git diff --check`. Browser smoke reached `/documents` at 390px through the auth gate; unauthenticated local backend returned the expected `401 /api/my-agents/auth/me`, so authenticated responsive screenshots remain deferred to an environment with a valid session/backend.
+Verification passed for this log entry: `pnpm install --frozen-lockfile`, `pnpm exec biome check --write components/AdminSurfaces.tsx`, `pnpm exec tsc --noEmit`, `pnpm lint`, `pnpm exec vitest run tests/document-api.test.ts tests/api-path.test.ts tests/proxy-policy.test.ts`, `pnpm exec vitest run`, `pnpm build`, and `git diff --check`. Browser smoke reached `/documents` at 390px through the auth gate; unauthenticated local backend returned the expected `401 /api/my-agents/auth/me`, so authenticated responsive screenshots remain deferred to an environment with a valid session/backend.
 
 ## 2026-05-22 — multi-file async upload queue
 
@@ -315,9 +325,9 @@ Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `
 
 ## 2026-05-24 — Group Knowledge V1 source-boundary UX preview
 
-- Added a Group Chat preview mode in `components/keymesh/ChatWorkspace.tsx` that distinguishes personal conversations from group-context conversations, labels transcripts as private, shows mandatory group KBs as fixed sources, and presents optional private personal KB attachments without sending them.
+- Added a Group Chat preview mode in `components/ChatWorkspace.tsx` that distinguishes personal conversations from group-context conversations, labels transcripts as private, shows mandatory group KBs as fixed sources, and presents optional private personal KB attachments without sending them.
 - Kept backend-first constraints: no API model/client changes were made, and group-chat create/send is disabled until a hosted backend OpenAPI proves the V1 source contract.
-- Added disabled publish request and owner/admin review controls in `components/keymesh/AdminSurfaces.tsx` so the intended workflow is visible without inventing backend routes.
+- Added disabled publish request and owner/admin review controls in `components/AdminSurfaces.tsx` so the intended workflow is visible without inventing backend routes.
 - Recorded the missing backend OpenAPI contract in `docs/backend-requests.md`.
 
 ## 2026-05-24 — group KB creation and publish-only group document boundary

@@ -107,7 +107,7 @@ Frontend need: A backend-owned way to disable public signup after or during the 
 Current backend behavior: The frontend currently posts signup attempts to `POST /auth/signup` and renders standard backend `{ detail }` errors through `ErrorState`. A 403 response with a safe string detail would already display as a user-facing auth error.
 Requested backend contract: Add or document an environment/config switch that disables signup, returns a non-2xx response such as HTTP 403 with a safe `{ detail: string }` body, leaves login/session restore available for existing approved accounts, and avoids exposing stack traces, provider configuration, or operational secrets.
 Why it matters: The public demo is reviewer-facing, not an open SaaS. Signup disable is the preferred abuse-control and rollback path once evidence collection is complete or if preview traffic becomes risky.
-Frontend workaround, if any: No UI change needed if the backend returns a safe `{ detail }`; `services/my-agents/fetch-client.ts` preserves string details and `components/keymesh/AuthPanel.tsx` renders mutation errors through `ErrorState`.
+Frontend workaround, if any: No UI change needed if the backend returns a safe `{ detail }`; `services/my-agents/fetch-client.ts` preserves string details and `components/AuthPanel.tsx` renders mutation errors through `ErrorState`.
 
 
 ## 2026-05-24 — Group Knowledge V1 OpenAPI gate

@@ -156,6 +156,19 @@ export function KnowledgeSurface() {
       title={localization.knowledge.title}
       description={localization.knowledge.description}
     >
+      <section className="responsive-card-grid">
+        {localization.knowledge.journeySteps.map((step, index) => (
+          <article
+            key={step}
+            className="rounded-xl border border-cal-hairline bg-cal-canvas p-4 text-sm leading-6 text-cal-body"
+          >
+            <span className="mb-3 inline-flex size-8 items-center justify-center rounded-full bg-cal-primary text-sm font-semibold text-white">
+              {index + 1}
+            </span>
+            {step}
+          </article>
+        ))}
+      </section>
       <form
         onSubmit={handleSubmit}
         className="cal-card grid gap-3 rounded-xl p-4"
@@ -261,8 +274,8 @@ export function KnowledgeSurface() {
                   : localization.knowledge.listPersonalSubtitle
               }
               meta={
-                kb.group_id
-                  ? `${localization.common.groupPrefix} ${kb.group_id.slice(0, 8)}`
+                isGroupKnowledgeBase
+                  ? localization.common.scopeGroup
                   : localization.common.scopePersonal
               }
             />
@@ -964,9 +977,14 @@ export function DocumentsSurface() {
                     </p>
                   </div>
                 ) : null}
-                <p className="break-all rounded-lg bg-cal-canvas p-2 font-mono text-xs text-cal-muted">
-                  ID: {activeDocumentId}
-                </p>
+                <details className="rounded-lg bg-cal-canvas p-2 text-xs text-cal-muted">
+                  <summary className="cursor-pointer font-medium text-cal-ink">
+                    {localization.documents.advancedDetails}
+                  </summary>
+                  <p className="mt-2 break-all font-mono">
+                    ID: {activeDocumentId}
+                  </p>
+                </details>
               </div>
             ) : (
               <EmptyState
@@ -992,32 +1010,39 @@ export function DocumentsSurface() {
                 <ErrorState error={ingest.error} />
               </div>
             ) : null}
-            <form
-              onSubmit={handlePatchPermission}
-              className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
-            >
-              <Field
-                label={localization.documents.permissionLabel}
-                hint={localization.documents.permissionHint}
+            <details className="mt-4 border-t border-cal-hairline pt-4">
+              <summary className="cursor-pointer text-sm font-semibold text-cal-ink">
+                {localization.documents.permissionAdvancedTitle}
+              </summary>
+              <form
+                onSubmit={handlePatchPermission}
+                className="mt-3 grid gap-3"
               >
-                <input
-                  className={inputClassName}
-                  value={permissionUserId}
-                  onChange={(event) => setPermissionUserId(event.target.value)}
-                />
-              </Field>
-              <Button
-                type="submit"
-                variant="outline"
-                disabled={
-                  !activeDocumentId ||
-                  !permissionUserId.trim() ||
-                  patchPermission.isPending
-                }
-              >
-                {localization.documents.patchPermission}
-              </Button>
-            </form>
+                <Field
+                  label={localization.documents.permissionLabel}
+                  hint={localization.documents.permissionHint}
+                >
+                  <input
+                    className={inputClassName}
+                    value={permissionUserId}
+                    onChange={(event) =>
+                      setPermissionUserId(event.target.value)
+                    }
+                  />
+                </Field>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={
+                    !activeDocumentId ||
+                    !permissionUserId.trim() ||
+                    patchPermission.isPending
+                  }
+                >
+                  {localization.documents.patchPermission}
+                </Button>
+              </form>
+            </details>
             {patchPermission.error ? (
               <div className="mt-3">
                 <ErrorState error={patchPermission.error} />
@@ -1044,52 +1069,55 @@ export function DocumentsSurface() {
                 <ErrorState error={deleteDocument.error} />
               ) : null}
             </div>
-            <h3 className="mt-6 font-semibold">
-              {localization.documents.extractionRuns}
-            </h3>
-            <div className="mt-3 grid gap-2">
-              {extractionRuns.data?.length === 0 ? (
-                <EmptyState
-                  title={localization.documents.noExtractionRunsTitle}
-                  description={
-                    localization.documents.noExtractionRunsDescription
-                  }
-                />
-              ) : null}
-              {extractionRuns.data?.map((run) => (
-                <div
-                  key={run.id}
-                  className="rounded-lg bg-cal-surface-soft p-3 text-sm"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Pill tone={extractionRunTone(run.status)}>
-                      {run.status}
-                    </Pill>
-                    {isActiveExtractionRunStatus(run.status) ? (
-                      <InlineLoadingIndicator
-                        label={localization.documents.ingestionLoading}
-                      />
+            <details className="mt-6 border-t border-cal-hairline pt-4">
+              <summary className="cursor-pointer font-semibold text-cal-ink">
+                {localization.documents.extractionRuns}
+              </summary>
+              <div className="mt-3 grid gap-2">
+                {extractionRuns.data?.length === 0 ? (
+                  <EmptyState
+                    title={localization.documents.noExtractionRunsTitle}
+                    description={
+                      localization.documents.noExtractionRunsDescription
+                    }
+                  />
+                ) : null}
+                {extractionRuns.data?.map((run) => (
+                  <div
+                    key={run.id}
+                    className="rounded-lg bg-cal-surface-soft p-3 text-sm"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Pill tone={extractionRunTone(run.status)}>
+                        {run.status}
+                      </Pill>
+                      {isActiveExtractionRunStatus(run.status) ? (
+                        <InlineLoadingIndicator
+                          label={localization.documents.ingestionLoading}
+                        />
+                      ) : null}
+                    </div>
+                    <p className="mt-2 break-all font-mono text-xs text-cal-muted">
+                      ID: {run.id}
+                    </p>
+                    <p className="mt-2 text-cal-muted">
+                      {run.chunk_count} {localization.common.chunks} ·{" "}
+                      {run.entity_count} {localization.common.entities} ·{" "}
+                      {run.relationship_count}{" "}
+                      {localization.common.relationships}
+                    </p>
+                    {run.stage ? (
+                      <p className="mt-1 text-xs text-cal-muted">
+                        {localization.documents.stageLabel}: {run.stage}
+                      </p>
+                    ) : null}
+                    {run.error ? (
+                      <p className="mt-1 text-xs text-cal-error">{run.error}</p>
                     ) : null}
                   </div>
-                  <p className="mt-2 break-all font-mono text-xs text-cal-muted">
-                    ID: {run.id}
-                  </p>
-                  <p className="mt-2 text-cal-muted">
-                    {run.chunk_count} {localization.common.chunks} ·{" "}
-                    {run.entity_count} {localization.common.entities} ·{" "}
-                    {run.relationship_count} {localization.common.relationships}
-                  </p>
-                  {run.stage ? (
-                    <p className="mt-1 text-xs text-cal-muted">
-                      {localization.documents.stageLabel}: {run.stage}
-                    </p>
-                  ) : null}
-                  {run.error ? (
-                    <p className="mt-1 text-xs text-cal-error">{run.error}</p>
-                  ) : null}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            </details>
           </section>
           <ResourceList
             loading={documents.isLoading}
@@ -1140,6 +1168,7 @@ function UploadQueueRow({
   item: UploadQueueItem;
   localization: {
     uploadStatusLabels: Record<UploadQueueStatus, string>;
+    advancedDetails: string;
     fileTypePdf: string;
     fileTypeMarkdown: string;
     fileTypeText: string;
@@ -1178,14 +1207,19 @@ function UploadQueueRow({
             {item.file.name}
           </p>
           {item.documentId || item.extractionRunId ? (
-            <div className="mt-2 grid gap-1 rounded-lg bg-cal-surface-soft p-2 font-mono text-[11px] leading-5 text-cal-muted">
-              {item.documentId ? (
-                <span className="break-all">doc: {item.documentId}</span>
-              ) : null}
-              {item.extractionRunId ? (
-                <span className="break-all">run: {item.extractionRunId}</span>
-              ) : null}
-            </div>
+            <details className="mt-2 rounded-lg bg-cal-surface-soft p-2 text-xs text-cal-muted">
+              <summary className="cursor-pointer font-medium text-cal-ink">
+                {localization.advancedDetails}
+              </summary>
+              <div className="mt-2 grid gap-1 font-mono text-[11px] leading-5">
+                {item.documentId ? (
+                  <span className="break-all">doc: {item.documentId}</span>
+                ) : null}
+                {item.extractionRunId ? (
+                  <span className="break-all">run: {item.extractionRunId}</span>
+                ) : null}
+              </div>
+            </details>
           ) : null}
           <label className="mt-2 grid gap-1 text-xs font-medium text-cal-muted">
             {localization.fileTitleLabel}
@@ -1457,87 +1491,91 @@ export function GroupsSurface() {
                 description={localization.groups.noSelectedDescription}
               />
             )}
-            <form
-              onSubmit={handleAddMember}
-              className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
-            >
-              <Field label={localization.groups.addMemberLabel}>
-                <input
-                  className={inputClassName}
-                  value={memberUserId}
-                  onChange={(event) => setMemberUserId(event.target.value)}
-                  disabled={!canManageMembers}
-                />
-              </Field>
-              <RoleSelect
-                label={localization.groups.roleLabel}
-                labels={localization.groups.roles}
-                value={memberRole}
-                onChange={setMemberRole}
-                disabled={!canManageMembers}
-              />
-              <Button
-                type="submit"
-                disabled={
-                  !canManageMembers ||
-                  !activeGroupId ||
-                  !memberUserId.trim() ||
-                  addMember.isPending
-                }
-              >
-                {localization.groups.upsertMember}
-              </Button>
-            </form>
-            {addMember.error ? (
-              <div className="mt-3">
-                <ErrorState error={addMember.error} />
+            <details className="mt-4 border-t border-cal-hairline pt-4">
+              <summary className="cursor-pointer text-sm font-semibold text-cal-ink">
+                {localization.groups.advancedMembershipTitle}
+              </summary>
+              <div className="mt-3 grid gap-3">
+                <form onSubmit={handleAddMember} className="grid gap-3">
+                  <Field label={localization.groups.addMemberLabel}>
+                    <input
+                      className={inputClassName}
+                      value={memberUserId}
+                      onChange={(event) => setMemberUserId(event.target.value)}
+                      disabled={!canManageMembers}
+                    />
+                  </Field>
+                  <RoleSelect
+                    label={localization.groups.roleLabel}
+                    labels={localization.groups.roles}
+                    value={memberRole}
+                    onChange={setMemberRole}
+                    disabled={!canManageMembers}
+                  />
+                  <Button
+                    type="submit"
+                    disabled={
+                      !canManageMembers ||
+                      !activeGroupId ||
+                      !memberUserId.trim() ||
+                      addMember.isPending
+                    }
+                  >
+                    {localization.groups.upsertMember}
+                  </Button>
+                </form>
+                {addMember.error ? (
+                  <div>
+                    <ErrorState error={addMember.error} />
+                  </div>
+                ) : null}
+                <form
+                  onSubmit={handleUpdateMember}
+                  className="grid gap-3 border-t border-cal-hairline pt-4"
+                >
+                  <Field label={localization.groups.patchMemberLabel}>
+                    <input
+                      className={inputClassName}
+                      value={updateUserId}
+                      onChange={(event) => setUpdateUserId(event.target.value)}
+                      disabled={!canManageMembers}
+                    />
+                  </Field>
+                  <RoleSelect
+                    label={localization.groups.roleLabel}
+                    labels={localization.groups.roles}
+                    value={updateRole}
+                    onChange={setUpdateRole}
+                    disabled={!canManageMembers}
+                  />
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={
+                      !canManageMembers ||
+                      !activeGroupId ||
+                      !updateUserId.trim() ||
+                      updateMember.isPending
+                    }
+                  >
+                    {localization.groups.patchRole}
+                  </Button>
+                </form>
+                {updateMember.error ? (
+                  <div>
+                    <ErrorState error={updateMember.error} />
+                  </div>
+                ) : null}
+                <p className="rounded-lg border border-cal-hairline bg-cal-surface-strong p-3 text-sm leading-6 text-cal-body">
+                  {localization.groups.memberIdNote}
+                </p>
               </div>
-            ) : null}
-            <form
-              onSubmit={handleUpdateMember}
-              className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
-            >
-              <Field label={localization.groups.patchMemberLabel}>
-                <input
-                  className={inputClassName}
-                  value={updateUserId}
-                  onChange={(event) => setUpdateUserId(event.target.value)}
-                  disabled={!canManageMembers}
-                />
-              </Field>
-              <RoleSelect
-                label={localization.groups.roleLabel}
-                labels={localization.groups.roles}
-                value={updateRole}
-                onChange={setUpdateRole}
-                disabled={!canManageMembers}
-              />
-              <Button
-                type="submit"
-                variant="outline"
-                disabled={
-                  !canManageMembers ||
-                  !activeGroupId ||
-                  !updateUserId.trim() ||
-                  updateMember.isPending
-                }
-              >
-                {localization.groups.patchRole}
-              </Button>
-            </form>
-            {updateMember.error ? (
-              <div className="mt-3">
-                <ErrorState error={updateMember.error} />
-              </div>
-            ) : null}
+            </details>
             {!canManageMembers ? (
               <p className="mt-4 rounded-lg border border-cal-warning/40 bg-cal-warning/10 p-3 text-sm leading-6 text-cal-body">
                 {localization.groups.membershipManagerOnlyHint}
               </p>
             ) : null}
-            <p className="mt-4 rounded-lg border border-cal-hairline bg-cal-surface-strong p-3 text-sm leading-6 text-cal-body">
-              {localization.groups.memberIdNote}
-            </p>
           </section>
           <section className="cal-card rounded-xl p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1723,20 +1761,30 @@ export function GroupsSurface() {
               {publishRequests.data?.length ? (
                 <div className="mt-3 grid gap-2">
                   {publishRequests.data.map((request) => (
-                    <button
+                    <article
                       key={request.id}
-                      type="button"
-                      className="rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-left text-xs leading-5 text-cal-muted"
-                      onClick={() => setPublishRequestId(request.id)}
+                      className="rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-xs leading-5 text-cal-muted"
                     >
-                      <span className="block font-semibold text-cal-ink">
-                        {request.status} · {request.id}
-                      </span>
-                      <span className="block break-all">
-                        {request.source_document_id} →{" "}
-                        {request.target_knowledge_base_id}
-                      </span>
-                    </button>
+                      <button
+                        type="button"
+                        className="block w-full text-left font-semibold text-cal-ink"
+                        onClick={() => setPublishRequestId(request.id)}
+                      >
+                        {request.status}
+                      </button>
+                      <details className="mt-2 rounded-md bg-cal-surface-soft p-2">
+                        <summary className="cursor-pointer font-medium text-cal-ink">
+                          {localization.groups.advancedGroupDetails}
+                        </summary>
+                        <div className="mt-2 grid gap-1 font-mono">
+                          <span className="break-all">{request.id}</span>
+                          <span className="break-all">
+                            {request.source_document_id} →{" "}
+                            {request.target_knowledge_base_id}
+                          </span>
+                        </div>
+                      </details>
+                    </article>
                   ))}
                 </div>
               ) : null}
@@ -1849,10 +1897,7 @@ function documentMeta(
   const pages = doc.source_page_count
     ? ` · ${doc.source_page_count} ${localization.documents.pagesLabel}`
     : "";
-  const kb = doc.knowledge_base_id
-    ? ` · ${localization.common.knowledgeBasePrefix} ${doc.knowledge_base_id.slice(0, 8)}`
-    : "";
-  return `${source}${pages}${kb}`;
+  return `${source}${pages}`;
 }
 
 function documentSourceLabel(

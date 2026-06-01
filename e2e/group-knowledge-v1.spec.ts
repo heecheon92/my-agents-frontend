@@ -159,6 +159,7 @@ test("group knowledge source stays private and sends selected group context", as
   const requests = await mockGroupKnowledgeApi(page);
   await page.goto("/chat");
 
+  await page.getByText(ko.chat.knowledgeSourceTitle).click();
   const includeGroupKnowledge = page.getByLabel(
     ko.chat.includeGroupKnowledgeLabel,
   );
@@ -223,6 +224,7 @@ test("Publish review controls are owner-only in Group admin UI", async ({
   await expect(
     page.getByRole("button", { name: ko.admin.groups.publishRejectButton }),
   ).toHaveCount(0);
+  await page.getByText(ko.admin.groups.advancedMembershipTitle).click();
   await expect(
     page.getByRole("button", { name: ko.admin.groups.upsertMember }),
   ).toBeDisabled();

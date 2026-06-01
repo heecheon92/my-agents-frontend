@@ -1,5 +1,5 @@
 import { Suspense } from "react";
-import { PasswordResetPanel } from "@/components/keymesh/auth/PasswordResetPanel";
+import { PasswordResetPanel } from "@/components/auth/PasswordResetPanel";
 
 export default function PasswordResetPage() {
   return (
