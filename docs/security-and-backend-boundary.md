@@ -77,6 +77,11 @@ Never regress these rules:
 - No-body mutations such as logout and KB-scoped document ingest still need `Content-Type: application/json` so the BFF JSON mutation policy passes.
 - Unknown paths, unsupported methods, and `/assistant/chat` product usage must not forward to the backend.
 - Cross-site `Origin`, invalid `Referer`, and `Sec-Fetch-Site: cross-site` mutation attempts must be rejected before forwarding.
+- The BFF may forward locale headers only from the safe allowlist:
+  `Accept-Language`, `X-My-Agents-Language`, and `X-My-Agents-Locale`.
+  If the UI later adds an explicit locale switcher, send `X-My-Agents-Language`
+  from frontend requests so backend auth emails match the selected UI locale even
+  when browser `Accept-Language` differs.
 
 Regression tests that protect this:
 

@@ -26,6 +26,12 @@ export const dynamic = "force-dynamic";
 
 type RouteContext = { params: Promise<{ path: string[] }> };
 
+const LANGUAGE_HEADER_NAMES = [
+  "accept-language",
+  "x-my-agents-language",
+  "x-my-agents-locale",
+] as const;
+
 function isStreamPath(path: string) {
   return /^\/conversations\/[^/]+\/runs\/stream$/.test(path);
 }
@@ -68,6 +74,10 @@ async function proxy(request: NextRequest, context: RouteContext) {
   if (contentType) headers.set("content-type", contentType);
   const accept = request.headers.get("accept");
   if (accept) headers.set("accept", accept);
+  for (const headerName of LANGUAGE_HEADER_NAMES) {
+    const value = request.headers.get(headerName);
+    if (value) headers.set(headerName, value);
+  }
   const cookie = request.headers.get("cookie");
   if (cookie) headers.set("cookie", cookie);
   if (
