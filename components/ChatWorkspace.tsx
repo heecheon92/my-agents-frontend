@@ -938,11 +938,11 @@ export function ChatWorkspace() {
   return (
     <div className="grid gap-4 xl:h-[calc(100dvh-8rem)] xl:grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)]">
       {showGuestNotice ? (
-        <div className="rounded-xl border border-cal-warning/25 bg-cal-warning/10 p-4 text-sm text-cal-body xl:col-span-2">
-          <p className="font-semibold text-cal-ink">
+        <div className="rounded-xl border border-cal-warning/25 bg-cal-warning/10 px-3 py-2.5 text-sm text-cal-body xl:col-span-2">
+          <p className="font-semibold leading-5 text-cal-ink">
             {localization.guestNoticeTitle}
           </p>
-          <p className="mt-1 leading-6">
+          <p className="mt-0.5 leading-5">
             {localization.guestNoticeDescription}
           </p>
         </div>
