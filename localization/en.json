@@ -383,6 +383,7 @@
       "knowledgeBaseRequired": "Select a personal knowledge space before adding or preparing sources.",
       "noKnowledgeBaseTitle": "No personal knowledge spaces yet",
       "noKnowledgeBaseDescription": "Go to Knowledge and create a personal space before adding sources. Team spaces receive sources through approved sharing.",
+      "createKnowledgeBaseAction": "Create a personal knowledge space",
       "knowledgeBaseLockedHint": "Finish or remove queued uploads before switching spaces so each file stays attached to the intended library.",
       "advancedDetails": "Advanced details",
       "permissionAdvancedTitle": "Advanced sharing controls"

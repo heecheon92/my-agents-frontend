@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
@@ -792,6 +793,11 @@ export function DocumentsSurface() {
                   title={localization.documents.noKnowledgeBaseTitle}
                   description={
                     localization.documents.noKnowledgeBaseDescription
+                  }
+                  action={
+                    <Button render={<Link href="/knowledge" />} size="sm">
+                      {localization.documents.createKnowledgeBaseAction}
+                    </Button>
                   }
                 />
               ) : null}

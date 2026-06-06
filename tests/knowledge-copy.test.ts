@@ -23,6 +23,17 @@ describe("localized product copy guardrails", () => {
   });
 });
 
+describe("document source empty-state copy", () => {
+  it("offers a localized path to create a personal knowledge space", () => {
+    expect(en.admin.documents.createKnowledgeBaseAction).toContain(
+      "Create a personal knowledge space",
+    );
+    expect(ko.admin.documents.createKnowledgeBaseAction).toContain(
+      "개인 지식 공간 만들기",
+    );
+  });
+});
+
 describe("knowledge-base creation copy", () => {
   it("states the private and group knowledge-base boundary in English", () => {
     const copy = en.admin.knowledge;

@@ -4,14 +4,17 @@ import { defaultLocalization } from "@/utils/localization";
 export function EmptyState({
   title,
   description,
+  action,
 }: {
   title: string;
   description: string;
+  action?: React.ReactNode;
 }) {
   return (
     <div className="rounded-xl border border-dashed border-km-hairline bg-km-surface-muted p-6 text-center">
       <p className="font-semibold text-km-ink">{title}</p>
       <p className="mt-2 text-sm leading-6 text-km-muted">{description}</p>
+      {action ? <div className="mt-4 flex justify-center">{action}</div> : null}
     </div>
   );
 }
