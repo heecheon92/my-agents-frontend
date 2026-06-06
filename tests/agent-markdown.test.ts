@@ -1,8 +1,8 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { AgentMarkdown } from "@/components/keymesh/AgentMarkdown";
-import { AgentMessageRenderer } from "@/components/keymesh/AgentMessageRenderer";
+import { AgentMarkdown } from "@/components/AgentMarkdown";
+import { AgentMessageRenderer } from "@/components/AgentMessageRenderer";
 
 function renderMarkdown(content: string) {
   return renderToStaticMarkup(createElement(AgentMarkdown, { content }));

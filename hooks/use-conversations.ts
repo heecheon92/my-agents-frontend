@@ -1,6 +1,11 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import type {
   Conversation,
@@ -127,20 +132,32 @@ export function useRunConversation(conversationId?: string) {
   });
 }
 
+export function invalidateConversationReplayState(
+  queryClient: Pick<QueryClient, "invalidateQueries">,
+  conversationId: string,
+) {
+  queryClient.invalidateQueries({
+    queryKey: MyAgentsQueryKeys.conversations.messages(conversationId),
+  });
+  queryClient.invalidateQueries({
+    queryKey: MyAgentsQueryKeys.conversations.runs(conversationId),
+  });
+  queryClient.invalidateQueries({
+    queryKey: ["my-agents", "conversations", "run", conversationId],
+  });
+}
+
 export function useReplayAssistantMessage(conversationId?: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (messageId: string) =>
       myAgentsAPI.conversations.replayMessage(conversationId ?? "", messageId),
+    onError: () => {
+      if (!conversationId) return;
+      invalidateConversationReplayState(queryClient, conversationId);
+    },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({
-        queryKey: MyAgentsQueryKeys.conversations.messages(
-          data.conversation_id,
-        ),
-      });
-      queryClient.invalidateQueries({
-        queryKey: MyAgentsQueryKeys.conversations.runs(data.conversation_id),
-      });
+      invalidateConversationReplayState(queryClient, data.conversation_id);
       queryClient.invalidateQueries({
         queryKey: MyAgentsQueryKeys.conversations.run(
           data.conversation_id,

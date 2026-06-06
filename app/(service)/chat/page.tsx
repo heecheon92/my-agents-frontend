@@ -1,4 +1,4 @@
-import { ChatWorkspace } from "@/components/keymesh/ChatWorkspace";
+import { ChatWorkspace } from "@/components/ChatWorkspace";
 
 export default function ChatPage() {
   return <ChatWorkspace />;

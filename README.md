@@ -4,16 +4,16 @@
 
 `../my-agents` FastAPI + LangGraph 백엔드를 위한 프론트엔드 companion 앱입니다.
 
-이 앱은 Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, Biome으로 만든 완성도 높은 AI 서비스 콘솔입니다. 프로젝트 소유자가 수동으로 따라가고 유지보수할 수 있도록 서비스, 모델, 쿼리 키, keymesh 컴포넌트, localization 패턴을 프로젝트 내부 규칙으로 정리했습니다.
+이 앱은 Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, Biome으로 만든 사용자용 AI 워크스페이스입니다. 핵심 여정은 지식 추가/관리 → 질문하기 → 답변 옆 인용 확인입니다. 프로젝트 소유자가 수동으로 따라가고 유지보수할 수 있도록 서비스, 모델, 쿼리 키, 앱 컴포넌트, localization 패턴을 프로젝트 내부 규칙으로 정리했습니다.
 
 ## 이 UI가 연결하는 기능
 
 - 인증: 회원가입, 이메일 인증, 로그인, 비밀번호 재설정 요청/확정, 로그아웃, 현재 사용자 복원.
-- 제품 채팅: 대화, 서버 소유 메시지, streamed assistant-answer conversation run, run history, run event, citation, 지식 베이스 소스 선택(`전체` 또는 선택한 KB만).
-- 지식/문서 워크플로: 지식 베이스 생성/목록/상세, KB 범위 문서 생성/목록/삭제, 선택한 지식 베이스로 PDF/Markdown/plain-text 드래그 앤 드롭 또는 파일 선택 업로드, KB 범위 ingest, extraction run, 문서 권한 patch.
-- 그룹: 생성/목록 및 ID 기반 멤버 역할 upsert/patch.
+- Ask: 대화, 서버 소유 메시지, streamed assistant-answer conversation run, 답변 옆 citation, 상단 지식 선택, 접힌 응답 근거/작업 내역.
+- 지식/소스 워크플로: 지식 공간 생성/목록, 선택한 지식 공간으로 PDF/Markdown/plain-text 드래그 앤 드롭 또는 파일 선택 업로드, 텍스트 소스 추가, 검색 준비/처리 내역.
+- 팀: 생성/목록, 공유 지식 요청, 고급 섹션 안의 ID 기반 멤버/권한 관리.
 
-제품 채팅은 `/conversations/{id}/runs`를 사용합니다. `/assistant/chat`은 레거시/개발용이므로 제품 BFF proxy에서 차단합니다. 회원가입은 hosted OpenAPI 계약을 그대로 따릅니다. 계정 생성은 `{ user, verification_email_sent }`를 반환하며, 사용자는 필요한 인증 흐름 이후 같은 자격 증명으로 로그인할 수 있습니다.
+Ask 화면은 `/conversations/{id}/runs`를 사용합니다. `/assistant/chat`은 레거시/개발용이므로 제품 BFF proxy에서 차단합니다. 회원가입은 hosted OpenAPI 계약을 그대로 따릅니다. 계정 생성은 `{ user, verification_email_sent }`를 반환하며, 사용자는 필요한 인증 흐름 이후 같은 자격 증명으로 로그인할 수 있습니다.
 
 ## 로컬 실행
 
@@ -79,7 +79,7 @@ flowchart LR
 - `services/my-agents/` — typed service class와 안전한 API error 처리.
 - `server/my-agents/` — BFF 설정, cookie helper, proxy allowlist, CSRF/same-origin 정책.
 - `hooks/` — auth, conversation, document, knowledge, group용 TanStack Query hook.
-- `components/keymesh/` — 앱 전용 UI helper와 제품 화면.
+- `components/` — 앱 전용 UI helper와 제품 화면.
 - `DESIGN.md` — UI/theme/layout 결정을 위한 활성 design contract.
 - `.agents/skills/responsive-design/SKILL.md` — UI/layout 변경 시 적용하는 responsive workflow.
 - `docs/implementation-log.md` — 구현 상태와 검증 기록.

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
   CHAT_SCROLL_REGION_CLASS_NAME,
   CHAT_WORKSPACE_PANEL_CLASS_NAME,
   getConversationCardClassName,
@@ -7,9 +8,10 @@ import {
   getNextConversationIdAfterDelete,
   isActiveAgentRunStatus,
   isConversationRunAlreadyActiveError,
+  isObservedActiveRunStale,
   REPLAY_ICON_PENDING_CLASS_NAME,
   sanitizeActivityEventPayload,
-} from "@/components/keymesh/ChatWorkspace";
+} from "@/components/ChatWorkspace";
 import en from "@/localization/en.json";
 import ko from "@/localization/ko.json";
 import type { Message } from "@/model/my-agents";
@@ -40,18 +42,30 @@ describe("ChatWorkspace assistant message footer", () => {
 
   it("keeps footer action labels localized, including Korean regenerate copy", () => {
     expect(ko.chat.replayAction).toBe("다시 생성");
-    expect(en.chat.messageFooterLabel).toBe("Assistant message actions");
-    expect(ko.chat.messageFooterLabel).toBe("어시스턴트 메시지 작업");
-    expect(en.chat.viewRunHistory).toBe("View run history");
-    expect(ko.chat.viewRunHistory).toBe("실행 기록 보기");
-    expect(en.chat.viewActivityEvents).toBe("View activity events");
-    expect(ko.chat.viewActivityEvents).toBe("활동 이벤트 보기");
-    expect(en.chat.viewLatestCitations).toBe("View latest citations");
-    expect(ko.chat.viewLatestCitations).toBe("최신 인용 보기");
+    expect(en.chat.messageFooterLabel).toBe("Answer actions and sources");
+    expect(ko.chat.messageFooterLabel).toBe("답변 작업과 출처");
+    expect(en.chat.viewRunHistory).toBe("View answer history");
+    expect(ko.chat.viewRunHistory).toBe("답변 기록 보기");
+    expect(en.chat.viewActivityEvents).toBe("View work history");
+    expect(ko.chat.viewActivityEvents).toBe("작업 내역 보기");
+    expect(en.chat.viewLatestCitations).toBe("View citations");
+    expect(ko.chat.viewLatestCitations).toBe("인용 보기");
+    expect(en.chat.citationSummary).toBe("Citations ({count})");
+    expect(ko.chat.citationSummary).toBe("인용 {count}개");
+    expect(en.chat.viewCitationDetails).toBe("View citation details");
+    expect(ko.chat.viewCitationDetails).toBe("인용 자세히 보기");
     expect(en.chat.replaySourcesUnavailable).toContain(
       "current knowledge only",
     );
     expect(ko.chat.replaySourcesUnavailable).toContain("현재 사용 가능한 지식");
+    expect(en.chat.activeRunStale).toContain("interrupted");
+    expect(ko.chat.activeRunStale).toContain("중단");
+    expect(en.chat.activeRunStaleHelper).toContain("checking its status");
+    expect(ko.chat.activeRunStaleHelper).toContain("상태를 확인");
+    expect(en.chat.runStatuses.cancelling).toBe("cancelling");
+    expect(ko.chat.runStatuses.cancelled).toBe("취소됨");
+    expect(en.chat.replayFailedAnnouncement).toContain("refreshed");
+    expect(ko.chat.replayFailedAnnouncement).toContain("새로고침");
     expect(en.chat.deleteConversationAction).toBe("Delete");
     expect(ko.chat.deleteConversationAction).toBe("삭제");
     expect(en.chat.deleteConversationConfirm).toContain(
@@ -77,7 +91,7 @@ describe("ChatWorkspace assistant message footer", () => {
       reply: "Visible answer",
       nested: { safe: "kept" },
     });
-    expect(en.chat.runEvidenceLabel).toBe("Run evidence");
+    expect(en.chat.runEvidenceLabel).toBe("Answer context");
     expect(ko.chat.activityPayloadHidden).toBe("내부 처리 정보는 숨김");
   });
 
@@ -143,6 +157,35 @@ describe("ChatWorkspace assistant message footer", () => {
           detail: "other conflict",
         }),
       ),
+    ).toBe(false);
+  });
+
+  it("detects a repeatedly observed active run as stale for interrupted-run UX", () => {
+    const observedAt = 1_000;
+
+    expect(
+      isObservedActiveRunStale({
+        activeRunId: "run-1",
+        observedRunId: "run-1",
+        observedAt,
+        now: observedAt + ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
+      }),
+    ).toBe(true);
+    expect(
+      isObservedActiveRunStale({
+        activeRunId: "run-1",
+        observedRunId: "run-1",
+        observedAt,
+        now: observedAt + ACTIVE_RUN_STALE_NOTICE_AFTER_MS - 1,
+      }),
+    ).toBe(false);
+    expect(
+      isObservedActiveRunStale({
+        activeRunId: "run-2",
+        observedRunId: "run-1",
+        observedAt,
+        now: observedAt + ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
+      }),
     ).toBe(false);
   });
 

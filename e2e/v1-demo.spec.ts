@@ -52,20 +52,15 @@ async function expectLatestAssistantFooterEvidence(
   ).toHaveCount(0);
 
   await footer
-    .getByLabel(new RegExp(escapeRegExp(ko.chat.viewRunHistory)))
+    .getByLabel(new RegExp(escapeRegExp(ko.chat.viewCitationDetails)))
+    .click();
+  await expect(footer.getByText(ko.chat.documentLabel).first()).toBeVisible();
+  await footer
+    .getByLabel(new RegExp(escapeRegExp(ko.chat.viewResponseEvidence)))
     .click();
   await expect(
     footer.getByText(ko.chat.runStatuses.completed).first(),
   ).toBeVisible();
-
-  await footer
-    .getByLabel(new RegExp(escapeRegExp(ko.chat.viewLatestCitations)))
-    .click();
-  await expect(footer.getByText(ko.chat.documentLabel).first()).toBeVisible();
-
-  await footer
-    .getByLabel(new RegExp(escapeRegExp(ko.chat.viewActivityEvents)))
-    .click();
   await expect(footer.getByText(eventName).first()).toBeVisible();
 }
 

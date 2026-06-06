@@ -19,7 +19,7 @@ import {
   useCreateKnowledgeBase,
   useCreateKnowledgeBaseDocument,
   useDeleteKnowledgeBaseDocument,
-  useIngestKnowledgeBaseDocument,
+  useIngestKnowledgeBaseDocumentAsync,
   useKnowledgeBaseDocuments,
   useKnowledgeBaseExtractionRuns,
   useKnowledgeBases,
@@ -108,10 +108,6 @@ function formatFileSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function queueProgressFromExtraction(progressPercent: number) {
-  return 40 + Math.round(Math.min(Math.max(progressPercent, 0), 100) * 0.6);
-}
-
 function safeErrorMessage(error: unknown, fallback: string) {
   if (error instanceof Error && error.message) return error.message;
   return fallback;
@@ -160,6 +156,19 @@ export function KnowledgeSurface() {
       title={localization.knowledge.title}
       description={localization.knowledge.description}
     >
+      <section className="responsive-card-grid">
+        {localization.knowledge.journeySteps.map((step, index) => (
+          <article
+            key={step}
+            className="rounded-xl border border-cal-hairline bg-cal-canvas p-4 text-sm leading-6 text-cal-body"
+          >
+            <span className="mb-3 inline-flex size-8 items-center justify-center rounded-full bg-cal-primary text-sm font-semibold text-white">
+              {index + 1}
+            </span>
+            {step}
+          </article>
+        ))}
+      </section>
       <form
         onSubmit={handleSubmit}
         className="cal-card grid gap-3 rounded-xl p-4"
@@ -265,8 +274,8 @@ export function KnowledgeSurface() {
                   : localization.knowledge.listPersonalSubtitle
               }
               meta={
-                kb.group_id
-                  ? `${localization.common.groupPrefix} ${kb.group_id.slice(0, 8)}`
+                isGroupKnowledgeBase
+                  ? localization.common.scopeGroup
                   : localization.common.scopePersonal
               }
             />
@@ -312,7 +321,7 @@ export function DocumentsSurface() {
     activeKnowledgeBaseId,
     activeDocumentId,
   );
-  const ingest = useIngestKnowledgeBaseDocument(
+  const ingest = useIngestKnowledgeBaseDocumentAsync(
     activeKnowledgeBaseId,
     activeDocumentId,
   );
@@ -357,6 +366,17 @@ export function DocumentsSurface() {
     .replace("{total}", String(uploadQueue.length));
   const isKnowledgeBaseSelectionLocked =
     isProcessingQueue || pendingQueueCount > 0;
+  const activeDocumentHasIngestion = Boolean(
+    extractionRuns.data?.some((run) => isActiveExtractionRunStatus(run.status)),
+  );
+  const activeIngestionDocumentIds = new Set(
+    uploadQueue
+      .filter((item) => item.documentId && isUploadQueueItemBusy(item.status))
+      .map((item) => item.documentId as string),
+  );
+  if (activeDocumentId && activeDocumentHasIngestion) {
+    activeIngestionDocumentIds.add(activeDocumentId);
+  }
 
   function updateQueueItem(
     localId: string,
@@ -468,7 +488,7 @@ export function DocumentsSurface() {
     updateQueueItem(localId, (item) => ({
       status: item.documentId ? "uploaded" : "selected",
       error: undefined,
-      progressPercent: item.documentId ? Math.max(item.progressPercent, 35) : 0,
+      progressPercent: 0,
     }));
   }
 
@@ -509,7 +529,7 @@ export function DocumentsSurface() {
       updateQueueItem(localId, {
         extractionRunId: run.id,
         status: run.status === "failed" ? "failed" : "ingesting",
-        progressPercent: queueProgressFromExtraction(run.progress_percent),
+        progressPercent: 0,
         error: run.error ?? undefined,
       });
       if (TERMINAL_EXTRACTION_STATUSES.has(run.status)) break;
@@ -560,14 +580,14 @@ export function DocumentsSurface() {
         updateQueueItem(item.localId, {
           documentId: uploaded.id,
           status: "uploaded",
-          progressPercent: 35,
+          progressPercent: 0,
         });
         await refreshDocumentQueries(uploaded.id);
       }
 
       updateQueueItem(item.localId, {
         status: "queued",
-        progressPercent: 40,
+        progressPercent: 0,
         error: undefined,
       });
       const run = await myAgentsAPI.documents.ingestAsyncInKnowledgeBase(
@@ -577,7 +597,7 @@ export function DocumentsSurface() {
       updateQueueItem(item.localId, {
         extractionRunId: run.id,
         status: run.status === "pending" ? "queued" : "ingesting",
-        progressPercent: queueProgressFromExtraction(run.progress_percent),
+        progressPercent: 0,
       });
 
       const completedRun = TERMINAL_EXTRACTION_STATUSES.has(run.status)
@@ -587,7 +607,7 @@ export function DocumentsSurface() {
       if (completedRun?.status === "completed") {
         updateQueueItem(item.localId, {
           status: "completed",
-          progressPercent: 100,
+          progressPercent: 0,
           error: undefined,
         });
         setUploadAnnouncement(
@@ -603,9 +623,7 @@ export function DocumentsSurface() {
       updateQueueItem(item.localId, {
         status: "failed",
         error: completedRun?.error ?? localization.documents.uploadFailed,
-        progressPercent: completedRun
-          ? queueProgressFromExtraction(completedRun.progress_percent)
-          : 0,
+        progressPercent: 0,
       });
       setUploadAnnouncement(
         localization.documents.uploadFailedAnnouncement.replace(
@@ -959,9 +977,14 @@ export function DocumentsSurface() {
                     </p>
                   </div>
                 ) : null}
-                <p className="break-all rounded-lg bg-cal-canvas p-2 font-mono text-xs text-cal-muted">
-                  ID: {activeDocumentId}
-                </p>
+                <details className="rounded-lg bg-cal-canvas p-2 text-xs text-cal-muted">
+                  <summary className="cursor-pointer font-medium text-cal-ink">
+                    {localization.documents.advancedDetails}
+                  </summary>
+                  <p className="mt-2 break-all font-mono">
+                    ID: {activeDocumentId}
+                  </p>
+                </details>
               </div>
             ) : (
               <EmptyState
@@ -972,41 +995,54 @@ export function DocumentsSurface() {
             <Button
               className="mt-4 w-full"
               onClick={() => ingest.mutate()}
-              disabled={!activeDocumentId || ingest.isPending}
+              disabled={
+                !activeDocumentId ||
+                ingest.isPending ||
+                activeDocumentHasIngestion
+              }
             >
-              {localization.documents.runIngest}
+              {activeDocumentHasIngestion
+                ? localization.documents.ingestionLoading
+                : localization.documents.runIngest}
             </Button>
             {ingest.error ? (
               <div className="mt-3">
                 <ErrorState error={ingest.error} />
               </div>
             ) : null}
-            <form
-              onSubmit={handlePatchPermission}
-              className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
-            >
-              <Field
-                label={localization.documents.permissionLabel}
-                hint={localization.documents.permissionHint}
+            <details className="mt-4 border-t border-cal-hairline pt-4">
+              <summary className="cursor-pointer text-sm font-semibold text-cal-ink">
+                {localization.documents.permissionAdvancedTitle}
+              </summary>
+              <form
+                onSubmit={handlePatchPermission}
+                className="mt-3 grid gap-3"
               >
-                <input
-                  className={inputClassName}
-                  value={permissionUserId}
-                  onChange={(event) => setPermissionUserId(event.target.value)}
-                />
-              </Field>
-              <Button
-                type="submit"
-                variant="outline"
-                disabled={
-                  !activeDocumentId ||
-                  !permissionUserId.trim() ||
-                  patchPermission.isPending
-                }
-              >
-                {localization.documents.patchPermission}
-              </Button>
-            </form>
+                <Field
+                  label={localization.documents.permissionLabel}
+                  hint={localization.documents.permissionHint}
+                >
+                  <input
+                    className={inputClassName}
+                    value={permissionUserId}
+                    onChange={(event) =>
+                      setPermissionUserId(event.target.value)
+                    }
+                  />
+                </Field>
+                <Button
+                  type="submit"
+                  variant="outline"
+                  disabled={
+                    !activeDocumentId ||
+                    !permissionUserId.trim() ||
+                    patchPermission.isPending
+                  }
+                >
+                  {localization.documents.patchPermission}
+                </Button>
+              </form>
+            </details>
             {patchPermission.error ? (
               <div className="mt-3">
                 <ErrorState error={patchPermission.error} />
@@ -1033,64 +1069,55 @@ export function DocumentsSurface() {
                 <ErrorState error={deleteDocument.error} />
               ) : null}
             </div>
-            <h3 className="mt-6 font-semibold">
-              {localization.documents.extractionRuns}
-            </h3>
-            <div className="mt-3 grid gap-2">
-              {extractionRuns.data?.length === 0 ? (
-                <EmptyState
-                  title={localization.documents.noExtractionRunsTitle}
-                  description={
-                    localization.documents.noExtractionRunsDescription
-                  }
-                />
-              ) : null}
-              {extractionRuns.data?.map((run) => (
-                <div
-                  key={run.id}
-                  className="rounded-lg bg-cal-surface-soft p-3 text-sm"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Pill tone={extractionRunTone(run.status)}>
-                      {run.status}
-                    </Pill>
-                    <span className="text-xs text-cal-muted">
-                      {run.progress_percent}%
-                    </span>
-                  </div>
-                  <p className="mt-2 break-all font-mono text-xs text-cal-muted">
-                    ID: {run.id}
-                  </p>
+            <details className="mt-6 border-t border-cal-hairline pt-4">
+              <summary className="cursor-pointer font-semibold text-cal-ink">
+                {localization.documents.extractionRuns}
+              </summary>
+              <div className="mt-3 grid gap-2">
+                {extractionRuns.data?.length === 0 ? (
+                  <EmptyState
+                    title={localization.documents.noExtractionRunsTitle}
+                    description={
+                      localization.documents.noExtractionRunsDescription
+                    }
+                  />
+                ) : null}
+                {extractionRuns.data?.map((run) => (
                   <div
-                    className="mt-2 h-2 overflow-hidden rounded-full bg-cal-surface-strong"
-                    role="progressbar"
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={Math.min(run.progress_percent, 100)}
+                    key={run.id}
+                    className="rounded-lg bg-cal-surface-soft p-3 text-sm"
                   >
-                    <div
-                      className={`h-full rounded-full ${extractionProgressClassName(run.status)}`}
-                      style={{
-                        width: `${Math.min(run.progress_percent, 100)}%`,
-                      }}
-                    />
-                  </div>
-                  <p className="mt-2 text-cal-muted">
-                    {run.chunk_count} {localization.common.chunks} ·{" "}
-                    {run.entity_count} {localization.common.entities} ·{" "}
-                    {run.relationship_count} {localization.common.relationships}
-                  </p>
-                  {run.stage ? (
-                    <p className="mt-1 text-xs text-cal-muted">
-                      {localization.documents.stageLabel}: {run.stage}
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <Pill tone={extractionRunTone(run.status)}>
+                        {run.status}
+                      </Pill>
+                      {isActiveExtractionRunStatus(run.status) ? (
+                        <InlineLoadingIndicator
+                          label={localization.documents.ingestionLoading}
+                        />
+                      ) : null}
+                    </div>
+                    <p className="mt-2 break-all font-mono text-xs text-cal-muted">
+                      ID: {run.id}
                     </p>
-                  ) : null}
-                  {run.error ? (
-                    <p className="mt-1 text-xs text-cal-error">{run.error}</p>
-                  ) : null}
-                </div>
-              ))}
-            </div>
+                    <p className="mt-2 text-cal-muted">
+                      {run.chunk_count} {localization.common.chunks} ·{" "}
+                      {run.entity_count} {localization.common.entities} ·{" "}
+                      {run.relationship_count}{" "}
+                      {localization.common.relationships}
+                    </p>
+                    {run.stage ? (
+                      <p className="mt-1 text-xs text-cal-muted">
+                        {localization.documents.stageLabel}: {run.stage}
+                      </p>
+                    ) : null}
+                    {run.error ? (
+                      <p className="mt-1 text-xs text-cal-error">{run.error}</p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            </details>
           </section>
           <ResourceList
             loading={documents.isLoading}
@@ -1114,6 +1141,13 @@ export function DocumentsSurface() {
                 <span className="mt-1 block break-words text-xs opacity-70">
                   {documentMeta(doc, localization)}
                 </span>
+                {activeIngestionDocumentIds.has(doc.id) ? (
+                  <span className="mt-2 inline-flex">
+                    <InlineLoadingIndicator
+                      label={localization.documents.ingestionLoading}
+                    />
+                  </span>
+                ) : null}
               </button>
             ))}
           </ResourceList>
@@ -1134,12 +1168,14 @@ function UploadQueueRow({
   item: UploadQueueItem;
   localization: {
     uploadStatusLabels: Record<UploadQueueStatus, string>;
+    advancedDetails: string;
     fileTypePdf: string;
     fileTypeMarkdown: string;
     fileTypeText: string;
     fileTitleLabel: string;
     retryUpload: string;
     removeUpload: string;
+    ingestionLoading: string;
   };
   onTitleChange: (localId: string, title: string) => void;
   onRemove: (localId: string) => void;
@@ -1147,7 +1183,7 @@ function UploadQueueRow({
   disabled: boolean;
 }) {
   const canEdit = !disabled && ["selected", "failed"].includes(item.status);
-  const progress = Math.min(Math.max(item.progressPercent, 0), 100);
+  const isBusy = isUploadQueueItemBusy(item.status);
 
   return (
     <article className="rounded-xl border border-cal-hairline bg-cal-canvas p-3 text-sm">
@@ -1157,6 +1193,9 @@ function UploadQueueRow({
             <Pill tone={uploadStatusTone(item.status)}>
               {localization.uploadStatusLabels[item.status]}
             </Pill>
+            {isBusy ? (
+              <InlineLoadingIndicator label={localization.ingestionLoading} />
+            ) : null}
             <span className="rounded-full bg-cal-surface-soft px-2 py-1 text-xs font-medium text-cal-muted">
               {uploadFileTypeLabel(item.file, localization)}
             </span>
@@ -1168,14 +1207,19 @@ function UploadQueueRow({
             {item.file.name}
           </p>
           {item.documentId || item.extractionRunId ? (
-            <div className="mt-2 grid gap-1 rounded-lg bg-cal-surface-soft p-2 font-mono text-[11px] leading-5 text-cal-muted">
-              {item.documentId ? (
-                <span className="break-all">doc: {item.documentId}</span>
-              ) : null}
-              {item.extractionRunId ? (
-                <span className="break-all">run: {item.extractionRunId}</span>
-              ) : null}
-            </div>
+            <details className="mt-2 rounded-lg bg-cal-surface-soft p-2 text-xs text-cal-muted">
+              <summary className="cursor-pointer font-medium text-cal-ink">
+                {localization.advancedDetails}
+              </summary>
+              <div className="mt-2 grid gap-1 font-mono text-[11px] leading-5">
+                {item.documentId ? (
+                  <span className="break-all">doc: {item.documentId}</span>
+                ) : null}
+                {item.extractionRunId ? (
+                  <span className="break-all">run: {item.extractionRunId}</span>
+                ) : null}
+              </div>
+            </details>
           ) : null}
           <label className="mt-2 grid gap-1 text-xs font-medium text-cal-muted">
             {localization.fileTitleLabel}
@@ -1212,18 +1256,6 @@ function UploadQueueRow({
           </Button>
         </div>
       </div>
-      <div
-        className="mt-3 h-2 overflow-hidden rounded-full bg-cal-surface-strong"
-        role="progressbar"
-        aria-valuemin={0}
-        aria-valuemax={100}
-        aria-valuenow={progress}
-      >
-        <div
-          className={`h-full rounded-full transition-all ${uploadProgressClassName(item.status)}`}
-          style={{ width: `${progress}%` }}
-        />
-      </div>
       {item.error ? (
         <p className="mt-2 break-words text-xs text-cal-error">{item.error}</p>
       ) : null}
@@ -1239,13 +1271,6 @@ function uploadStatusTone(status: UploadQueueStatus): StatusTone {
   return "slate";
 }
 
-function uploadProgressClassName(status: UploadQueueStatus) {
-  if (status === "completed") return "bg-cal-success";
-  if (status === "failed") return "bg-cal-error";
-  if (status === "queued" || status === "uploaded") return "bg-cal-warning";
-  return "bg-cal-primary";
-}
-
 function extractionRunTone(status: string): StatusTone {
   if (status === "completed") return "green";
   if (status === "failed") return "rose";
@@ -1253,11 +1278,26 @@ function extractionRunTone(status: string): StatusTone {
   return "blue";
 }
 
-function extractionProgressClassName(status: string) {
-  if (status === "completed") return "bg-cal-success";
-  if (status === "failed") return "bg-cal-error";
-  if (status === "pending") return "bg-cal-warning";
-  return "bg-cal-primary";
+function isActiveExtractionRunStatus(status: string) {
+  return status === "pending" || status === "running";
+}
+
+function isUploadQueueItemBusy(status: UploadQueueStatus) {
+  return (
+    status === "uploading" || status === "queued" || status === "ingesting"
+  );
+}
+
+function InlineLoadingIndicator({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-cal-muted">
+      <span
+        aria-hidden="true"
+        className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent"
+      />
+      {label}
+    </span>
+  );
 }
 
 function uploadFileTypeLabel(
@@ -1451,87 +1491,91 @@ export function GroupsSurface() {
                 description={localization.groups.noSelectedDescription}
               />
             )}
-            <form
-              onSubmit={handleAddMember}
-              className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
-            >
-              <Field label={localization.groups.addMemberLabel}>
-                <input
-                  className={inputClassName}
-                  value={memberUserId}
-                  onChange={(event) => setMemberUserId(event.target.value)}
-                  disabled={!canManageMembers}
-                />
-              </Field>
-              <RoleSelect
-                label={localization.groups.roleLabel}
-                labels={localization.groups.roles}
-                value={memberRole}
-                onChange={setMemberRole}
-                disabled={!canManageMembers}
-              />
-              <Button
-                type="submit"
-                disabled={
-                  !canManageMembers ||
-                  !activeGroupId ||
-                  !memberUserId.trim() ||
-                  addMember.isPending
-                }
-              >
-                {localization.groups.upsertMember}
-              </Button>
-            </form>
-            {addMember.error ? (
-              <div className="mt-3">
-                <ErrorState error={addMember.error} />
+            <details className="mt-4 border-t border-cal-hairline pt-4">
+              <summary className="cursor-pointer text-sm font-semibold text-cal-ink">
+                {localization.groups.advancedMembershipTitle}
+              </summary>
+              <div className="mt-3 grid gap-3">
+                <form onSubmit={handleAddMember} className="grid gap-3">
+                  <Field label={localization.groups.addMemberLabel}>
+                    <input
+                      className={inputClassName}
+                      value={memberUserId}
+                      onChange={(event) => setMemberUserId(event.target.value)}
+                      disabled={!canManageMembers}
+                    />
+                  </Field>
+                  <RoleSelect
+                    label={localization.groups.roleLabel}
+                    labels={localization.groups.roles}
+                    value={memberRole}
+                    onChange={setMemberRole}
+                    disabled={!canManageMembers}
+                  />
+                  <Button
+                    type="submit"
+                    disabled={
+                      !canManageMembers ||
+                      !activeGroupId ||
+                      !memberUserId.trim() ||
+                      addMember.isPending
+                    }
+                  >
+                    {localization.groups.upsertMember}
+                  </Button>
+                </form>
+                {addMember.error ? (
+                  <div>
+                    <ErrorState error={addMember.error} />
+                  </div>
+                ) : null}
+                <form
+                  onSubmit={handleUpdateMember}
+                  className="grid gap-3 border-t border-cal-hairline pt-4"
+                >
+                  <Field label={localization.groups.patchMemberLabel}>
+                    <input
+                      className={inputClassName}
+                      value={updateUserId}
+                      onChange={(event) => setUpdateUserId(event.target.value)}
+                      disabled={!canManageMembers}
+                    />
+                  </Field>
+                  <RoleSelect
+                    label={localization.groups.roleLabel}
+                    labels={localization.groups.roles}
+                    value={updateRole}
+                    onChange={setUpdateRole}
+                    disabled={!canManageMembers}
+                  />
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={
+                      !canManageMembers ||
+                      !activeGroupId ||
+                      !updateUserId.trim() ||
+                      updateMember.isPending
+                    }
+                  >
+                    {localization.groups.patchRole}
+                  </Button>
+                </form>
+                {updateMember.error ? (
+                  <div>
+                    <ErrorState error={updateMember.error} />
+                  </div>
+                ) : null}
+                <p className="rounded-lg border border-cal-hairline bg-cal-surface-strong p-3 text-sm leading-6 text-cal-body">
+                  {localization.groups.memberIdNote}
+                </p>
               </div>
-            ) : null}
-            <form
-              onSubmit={handleUpdateMember}
-              className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
-            >
-              <Field label={localization.groups.patchMemberLabel}>
-                <input
-                  className={inputClassName}
-                  value={updateUserId}
-                  onChange={(event) => setUpdateUserId(event.target.value)}
-                  disabled={!canManageMembers}
-                />
-              </Field>
-              <RoleSelect
-                label={localization.groups.roleLabel}
-                labels={localization.groups.roles}
-                value={updateRole}
-                onChange={setUpdateRole}
-                disabled={!canManageMembers}
-              />
-              <Button
-                type="submit"
-                variant="outline"
-                disabled={
-                  !canManageMembers ||
-                  !activeGroupId ||
-                  !updateUserId.trim() ||
-                  updateMember.isPending
-                }
-              >
-                {localization.groups.patchRole}
-              </Button>
-            </form>
-            {updateMember.error ? (
-              <div className="mt-3">
-                <ErrorState error={updateMember.error} />
-              </div>
-            ) : null}
+            </details>
             {!canManageMembers ? (
               <p className="mt-4 rounded-lg border border-cal-warning/40 bg-cal-warning/10 p-3 text-sm leading-6 text-cal-body">
                 {localization.groups.membershipManagerOnlyHint}
               </p>
             ) : null}
-            <p className="mt-4 rounded-lg border border-cal-hairline bg-cal-surface-strong p-3 text-sm leading-6 text-cal-body">
-              {localization.groups.memberIdNote}
-            </p>
           </section>
           <section className="cal-card rounded-xl p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1717,20 +1761,30 @@ export function GroupsSurface() {
               {publishRequests.data?.length ? (
                 <div className="mt-3 grid gap-2">
                   {publishRequests.data.map((request) => (
-                    <button
+                    <article
                       key={request.id}
-                      type="button"
-                      className="rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-left text-xs leading-5 text-cal-muted"
-                      onClick={() => setPublishRequestId(request.id)}
+                      className="rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-xs leading-5 text-cal-muted"
                     >
-                      <span className="block font-semibold text-cal-ink">
-                        {request.status} · {request.id}
-                      </span>
-                      <span className="block break-all">
-                        {request.source_document_id} →{" "}
-                        {request.target_knowledge_base_id}
-                      </span>
-                    </button>
+                      <button
+                        type="button"
+                        className="block w-full text-left font-semibold text-cal-ink"
+                        onClick={() => setPublishRequestId(request.id)}
+                      >
+                        {request.status}
+                      </button>
+                      <details className="mt-2 rounded-md bg-cal-surface-soft p-2">
+                        <summary className="cursor-pointer font-medium text-cal-ink">
+                          {localization.groups.advancedGroupDetails}
+                        </summary>
+                        <div className="mt-2 grid gap-1 font-mono">
+                          <span className="break-all">{request.id}</span>
+                          <span className="break-all">
+                            {request.source_document_id} →{" "}
+                            {request.target_knowledge_base_id}
+                          </span>
+                        </div>
+                      </details>
+                    </article>
                   ))}
                 </div>
               ) : null}
@@ -1843,10 +1897,7 @@ function documentMeta(
   const pages = doc.source_page_count
     ? ` · ${doc.source_page_count} ${localization.documents.pagesLabel}`
     : "";
-  const kb = doc.knowledge_base_id
-    ? ` · ${localization.common.knowledgeBasePrefix} ${doc.knowledge_base_id.slice(0, 8)}`
-    : "";
-  return `${source}${pages}${kb}`;
+  return `${source}${pages}`;
 }
 
 function documentSourceLabel(

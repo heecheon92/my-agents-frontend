@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildActiveKnowledgeBaseSelection } from "@/components/keymesh/ChatWorkspace";
+import { buildActiveKnowledgeBaseSelection } from "@/components/ChatWorkspace";
 import { MyAgentsConversationAPI } from "@/services/my-agents/MyAgentsConversationAPI";
 
 function streamResponse(chunks: string[]) {

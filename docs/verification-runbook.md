@@ -72,11 +72,11 @@ Use this after auth, BFF, chat, route, provider, or visual shell changes.
 5. Confirm the signup screen shows an account-created handoff from the `{ user, verification_email_sent }` response instead of a Zod/parser error or automatic chat redirect.
 6. If the local backend mode requires email verification, use the hosted API/dev mail flow available for that environment; otherwise log in with the newly created credentials and confirm redirect to `/chat`.
 7. Confirm browser `localStorage` and `sessionStorage` do not contain session or CSRF values.
-8. Create a conversation.
-9. Send a message such as `Plan my next backend milestone`.
-10. Confirm transcript shows user and assistant messages.
-11. Confirm run history shows a completed run and route label.
-12. Confirm event timeline shows redacted operational events.
+8. Create a question thread.
+9. Send a message such as `Summarize the renewal risks in my notes`.
+10. Confirm the Ask transcript shows user and assistant messages.
+11. Confirm citations appear near the assistant answer when knowledge was used.
+12. Open the response evidence/work-history disclosure and confirm it shows a completed run plus redacted operational events.
 13. Confirm browser console has no unexpected errors. A 401 from `/auth/me` after logout is expected unauthenticated behavior.
 14. Click logout and confirm redirect to `/login`.
 
@@ -104,10 +104,11 @@ The backend local demo seed helper currently provides the verified account
 `test@test.com`, password `correct horse battery staple`, and seeded text document
 `V1 Product Chat Service Demo`.
 
-Expected seeded text flow: login -> create or choose a knowledge base -> add a text
-document under that knowledge base -> bodyless KB-scoped ingest through the BFF ->
-streamed chat answer with `All` or selected KB retrieval scope -> completed run history ->
-persisted run-detail citations after reload -> redacted event trail.
+Expected seeded text flow: login -> create or choose a knowledge space -> add a text
+source under that space -> bodyless KB-scoped ingest through the BFF ->
+streamed Ask answer with `All` or selected knowledge scope -> citations beside the
+answer -> response evidence disclosure with completed run/work history -> persisted
+run-detail citations after reload.
 
 Upload smoke should use an active backend with the KB-nested upload contract: login -> Documents -> select a knowledge base -> upload a supported PDF, Markdown (`.md`/`.markdown`), or plain text (`.txt`) file through `POST /knowledge-bases/{knowledge_base_id}/documents/upload` -> verify document source metadata -> run KB-scoped ingest -> confirm citations can render backend-provided filename/page/KB provenance.
 
@@ -168,7 +169,7 @@ Expected result: no output, unless the user already had unrelated backend change
 | --- | --- | --- |
 | Logout or ingest returns 415 | No-body mutation missing JSON content type | `services/my-agents/fetch-client.ts`, `server/my-agents/proxy-policy.ts` |
 | Login response contains `csrf_token` | BFF redaction regression | `app/api/my-agents/[...path]/route.ts`, `model/my-agents/auth.ts` |
-| Product chat calls `/assistant/chat` | Wrong endpoint family | `services/my-agents/`, `components/keymesh/ChatWorkspace.tsx` |
+| Product chat calls `/assistant/chat` | Wrong endpoint family | `services/my-agents/`, `components/ChatWorkspace.tsx` |
 | Cross-site mutation is forwarded | BFF policy regression | `server/my-agents/proxy-policy.ts`, `tests/proxy-policy.test.ts` |
 | UI claims unavailable backend features | Fake data or stale docs | Hosted OpenAPI document, `docs/backend-requests.md`, relevant component copy |
 

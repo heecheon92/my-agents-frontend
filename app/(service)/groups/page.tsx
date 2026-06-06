@@ -1,4 +1,4 @@
-import { GroupsSurface } from "@/components/keymesh/AdminSurfaces";
+import { GroupsSurface } from "@/components/AdminSurfaces";
 
 export default function GroupsPage() {
   return <GroupsSurface />;

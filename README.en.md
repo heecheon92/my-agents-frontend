@@ -4,16 +4,16 @@
 
 Frontend companion for the `../my-agents` FastAPI + LangGraph backend.
 
-This app is a polished AI service console built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, and Biome. It keeps service, model, query-key, keymesh component, and localization patterns documented as project-local conventions so the project owner can follow and maintain the code manually.
+This app is a user-facing AI workspace built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, and Biome. The core journey is add/manage knowledge → ask questions → inspect citations next to answers. It keeps service, model, query-key, app component, and localization patterns documented as project-local conventions so the project owner can follow and maintain the code manually.
 
 ## What this UI wires
 
 - Auth: signup, email verification, login, password reset request/confirm, logout, current user restore.
-- Product chat: conversations, server-owned messages, streamed assistant-answer conversation runs, run history, run events, citations, and a knowledge-base source selector (`All` or selected KBs only).
-- Knowledge/document workflows: knowledge-base create/list/detail, KB-scoped document create/list/delete, PDF/Markdown/plain-text drag-and-drop or file-picker upload into a selected knowledge base, KB-scoped ingest, extraction runs, and document permission patch.
-- Groups: create/list plus ID-based member role upsert/patch.
+- Ask: conversations, server-owned messages, streamed assistant-answer conversation runs, citations near answers, a top-of-chat knowledge selector, and collapsed response evidence/work history.
+- Knowledge/source workflows: knowledge-space create/list, text source creation, PDF/Markdown/plain-text drag-and-drop or file-picker upload into a selected knowledge space, source preparation, and processing history.
+- Teams: create/list, shared-knowledge requests, and advanced ID-based member/permission controls.
 
-Product chat uses `/conversations/{id}/runs`; `/assistant/chat` is legacy/dev-only and is blocked from product BFF proxy use. Signup follows the hosted OpenAPI contract: account creation returns `{ user, verification_email_sent }`, then the user can log in with the same credentials after any required verification flow.
+Ask uses `/conversations/{id}/runs`; `/assistant/chat` is legacy/dev-only and is blocked from product BFF proxy use. Signup follows the hosted OpenAPI contract: account creation returns `{ user, verification_email_sent }`, then the user can log in with the same credentials after any required verification flow.
 
 ## Local setup
 
@@ -77,7 +77,8 @@ Important folders:
 - `services/my-agents/` — typed service classes and safe API error handling.
 - `server/my-agents/` — BFF configuration, cookie helpers, proxy allowlist, CSRF/same-origin policy.
 - `hooks/` — TanStack Query hooks for auth, conversations, documents, knowledge, groups.
-- `components/keymesh/` — app-specific UI helpers and product surfaces.
+- `components/` — app-specific UI helpers and product surfaces.
+- `components/chat/` — Ask workspace subcomponents.
 - `DESIGN.md` — active design contract for UI/theme/layout decisions.
 - `docs/implementation-log.md` — followable implementation status and verification notes.
 - `docs/backend-requests.md` — backend contract gaps discovered by frontend work.

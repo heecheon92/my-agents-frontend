@@ -91,19 +91,6 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
           <p className="mt-2 text-xs leading-5">
             {localization.service.sessionRestored}
           </p>
-          <div className="mt-4 border-t border-cal-hairline pt-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-cal-ink">
-              {localization.service.sessionEvidenceTitle}
-            </p>
-            <ul className="mt-2 grid gap-2 text-xs leading-5">
-              {localization.service.sessionEvidenceItems.map((item) => (
-                <li key={item} className="flex gap-2">
-                  <span className="mt-2 size-1.5 shrink-0 rounded-full bg-cal-brand-accent" />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
           <Button
             className="mt-4 w-full"
             variant="outline"
@@ -132,7 +119,7 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
               <p className="mt-1 truncate text-xs text-cal-muted">
                 {user.data?.is_guest
                   ? localization.service.guestSessionLabel
-                  : localization.service.sessionEvidenceTitle}
+                  : user.data?.email}
               </p>
             </div>
             <Button

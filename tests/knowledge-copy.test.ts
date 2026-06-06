@@ -27,37 +27,33 @@ describe("knowledge-base creation copy", () => {
   it("states the private and group knowledge-base boundary in English", () => {
     const copy = en.admin.knowledge;
 
-    expect(copy.description).toContain(
-      "Private knowledge bases are only for you",
-    );
-    expect(copy.description).toContain("sharing is approved");
-    expect(copy.scopeHint).toContain("Private knowledge bases stay private");
-    expect(copy.scopeHint).toContain("owner/admin-approved share requests");
+    expect(copy.description).toContain("Create spaces");
+    expect(copy.description).toContain("Add sources");
+    expect(copy.scopeHint).toContain("Personal spaces stay private");
+    expect(copy.scopeHint).toContain("Team spaces");
     expect(copy.scopeBoundaryNote).toContain(
-      "Upload documents to private knowledge bases first",
+      "Add documents to personal spaces first",
     );
     expect(copy.scopeBoundaryNote).toContain("requires owner/admin approval");
     expect(copy.scopeBoundaryNote).toContain(
       "does not share member conversations",
     );
-    expect(copy.scopeBoundaryNote).toContain("transcripts");
     expect(copy.listPersonalSubtitle).toContain("private to your account");
-    expect(copy.listGroupSubtitle).toContain("selected group members");
+    expect(copy.listGroupSubtitle).toContain("team members");
   });
 
   it("states the same ownership boundary in Korean", () => {
     const copy = ko.admin.knowledge;
 
-    expect(copy.description).toContain("개인 지식 베이스는 나만");
-    expect(copy.description).toContain("공유 승인");
-    expect(copy.scopeHint).toContain("내 계정에서만 사용");
-    expect(copy.scopeHint).toContain("승인 공유 요청");
-    expect(copy.scopeBoundaryNote).toContain("먼저 개인 지식 베이스에 업로드");
+    expect(copy.description).toContain("AI가 검색할 문서와 메모");
+    expect(copy.description).toContain("Ask에서 질문");
+    expect(copy.scopeHint).toContain("개인 공간은 내 계정");
+    expect(copy.scopeHint).toContain("팀 공간");
+    expect(copy.scopeBoundaryNote).toContain("먼저 개인 공간에 추가");
     expect(copy.scopeBoundaryNote).toContain("승인이 필요");
     expect(copy.scopeBoundaryNote).toContain("멤버 대화");
-    expect(copy.scopeBoundaryNote).toContain("대화 기록");
     expect(copy.listPersonalSubtitle).toContain("내 계정 전용");
-    expect(copy.listGroupSubtitle).toContain("선택한 그룹 멤버");
+    expect(copy.listGroupSubtitle).toContain("선택한 팀 멤버");
   });
 });
 
@@ -65,15 +61,15 @@ describe("group publish copy", () => {
   it("frames Groups as shared knowledge spaces in English", () => {
     const copy = en.admin.groups;
 
-    expect(copy.description).toContain("shared spaces for knowledge bases");
-    expect(copy.membershipActions).toBe("People and roles");
+    expect(copy.description).toContain("shared spaces for knowledge");
+    expect(copy.membershipActions).toBe("Team access");
     expect(copy.memberIdNote).toContain("add or update members by user ID");
     expect(copy.publishBoundaryTitle).toBe("Shared knowledge");
     expect(copy.publishBoundaryDescription).toContain(
-      "share a private knowledge base",
+      "share a personal knowledge space",
     );
     expect(copy.publishSourceKnowledgeBaseHint).toContain(
-      "whole private knowledge base",
+      "whole personal knowledge space",
     );
     expect(copy.publishTargetKnowledgeBaseHint).toContain(
       "document-copy requests",
@@ -83,13 +79,13 @@ describe("group publish copy", () => {
   it("frames Groups as shared knowledge spaces in Korean", () => {
     const copy = ko.admin.groups;
 
-    expect(copy.description).toContain("지식 베이스를 공유하는 공간");
-    expect(copy.membershipActions).toBe("사람과 역할");
+    expect(copy.description).toContain("지식을 함께 쓰는 공간");
+    expect(copy.membershipActions).toBe("팀 접근");
     expect(copy.memberIdNote).toContain("사용자 ID를 붙여넣어");
     expect(copy.publishBoundaryTitle).toBe("공유 지식");
-    expect(copy.publishBoundaryDescription).toContain("개인 지식 베이스");
+    expect(copy.publishBoundaryDescription).toContain("개인 지식 공간");
     expect(copy.publishSourceKnowledgeBaseHint).toContain(
-      "개인 지식 베이스 전체",
+      "개인 지식 공간 전체",
     );
     expect(copy.publishTargetKnowledgeBaseHint).toContain("문서 복사 요청");
   });

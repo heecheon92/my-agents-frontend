@@ -1,4 +1,4 @@
-import { ServiceShell } from "@/components/keymesh/ServiceShell";
+import { ServiceShell } from "@/components/ServiceShell";
 
 export default function ServiceLayout({
   children,

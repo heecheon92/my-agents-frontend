@@ -5,15 +5,15 @@
 - Last refreshed: 2026-05-22
 - Primary product surfaces:
   - Public entry: `/` marketing/entry page.
-  - Auth: `/login`, `/signup` through `components/keymesh/AuthPanel.tsx`.
-  - Protected service shell: `app/(service)/layout.tsx` through `components/keymesh/ServiceShell.tsx`.
-  - Anchor workspace: `/chat` through `components/keymesh/ChatWorkspace.tsx`.
-  - Operations/admin surfaces: `/documents`, `/knowledge`, `/groups` through `components/keymesh/AdminSurfaces.tsx`.
+  - Auth: `/login`, `/signup` through `components/AuthPanel.tsx`.
+  - Protected service shell: `app/(service)/layout.tsx` through `components/ServiceShell.tsx`.
+  - Anchor workspace: `/chat` through `components/ChatWorkspace.tsx` and focused Ask components under `components/chat/`.
+  - Operations/admin surfaces: `/documents`, `/knowledge`, `/groups` through `components/AdminSurfaces.tsx`.
 - Evidence reviewed:
   - `AGENTS.md` product intent, frontend boundary, design/accessibility rules, and verification commands.
   - `app/globals.css` Tailwind v4 theme, semantic variables, inherited `cal-*` aliases, fluid type/spacing helpers, responsive primitives, card helpers.
   - `app/layout.tsx`, `app/page.tsx`, `app/(service)/layout.tsx`, `app/(service)/*/page.tsx` route structure.
-  - `components/keymesh/ServiceShell.tsx`, `ChatWorkspace.tsx`, `AdminSurfaces.tsx`, `AuthPanel.tsx`, `Field.tsx`, `Status.tsx`.
+  - `components/ServiceShell.tsx`, `ChatWorkspace.tsx`, `AdminSurfaces.tsx`, `AuthPanel.tsx`, `Field.tsx`, `Status.tsx`.
   - `components/ui/button.tsx` Base UI button primitive and current variants.
   - `docs/frontend-architecture.md`, `docs/agent-onboarding.md`, `docs/security-and-backend-boundary.md`, `docs/verification-runbook.md`, `docs/implementation-log.md`.
   - `localization/en.json`, `localization/ko.json` bilingual product copy and route labels.
@@ -21,7 +21,7 @@
 
 ## Brand
 - Personality:
-  - A calm AI operations console: exact, evidence-forward, composed under load, and credible enough for security/product review.
+  - A calm AI workspace: exact, citation-forward, composed under load, and understandable to a first-time knowledge worker.
   - Editorial rather than dashboard-noisy: dense information is allowed, but hierarchy must feel curated, not crammed.
   - The visual metaphor is **instrument panel + knowledge dossier**: transcripts, citations, events, documents, and permissions should feel connected as operational evidence.
 - Trust signals:
@@ -36,9 +36,11 @@
 
 ## Product goals
 - Goals:
-  - Make chat with server-owned runs the obvious primary journey.
-  - Let users understand what the backend did: messages, run status, event trail, citations, and document sources should be visible in one coherent workspace.
-  - Make document, knowledge-base, group, membership, and permission workflows usable even while some backend contracts remain ID-based.
+  - Make Ask/chat the obvious primary journey after users add knowledge.
+  - Make the first-time journey legible in five seconds: add documents, ask questions, inspect citations.
+  - Keep citations visually attached to assistant answers while moving run history and activity events into progressive disclosure.
+  - Make Add sources and Knowledge feel like one mental model: documents/notes are sources inside knowledge spaces.
+  - Make team, membership, and permission workflows usable while keeping raw ID-based controls in advanced/admin disclosure.
   - Support Korean and English with comfortable typography, wrapping, and no hardcoded user-facing strings.
   - Give frontend engineers a stable theme/component contract that can be implemented with current Next.js, Tailwind v4, Base UI/shadcn-style primitives, and no new component library.
   - Reduce future UI churn by moving repeated panel/list/message patterns out of ad hoc Tailwind strings and into small repo-native primitives.
@@ -74,20 +76,20 @@
 
 ## Information architecture
 - Primary navigation:
-  - Protected app navigation is task-oriented: Chat, Documents, Knowledge, Groups.
-  - Chat is first and should be visually weighted as the default route from the service index.
+  - Protected app navigation is task-oriented: Ask, Add sources, Knowledge, Teams.
+  - Ask is first and should be visually weighted as the default route from the service index.
   - Mobile navigation remains horizontal-scrollable or transformed into an accessible compact pattern; it must not disappear below desktop.
 - Core routes/screens:
-  - `/`: Entry page that promises a backend-wired AI console, not a generic marketing site.
+  - `/`: Entry page that promises “내 문서를 기반으로 답하는 AI 워크스페이스,” not a generic marketing site.
   - `/login` and `/signup`: Two-panel trust/auth experience with guest path and account-created handoff.
-  - `/chat`: Transcript-first workspace with conversation list, composer, and progressively disclosed run history/activity/citations inspector.
-  - `/documents`: Create/upload queue + selected document actions + document list + extraction run status.
-  - `/knowledge`: Create/list knowledge bases.
-  - `/groups`: Create/list groups and ID-based member role actions.
+  - `/chat`: Ask-first workspace with conversation list, top-of-chat knowledge selector, transcript, dominant composer, compact citation summaries near answers, and progressively disclosed citation details plus response evidence/work history.
+  - `/documents`: Add sources screen for text/file sources inside a selected knowledge space; permissions and processing internals stay in Advanced sections.
+  - `/knowledge`: Create/list knowledge spaces and explain add sources → ask → inspect citations.
+  - `/groups`: Teams screen for shared knowledge and advanced ID-based member role actions.
 - Content hierarchy:
   - Level 1: Page purpose and current user/session context.
   - Level 2: Primary action for the route, e.g. create conversation, send message, upload/ingest document.
-  - Level 3: Progressive evidence, e.g. run status, event payload, citation snippet, document IDs, permissions; reveal in panels/tabs/accordions before forcing all metadata onscreen.
+  - Level 3: Progressive evidence, e.g. citation snippet, response history, event payload, document IDs, permissions; show compact answer-level cues first, then reveal detailed cards and implementation-heavy metadata in panels/tabs/accordions.
   - Level 4: Backend limitation notes and safe recovery paths.
 
 ## Design principles
@@ -154,8 +156,8 @@
 ## Components
 - Existing components to reuse:
   - `components/ui/button.tsx` as the only generic button primitive.
-  - `components/keymesh/Field.tsx` and `inputClassName` for labels, inputs, textareas, selects, file inputs.
-  - `components/keymesh/Status.tsx` for `EmptyState`, `ErrorState`, `Pill`.
+  - `components/Field.tsx` and `inputClassName` for labels, inputs, textareas, selects, file inputs.
+  - `components/Status.tsx` for `EmptyState`, `ErrorState`, `Pill`.
   - Existing `responsive-*`, `cal-card`, `cal-product-card`, `cal-heading`, `cal-label`, `cal-subcopy` helpers until a code task renames or remaps them.
 - New/changed components:
   - Future implementation should extract app-specific primitives before adding abstractions:
@@ -164,7 +166,7 @@
     - `TimelineStep`: redacted agent activity row with sequence, event type, timestamp when available, and safe payload preview.
     - `DocumentQueueItem`: standardized upload/ingest row state; current `UploadQueueRow` already points in this direction.
     - `ResourceList` / `ResourceRow`: reusable list and selectable-row primitives for conversations, documents, knowledge bases, and groups.
-    - `MessageBubble` / `ComposerBar`: transcript primitives that keep Markdown-safe assistant rendering, plain-text user messages, queued state, and send/stop affordances consistent.
+    - `ConversationSidebar`, `ChatTranscript`, `MessageBubble`, `EvidencePanel`, `KnowledgeSourceSelector`, and `ComposerBar`: Ask primitives that keep Markdown-safe assistant rendering, plain-text user messages, queued state, compact source selection, citations, and send/stop affordances consistent.
     - `ShellIdentity`: brand/session block to reduce duplication between desktop sidebar and mobile header.
   - Do not add these until implementation work needs them; this document defines direction, not a required refactor.
 - Variants and states:
@@ -184,8 +186,9 @@
     - User messages can use primary fill; assistant messages should use readable surface with renderer-safe Markdown.
     - Assistant content can include headings/lists/code; user content remains literal text.
     - Assistant message footers own answer-specific evidence actions. The compact footer should stay attached to the rendered answer, not drift into a global inspector.
+    - Citations should default to a small count/label chip near the assistant answer; full source cards, snippets, and advanced IDs belong inside an explicit details disclosure.
     - Footer actions must remain keyboard reachable with visible focus, expose accessible names even when rendered as icons, and keep the `다시 생성` / `Regenerate` action at least 44px tall on touch layouts.
-    - Footer evidence actions should progressively disclose that message's run details, redacted activity events, and citations without requiring users to leave the transcript reading path.
+    - Footer evidence actions should progressively disclose that message's run details, redacted activity events, and citation details without requiring users to leave the transcript reading path.
     - Empty footer evidence states should explain that events/citations appear after a run, and disabled replay states should be explained by status copy or button state near the affected message.
   - Event payloads:
     - Keep raw-looking JSON visually contained and clearly labeled as redacted backend payload; long payloads scroll inside the card.
@@ -194,7 +197,7 @@
   - `DESIGN.md` owns brand, IA, visual language, component rules, and open questions.
   - `app/globals.css` owns CSS custom properties, Tailwind v4 theme aliases, responsive helpers, and low-level helper classes.
   - `components/ui/` owns generic primitives.
-  - `components/keymesh/` owns app-specific shells, workspaces, feature surfaces, and any extracted panel/list/message primitives.
+  - `components/` owns app-specific shells, workspaces, feature surfaces, and any extracted panel/list/message primitives.
   - `localization/*.json` owns user-visible copy in Korean and English.
 
 ## Accessibility
@@ -234,7 +237,7 @@
   - Chat:
     - Mobile: transcript/composer should be the primary reading path after a conversation is selected; conversation list and inspectors may stack or collapse, but no route-critical panel may require horizontal scroll.
     - Desktop: left conversation list; main column with transcript/composer and an inspector band that can be progressively disclosed.
-    - Wide desktop: run history, activity events, and citations can sit side by side, with activity events receiving the widest column, but the transcript remains the dominant surface.
+    - Wide desktop: detailed run history, activity events, and citation cards may sit side by side only after a disclosure is opened; the transcript remains the dominant surface.
   - Admin surfaces:
     - Use current container-query-ready `responsive-panel-grid[data-layout="form-aside"]`; forms and selected-action panels split only when the container is wide enough.
     - De-emphasize admin-heavy density with grouped sections, collapsible/secondary action areas, and clear selected-resource context.

@@ -1,4 +1,4 @@
-import { AuthPanel } from "@/components/keymesh/AuthPanel";
+import { AuthPanel } from "@/components/AuthPanel";
 
 export default function LoginPage() {
   return <AuthPanel mode="login" />;

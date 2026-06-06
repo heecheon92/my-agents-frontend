@@ -78,6 +78,7 @@ export const extractionRunStatusSchema = z.enum([
 
 export const extractionRunStageSchema = z.enum([
   "queued",
+  "claimed",
   "chunking",
   "embedding",
   "indexing",
