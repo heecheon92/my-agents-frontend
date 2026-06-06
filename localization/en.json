@@ -168,6 +168,17 @@
     "noRunsTitle": "No runs",
     "noRunsDescription": "Send a message to create the first run.",
     "activityEvents": "Work history",
+    "agentTrace": {
+      "title": "Agent trace",
+      "stages": {
+        "planning": "Planning",
+        "searchingKnowledge": "Searching knowledge",
+        "draftingAnswer": "Drafting answer",
+        "checkingCitations": "Checking citations",
+        "answerReady": "Answer ready",
+        "needsEvidence": "Needs evidence"
+      }
+    },
     "noEventsTitle": "No events",
     "noEventsDescription": "Latest run events will appear here.",
     "latestCitations": "Citations",

@@ -168,6 +168,17 @@
     "noRunsTitle": "실행 기록이 없습니다",
     "noRunsDescription": "메시지를 보내 첫 실행을 만드세요.",
     "activityEvents": "작업 내역",
+    "agentTrace": {
+      "title": "에이전트 흐름",
+      "stages": {
+        "planning": "계획 세우기",
+        "searchingKnowledge": "지식 검색",
+        "draftingAnswer": "답변 작성",
+        "checkingCitations": "인용 확인",
+        "answerReady": "답변 준비 완료",
+        "needsEvidence": "근거 필요"
+      }
+    },
     "noEventsTitle": "이벤트가 없습니다",
     "noEventsDescription": "최신 실행 이벤트가 여기에 표시됩니다.",
     "latestCitations": "인용",

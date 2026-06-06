@@ -3,6 +3,7 @@ import {
   ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
   CHAT_SCROLL_REGION_CLASS_NAME,
   CHAT_WORKSPACE_PANEL_CLASS_NAME,
+  getAgentTraceStageKeys,
   getConversationCardClassName,
   getLatestAssistantMessageId,
   getNextConversationIdAfterDelete,
@@ -93,6 +94,68 @@ describe("ChatWorkspace assistant message footer", () => {
     });
     expect(en.chat.runEvidenceLabel).toBe("Answer context");
     expect(ko.chat.activityPayloadHidden).toBe("내부 처리 정보는 숨김");
+  });
+
+  it("summarizes agentic run events into localized compact trace stages", () => {
+    expect(en.chat.agentTrace.stages.planning).toBe("Planning");
+    expect(ko.chat.agentTrace.stages.searchingKnowledge).toBe("지식 검색");
+    expect(en.chat.agentTrace.stages.checkingCitations).toBe(
+      "Checking citations",
+    );
+    expect(ko.chat.agentTrace.stages.answerReady).toBe("답변 준비 완료");
+    expect(en.chat.agentTrace.stages.needsEvidence).toBe("Needs evidence");
+
+    expect(
+      getAgentTraceStageKeys({
+        citationCount: 2,
+        events: [
+          {
+            id: "live-1",
+            sequence: 1,
+            event_type: "run_started",
+            payload: { knowledge_base_selection: { mode: "all" } },
+          },
+          {
+            id: "live-2",
+            sequence: 2,
+            event_type: "answer_delta",
+            payload: { delta: "hello" },
+          },
+          {
+            id: "live-3",
+            sequence: 3,
+            event_type: "run_completed",
+            payload: { citations: [{ id: "citation-1" }] },
+          },
+        ],
+      }),
+    ).toEqual([
+      "planning",
+      "searchingKnowledge",
+      "draftingAnswer",
+      "checkingCitations",
+      "answerReady",
+    ]);
+
+    expect(
+      getAgentTraceStageKeys({
+        citationCount: 0,
+        events: [
+          {
+            id: "live-1",
+            sequence: 1,
+            event_type: "run_started",
+            payload: {},
+          },
+          {
+            id: "live-2",
+            sequence: 2,
+            event_type: "run_completed",
+            payload: { citations: [] },
+          },
+        ],
+      }).at(-1),
+    ).toBe("needsEvidence");
   });
 
   it("keeps selected conversation contrast stable on hover", () => {

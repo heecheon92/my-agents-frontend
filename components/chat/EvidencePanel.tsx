@@ -3,6 +3,23 @@ import { EmptyState, Pill } from "@/components/Status";
 import type { AgentEvent, AgentRunSummary, Citation } from "@/model/my-agents";
 import type { ChatLocalization, LiveActivityEvent } from "./types";
 
+export type AgentTraceStageKey =
+  | "planning"
+  | "searchingKnowledge"
+  | "draftingAnswer"
+  | "checkingCitations"
+  | "answerReady"
+  | "needsEvidence";
+
+const AGENT_TRACE_STAGE_ORDER: AgentTraceStageKey[] = [
+  "planning",
+  "searchingKnowledge",
+  "draftingAnswer",
+  "checkingCitations",
+  "answerReady",
+  "needsEvidence",
+];
+
 const INTERNAL_ACTIVITY_PAYLOAD_KEYS = new Set([
   "handled_by",
   "retrieval_route",
@@ -37,6 +54,131 @@ function formatActivityEventPayload(value: unknown, fallbackLabel: string) {
     return fallbackLabel;
   }
   return JSON.stringify(sanitized, null, 2);
+}
+
+function collectPayloadKeys(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.flatMap(collectPayloadKeys);
+  }
+  if (!value || typeof value !== "object") return [];
+
+  return Object.entries(value).flatMap(([key, child]) => [
+    key,
+    ...collectPayloadKeys(child),
+  ]);
+}
+
+function activityEventSearchText(
+  event: AgentEvent | LiveActivityEvent,
+): string {
+  return [event.event_type, ...collectPayloadKeys(event.payload)]
+    .join(" ")
+    .toLowerCase();
+}
+
+function eventMatchesAny(
+  event: AgentEvent | LiveActivityEvent,
+  patterns: RegExp[],
+) {
+  const searchText = activityEventSearchText(event);
+  return patterns.some((pattern) => pattern.test(searchText));
+}
+
+export function getAgentTraceStageKeys({
+  events,
+  citationCount,
+}: {
+  events: Array<AgentEvent | LiveActivityEvent>;
+  citationCount: number;
+}): AgentTraceStageKey[] {
+  if (events.length === 0) return [];
+
+  const stageKeys = new Set<AgentTraceStageKey>(["planning"]);
+  const hasCompletedEvent = events.some((event) =>
+    /(^|_)run_completed$|\bcompleted\b/.test(event.event_type.toLowerCase()),
+  );
+  const hasUnreadyTerminalEvent = events.some((event) =>
+    /(^|_)run_(failed|cancelled)$|\b(failed|cancelled|error)\b/.test(
+      event.event_type.toLowerCase(),
+    ),
+  );
+
+  if (
+    citationCount > 0 ||
+    events.some((event) =>
+      eventMatchesAny(event, [
+        /search/,
+        /retriev/,
+        /knowledge/,
+        /context/,
+        /source/,
+      ]),
+    )
+  ) {
+    stageKeys.add("searchingKnowledge");
+  }
+
+  if (
+    hasCompletedEvent ||
+    events.some((event) => eventMatchesAny(event, [/answer/, /delta/, /draft/]))
+  ) {
+    stageKeys.add("draftingAnswer");
+  }
+
+  if (
+    hasCompletedEvent ||
+    citationCount > 0 ||
+    events.some((event) =>
+      eventMatchesAny(event, [/citation/, /evidence/, /verify/, /check/]),
+    )
+  ) {
+    stageKeys.add("checkingCitations");
+  }
+
+  if (hasCompletedEvent) {
+    stageKeys.add(citationCount > 0 ? "answerReady" : "needsEvidence");
+  } else if (hasUnreadyTerminalEvent) {
+    stageKeys.add("needsEvidence");
+  }
+
+  return AGENT_TRACE_STAGE_ORDER.filter((stageKey) => stageKeys.has(stageKey));
+}
+
+function AgentTraceSummary({
+  localization,
+  events,
+  citationCount,
+}: {
+  localization: ChatLocalization;
+  events: Array<AgentEvent | LiveActivityEvent>;
+  citationCount: number;
+}) {
+  const stageKeys = getAgentTraceStageKeys({ events, citationCount });
+  if (stageKeys.length === 0) return null;
+
+  return (
+    <div className="rounded-lg border border-km-accent/20 bg-km-accent/10 p-3">
+      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+        {localization.agentTrace.title}
+      </p>
+      <ol
+        className="mt-2 flex min-w-0 flex-wrap gap-2"
+        aria-label={localization.agentTrace.title}
+      >
+        {stageKeys.map((stageKey, index) => (
+          <li
+            key={stageKey}
+            className="inline-flex min-h-8 min-w-0 items-center gap-1 rounded-full border border-km-accent/20 bg-white px-2.5 py-1 text-xs font-medium text-cal-ink"
+          >
+            <span className="shrink-0 text-cal-muted">{index + 1}</span>
+            <span className="min-w-0 truncate">
+              {localization.agentTrace.stages[stageKey]}
+            </span>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
 }
 
 function citationTitle(citation: Citation, localization: ChatLocalization) {
@@ -147,9 +289,11 @@ function RunHistorySection({
 function ActivitySection({
   localization,
   events,
+  citationCount,
 }: {
   localization: ChatLocalization;
   events: Array<AgentEvent | LiveActivityEvent>;
+  citationCount: number;
 }) {
   return (
     <section className="grid min-w-0 gap-2">
@@ -161,7 +305,13 @@ function ActivitySection({
           title={localization.noEventsTitle}
           description={localization.noEventsDescription}
         />
-      ) : null}
+      ) : (
+        <AgentTraceSummary
+          localization={localization}
+          events={events}
+          citationCount={citationCount}
+        />
+      )}
       {events.map((event) => (
         <article
           key={event.id}
@@ -260,7 +410,11 @@ export function EvidencePanel({
                   lang={lang}
                   runs={runs}
                 />
-                <ActivitySection localization={localization} events={events} />
+                <ActivitySection
+                  localization={localization}
+                  events={events}
+                  citationCount={citations.length}
+                />
               </div>
             </details>
           </>

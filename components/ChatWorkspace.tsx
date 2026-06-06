@@ -40,7 +40,10 @@ import {
   ConversationSidebar,
   getConversationCardClassName,
 } from "./chat/ConversationSidebar";
-import { sanitizeActivityEventPayload } from "./chat/EvidencePanel";
+import {
+  getAgentTraceStageKeys,
+  sanitizeActivityEventPayload,
+} from "./chat/EvidencePanel";
 import { KnowledgeSourceSelector } from "./chat/KnowledgeSourceSelector";
 import type { ChatMode, LiveActivityEvent, QueuedMessage } from "./chat/types";
 
@@ -51,7 +54,11 @@ export const ACTIVE_RUN_STALE_NOTICE_AFTER_MS = 30_000;
 
 export { CHAT_SCROLL_REGION_CLASS_NAME };
 export { REPLAY_ICON_PENDING_CLASS_NAME };
-export { getConversationCardClassName, sanitizeActivityEventPayload };
+export {
+  getAgentTraceStageKeys,
+  getConversationCardClassName,
+  sanitizeActivityEventPayload,
+};
 
 export const CHAT_WORKSPACE_PANEL_CLASS_NAME =
   "cal-card flex h-[calc(100dvh-8rem)] min-h-0 min-w-0 flex-col overflow-hidden rounded-xl xl:h-full";
