@@ -27,11 +27,13 @@ export function MessageBubble({
       <p className="mb-1 text-xs font-semibold uppercase tracking-[0.08em] opacity-60">
         {roleLabel}
       </p>
-      {isAssistant ? (
-        <AgentMessageRenderer content={content} />
-      ) : (
-        <p className="whitespace-pre-wrap break-words">{content}</p>
-      )}
+      {content ? (
+        isAssistant ? (
+          <AgentMessageRenderer content={content} />
+        ) : (
+          <p className="whitespace-pre-wrap break-words">{content}</p>
+        )
+      ) : null}
       {children}
     </div>
   );

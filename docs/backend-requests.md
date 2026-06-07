@@ -112,12 +112,12 @@ Frontend workaround, if any: No UI change needed if the backend returns a safe `
 
 ## 2026-05-24 — Group Knowledge V1 OpenAPI gate
 
-Status: implemented
-Frontend need: Backend-owned OpenAPI for Group Knowledge V1 before changing frontend API models, clients, hooks, or group-chat request bodies.
-Current backend behavior: Read-only OpenAPI generation from `/Users/heecheonpark/Git/my-agents` with `MY_AGENTS_RESPONSE_MODE=deterministic uv run python - <<'PY' ... main.app.openapi() ... PY` now shows `ConversationRunRequest.optional_personal_knowledge_base_ids` and `/groups/{group_id}/publish-requests` create/list plus approve/reject routes.
-Requested backend contract: Expose `ConversationRunRequest.optional_personal_knowledge_base_ids`; source-audit fields/counts on run start/completion/history/detail/events; and publish request create/list/approve/reject routes with request/response schemas for owner/admin-approved copy semantics.
-Why it matters: Group Chat UI must send mandatory group KB selection plus explicit private personal attachments and must not invent publish workflow shapes from backend source inspection. Pending/rejected publish requests must have zero retrieval effect, and approved requests must appear only after backend group-owned copy creation.
-Frontend workaround, if any: Frontend models/services/hooks now use the backend-owned contract; no fallback or invented publish shape remains.
+Status: superseded by unified source selection on 2026-06-07
+Frontend need: Backend-owned OpenAPI for shared/team knowledge before changing frontend API models, clients, or hooks.
+Current backend behavior: Chat source selection now uses a single `knowledge_base_selection` payload. Personal, shared, and team knowledge spaces are selected by ID through the same contract; deprecated shared-knowledge mandatory-source and optional-private attachment fields are removed.
+Requested backend contract: Keep publish request create/list/approve/reject routes with request/response schemas for owner/admin-approved copy semantics, and keep run source-audit fields focused on resolved knowledge-base IDs/counts.
+Why it matters: The UI should not expose separate personal-chat/shared-knowledge behavior. Pending/rejected publish requests must have zero retrieval effect, and approved requests must appear only after backend group-owned copy creation.
+Frontend workaround, if any: Frontend models/services/hooks use the unified backend-owned contract; no shared-knowledge fallback remains.
 ## 2026-05-21 — public-demo guest access contract
 
 Status: proposed

@@ -22,6 +22,9 @@ export const API_PATH = {
     replayMessage(conversationId: string, messageId: string) {
       return `${this.messages(conversationId)}/${messageId}/replay`;
     },
+    replayMessageStream(conversationId: string, messageId: string) {
+      return `${this.replayMessage(conversationId, messageId)}/stream`;
+    },
     runs(conversationId: string) {
       return `${this.detail(conversationId)}/runs`;
     },
@@ -61,6 +64,7 @@ export const API_PATH = {
   },
   knowledgeBases: {
     root: "/knowledge-bases",
+    teamUploadStaging: "/knowledge-bases/team-upload-staging",
     detail(knowledgeBaseId: string) {
       return `${this.root}/${knowledgeBaseId}`;
     },

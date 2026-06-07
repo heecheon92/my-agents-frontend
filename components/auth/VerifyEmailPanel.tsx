@@ -78,10 +78,15 @@ export function VerifyEmailPanel() {
             </div>
           ) : null}
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
-            <Button render={<Link href="/login" />} size="lg">
+            <Button
+              nativeButton={false}
+              render={<Link href="/login" />}
+              size="lg"
+            >
               {localization.auth.loginLink}
             </Button>
             <Button
+              nativeButton={false}
               render={<Link href="/signup" />}
               size="lg"
               variant="outline"

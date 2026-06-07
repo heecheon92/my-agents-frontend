@@ -92,7 +92,7 @@ describe("ChatWorkspace assistant message footer", () => {
       reply: "Visible answer",
       nested: { safe: "kept" },
     });
-    expect(en.chat.runEvidenceLabel).toBe("Answer context");
+    expect(en.chat.runEvidenceLabel).toBe("Knowledge used");
     expect(ko.chat.activityPayloadHidden).toBe("내부 처리 정보는 숨김");
   });
 

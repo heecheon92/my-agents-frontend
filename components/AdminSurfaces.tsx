@@ -29,7 +29,11 @@ import {
 import { useLocalization } from "@/hooks/useLocalization";
 import type { ExtractionRun } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
-import { writableDocumentKnowledgeBases } from "./document-knowledge-base";
+import {
+  canAutoApproveTeamDocumentUpload,
+  groupKnowledgeBasesForGroup,
+  writableDocumentKnowledgeBases,
+} from "./document-knowledge-base";
 import { Field, inputClassName } from "./Field";
 import {
   buildKnowledgeBaseCreateRequest,
@@ -39,6 +43,7 @@ import { EmptyState, ErrorState, Pill } from "./Status";
 
 type GroupRole = "owner" | "admin" | "editor" | "viewer";
 type PublishSourceKind = "document" | "knowledge-base";
+type DocumentDestination = "personal" | "team";
 
 type UploadQueueStatus =
   | "selected"
@@ -46,6 +51,7 @@ type UploadQueueStatus =
   | "uploaded"
   | "queued"
   | "ingesting"
+  | "publishing"
   | "completed"
   | "failed";
 
@@ -289,14 +295,40 @@ export function KnowledgeSurface() {
 
 export function DocumentsSurface() {
   const queryClient = useQueryClient();
+  const groups = useGroups();
   const knowledgeBases = useKnowledgeBases();
   const currentUser = useCurrentUser();
+  const [documentDestination, setDocumentDestination] =
+    useState<DocumentDestination>("personal");
   const [selectedKnowledgeBaseId, setSelectedKnowledgeBaseId] =
+    useState<string>();
+  const [selectedTeamGroupId, setSelectedTeamGroupId] = useState<string>();
+  const [selectedTeamKnowledgeBaseId, setSelectedTeamKnowledgeBaseId] =
     useState<string>();
   const documentKnowledgeBases = writableDocumentKnowledgeBases(
     knowledgeBases.data ?? [],
     currentUser.data?.id,
   );
+  const teamGroups = groups.data ?? [];
+  const activeTeamGroupId =
+    selectedTeamGroupId &&
+    teamGroups.some((group) => group.id === selectedTeamGroupId)
+      ? selectedTeamGroupId
+      : teamGroups[0]?.id;
+  const activeTeamGroup = teamGroups.find(
+    (group) => group.id === activeTeamGroupId,
+  );
+  const activeGroupKnowledgeBases = groupKnowledgeBasesForGroup(
+    knowledgeBases.data ?? [],
+    activeTeamGroupId,
+  );
+  const activeTeamKnowledgeBaseId =
+    selectedTeamKnowledgeBaseId &&
+    activeGroupKnowledgeBases.some(
+      (knowledgeBase) => knowledgeBase.id === selectedTeamKnowledgeBaseId,
+    )
+      ? selectedTeamKnowledgeBaseId
+      : activeGroupKnowledgeBases[0]?.id;
   const activeKnowledgeBaseId =
     selectedKnowledgeBaseId &&
     documentKnowledgeBases.some(
@@ -304,8 +336,16 @@ export function DocumentsSurface() {
     )
       ? selectedKnowledgeBaseId
       : documentKnowledgeBases[0]?.id;
-  const documents = useKnowledgeBaseDocuments(activeKnowledgeBaseId);
-  const createDocument = useCreateKnowledgeBaseDocument(activeKnowledgeBaseId);
+  const displayKnowledgeBaseId =
+    documentDestination === "team"
+      ? activeTeamKnowledgeBaseId
+      : activeKnowledgeBaseId;
+  const personalWriteKnowledgeBaseId =
+    documentDestination === "personal" ? activeKnowledgeBaseId : undefined;
+  const documents = useKnowledgeBaseDocuments(displayKnowledgeBaseId);
+  const createDocument = useCreateKnowledgeBaseDocument(
+    personalWriteKnowledgeBaseId,
+  );
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
@@ -319,21 +359,26 @@ export function DocumentsSurface() {
     (document) => document.id === activeDocumentId,
   );
   const extractionRuns = useKnowledgeBaseExtractionRuns(
-    activeKnowledgeBaseId,
+    displayKnowledgeBaseId,
     activeDocumentId,
   );
   const ingest = useIngestKnowledgeBaseDocumentAsync(
-    activeKnowledgeBaseId,
+    displayKnowledgeBaseId,
     activeDocumentId,
   );
   const deleteDocument = useDeleteKnowledgeBaseDocument(
-    activeKnowledgeBaseId,
+    displayKnowledgeBaseId,
     activeDocumentId,
   );
   const patchPermission = usePatchDocumentPermission(activeDocumentId);
   const [permissionUserId, setPermissionUserId] = useState("");
   const { localization } = useLocalization((state) => state.localization.admin);
-  const hasActiveKnowledgeBase = Boolean(activeKnowledgeBaseId);
+  const canAutoApproveTeamUpload =
+    canAutoApproveTeamDocumentUpload(activeTeamGroup);
+  const hasActiveKnowledgeBase =
+    documentDestination === "team"
+      ? Boolean(activeTeamGroupId && activeTeamKnowledgeBaseId)
+      : Boolean(personalWriteKnowledgeBaseId);
 
   const pendingQueueCount = uploadQueue.filter(
     (item) =>
@@ -358,6 +403,7 @@ export function DocumentsSurface() {
       uploaded: 0,
       queued: 0,
       ingesting: 0,
+      publishing: 0,
       completed: 0,
       failed: 0,
     } satisfies Record<UploadQueueStatus, number>,
@@ -493,17 +539,18 @@ export function DocumentsSurface() {
     }));
   }
 
-  async function refreshDocumentQueries(documentId?: string) {
-    if (activeKnowledgeBaseId) {
+  async function refreshDocumentQueries(
+    documentId?: string,
+    knowledgeBaseId = displayKnowledgeBaseId,
+  ) {
+    if (knowledgeBaseId) {
       await queryClient.invalidateQueries({
-        queryKey: MyAgentsQueryKeys.knowledgeBases.documents(
-          activeKnowledgeBaseId,
-        ),
+        queryKey: MyAgentsQueryKeys.knowledgeBases.documents(knowledgeBaseId),
       });
       if (documentId) {
         await queryClient.invalidateQueries({
           queryKey: MyAgentsQueryKeys.knowledgeBases.extractionRuns(
-            activeKnowledgeBaseId,
+            knowledgeBaseId,
             documentId,
           ),
         });
@@ -518,11 +565,11 @@ export function DocumentsSurface() {
   ) {
     let latestRun: ExtractionRun | null = null;
     while (true) {
-      if (!activeKnowledgeBaseId) {
+      if (!personalWriteKnowledgeBaseId) {
         throw new Error(localization.documents.knowledgeBaseRequired);
       }
       const run = await myAgentsAPI.documents.extractionRunInKnowledgeBase(
-        activeKnowledgeBaseId,
+        personalWriteKnowledgeBaseId,
         documentId,
         runId,
       );
@@ -539,8 +586,55 @@ export function DocumentsSurface() {
     return latestRun;
   }
 
+  async function publishDocumentToTeam(documentId: string) {
+    if (
+      documentDestination !== "team" ||
+      !activeTeamGroupId ||
+      !activeTeamKnowledgeBaseId
+    ) {
+      return { status: "personal", publishedDocumentId: undefined } as const;
+    }
+
+    const request = await myAgentsAPI.groups.createPublishRequest(
+      activeTeamGroupId,
+      {
+        source_document_id: documentId,
+        target_knowledge_base_id: activeTeamKnowledgeBaseId,
+      },
+    );
+    await queryClient.invalidateQueries({
+      queryKey: MyAgentsQueryKeys.groups.publishRequests(activeTeamGroupId),
+    });
+
+    if (!canAutoApproveTeamUpload) {
+      return { status: "pending", publishedDocumentId: undefined } as const;
+    }
+
+    const approved = await myAgentsAPI.groups.approvePublishRequest(
+      activeTeamGroupId,
+      request.id,
+    );
+    await Promise.all([
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.groups.publishRequests(activeTeamGroupId),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.knowledgeBases.documents(
+          activeTeamKnowledgeBaseId,
+        ),
+      }),
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.knowledgeBases.list(),
+      }),
+    ]);
+    return {
+      status: "approved",
+      publishedDocumentId: approved.published_document_id ?? undefined,
+    } as const;
+  }
+
   async function processQueueItem(item: UploadQueueItem) {
-    if (!activeKnowledgeBaseId) {
+    if (!hasActiveKnowledgeBase) {
       updateQueueItem(item.localId, {
         status: "failed",
         error: localization.documents.knowledgeBaseRequired,
@@ -569,30 +663,73 @@ export function DocumentsSurface() {
           progressPercent: 10,
           error: undefined,
         });
+        const uploadKnowledgeBaseId =
+          documentDestination === "team"
+            ? (await myAgentsAPI.knowledgeBases.ensureTeamUploadStaging()).id
+            : personalWriteKnowledgeBaseId;
+        if (!uploadKnowledgeBaseId) {
+          throw new Error(localization.documents.knowledgeBaseRequired);
+        }
         const uploaded = await myAgentsAPI.documents.uploadToKnowledgeBase(
-          activeKnowledgeBaseId,
+          uploadKnowledgeBaseId,
           {
             title: item.title.trim() || titleFromFileName(item.file.name),
             file: item.file,
           },
         );
         documentId = uploaded.id;
-        setSelectedDocumentId(uploaded.id);
+        if (documentDestination === "personal") {
+          setSelectedDocumentId(uploaded.id);
+        }
         updateQueueItem(item.localId, {
           documentId: uploaded.id,
           status: "uploaded",
           progressPercent: 0,
         });
-        await refreshDocumentQueries(uploaded.id);
+        if (documentDestination === "personal") {
+          await refreshDocumentQueries(uploaded.id, uploadKnowledgeBaseId);
+        }
       }
 
+      if (documentDestination === "team") {
+        updateQueueItem(item.localId, {
+          status: "publishing",
+          progressPercent: 0,
+          error: undefined,
+        });
+        const publishResult = await publishDocumentToTeam(documentId);
+        if (publishResult.publishedDocumentId) {
+          setSelectedDocumentId(publishResult.publishedDocumentId);
+        }
+        updateQueueItem(item.localId, {
+          status: "completed",
+          progressPercent: 0,
+          error: undefined,
+        });
+        setUploadAnnouncement(
+          (publishResult.status === "approved"
+            ? localization.documents.teamUploadApprovedAnnouncement
+            : localization.documents.teamUploadRequestedAnnouncement
+          ).replace("{file}", item.file.name),
+        );
+        await refreshDocumentQueries(
+          publishResult.publishedDocumentId,
+          activeTeamKnowledgeBaseId,
+        );
+        return;
+      }
+
+      const ingestionKnowledgeBaseId = personalWriteKnowledgeBaseId;
+      if (!ingestionKnowledgeBaseId) {
+        throw new Error(localization.documents.knowledgeBaseRequired);
+      }
       updateQueueItem(item.localId, {
         status: "queued",
         progressPercent: 0,
         error: undefined,
       });
       const run = await myAgentsAPI.documents.ingestAsyncInKnowledgeBase(
-        activeKnowledgeBaseId,
+        ingestionKnowledgeBaseId,
         documentId,
       );
       updateQueueItem(item.localId, {
@@ -657,7 +794,7 @@ export function DocumentsSurface() {
     if (
       processableItems.length === 0 ||
       isProcessingQueue ||
-      !activeKnowledgeBaseId
+      !hasActiveKnowledgeBase
     ) {
       return;
     }
@@ -685,11 +822,31 @@ export function DocumentsSurface() {
   async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     try {
-      if (!activeKnowledgeBaseId) return;
-      const created = await createDocument.mutateAsync({ title, content });
+      if (!hasActiveKnowledgeBase) return;
+      const created =
+        documentDestination === "team"
+          ? await myAgentsAPI.documents.createInKnowledgeBase(
+              (await myAgentsAPI.knowledgeBases.ensureTeamUploadStaging()).id,
+              { title, content },
+            )
+          : await createDocument.mutateAsync({ title, content });
+      if (documentDestination === "team") {
+        const publishResult = await publishDocumentToTeam(created.id);
+        setUploadAnnouncement(
+          publishResult.status === "approved"
+            ? localization.documents.teamTextApprovedAnnouncement
+            : localization.documents.teamTextRequestedAnnouncement,
+        );
+        setSelectedDocumentId(publishResult.publishedDocumentId);
+        await refreshDocumentQueries(
+          publishResult.publishedDocumentId,
+          activeTeamKnowledgeBaseId,
+        );
+      } else {
+        setSelectedDocumentId(created.id);
+      }
       setTitle("");
       setContent("");
-      setSelectedDocumentId(created.id);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -756,29 +913,127 @@ export function DocumentsSurface() {
                   {localization.documents.knowledgeBaseHint}
                 </p>
               </div>
-              <Field label={localization.documents.knowledgeBaseLabel}>
+              <Field label={localization.documents.destinationLabel}>
                 <select
                   className={inputClassName}
-                  value={activeKnowledgeBaseId ?? ""}
+                  value={documentDestination}
                   onChange={(event) => {
-                    setSelectedKnowledgeBaseId(event.target.value || undefined);
+                    setDocumentDestination(
+                      event.target.value as DocumentDestination,
+                    );
                     setSelectedDocumentId(undefined);
                   }}
-                  disabled={
-                    knowledgeBases.isLoading || isKnowledgeBaseSelectionLocked
-                  }
-                  required
+                  disabled={isKnowledgeBaseSelectionLocked}
                 >
-                  <option value="">
-                    {localization.documents.knowledgeBasePlaceholder}
+                  <option value="personal">
+                    {localization.documents.destinationPersonalOption}
                   </option>
-                  {documentKnowledgeBases.map((knowledgeBase) => (
-                    <option key={knowledgeBase.id} value={knowledgeBase.id}>
-                      {knowledgeBase.name}
-                    </option>
-                  ))}
+                  <option value="team">
+                    {localization.documents.destinationTeamOption}
+                  </option>
                 </select>
               </Field>
+              {documentDestination === "team" ? (
+                <div className="grid gap-3 rounded-xl border border-cal-hairline bg-cal-canvas p-3">
+                  <Field label={localization.documents.teamGroupLabel}>
+                    <select
+                      className={inputClassName}
+                      value={activeTeamGroupId ?? ""}
+                      onChange={(event) => {
+                        setSelectedTeamGroupId(event.target.value || undefined);
+                        setSelectedTeamKnowledgeBaseId(undefined);
+                        setSelectedDocumentId(undefined);
+                      }}
+                      disabled={
+                        groups.isLoading || isKnowledgeBaseSelectionLocked
+                      }
+                      required
+                    >
+                      <option value="">
+                        {localization.documents.teamGroupPlaceholder}
+                      </option>
+                      {teamGroups.map((group) => (
+                        <option key={group.id} value={group.id}>
+                          {group.name} · {localization.groups.roles[group.role]}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <Field label={localization.documents.teamKnowledgeBaseLabel}>
+                    <select
+                      className={inputClassName}
+                      value={activeTeamKnowledgeBaseId ?? ""}
+                      onChange={(event) =>
+                        setSelectedTeamKnowledgeBaseId(
+                          event.target.value || undefined,
+                        )
+                      }
+                      disabled={
+                        knowledgeBases.isLoading ||
+                        isKnowledgeBaseSelectionLocked
+                      }
+                      required
+                    >
+                      <option value="">
+                        {localization.documents.teamKnowledgeBasePlaceholder}
+                      </option>
+                      {activeGroupKnowledgeBases.map((knowledgeBase) => (
+                        <option key={knowledgeBase.id} value={knowledgeBase.id}>
+                          {knowledgeBase.name}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                  <p className="text-xs leading-5 text-cal-muted">
+                    {canAutoApproveTeamUpload
+                      ? localization.documents.teamUploadAutoApproveHint
+                      : localization.documents.teamUploadApprovalHint}
+                  </p>
+                  {groups.error ? <ErrorState error={groups.error} /> : null}
+                  {!groups.isLoading && teamGroups.length === 0 ? (
+                    <EmptyState
+                      title={localization.documents.noTeamTitle}
+                      description={localization.documents.noTeamDescription}
+                    />
+                  ) : null}
+                  {!knowledgeBases.isLoading &&
+                  activeTeamGroupId &&
+                  activeGroupKnowledgeBases.length === 0 ? (
+                    <EmptyState
+                      title={localization.documents.noTeamKnowledgeBaseTitle}
+                      description={
+                        localization.documents.noTeamKnowledgeBaseDescription
+                      }
+                    />
+                  ) : null}
+                </div>
+              ) : (
+                <Field label={localization.documents.knowledgeBaseLabel}>
+                  <select
+                    className={inputClassName}
+                    value={activeKnowledgeBaseId ?? ""}
+                    onChange={(event) => {
+                      setSelectedKnowledgeBaseId(
+                        event.target.value || undefined,
+                      );
+                      setSelectedDocumentId(undefined);
+                    }}
+                    disabled={
+                      knowledgeBases.isLoading || isKnowledgeBaseSelectionLocked
+                    }
+                    required
+                  >
+                    <option value="">
+                      {localization.documents.knowledgeBasePlaceholder}
+                    </option>
+                    {documentKnowledgeBases.map((knowledgeBase) => (
+                      <option key={knowledgeBase.id} value={knowledgeBase.id}>
+                        {knowledgeBase.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              )}
               {isKnowledgeBaseSelectionLocked ? (
                 <p className="text-xs leading-5 text-cal-muted">
                   {localization.documents.knowledgeBaseLockedHint}
@@ -795,7 +1050,11 @@ export function DocumentsSurface() {
                     localization.documents.noKnowledgeBaseDescription
                   }
                   action={
-                    <Button render={<Link href="/knowledge" />} size="sm">
+                    <Button
+                      nativeButton={false}
+                      render={<Link href="/knowledge" />}
+                      size="sm"
+                    >
                       {localization.documents.createKnowledgeBaseAction}
                     </Button>
                   }
@@ -830,14 +1089,15 @@ export function DocumentsSurface() {
               <Button
                 type="submit"
                 disabled={
-                  createDocument.isPending ||
+                  (documentDestination === "personal" &&
+                    createDocument.isPending) ||
                   !title.trim() ||
                   !hasActiveKnowledgeBase
                 }
               >
                 {localization.documents.createButton}
               </Button>
-              {createDocument.error ? (
+              {documentDestination === "personal" && createDocument.error ? (
                 <ErrorState error={createDocument.error} />
               ) : null}
             </form>
@@ -1273,7 +1533,12 @@ function uploadStatusTone(status: UploadQueueStatus): StatusTone {
   if (status === "completed") return "green";
   if (status === "failed") return "rose";
   if (status === "queued" || status === "uploaded") return "amber";
-  if (status === "uploading" || status === "ingesting") return "blue";
+  if (
+    status === "uploading" ||
+    status === "ingesting" ||
+    status === "publishing"
+  )
+    return "blue";
   return "slate";
 }
 
@@ -1290,7 +1555,10 @@ function isActiveExtractionRunStatus(status: string) {
 
 function isUploadQueueItemBusy(status: UploadQueueStatus) {
   return (
-    status === "uploading" || status === "queued" || status === "ingesting"
+    status === "uploading" ||
+    status === "queued" ||
+    status === "ingesting" ||
+    status === "publishing"
   );
 }
 

@@ -13,7 +13,4 @@ export type QueuedMessage = {
   conversationId: string;
   content: string;
   knowledgeBaseSelection: KnowledgeBaseSelection;
-  optionalPersonalKnowledgeBaseIds: string[];
 };
-
-export type ChatMode = "personal" | "group";

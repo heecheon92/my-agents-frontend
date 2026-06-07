@@ -32,8 +32,11 @@ const LANGUAGE_HEADER_NAMES = [
   "x-my-agents-locale",
 ] as const;
 
-function isStreamPath(path: string) {
-  return /^\/conversations\/[^/]+\/runs\/stream$/.test(path);
+export function isStreamPath(path: string) {
+  return (
+    /^\/conversations\/[^/]+\/runs\/stream$/.test(path) ||
+    /^\/conversations\/[^/]+\/messages\/[^/]+\/replay\/stream$/.test(path)
+  );
 }
 
 function isSessionLoginPath(path: string) {
@@ -100,10 +103,11 @@ async function proxy(request: NextRequest, context: RouteContext) {
     return new NextResponse(backendResponse.body, {
       status: backendResponse.status,
       headers: {
-        "cache-control": "no-store",
+        "cache-control": "no-store, no-transform",
         "content-type":
           backendResponse.headers.get("content-type") ??
           TEXT_EVENT_STREAM_CONTENT_TYPE,
+        "x-accel-buffering": "no",
       },
     });
   }

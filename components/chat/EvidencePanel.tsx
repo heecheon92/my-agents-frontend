@@ -203,6 +203,34 @@ function stageKeysFromBackendAgentTrace(
   return AGENT_TRACE_STAGE_ORDER.filter((stageKey) => stageKeys.has(stageKey));
 }
 
+export function getCurrentAgentTraceStep(
+  events: Array<AgentEvent | LiveActivityEvent>,
+): AgentTraceStageKey | null {
+  const stages = getAgentTraceStageKeys({ events, citationCount: 0 });
+  return stages.at(-1) ?? null;
+}
+
+export function CurrentAgentTraceStepPanel({
+  localization,
+  events,
+}: {
+  localization: ChatLocalization;
+  lang: string;
+  events: Array<AgentEvent | LiveActivityEvent>;
+}) {
+  const currentStep = getCurrentAgentTraceStep(events);
+  if (!currentStep) return null;
+  return (
+    <div className="mt-2 rounded-lg border border-km-accent/20 bg-km-accent/10 px-3 py-2 text-xs text-cal-ink">
+      <span className="font-semibold">
+        {localization.agentTrace.currentStep}
+      </span>
+      <span className="mx-1 text-cal-muted">·</span>
+      <span>{localization.agentTrace.stages[currentStep]}</span>
+    </div>
+  );
+}
+
 function agentTraceStepsFromPayload(payload: unknown): AgentTraceStep[] {
   if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
     return [];

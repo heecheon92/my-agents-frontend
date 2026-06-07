@@ -150,6 +150,29 @@ export class MyAgentsConversationAPI {
     );
   }
 
+  async streamReplayMessage(
+    conversationId: string,
+    messageId: string,
+  ): Promise<Response> {
+    return this.client.fetchResponse(
+      API_PATH.conversations.replayMessageStream(conversationId, messageId),
+      {
+        method: "POST",
+        headers: { Accept: TEXT_EVENT_STREAM_CONTENT_TYPE },
+      },
+    );
+  }
+
+  async *streamReplayMessageEvents(
+    conversationId: string,
+    messageId: string,
+  ): AsyncGenerator<ConversationRunStreamEvent> {
+    const response = await this.streamReplayMessage(conversationId, messageId);
+    for await (const event of streamServerSentEvents(response)) {
+      yield parseConversationRunStreamEvent(event);
+    }
+  }
+
   async run(
     conversationId: string,
     payload: ConversationRunRequest,

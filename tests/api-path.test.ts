@@ -30,6 +30,9 @@ describe("API_PATH", () => {
     expect(API_PATH.conversations.replayMessage(conversationId, "msg-1")).toBe(
       "/conversations/conversation-1/messages/msg-1/replay",
     );
+    expect(
+      API_PATH.conversations.replayMessageStream(conversationId, "msg-1"),
+    ).toBe("/conversations/conversation-1/messages/msg-1/replay/stream");
   });
 
   it("builds group publish request paths", () => {
@@ -61,6 +64,9 @@ describe("API_PATH", () => {
   });
 
   it("builds knowledge-base nested document paths", () => {
+    expect(API_PATH.knowledgeBases.teamUploadStaging).toBe(
+      "/knowledge-bases/team-upload-staging",
+    );
     expect(API_PATH.knowledgeBases.detail(knowledgeBaseId)).toBe(
       "/knowledge-bases/kb-1",
     );

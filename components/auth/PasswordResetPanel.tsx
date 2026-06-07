@@ -62,6 +62,7 @@ export function PasswordResetPanel() {
                 {localization.auth.loginLink}
               </Button>
               <Button
+                nativeButton={false}
                 render={<Link href="/signup" />}
                 size="lg"
                 variant="outline"

@@ -101,9 +101,7 @@ export function ConversationSidebar({
                         : "bg-cal-surface-soft text-cal-muted",
                     )}
                   >
-                    {item.group_id
-                      ? localization.groupConversationBadge
-                      : localization.personalConversationBadge}
+                    {localization.personalConversationBadge}
                   </span>
                 </button>
                 <Button

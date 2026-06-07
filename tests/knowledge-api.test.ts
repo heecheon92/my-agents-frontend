@@ -31,6 +31,35 @@ describe("knowledge base creation payloads", () => {
 });
 
 describe("MyAgentsKnowledgeBaseAPI", () => {
+  it("creates or reuses the hidden team upload staging knowledge base", async () => {
+    const calls: Array<{ path: string; init?: { method?: string } }> = [];
+    const api = new MyAgentsKnowledgeBaseAPI({
+      fetch: async (path, init) => {
+        calls.push({ path, init });
+        return {
+          id: "kb-staging-1",
+          name: "Team upload staging",
+          scope: "personal",
+          purpose: "team_upload_staging",
+          owner_user_id: "user-1",
+          group_id: null,
+          published_group_ids: [],
+        };
+      },
+    });
+
+    await expect(api.ensureTeamUploadStaging()).resolves.toMatchObject({
+      id: "kb-staging-1",
+      purpose: "team_upload_staging",
+    });
+    expect(calls).toEqual([
+      {
+        path: "/knowledge-bases/team-upload-staging",
+        init: { method: "POST" },
+      },
+    ]);
+  });
+
   it("posts personal knowledge-base creation requests without a group id", async () => {
     const calls: Array<{
       path: string;

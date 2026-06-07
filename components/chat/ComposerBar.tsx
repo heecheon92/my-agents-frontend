@@ -41,7 +41,6 @@ export function ComposerBar({
   isSendNowDisabled,
   onSendNow,
   sendNowHelper,
-  groupContextRequired,
   showGuestNotice,
   streamError,
   statusAnnouncement,
@@ -66,7 +65,6 @@ export function ComposerBar({
   isSendNowDisabled: boolean;
   onSendNow: () => void;
   sendNowHelper: string;
-  groupContextRequired: boolean;
   showGuestNotice: boolean;
   streamError: unknown;
   statusAnnouncement: string;
@@ -177,11 +175,6 @@ export function ComposerBar({
           className="mt-2 text-xs leading-5 text-cal-muted"
         >
           {sendNowHelper}
-        </p>
-      ) : null}
-      {groupContextRequired ? (
-        <p className="mt-2 text-xs leading-5 text-cal-muted">
-          {localization.groupContextRequired}
         </p>
       ) : null}
       {showGuestNotice && isStreaming ? (

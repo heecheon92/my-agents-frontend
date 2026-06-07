@@ -29,15 +29,27 @@ export function useConversation(conversationId?: string) {
   });
 }
 
+export function putCreatedConversationFirst(
+  current: Conversation[] | undefined,
+  created: Conversation,
+) {
+  return [created, ...(current ?? []).filter((item) => item.id !== created.id)];
+}
+
 export function useCreateConversation() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: ConversationCreateRequest) =>
       myAgentsAPI.conversations.create(payload),
-    onSuccess: () =>
-      queryClient.invalidateQueries({
+    onSuccess: (created) => {
+      queryClient.setQueryData<Conversation[]>(
+        MyAgentsQueryKeys.conversations.list(),
+        (current) => putCreatedConversationFirst(current, created),
+      );
+      return queryClient.invalidateQueries({
         queryKey: MyAgentsQueryKeys.conversations.list(),
-      }),
+      });
+    },
   });
 }
 

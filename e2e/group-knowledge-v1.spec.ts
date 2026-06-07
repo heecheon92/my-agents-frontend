@@ -47,17 +47,10 @@ const betaGroupKb = {
   published_group_ids: [],
   created_at: now,
 };
-const groupConversation = {
-  id: "c-group",
-  title: "Alpha group knowledge source",
-  owner_user_id: user.id,
-  group_id: ownerGroup.id,
-};
 const personalConversation = {
   id: "c-personal",
   title: "Private conversation",
   owner_user_id: user.id,
-  group_id: null,
 };
 const publishRequest = {
   id: "pr-1",
@@ -106,10 +99,7 @@ async function mockGroupKnowledgeApi(
       return json([groupKb, betaGroupKb, personalKb, publishedMemberKb]);
     }
     if (method === "GET" && path === "/conversations") {
-      return json([groupConversation, personalConversation]);
-    }
-    if (method === "GET" && path === `/conversations/${groupConversation.id}`) {
-      return json(groupConversation);
+      return json([personalConversation]);
     }
     if (
       method === "GET" &&
@@ -121,7 +111,7 @@ async function mockGroupKnowledgeApi(
       return json([
         {
           id: "m-1",
-          conversation_id: groupConversation.id,
+          conversation_id: personalConversation.id,
           role: "user",
           content: "Use group context.",
         },
@@ -153,39 +143,31 @@ async function mockGroupKnowledgeApi(
   return requests;
 }
 
-test("group knowledge source stays private and sends selected group context", async ({
+test("unified knowledge selection sends personal and team sources through one contract", async ({
   page,
 }) => {
   const requests = await mockGroupKnowledgeApi(page);
   await page.goto("/chat");
 
   await page.getByText(ko.chat.knowledgeSourceTitle).click();
-  const includeGroupKnowledge = page.getByLabel(
-    ko.chat.includeGroupKnowledgeLabel,
-  );
-  await expect(includeGroupKnowledge).toBeVisible();
-  await includeGroupKnowledge.check();
-  await expect(page.getByText(ko.chat.groupChatBoundaryCopy)).toBeVisible();
+  await page
+    .getByRole("button", { name: ko.chat.knowledgeSourceSelected })
+    .click();
   await expect(
-    page.getByRole("button", { name: ownerGroup.name }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await expect(
-    page.getByRole("button", { name: betaGroup.name }),
-  ).toHaveAttribute("aria-pressed", "false");
-  await page.getByRole("button", { name: betaGroup.name }).click();
-  await expect(
-    page.getByRole("button", { name: betaGroup.name }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await page.getByText(ko.chat.groupKnowledgeSourceDescription).click();
+    page.getByText(ko.chat.knowledgeSourceBoundaryCopy),
+  ).toBeVisible();
   await expect(page.getByText("Alpha Shared Knowledge")).toBeVisible();
   await expect(page.getByText("Beta Shared Knowledge")).toBeVisible();
   await expect(page.getByText("Published Member Knowledge")).toBeVisible();
   await expect(page.getByText("Private Notes")).toBeVisible();
 
+  await page.getByText("Alpha Shared Knowledge").click();
+  await page.getByText("Beta Shared Knowledge").click();
+  await page.getByText("Published Member Knowledge").click();
   await page.getByText("Private Notes").click();
   await page
-    .getByPlaceholder(ko.chat.groupComposerPlaceholder)
-    .fill("Use group and private context");
+    .getByPlaceholder(ko.chat.composerPlaceholder)
+    .fill("Use selected context");
   await page.getByRole("button", { name: ko.chat.send }).click();
 
   await expect
@@ -197,12 +179,16 @@ test("group knowledge source stays private and sends selected group context", as
         )?.body,
     )
     .toMatchObject({
-      message: "Use group and private context",
+      message: "Use selected context",
       knowledge_base_selection: {
         mode: "selected",
-        knowledge_base_ids: ["kb-group", "kb-beta", "kb-published-member"],
+        knowledge_base_ids: [
+          "kb-group",
+          "kb-beta",
+          "kb-published-member",
+          "kb-personal",
+        ],
       },
-      optional_personal_knowledge_base_ids: ["kb-personal"],
     });
 });
 

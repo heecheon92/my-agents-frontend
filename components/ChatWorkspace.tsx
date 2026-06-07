@@ -3,7 +3,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
-import { useCurrentUser } from "@/hooks/use-auth";
 import {
   useConversation,
   useConversations,
@@ -15,7 +14,6 @@ import {
   useRunEvents,
   useRuns,
 } from "@/hooks/use-conversations";
-import { useGroups } from "@/hooks/use-groups";
 import { useKnowledgeBases } from "@/hooks/use-knowledge";
 import { useLocalization } from "@/hooks/useLocalization";
 import type {
@@ -23,7 +21,6 @@ import type {
   Citation,
   Conversation,
   ConversationRunResponse,
-  KnowledgeBase,
   KnowledgeBaseSelection,
   KnowledgeBaseSelectionMode,
   Message,
@@ -45,7 +42,7 @@ import {
   sanitizeActivityEventPayload,
 } from "./chat/EvidencePanel";
 import { KnowledgeSourceSelector } from "./chat/KnowledgeSourceSelector";
-import type { ChatMode, LiveActivityEvent, QueuedMessage } from "./chat/types";
+import type { LiveActivityEvent, QueuedMessage } from "./chat/types";
 
 type RunOutcome = "completed" | "cancelled" | "failed" | "active_conflict";
 
@@ -146,29 +143,13 @@ function isNearScrollBottom(element: HTMLElement) {
   );
 }
 
-function getSelectedGroupKnowledgeBaseIds(
-  isGroupMode: boolean,
-  groupKnowledgeBases: KnowledgeBase[],
-) {
-  return isGroupMode
-    ? groupKnowledgeBases.map((knowledgeBase) => knowledgeBase.id)
-    : [];
-}
-
 export function buildActiveKnowledgeBaseSelection({
-  isGroupMode,
   knowledgeBaseMode,
   selectedKnowledgeBaseIds,
-  groupKnowledgeBaseIds = [],
 }: {
-  isGroupMode: boolean;
   knowledgeBaseMode: KnowledgeBaseSelectionMode;
   selectedKnowledgeBaseIds: string[];
-  groupKnowledgeBaseIds?: string[];
 }): KnowledgeBaseSelection {
-  if (isGroupMode) {
-    return { mode: "selected", knowledge_base_ids: groupKnowledgeBaseIds };
-  }
   return {
     mode: knowledgeBaseMode,
     knowledge_base_ids:
@@ -179,9 +160,7 @@ export function buildActiveKnowledgeBaseSelection({
 export function ChatWorkspace() {
   const queryClient = useQueryClient();
   const conversations = useConversations();
-  const groups = useGroups();
   const knowledgeBases = useKnowledgeBases();
-  const currentUser = useCurrentUser();
   const createConversation = useCreateConversation();
   const deleteConversation = useDeleteConversation();
   const [selectedId, setSelectedId] = useState<string>();
@@ -237,13 +216,9 @@ export function ChatWorkspace() {
   const [showGuestNotice, setShowGuestNotice] = useState(false);
   const [knowledgeBaseMode, setKnowledgeBaseMode] =
     useState<KnowledgeBaseSelectionMode>("all");
-  const [chatMode, setChatMode] = useState<ChatMode>("personal");
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [selectedKnowledgeBaseIds, setSelectedKnowledgeBaseIds] = useState<
     string[]
   >([]);
-  const [selectedPrivateKnowledgeBaseIds, setSelectedPrivateKnowledgeBaseIds] =
-    useState<string[]>([]);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
   const isStreamingRef = useRef(false);
@@ -258,7 +233,6 @@ export function ChatWorkspace() {
       conversationId: string,
       message: string,
       knowledgeBaseSelection: KnowledgeBaseSelection,
-      optionalPersonalKnowledgeBaseIds: string[],
     ) => Promise<void>
   >(async () => undefined);
   const { lang, localization } = useLocalization(
@@ -269,62 +243,16 @@ export function ChatWorkspace() {
     queuedMessage?.conversationId === activeId ? queuedMessage : null;
   const draftMessage = draft.trim();
   const hasActiveDraft = draftMessage.length > 0;
-  const personalKnowledgeBases = useMemo(
-    () =>
-      (knowledgeBases.data ?? []).filter(
-        (kb) =>
-          kb.scope === "personal" &&
-          (!currentUser.data?.id || kb.owner_user_id === currentUser.data.id),
-      ),
-    [knowledgeBases.data, currentUser.data?.id],
+  const selectableKnowledgeBases = useMemo(
+    () => (knowledgeBases.data ?? []).filter((kb) => kb.purpose === "standard"),
+    [knowledgeBases.data],
   );
-  const groupKnowledgeBases = useMemo(
-    () =>
-      (knowledgeBases.data ?? []).filter(
-        (kb) =>
-          selectedGroupIds.length > 0 &&
-          ((kb.scope === "group" &&
-            kb.group_id !== null &&
-            selectedGroupIds.includes(kb.group_id)) ||
-            (kb.scope === "personal" &&
-              kb.published_group_ids.some((groupId) =>
-                selectedGroupIds.includes(groupId),
-              ))),
-      ),
-    [knowledgeBases.data, selectedGroupIds],
-  );
-  const optionalPrivateKnowledgeBases = useMemo(
-    () =>
-      personalKnowledgeBases.filter(
-        (kb) =>
-          !kb.published_group_ids.some((groupId) =>
-            selectedGroupIds.includes(groupId),
-          ),
-      ),
-    [personalKnowledgeBases, selectedGroupIds],
-  );
-  const selectedGroups = (groups.data ?? []).filter((group) =>
-    selectedGroupIds.includes(group.id),
-  );
-  const isGroupMode = chatMode === "group";
-  const groupContextRequired = isGroupMode && selectedGroupIds.length === 0;
-  const selectedGroupKnowledgeBaseIds = getSelectedGroupKnowledgeBaseIds(
-    isGroupMode,
-    groupKnowledgeBases,
-  );
-  const activeOptionalPersonalKnowledgeBaseIds = isGroupMode
-    ? selectedPrivateKnowledgeBaseIds
-    : [];
   const activeKnowledgeBaseSelection = buildActiveKnowledgeBaseSelection({
-    isGroupMode,
     knowledgeBaseMode,
     selectedKnowledgeBaseIds,
-    groupKnowledgeBaseIds: selectedGroupKnowledgeBaseIds,
   });
   const requiresKnowledgeBaseSelection =
-    !isGroupMode &&
-    knowledgeBaseMode === "selected" &&
-    selectedKnowledgeBaseIds.length === 0;
+    knowledgeBaseMode === "selected" && selectedKnowledgeBaseIds.length === 0;
   const conversationIsBusy = isStreaming || Boolean(serverActiveRun);
   const serverActiveRunIsStale = isObservedActiveRunStale({
     activeRunId: serverActiveRunId,
@@ -357,27 +285,10 @@ export function ChatWorkspace() {
     );
   }
 
-  function togglePrivateKnowledgeBase(knowledgeBaseId: string) {
-    setSelectedPrivateKnowledgeBaseIds((current) =>
-      current.includes(knowledgeBaseId)
-        ? current.filter((id) => id !== knowledgeBaseId)
-        : [...current, knowledgeBaseId],
-    );
-  }
-
-  function toggleSelectedGroup(groupId: string) {
-    setSelectedGroupIds((current) =>
-      current.includes(groupId)
-        ? current.filter((id) => id !== groupId)
-        : [...current, groupId],
-    );
-  }
-
   async function handleCreate() {
     try {
       const created = await createConversation.mutateAsync({
         title: `${localization.newConversationTitle} ${new Date().toLocaleString(lang)}`,
-        group_id: null,
       });
       setSelectedId(created.id);
     } catch {
@@ -417,7 +328,6 @@ export function ChatWorkspace() {
     conversationId: string,
     message: string,
     knowledgeBaseSelection: KnowledgeBaseSelection,
-    optionalPersonalKnowledgeBaseIds: string[],
   ): Promise<RunOutcome> {
     if (isStreamingRef.current) return "failed";
 
@@ -444,8 +354,6 @@ export function ChatWorkspace() {
         {
           message,
           knowledge_base_selection: knowledgeBaseSelection,
-          optional_personal_knowledge_base_ids:
-            optionalPersonalKnowledgeBaseIds,
         },
       )) {
         liveSequence += 1;
@@ -522,13 +430,11 @@ export function ChatWorkspace() {
     conversationId: string,
     message: string,
     knowledgeBaseSelection: KnowledgeBaseSelection,
-    optionalPersonalKnowledgeBaseIds: string[],
   ): Promise<void> {
     const outcome = await runMessage(
       conversationId,
       message,
       knowledgeBaseSelection,
-      optionalPersonalKnowledgeBaseIds,
     );
 
     if (outcome === "active_conflict") {
@@ -540,7 +446,6 @@ export function ChatWorkspace() {
           conversationId,
           content: message,
           knowledgeBaseSelection,
-          optionalPersonalKnowledgeBaseIds,
         });
         setStatusAnnouncement(localization.queuedAnnouncement);
       }
@@ -569,7 +474,6 @@ export function ChatWorkspace() {
         pendingImmediateMessage.conversationId,
         pendingImmediateMessage.content,
         pendingImmediateMessage.knowledgeBaseSelection,
-        pendingImmediateMessage.optionalPersonalKnowledgeBaseIds,
       );
       return;
     }
@@ -588,7 +492,6 @@ export function ChatWorkspace() {
         nextQueuedMessage.conversationId,
         nextQueuedMessage.content,
         nextQueuedMessage.knowledgeBaseSelection,
-        nextQueuedMessage.optionalPersonalKnowledgeBaseIds,
       );
     }
   }
@@ -601,8 +504,7 @@ export function ChatWorkspace() {
       !draftMessage ||
       !activeId ||
       isCancelling ||
-      requiresKnowledgeBaseSelection ||
-      groupContextRequired
+      requiresKnowledgeBaseSelection
     ) {
       return;
     }
@@ -616,8 +518,6 @@ export function ChatWorkspace() {
         conversationId: activeId,
         content: draftMessage,
         knowledgeBaseSelection: activeKnowledgeBaseSelection,
-        optionalPersonalKnowledgeBaseIds:
-          activeOptionalPersonalKnowledgeBaseIds,
       };
       setQueuedMessage(nextQueuedMessage);
       setDraft("");
@@ -630,7 +530,6 @@ export function ChatWorkspace() {
       activeId,
       draftMessage,
       activeKnowledgeBaseSelection,
-      activeOptionalPersonalKnowledgeBaseIds,
     );
   }
 
@@ -642,8 +541,7 @@ export function ChatWorkspace() {
       isCancelling ||
       !activeRunId ||
       visibleQueuedMessage ||
-      requiresKnowledgeBaseSelection ||
-      groupContextRequired
+      requiresKnowledgeBaseSelection
     ) {
       return;
     }
@@ -652,7 +550,6 @@ export function ChatWorkspace() {
       conversationId: activeId,
       content: draftMessage,
       knowledgeBaseSelection: activeKnowledgeBaseSelection,
-      optionalPersonalKnowledgeBaseIds: activeOptionalPersonalKnowledgeBaseIds,
     };
     pendingImmediateMessageRef.current = immediateMessage;
     cancelAcceptedRef.current = false;
@@ -683,9 +580,6 @@ export function ChatWorkspace() {
     setSelectedKnowledgeBaseIds(
       visibleQueuedMessage.knowledgeBaseSelection.knowledge_base_ids,
     );
-    setSelectedPrivateKnowledgeBaseIds(
-      visibleQueuedMessage.optionalPersonalKnowledgeBaseIds,
-    );
     setQueuedMessage(null);
     setStatusAnnouncement(localization.queueEditAnnouncement);
   }
@@ -705,7 +599,6 @@ export function ChatWorkspace() {
       nextQueuedMessage.conversationId,
       nextQueuedMessage.content,
       nextQueuedMessage.knowledgeBaseSelection,
-      nextQueuedMessage.optionalPersonalKnowledgeBaseIds,
     );
   }
 
@@ -782,9 +675,7 @@ export function ChatWorkspace() {
     ? visibleQueuedMessage
       ? localization.queuedComposerPlaceholder
       : localization.streamingComposerPlaceholder
-    : isGroupMode
-      ? localization.groupComposerPlaceholder
-      : localization.composerPlaceholder;
+    : localization.composerPlaceholder;
   const primaryActionLabel = conversationIsBusy
     ? localization.queueNext
     : localization.send;
@@ -793,7 +684,6 @@ export function ChatWorkspace() {
     !hasActiveDraft ||
     isCancelling ||
     requiresKnowledgeBaseSelection ||
-    groupContextRequired ||
     (conversationIsBusy && Boolean(visibleQueuedMessage));
   const isSendNowDisabled =
     !activeId ||
@@ -802,8 +692,7 @@ export function ChatWorkspace() {
     isCancelling ||
     !activeRunId ||
     Boolean(visibleQueuedMessage) ||
-    requiresKnowledgeBaseSelection ||
-    groupContextRequired;
+    requiresKnowledgeBaseSelection;
   const sendNowHelper = isCancelling
     ? localization.stoppingCurrentAnswer
     : visibleQueuedMessage
@@ -876,7 +765,6 @@ export function ChatWorkspace() {
       nextQueuedMessage.conversationId,
       nextQueuedMessage.content,
       nextQueuedMessage.knowledgeBaseSelection,
-      nextQueuedMessage.optionalPersonalKnowledgeBaseIds,
     );
   }, [
     activeId,
@@ -894,33 +782,11 @@ export function ChatWorkspace() {
   }, []);
 
   useEffect(() => {
-    const availableIds = new Set(knowledgeBases.data?.map((kb) => kb.id) ?? []);
+    const availableIds = new Set(selectableKnowledgeBases.map((kb) => kb.id));
     setSelectedKnowledgeBaseIds((current) =>
       current.filter((id) => availableIds.has(id)),
     );
-    setSelectedPrivateKnowledgeBaseIds((current) =>
-      current.filter((id) => availableIds.has(id)),
-    );
-  }, [knowledgeBases.data]);
-
-  useEffect(() => {
-    if (!groups.data) return;
-    const availableGroupIds = new Set(groups.data.map((group) => group.id));
-    setSelectedGroupIds((current) =>
-      current.filter((id) => availableGroupIds.has(id)),
-    );
-  }, [groups.data]);
-
-  useEffect(() => {
-    if (conversation.data?.group_id) {
-      setSelectedGroupIds((current) =>
-        current.includes(conversation.data?.group_id ?? "")
-          ? current
-          : [...current, conversation.data?.group_id ?? ""].filter(Boolean),
-      );
-      return;
-    }
-  }, [conversation.data?.group_id]);
+  }, [selectableKnowledgeBases]);
 
   useEffect(() => {
     if (!activeId) return;
@@ -988,26 +854,14 @@ export function ChatWorkspace() {
             </div>
             <KnowledgeSourceSelector
               localization={localization}
-              chatMode={chatMode}
-              onChatModeChange={setChatMode}
               knowledgeBaseMode={knowledgeBaseMode}
               onKnowledgeBaseModeChange={setKnowledgeBaseMode}
-              personalKnowledgeBases={personalKnowledgeBases}
-              groupKnowledgeBases={groupKnowledgeBases}
-              optionalPrivateKnowledgeBases={optionalPrivateKnowledgeBases}
+              knowledgeBases={selectableKnowledgeBases}
               selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}
-              selectedPrivateKnowledgeBaseIds={selectedPrivateKnowledgeBaseIds}
-              selectedGroupIds={selectedGroupIds}
-              selectedGroups={selectedGroups}
-              groups={groups.data}
-              groupsLoading={groups.isLoading}
-              groupsError={groups.error}
               knowledgeBasesLoading={knowledgeBases.isLoading}
               knowledgeBasesError={knowledgeBases.error}
               requiresKnowledgeBaseSelection={requiresKnowledgeBaseSelection}
               onToggleKnowledgeBase={toggleSelectedKnowledgeBase}
-              onTogglePrivateKnowledgeBase={togglePrivateKnowledgeBase}
-              onToggleGroup={toggleSelectedGroup}
             />
           </header>
           <ChatTranscript
@@ -1051,7 +905,6 @@ export function ChatWorkspace() {
             isSendNowDisabled={isSendNowDisabled}
             onSendNow={handleSendNow}
             sendNowHelper={sendNowHelper}
-            groupContextRequired={groupContextRequired}
             showGuestNotice={showGuestNotice}
             streamError={streamError}
             statusAnnouncement={statusAnnouncement}

@@ -12,7 +12,6 @@ const conversation = {
   id: "c-citations",
   title: "Compact citations",
   owner_user_id: user.id,
-  group_id: null,
 };
 const run = {
   run_id: "run-citations",

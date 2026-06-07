@@ -80,6 +80,13 @@ export const BFF_ALLOWLIST: Rule[] = [
   },
   {
     method: "POST",
+    pattern: new RegExp(
+      `^/conversations/${uuidLike}/messages/${uuidLike}/replay/stream$`,
+    ),
+    name: "messages.replay.stream",
+  },
+  {
+    method: "POST",
     pattern: new RegExp(`^/conversations/${uuidLike}/runs$`),
     name: "runs.create",
   },
@@ -158,6 +165,11 @@ export const BFF_ALLOWLIST: Rule[] = [
     method: "GET",
     pattern: /^\/knowledge-bases$/,
     name: "knowledge-bases.list",
+  },
+  {
+    method: "POST",
+    pattern: /^\/knowledge-bases\/team-upload-staging$/,
+    name: "knowledge-bases.team-upload-staging",
   },
   {
     method: "GET",

@@ -36,7 +36,6 @@ describe("MyAgentsConversationAPI", () => {
           mode: "selected",
           knowledge_base_ids: ["kb-1", "kb-2"],
         },
-        optional_personal_knowledge_base_ids: ["kb-personal-1"],
       }),
     ).resolves.toBe(response);
     expect(calls).toHaveLength(1);
@@ -207,7 +206,7 @@ describe("MyAgentsConversationAPI", () => {
     expect(calls).toEqual(["/conversations/conversation-1/runs/run-1"]);
   });
 
-  it("parses group source metadata from completed run responses", async () => {
+  it("parses unified source metadata from completed run responses", async () => {
     const api = new MyAgentsConversationAPI({
       fetch: async () => ({
         run_id: "run-group-1",
@@ -219,11 +218,6 @@ describe("MyAgentsConversationAPI", () => {
         answer_mode: "document_grounded",
         document_scope: "group_documents",
         knowledge_base_selection: { mode: "all", knowledge_base_ids: [] },
-        source_context_group_id: "group-1",
-        mandatory_group_knowledge_base_ids: ["kb-group-1"],
-        mandatory_group_knowledge_base_count: 1,
-        optional_personal_knowledge_base_ids: ["kb-personal-1"],
-        optional_personal_knowledge_base_count: 1,
         resolved_knowledge_base_ids: ["kb-group-1", "kb-personal-1"],
         resolved_knowledge_base_count: 2,
         citations: [],
@@ -235,12 +229,8 @@ describe("MyAgentsConversationAPI", () => {
       api.run("conversation-group-1", {
         message: "hello",
         knowledge_base_selection: { mode: "all", knowledge_base_ids: [] },
-        optional_personal_knowledge_base_ids: ["kb-personal-1"],
       }),
     ).resolves.toMatchObject({
-      source_context_group_id: "group-1",
-      mandatory_group_knowledge_base_ids: ["kb-group-1"],
-      optional_personal_knowledge_base_ids: ["kb-personal-1"],
       resolved_knowledge_base_ids: ["kb-group-1", "kb-personal-1"],
       resolved_knowledge_base_count: 2,
     });
@@ -293,11 +283,6 @@ describe("MyAgentsConversationAPI", () => {
             mode: "selected",
             knowledge_base_ids: ["kb-1"],
           },
-          source_context_group_id: null,
-          mandatory_group_knowledge_base_ids: [],
-          mandatory_group_knowledge_base_count: 0,
-          optional_personal_knowledge_base_ids: [],
-          optional_personal_knowledge_base_count: 0,
           resolved_knowledge_base_ids: [],
           resolved_knowledge_base_count: 1,
           citations: [],
@@ -345,28 +330,25 @@ describe("MyAgentsConversationAPI", () => {
   });
 });
 
-describe("group knowledge source selection", () => {
-  it("uses selected group knowledge bases when group knowledge is included", () => {
+describe("knowledge source selection", () => {
+  it("uses the selected knowledge spaces without group/private branching", () => {
     expect(
       buildActiveKnowledgeBaseSelection({
-        isGroupMode: true,
         knowledgeBaseMode: "selected",
-        selectedKnowledgeBaseIds: ["kb-personal-stale"],
-        groupKnowledgeBaseIds: ["kb-group", "kb-published"],
+        selectedKnowledgeBaseIds: ["kb-personal", "kb-group"],
       }),
     ).toEqual({
       mode: "selected",
-      knowledge_base_ids: ["kb-group", "kb-published"],
+      knowledge_base_ids: ["kb-personal", "kb-group"],
     });
   });
 
-  it("preserves selected private mode when group knowledge is not included", () => {
+  it("uses backend-authorized all mode without explicit ids", () => {
     expect(
       buildActiveKnowledgeBaseSelection({
-        isGroupMode: false,
-        knowledgeBaseMode: "selected",
-        selectedKnowledgeBaseIds: ["kb-personal"],
+        knowledgeBaseMode: "all",
+        selectedKnowledgeBaseIds: ["kb-ignored"],
       }),
-    ).toEqual({ mode: "selected", knowledge_base_ids: ["kb-personal"] });
+    ).toEqual({ mode: "all", knowledge_base_ids: [] });
   });
 });

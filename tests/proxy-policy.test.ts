@@ -96,6 +96,12 @@ describe("proxy policy", () => {
         "/conversations/abc/messages/message-1/replay",
       ).allowed,
     ).toBe(true);
+    expect(
+      isAllowedBackendPath(
+        "POST",
+        "/conversations/abc/messages/message-1/replay/stream",
+      ).allowed,
+    ).toBe(true);
   });
 
   it("blocks legacy assistant chat and unknown paths before forwarding", () => {
@@ -170,6 +176,22 @@ describe("proxy policy", () => {
         configuredOrigin: "http://localhost:3000",
         headers: headers({
           "content-type": "multipart/form-data; boundary=test",
+          origin: "http://localhost:3000",
+          "sec-fetch-site": "same-origin",
+        }),
+      }),
+    ).toMatchObject({ allowed: true });
+  });
+
+  it("accepts same-origin JSON mutations for team upload staging", () => {
+    expect(
+      validateSameOriginProof({
+        method: "POST",
+        requestUrl:
+          "http://localhost:3000/api/my-agents/knowledge-bases/team-upload-staging",
+        configuredOrigin: "http://localhost:3000",
+        headers: headers({
+          "content-type": "application/json",
           origin: "http://localhost:3000",
           "sec-fetch-site": "same-origin",
         }),

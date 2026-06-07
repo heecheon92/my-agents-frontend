@@ -6,12 +6,10 @@ export const conversationSchema = z.object({
   id: z.string().min(1),
   title: z.string(),
   owner_user_id: z.string().min(1),
-  group_id: z.string().nullable(),
 });
 
 export const conversationCreateRequestSchema = z.object({
   title: z.string().min(1).max(200),
-  group_id: z.string().nullable().optional(),
 });
 
 export const messageSchema = z.object({
@@ -35,15 +33,9 @@ export const knowledgeBaseSelectionSchema = z.object({
 export const conversationRunRequestSchema = z.object({
   message: z.string().min(1),
   knowledge_base_selection: knowledgeBaseSelectionSchema.optional(),
-  optional_personal_knowledge_base_ids: z.array(z.string().min(1)).optional(),
 });
 
 export const runSourceContextSchema = z.object({
-  source_context_group_id: z.string().nullable().default(null),
-  mandatory_group_knowledge_base_ids: z.array(z.string().min(1)).default([]),
-  mandatory_group_knowledge_base_count: z.number().default(0),
-  optional_personal_knowledge_base_ids: z.array(z.string().min(1)).default([]),
-  optional_personal_knowledge_base_count: z.number().default(0),
   resolved_knowledge_base_ids: z.array(z.string().min(1)).default([]),
   resolved_knowledge_base_count: z.number().default(0),
 });

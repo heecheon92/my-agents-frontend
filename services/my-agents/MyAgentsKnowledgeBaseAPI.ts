@@ -27,6 +27,15 @@ export class MyAgentsKnowledgeBaseAPI {
     );
   }
 
+  async ensureTeamUploadStaging(): Promise<KnowledgeBase> {
+    return parseWithSchema(
+      knowledgeBaseSchema,
+      await this.client.fetch(API_PATH.knowledgeBases.teamUploadStaging, {
+        method: "POST",
+      }),
+    );
+  }
+
   async list(): Promise<KnowledgeBase[]> {
     return parseArrayWithSchema(
       knowledgeBaseSchema,

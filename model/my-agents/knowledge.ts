@@ -1,6 +1,10 @@
 import { z } from "zod";
 
 export const knowledgeBaseScopeSchema = z.enum(["personal", "group"]);
+export const knowledgeBasePurposeSchema = z.enum([
+  "standard",
+  "team_upload_staging",
+]);
 
 export const knowledgeBaseSchema = z.object({
   id: z.string().min(1),
@@ -8,6 +12,7 @@ export const knowledgeBaseSchema = z.object({
   scope: knowledgeBaseScopeSchema,
   owner_user_id: z.string().min(1),
   group_id: z.string().nullable(),
+  purpose: knowledgeBasePurposeSchema.default("standard"),
   published_group_ids: z.array(z.string().min(1)).default([]),
   created_at: z.string().optional(),
 });
@@ -113,6 +118,7 @@ export const citationSchema = z.object({
 });
 
 export type KnowledgeBaseScope = z.infer<typeof knowledgeBaseScopeSchema>;
+export type KnowledgeBasePurpose = z.infer<typeof knowledgeBasePurposeSchema>;
 export type KnowledgeBase = z.infer<typeof knowledgeBaseSchema>;
 export type KnowledgeBaseCreateRequest = z.infer<
   typeof knowledgeBaseCreateRequestSchema

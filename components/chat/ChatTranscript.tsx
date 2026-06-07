@@ -1,4 +1,4 @@
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Sparkles } from "lucide-react";
 import type { RefObject } from "react";
 import { EmptyState, ErrorState } from "@/components/Status";
 import { Button } from "@/components/ui/button";
@@ -9,12 +9,15 @@ import type {
   Citation,
   Message,
 } from "@/model/my-agents";
-import { EvidencePanel } from "./EvidencePanel";
+import { CurrentAgentTraceStepPanel, EvidencePanel } from "./EvidencePanel";
 import { MessageBubble } from "./MessageBubble";
 import type { ChatLocalization, LiveActivityEvent } from "./types";
 
 export const REPLAY_ICON_PENDING_CLASS_NAME =
   "animate-[spin_1s_linear_infinite_reverse]";
+
+export const ASSISTANT_GENERATING_ICON_CLASS_NAME =
+  "motion-safe:animate-[spin_2.4s_linear_infinite]";
 
 export const CHAT_SCROLL_REGION_CLASS_NAME = "min-h-0 flex-1 overflow-auto p-4";
 
@@ -23,6 +26,36 @@ export type ReplayNotice = {
   message: string;
   tone: "error" | "success" | "warning";
 };
+
+export function getReplayDisplayedMessages(
+  messages: Message[],
+  replayingMessageId: string | null,
+) {
+  if (!replayingMessageId) return messages;
+  const replayingMessageIndex = messages.findIndex(
+    (message) => message.id === replayingMessageId,
+  );
+  return replayingMessageIndex >= 0
+    ? messages.slice(0, replayingMessageIndex + 1)
+    : messages;
+}
+
+function AssistantGeneratingIndicator({ label }: { label: string }) {
+  return (
+    <output aria-label={label} className="mt-1 flex min-h-11 items-center">
+      <span className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-km-accent/25 bg-white text-km-accent shadow-sm">
+        <span className="absolute h-full w-full rounded-full bg-km-accent/20 opacity-75 motion-safe:animate-ping" />
+        <Sparkles
+          aria-hidden="true"
+          className={cn(
+            "relative h-4 w-4",
+            ASSISTANT_GENERATING_ICON_CLASS_NAME,
+          )}
+        />
+      </span>
+    </output>
+  );
+}
 
 export function ChatTranscript({
   localization,
@@ -63,6 +96,14 @@ export function ChatTranscript({
   onChatScroll: () => void;
   onReplayAssistantMessage: (messageId: string) => void;
 }) {
+  const displayedMessages = getReplayDisplayedMessages(
+    messages,
+    replayingMessageId,
+  );
+  const shouldRenderBusyBubble = conversationIsBusy && !replayingMessageId;
+  const shouldRenderSeparateStreamingBubble =
+    !replayingMessageId && (shouldRenderBusyBubble || Boolean(streamedReply));
+
   return (
     <div
       ref={chatScrollRef}
@@ -78,7 +119,7 @@ export function ChatTranscript({
       ) : null}
       {messagesError ? <ErrorState error={messagesError} /> : null}
       <div className="grid gap-3">
-        {messages.map((message) => {
+        {displayedMessages.map((message) => {
           const isAssistant = message.role === "assistant";
           const isReplaying = replayingMessageId === message.id;
           return (
@@ -89,10 +130,24 @@ export function ChatTranscript({
                   message.role as keyof typeof localization.roles
                 ] ?? message.role
               }
-              content={message.content}
-              isAssistant={isAssistant}
+              content={isReplaying ? streamedReply : message.content}
+              isAssistant={
+                isAssistant && (!isReplaying || Boolean(streamedReply))
+              }
               align={message.role === "user" ? "right" : "left"}
             >
+              {isReplaying && !streamedReply ? (
+                <AssistantGeneratingIndicator
+                  label={localization.agentComposing}
+                />
+              ) : null}
+              {isReplaying ? (
+                <CurrentAgentTraceStepPanel
+                  localization={localization}
+                  lang={lang}
+                  events={visibleActivityEvents}
+                />
+              ) : null}
               {isAssistant ? (
                 <EvidencePanel
                   localization={localization}
@@ -100,7 +155,7 @@ export function ChatTranscript({
                   isLatestAssistantMessage={
                     message.id === latestAssistantMessageId
                   }
-                  isStreaming={false}
+                  isStreaming={isReplaying}
                   runs={sortedRuns}
                   events={visibleActivityEvents}
                   citations={visibleCitations}
@@ -151,22 +206,34 @@ export function ChatTranscript({
             </MessageBubble>
           );
         })}
-        {conversationIsBusy || streamedReply ? (
+        {shouldRenderSeparateStreamingBubble ? (
           <MessageBubble
             roleLabel={localization.roles.assistant}
             content={
               streamedReply ||
-              (serverActiveRunIsStale
-                ? localization.activeRunStale
-                : localization.agentComposing)
+              (serverActiveRunIsStale ? localization.activeRunStale : "")
             }
             isAssistant={Boolean(streamedReply)}
           >
+            {shouldRenderBusyBubble &&
+            !streamedReply &&
+            !serverActiveRunIsStale ? (
+              <AssistantGeneratingIndicator
+                label={localization.agentComposing}
+              />
+            ) : null}
+            {shouldRenderBusyBubble ? (
+              <CurrentAgentTraceStepPanel
+                localization={localization}
+                lang={lang}
+                events={visibleActivityEvents}
+              />
+            ) : null}
             <EvidencePanel
               localization={localization}
               lang={lang}
               isLatestAssistantMessage={true}
-              isStreaming={conversationIsBusy}
+              isStreaming={shouldRenderBusyBubble}
               runs={sortedRuns}
               events={visibleActivityEvents}
               citations={visibleCitations}
