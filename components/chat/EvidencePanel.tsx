@@ -110,19 +110,20 @@ export function getAgentTraceStageKeys({
   const hasInsufficientEvidence = events.some((event) =>
     payloadHasBooleanFlag(event.payload, "insufficient_evidence"),
   );
+  const hasUnreadyTerminalEvent = events.some((event) =>
+    /(^|_)run_(failed|cancelled|error)$|\b(failed|cancelled|error)\b/.test(
+      event.event_type.toLowerCase(),
+    ),
+  );
   const explicitStageKeys = stageKeysFromBackendAgentTrace(events, {
     hasInsufficientEvidence,
+    hasUnreadyTerminalEvent,
   });
   if (explicitStageKeys.length > 0) return explicitStageKeys;
 
   const stageKeys = new Set<AgentTraceStageKey>(["planning"]);
   const hasCompletedEvent = events.some((event) =>
     /(^|_)run_completed$|\bcompleted\b/.test(event.event_type.toLowerCase()),
-  );
-  const hasUnreadyTerminalEvent = events.some((event) =>
-    /(^|_)run_(failed|cancelled)$|\b(failed|cancelled|error)\b/.test(
-      event.event_type.toLowerCase(),
-    ),
   );
 
   if (
@@ -168,16 +169,21 @@ export function getAgentTraceStageKeys({
 
 function stageKeysFromBackendAgentTrace(
   events: Array<AgentEvent | LiveActivityEvent>,
-  { hasInsufficientEvidence }: { hasInsufficientEvidence: boolean },
+  {
+    hasInsufficientEvidence,
+    hasUnreadyTerminalEvent,
+  }: { hasInsufficientEvidence: boolean; hasUnreadyTerminalEvent: boolean },
 ): AgentTraceStageKey[] {
   const stageKeys = new Set<AgentTraceStageKey>();
+  let hasCompletedAnswerComposer = false;
   for (const step of events.flatMap((event) =>
     agentTraceStepsFromPayload(event.payload),
   )) {
     if (step.status === "skipped") continue;
     if (step.id === "answer_composer") {
+      hasCompletedAnswerComposer = step.status === "completed";
       stageKeys.add(
-        step.status === "completed" && !hasInsufficientEvidence
+        hasCompletedAnswerComposer && !hasInsufficientEvidence
           ? "answerReady"
           : "needsEvidence",
       );
@@ -186,7 +192,11 @@ function stageKeysFromBackendAgentTrace(
     const stageKey = BACKEND_TRACE_STAGE_MAP[step.id];
     if (stageKey) stageKeys.add(stageKey);
   }
-  if (hasInsufficientEvidence && stageKeys.size > 0) {
+  if (
+    (hasInsufficientEvidence ||
+      (hasUnreadyTerminalEvent && !hasCompletedAnswerComposer)) &&
+    stageKeys.size > 0
+  ) {
     stageKeys.delete("answerReady");
     stageKeys.add("needsEvidence");
   }

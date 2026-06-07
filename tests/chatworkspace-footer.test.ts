@@ -215,6 +215,47 @@ describe("ChatWorkspace assistant message footer", () => {
     ).toEqual(["planning", "answerReady"]);
   });
 
+  it("keeps terminal failures visible after partial backend traces", () => {
+    expect(
+      getAgentTraceStageKeys({
+        citationCount: 0,
+        events: [
+          {
+            id: "retrieval-trace",
+            sequence: 1,
+            event_type: "retrieval_completed",
+            payload: {
+              agent_trace: [
+                {
+                  id: "query_cartographer",
+                  event_type: "retrieval_completed",
+                  status: "completed",
+                  title: { en: "Query Cartographer", ko: "질문 지도화" },
+                  description: { en: "Planned", ko: "계획" },
+                  evidence: {},
+                },
+                {
+                  id: "candidate_scouts",
+                  event_type: "retrieval_completed",
+                  status: "completed",
+                  title: { en: "Candidate Scouts", ko: "후보 검색" },
+                  description: { en: "Searched", ko: "검색" },
+                  evidence: {},
+                },
+              ],
+            },
+          },
+          {
+            id: "run-failed",
+            sequence: 2,
+            event_type: "run_failed",
+            payload: { safe_error_type: "RuntimeError" },
+          },
+        ],
+      }),
+    ).toEqual(["planning", "searchingKnowledge", "needsEvidence"]);
+  });
+
   it("keeps selected conversation contrast stable on hover", () => {
     const activeClassName = getConversationCardClassName(true);
     const inactiveClassName = getConversationCardClassName(false);
