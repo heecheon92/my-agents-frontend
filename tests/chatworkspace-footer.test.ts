@@ -155,7 +155,64 @@ describe("ChatWorkspace assistant message footer", () => {
           },
         ],
       }).at(-1),
+    ).toBe("answerReady");
+
+    expect(
+      getAgentTraceStageKeys({
+        citationCount: 0,
+        events: [
+          {
+            id: "live-1",
+            sequence: 1,
+            event_type: "answer_composed",
+            payload: { insufficient_evidence: true },
+          },
+        ],
+      }).at(-1),
     ).toBe("needsEvidence");
+  });
+
+  it("prefers explicit backend agent trace over broad event heuristics", () => {
+    expect(
+      getAgentTraceStageKeys({
+        citationCount: 0,
+        events: [
+          {
+            id: "live-trace",
+            sequence: 1,
+            event_type: "run_completed",
+            payload: {
+              agent_trace: [
+                {
+                  id: "query_cartographer",
+                  event_type: "retrieval_completed",
+                  status: "completed",
+                  title: { en: "Query Cartographer", ko: "질문 지도화" },
+                  description: { en: "Planned", ko: "계획" },
+                  evidence: {},
+                },
+                {
+                  id: "candidate_scouts",
+                  event_type: "retrieval_completed",
+                  status: "skipped",
+                  title: { en: "Candidate Scouts", ko: "후보 검색" },
+                  description: { en: "Skipped", ko: "건너뜀" },
+                  evidence: {},
+                },
+                {
+                  id: "answer_composer",
+                  event_type: "answer_composed",
+                  status: "completed",
+                  title: { en: "Answer Composer", ko: "답변 작성" },
+                  description: { en: "Ready", ko: "준비" },
+                  evidence: { citation_count: 0 },
+                },
+              ],
+            },
+          },
+        ],
+      }),
+    ).toEqual(["planning", "answerReady"]);
   });
 
   it("keeps selected conversation contrast stable on hover", () => {

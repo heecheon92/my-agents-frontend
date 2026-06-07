@@ -55,6 +55,20 @@ export const conversationRunWarningSchema = z.object({
   missing_source_filenames: z.array(z.string()).default([]),
 });
 
+export const agentTraceTextSchema = z.object({
+  en: z.string(),
+  ko: z.string(),
+});
+
+export const agentTraceStepSchema = z.object({
+  id: z.string().min(1),
+  event_type: z.string().min(1),
+  status: z.enum(["completed", "skipped", "waiting", "failed"]),
+  title: agentTraceTextSchema,
+  description: agentTraceTextSchema,
+  evidence: z.record(z.string(), z.unknown()).default({}),
+});
+
 export const conversationRunResponseSchema = z
   .object({
     run_id: z.string().min(1),
@@ -67,6 +81,7 @@ export const conversationRunResponseSchema = z
     document_scope: z.string().optional(),
     citations: z.array(citationSchema).default([]),
     warnings: z.array(conversationRunWarningSchema).default([]),
+    agent_trace: z.array(agentTraceStepSchema).default([]),
     knowledge_base_selection: knowledgeBaseSelectionSchema.default({
       mode: "all",
       knowledge_base_ids: [],
@@ -142,6 +157,7 @@ export type ConversationRunRequest = z.infer<
 export type ConversationRunWarning = z.infer<
   typeof conversationRunWarningSchema
 >;
+export type AgentTraceStep = z.infer<typeof agentTraceStepSchema>;
 export type RunSourceContext = z.infer<typeof runSourceContextSchema>;
 export type ConversationRunResponse = z.infer<
   typeof conversationRunResponseSchema

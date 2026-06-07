@@ -1,6 +1,11 @@
 import type { ReactNode } from "react";
 import { EmptyState, Pill } from "@/components/Status";
-import type { AgentEvent, AgentRunSummary, Citation } from "@/model/my-agents";
+import type {
+  AgentEvent,
+  AgentRunSummary,
+  AgentTraceStep,
+  Citation,
+} from "@/model/my-agents";
 import type { ChatLocalization, LiveActivityEvent } from "./types";
 
 export type AgentTraceStageKey =
@@ -26,6 +31,15 @@ const INTERNAL_ACTIVITY_PAYLOAD_KEYS = new Set([
   "route",
   "route_label",
 ]);
+
+const BACKEND_TRACE_STAGE_MAP: Partial<Record<string, AgentTraceStageKey>> = {
+  query_cartographer: "planning",
+  source_warden: "planning",
+  candidate_scouts: "searchingKnowledge",
+  context_curator: "searchingKnowledge",
+  evidence_judge: "checkingCitations",
+  assistant_graph: "draftingAnswer",
+};
 
 export function sanitizeActivityEventPayload(value: unknown): unknown {
   if (Array.isArray(value)) {
@@ -93,6 +107,14 @@ export function getAgentTraceStageKeys({
 }): AgentTraceStageKey[] {
   if (events.length === 0) return [];
 
+  const hasInsufficientEvidence = events.some((event) =>
+    payloadHasBooleanFlag(event.payload, "insufficient_evidence"),
+  );
+  const explicitStageKeys = stageKeysFromBackendAgentTrace(events, {
+    hasInsufficientEvidence,
+  });
+  if (explicitStageKeys.length > 0) return explicitStageKeys;
+
   const stageKeys = new Set<AgentTraceStageKey>(["planning"]);
   const hasCompletedEvent = events.some((event) =>
     /(^|_)run_completed$|\bcompleted\b/.test(event.event_type.toLowerCase()),
@@ -135,13 +157,72 @@ export function getAgentTraceStageKeys({
     stageKeys.add("checkingCitations");
   }
 
-  if (hasCompletedEvent) {
-    stageKeys.add(citationCount > 0 ? "answerReady" : "needsEvidence");
-  } else if (hasUnreadyTerminalEvent) {
+  if (hasInsufficientEvidence || hasUnreadyTerminalEvent) {
     stageKeys.add("needsEvidence");
+  } else if (hasCompletedEvent) {
+    stageKeys.add("answerReady");
   }
 
   return AGENT_TRACE_STAGE_ORDER.filter((stageKey) => stageKeys.has(stageKey));
+}
+
+function stageKeysFromBackendAgentTrace(
+  events: Array<AgentEvent | LiveActivityEvent>,
+  { hasInsufficientEvidence }: { hasInsufficientEvidence: boolean },
+): AgentTraceStageKey[] {
+  const stageKeys = new Set<AgentTraceStageKey>();
+  for (const step of events.flatMap((event) =>
+    agentTraceStepsFromPayload(event.payload),
+  )) {
+    if (step.status === "skipped") continue;
+    if (step.id === "answer_composer") {
+      stageKeys.add(
+        step.status === "completed" && !hasInsufficientEvidence
+          ? "answerReady"
+          : "needsEvidence",
+      );
+      continue;
+    }
+    const stageKey = BACKEND_TRACE_STAGE_MAP[step.id];
+    if (stageKey) stageKeys.add(stageKey);
+  }
+  if (hasInsufficientEvidence && stageKeys.size > 0) {
+    stageKeys.delete("answerReady");
+    stageKeys.add("needsEvidence");
+  }
+  return AGENT_TRACE_STAGE_ORDER.filter((stageKey) => stageKeys.has(stageKey));
+}
+
+function agentTraceStepsFromPayload(payload: unknown): AgentTraceStep[] {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return [];
+  }
+  const rawTrace = (payload as { agent_trace?: unknown }).agent_trace;
+  if (!Array.isArray(rawTrace)) return [];
+  return rawTrace.filter(isAgentTraceStep);
+}
+
+function isAgentTraceStep(value: unknown): value is AgentTraceStep {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const candidate = value as Partial<AgentTraceStep>;
+  return (
+    typeof candidate.id === "string" &&
+    typeof candidate.event_type === "string" &&
+    (candidate.status === "completed" ||
+      candidate.status === "skipped" ||
+      candidate.status === "waiting" ||
+      candidate.status === "failed")
+  );
+}
+
+function payloadHasBooleanFlag(payload: unknown, flag: string): boolean {
+  if (Array.isArray(payload)) {
+    return payload.some((item) => payloadHasBooleanFlag(item, flag));
+  }
+  if (!payload || typeof payload !== "object") return false;
+  return Object.entries(payload).some(
+    ([key, value]) => key === flag && value === true,
+  );
 }
 
 function AgentTraceSummary({
