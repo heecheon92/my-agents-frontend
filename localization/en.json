@@ -60,6 +60,8 @@
     "signupLink": "Sign up",
     "signupSuccessTitle": "Account created",
     "signupSuccessDescription": "We created {email}. Check your inbox for the verification link, then log in with this account.",
+    "signupPendingApprovalTitle": "Approval request received",
+    "signupPendingApprovalDescription": "We created {email}. After operator approval, a verification email will be sent.",
     "guestTitle": "Try a limited demo",
     "guestDescription": "Enter an email to request a demo code. Guest sessions last 24 hours and have limited chats, prompts, and uploads.",
     "guestFailed": "Guest access failed",

@@ -60,6 +60,8 @@
     "signupLink": "회원가입",
     "signupSuccessTitle": "계정을 만들었습니다",
     "signupSuccessDescription": "{email} 계정을 만들었습니다. 받은편지함의 인증 링크를 확인한 뒤 이 계정으로 로그인하세요.",
+    "signupPendingApprovalTitle": "승인 요청을 받았습니다",
+    "signupPendingApprovalDescription": "{email} 계정을 만들었습니다. 운영자 승인 후 인증 이메일이 발송됩니다.",
     "guestTitle": "데모 체험하기",
     "guestDescription": "이메일 주소를 입력해 데모 코드를 요청하세요. 게스트 세션은 24시간 동안 유지되며 채팅, 질문, 업로드에 제한이 있습니다.",
     "guestFailed": "게스트 입장에 실패했습니다",

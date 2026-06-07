@@ -21,6 +21,7 @@ describe("MyAgentsAuthAPI", () => {
     ).resolves.toEqual({
       user,
       verification_email_sent: true,
+      approval_required: false,
     });
   });
 
