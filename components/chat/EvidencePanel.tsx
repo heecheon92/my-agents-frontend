@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { EmptyState, Pill } from "@/components/Status";
 import type {
   AgentEvent,
@@ -513,29 +514,31 @@ export function EvidencePanel({
                 </div>
               </details>
             ) : null}
-            <details className="group/evidence min-w-0 rounded-lg border border-cal-hairline bg-white/70 text-cal-ink open:w-full open:bg-white">
-              <summary
-                aria-label={`${localization.viewResponseEvidence} (${evidenceCount})`}
-                className="flex min-h-9 cursor-pointer list-none items-center gap-2 px-3 text-xs font-semibold marker:hidden hover:text-cal-primary"
-              >
-                <span>{localization.responseEvidence}</span>
-                <span className="rounded-full bg-cal-surface-soft px-2 py-0.5 text-[11px] text-cal-muted">
-                  {evidenceCount}
-                </span>
-              </summary>
-              <div className="grid max-h-80 gap-4 overflow-auto border-t border-cal-hairline p-3 lg:grid-cols-2">
-                <RunHistorySection
-                  localization={localization}
-                  lang={lang}
-                  runs={runs}
-                />
-                <ActivitySection
-                  localization={localization}
-                  events={events}
-                  citationCount={citations.length}
-                />
-              </div>
-            </details>
+            <OnboardingTarget id="chat.response-evidence">
+              <details className="group/evidence min-w-0 rounded-lg border border-cal-hairline bg-white/70 text-cal-ink open:w-full open:bg-white">
+                <summary
+                  aria-label={`${localization.viewResponseEvidence} (${evidenceCount})`}
+                  className="flex min-h-9 cursor-pointer list-none items-center gap-2 px-3 text-xs font-semibold marker:hidden hover:text-cal-primary"
+                >
+                  <span>{localization.responseEvidence}</span>
+                  <span className="rounded-full bg-cal-surface-soft px-2 py-0.5 text-[11px] text-cal-muted">
+                    {evidenceCount}
+                  </span>
+                </summary>
+                <div className="grid max-h-80 gap-4 overflow-auto border-t border-cal-hairline p-3 lg:grid-cols-2">
+                  <RunHistorySection
+                    localization={localization}
+                    lang={lang}
+                    runs={runs}
+                  />
+                  <ActivitySection
+                    localization={localization}
+                    events={events}
+                    citationCount={citations.length}
+                  />
+                </div>
+              </details>
+            </OnboardingTarget>
           </>
         ) : (
           <p className="self-center text-xs leading-5 text-cal-muted">

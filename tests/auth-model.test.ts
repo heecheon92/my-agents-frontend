@@ -40,6 +40,26 @@ describe("auth response schemas", () => {
     ).toEqual({
       user,
       verification_email_sent: true,
+      approval_required: false,
+    });
+  });
+
+  it("parses pending-approval signup responses from the backend", () => {
+    const pendingUser = {
+      ...user,
+      approval_status: "pending",
+    };
+
+    expect(
+      signupResponseSchema.parse({
+        user: pendingUser,
+        verification_email_sent: false,
+        approval_required: true,
+      }),
+    ).toEqual({
+      user: pendingUser,
+      verification_email_sent: false,
+      approval_required: true,
     });
   });
 

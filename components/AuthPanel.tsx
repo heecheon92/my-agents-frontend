@@ -29,6 +29,7 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
     null,
   );
   const [signupEmail, setSignupEmail] = useState<string | null>(null);
+  const [signupApprovalRequired, setSignupApprovalRequired] = useState(false);
   const { localization } = useLocalization((state) => ({
     auth: state.localization.auth,
   }));
@@ -68,6 +69,7 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
         const createdEmail = result.user.email ?? email;
         setEmail(createdEmail);
         setSignupEmail(createdEmail);
+        setSignupApprovalRequired(result.approval_required);
         setPassword("");
         setActiveMode("login");
       } catch {
@@ -135,13 +137,15 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
             {signupEmail ? (
               <div className="rounded-lg border border-cal-success/20 bg-cal-success/5 p-4 text-sm text-cal-success">
                 <p className="font-semibold">
-                  {localization.auth.signupSuccessTitle}
+                  {signupApprovalRequired
+                    ? localization.auth.signupPendingApprovalTitle
+                    : localization.auth.signupSuccessTitle}
                 </p>
                 <p className="mt-1 leading-6">
-                  {localization.auth.signupSuccessDescription.replace(
-                    "{email}",
-                    signupEmail,
-                  )}
+                  {(signupApprovalRequired
+                    ? localization.auth.signupPendingApprovalDescription
+                    : localization.auth.signupSuccessDescription
+                  ).replace("{email}", signupEmail)}
                 </p>
               </div>
             ) : null}

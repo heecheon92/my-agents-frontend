@@ -4,12 +4,12 @@
 
 `../my-agents` FastAPI + LangGraph 백엔드를 위한 프론트엔드 companion 앱입니다.
 
-이 앱은 Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, Biome으로 만든 사용자용 AI 워크스페이스입니다. 핵심 여정은 지식 추가/관리 → 질문하기 → 답변 옆 인용 확인입니다. 프로젝트 소유자가 수동으로 따라가고 유지보수할 수 있도록 서비스, 모델, 쿼리 키, 앱 컴포넌트, localization 패턴을 프로젝트 내부 규칙으로 정리했습니다.
+이 앱은 Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zustand, Zod, Biome으로 만든 사용자용 AI 워크스페이스입니다. 핵심 여정은 지식 추가/관리 → 질문하기 → 답변 옆 인용 확인입니다. 프로젝트 소유자가 수동으로 따라가고 유지보수할 수 있도록 서비스, 모델, 쿼리 키, 앱 컴포넌트, localization 패턴을 프로젝트 내부 규칙으로 정리했습니다.
 
 ## 이 UI가 연결하는 기능
 
 - 인증: 회원가입, 이메일 인증, 로그인, 비밀번호 재설정 요청/확정, 로그아웃, 현재 사용자 복원.
-- Ask: 대화, 서버 소유 메시지, streamed assistant-answer conversation run, 답변 옆 citation, 상단 지식 선택, 접힌 응답 근거/작업 내역.
+- Ask: 대화, 서버 소유 메시지, streamed assistant-answer conversation run, 답변 옆 citation, 상단 지식 선택, 접힌 응답 근거/작업 내역, 게스트 데모 사용 안내.
 - 지식/소스 워크플로: 지식 공간 생성/목록, 선택한 지식 공간으로 PDF/Markdown/plain-text 드래그 앤 드롭 또는 파일 선택 업로드, 텍스트 소스 추가, 검색 준비/처리 내역.
 - 팀: 생성/목록, 공유 지식 요청, 고급 섹션 안의 ID 기반 멤버/권한 관리.
 
@@ -80,6 +80,7 @@ flowchart LR
 - `server/my-agents/` — BFF 설정, cookie helper, proxy allowlist, CSRF/same-origin 정책.
 - `hooks/` — auth, conversation, document, knowledge, group용 TanStack Query hook.
 - `components/` — 앱 전용 UI helper와 제품 화면.
+- `components/onboarding/` — 게스트/신규 사용자 안내 flow 정의, target registry, overlay runtime. 게스트 완료/건너뛰기는 sessionStorage, 로그인 사용자 결정은 opaque localStorage bucket에 저장합니다. 이 기능은 사용자 승인에 따라 Zustand를 얇은 클라이언트 상태/부분 persistence 계층으로 사용합니다.
 - `DESIGN.md` — UI/theme/layout 결정을 위한 활성 design contract.
 - `.agents/skills/responsive-design/SKILL.md` — UI/layout 변경 시 적용하는 responsive workflow.
 - `docs/implementation-log.md` — 구현 상태와 검증 기록.

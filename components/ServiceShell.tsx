@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { OnboardingRuntime } from "@/components/onboarding/OnboardingRuntime";
+import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { Button } from "@/components/ui/button";
 import { useCurrentUser, useLogout } from "@/hooks/use-auth";
 import { useLocalization } from "@/hooks/useLocalization";
@@ -69,42 +71,45 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
         </Link>
         <nav className="mt-8 grid gap-2">
           {navRoutes.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "rounded-md px-4 py-2 text-sm font-medium text-cal-muted transition hover:bg-cal-canvas hover:text-cal-ink",
-                pathname === item.href &&
-                  "bg-cal-primary text-white hover:bg-cal-primary hover:text-white",
-              )}
-            >
-              {localization.service.nav[item.key]}
-            </Link>
+            <OnboardingTarget key={item.href} id={`nav.${item.key}`}>
+              <Link
+                href={item.href}
+                className={cn(
+                  "block rounded-md px-4 py-2 text-sm font-medium text-cal-muted transition hover:bg-cal-canvas hover:text-cal-ink",
+                  pathname === item.href &&
+                    "bg-cal-primary text-white hover:bg-cal-primary hover:text-white",
+                )}
+              >
+                {localization.service.nav[item.key]}
+              </Link>
+            </OnboardingTarget>
           ))}
         </nav>
-        <div className="mt-auto rounded-xl border border-cal-hairline bg-cal-canvas p-4 text-sm text-cal-muted shadow-[0_4px_16px_rgb(0_0_0/0.04)]">
-          <p className="font-medium text-cal-ink">
-            {user.data?.is_guest
-              ? localization.service.guestSessionLabel
-              : user.data?.email}
-          </p>
-          <p className="mt-2 text-xs leading-5">
-            {localization.service.sessionRestored}
-          </p>
-          <Button
-            className="mt-4 w-full"
-            variant="outline"
-            onClick={handleLogout}
-            disabled={logout.isPending}
-          >
-            {localization.service.logout}
-          </Button>
-          {logout.error ? (
-            <div className="mt-3">
-              <ErrorState error={logout.error} />
-            </div>
-          ) : null}
-        </div>
+        <OnboardingTarget id="service.guest-session-card" className="mt-auto">
+          <div className="rounded-xl border border-cal-hairline bg-cal-canvas p-4 text-sm text-cal-muted shadow-[0_4px_16px_rgb(0_0_0/0.04)]">
+            <p className="font-medium text-cal-ink">
+              {user.data?.is_guest
+                ? localization.service.guestSessionLabel
+                : user.data?.email}
+            </p>
+            <p className="mt-2 text-xs leading-5">
+              {localization.service.sessionRestored}
+            </p>
+            <Button
+              className="mt-4 w-full"
+              variant="outline"
+              onClick={handleLogout}
+              disabled={logout.isPending}
+            >
+              {localization.service.logout}
+            </Button>
+            {logout.error ? (
+              <div className="mt-3">
+                <ErrorState error={logout.error} />
+              </div>
+            ) : null}
+          </div>
+        </OnboardingTarget>
       </aside>
       <section className="flex min-w-0 flex-1 flex-col">
         <header className="border-b border-cal-hairline bg-cal-surface-soft px-4 py-3 lg:hidden">
@@ -116,11 +121,13 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
               >
                 {localization.brand.name}
               </Link>
-              <p className="mt-1 truncate text-xs text-cal-muted">
-                {user.data?.is_guest
-                  ? localization.service.guestSessionLabel
-                  : user.data?.email}
-              </p>
+              <OnboardingTarget id="service.guest-session-mobile">
+                <p className="mt-1 truncate text-xs text-cal-muted">
+                  {user.data?.is_guest
+                    ? localization.service.guestSessionLabel
+                    : user.data?.email}
+                </p>
+              </OnboardingTarget>
             </div>
             <Button
               variant="outline"
@@ -136,17 +143,22 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
             className="responsive-scroll -mx-4 mt-3 flex gap-2 px-4 pb-1"
           >
             {navRoutes.map((item) => (
-              <Link
+              <OnboardingTarget
                 key={item.href}
-                href={item.href}
-                className={cn(
-                  "inline-flex min-h-10 shrink-0 items-center rounded-full border border-cal-hairline bg-cal-canvas px-4 text-sm font-medium text-cal-muted transition hover:text-cal-ink",
-                  pathname === item.href &&
-                    "border-cal-primary bg-cal-primary text-white hover:text-white",
-                )}
+                id={`nav.${item.key}.mobile`}
+                className="shrink-0"
               >
-                {localization.service.nav[item.key]}
-              </Link>
+                <Link
+                  href={item.href}
+                  className={cn(
+                    "inline-flex min-h-10 shrink-0 items-center rounded-full border border-cal-hairline bg-cal-canvas px-4 text-sm font-medium text-cal-muted transition hover:text-cal-ink",
+                    pathname === item.href &&
+                      "border-cal-primary bg-cal-primary text-white hover:text-white",
+                  )}
+                >
+                  {localization.service.nav[item.key]}
+                </Link>
+              </OnboardingTarget>
             ))}
           </nav>
         </header>
@@ -154,6 +166,7 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
           {children}
         </div>
       </section>
+      <OnboardingRuntime user={user.data} />
     </main>
   );
 }

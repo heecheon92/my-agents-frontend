@@ -15,4 +15,26 @@ describe("localization dictionaries", () => {
   it("keeps Korean and English dictionaries shape-compatible", () => {
     expect(collectShape(en).sort()).toEqual(collectShape(ko).sort());
   });
+
+  it("includes required onboarding shell copy", () => {
+    const requiredKeys = [
+      "eyebrow",
+      "promptEyebrow",
+      "guestPromptTitle",
+      "guestPromptBody",
+      "start",
+      "notNow",
+      "skip",
+      "back",
+      "next",
+      "done",
+      "progress",
+      "targetFallback",
+    ] as const;
+
+    for (const key of requiredKeys) {
+      expect(en.onboarding[key]).toBeTruthy();
+      expect(ko.onboarding[key]).toBeTruthy();
+    }
+  });
 });

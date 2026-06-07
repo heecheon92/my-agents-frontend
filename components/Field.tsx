@@ -36,3 +36,8 @@ export function Field({
 
 export const inputClassName =
   "min-h-11 rounded-[10px] border border-km-hairline bg-km-surface px-3.5 py-2.5 text-base text-km-ink outline-none transition-[background-color,border-color,box-shadow,color] placeholder:text-km-muted-soft focus:border-km-accent focus:ring-3 focus:ring-km-accent/15 disabled:cursor-not-allowed disabled:bg-km-surface-strong disabled:text-km-muted aria-invalid:border-km-error aria-invalid:ring-3 aria-invalid:ring-km-error/15";
+
+export const selectClassName = cn(
+  inputClassName,
+  "km-select w-full min-w-0 pr-11",
+);

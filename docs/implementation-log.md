@@ -1,3 +1,37 @@
+## 2026-06-07 — Guest demo guided onboarding slice
+
+- Added a lightweight product-specific onboarding runtime under the protected service shell. G001 currently enables only the guest demo flow; authenticated new-user prompting remains disabled until the later new-user slice is implemented.
+- Added Zustand for small client-only onboarding state after the user explicitly allowed Zustand/framer-motion/proven libraries in the onboarding planning brief; active runtime state and HTMLElement target registry stay in memory, guest decisions are session-scoped, and authenticated decisions use salted opaque localStorage buckets without raw email/user IDs.
+- Registered visible tour targets around guest limits, the chat composer, knowledge selector, Add sources nav, and answer evidence; mobile-specific shell targets are selected at the `lg` breakpoint instead of measuring hidden desktop elements.
+- Added Korean/English onboarding copy and regression tests for localization coverage, guest flow shape, opaque identity buckets, and persistence partialization.
+
+Verification passed for this slice: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (17 files / 97 tests), `pnpm build`, targeted `pnpm exec playwright test e2e/guest-onboarding.spec.ts --reporter=line` (1 passed), and full `pnpm exec playwright test --reporter=line` (10 passed / 2 skipped).
+
+## 2026-06-07 — Authenticated new-user onboarding slice
+
+- Extended the onboarding runtime from the guest-only slice to authenticated users with no prior completion/dismissal record. Because the frontend user contract has no account-created timestamp, “new user” currently means “this opaque authenticated identity bucket has not seen the tour yet.”
+- Added real-surface tour steps for the normal workflow: create a knowledge space, choose a source destination, upload/drop sources, create an Ask thread, choose answer knowledge, ask from the composer, and review answer evidence.
+- Registered additional target wrappers around Knowledge creation, Add sources destination/upload, and the New conversation button; adjusted the non-modal prompt to desktop top-right after Playwright caught it intercepting the Send button.
+- Added browser coverage for authenticated tour completion and localStorage privacy, alongside updated flow/localization unit coverage.
+
+Verification passed for this slice: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (17 files / 98 tests), `pnpm build`, targeted `pnpm exec playwright test e2e/group-knowledge-v1.spec.ts e2e/new-user-onboarding.spec.ts --reporter=line` (4 passed), and full `pnpm exec playwright test --reporter=line` (11 passed / 2 skipped).
+
+## 2026-06-07 — Onboarding accessibility and route-awareness hardening
+
+- Kept the tour thin and dismissible while tightening accessibility details: the active overlay now has `aria-describedby`, traps Tab focus inside the modal-like card, restores focus on close, supports Escape dismissal, and respects reduced-motion preferences for target scrolling.
+- Moved the non-modal prompt to the safe-area-aware top-right so it no longer covers the Ask composer/send action; the prompt is a semantic labelled section rather than a modal.
+- Preserved route-aware behavior through the shared step hook: steps navigate to their real route, wait briefly for target registration, and fall back to a non-highlighted explanation when an optional target is missing.
+
+Verification passed for this slice: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (17 files / 98 tests), `pnpm build`, and full `pnpm exec playwright test --reporter=line` (11 passed / 2 skipped).
+
+## 2026-06-07 — Onboarding final quality gate
+
+- Ran the cleanup/review pass for the guided onboarding plan and kept the slice product-specific: no generic onboarding framework, no backend changes, and no invented surfaces beyond the existing ServiceShell, Ask, Knowledge, and Documents UI.
+- Addressed independent review findings by routing the guest Add sources step to the real upload dropzone, waiting for route/target readiness before showing the overlay, keeping mobile nav targets shrink-safe, making the modal background inert, throttling overlay measurement with `requestAnimationFrame`, and documenting the user-approved Zustand dependency.
+- Final independent review artifacts are stored under `.omx/ultragoal/final-code-reviewer-rerun.md` and `.omx/ultragoal/final-architect-review-rerun2.md`.
+
+Verification passed for the final gate: `git diff --check`, `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (17 files / 98 tests), `pnpm build`, and full `pnpm exec playwright test --reporter=line` (11 passed / 2 skipped).
+
 ## 2026-06-07 — Unified chat source selection cleanup
 
 - Removed the deprecated frontend separate shared-source/private-source split from Ask. The composer now keeps every conversation private and sends only one `knowledge_base_selection` payload for personal, shared, and team knowledge spaces.

@@ -14,6 +14,7 @@ export const userSchema = z
       .datetime({ local: true, offset: true })
       .nullable()
       .optional(),
+    approval_status: z.enum(["approved", "pending", "rejected"]).optional(),
   })
   .strict();
 
@@ -90,6 +91,7 @@ export const signupResponseSchema = z
   .object({
     user: userSchema,
     verification_email_sent: z.boolean(),
+    approval_required: z.boolean().default(false),
   })
   .strict();
 

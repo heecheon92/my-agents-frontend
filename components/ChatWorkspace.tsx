@@ -2,6 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import {
   useConversation,
@@ -852,17 +853,19 @@ export function ChatWorkspace() {
                   localization.selectOrCreateConversation}
               </h2>
             </div>
-            <KnowledgeSourceSelector
-              localization={localization}
-              knowledgeBaseMode={knowledgeBaseMode}
-              onKnowledgeBaseModeChange={setKnowledgeBaseMode}
-              knowledgeBases={selectableKnowledgeBases}
-              selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}
-              knowledgeBasesLoading={knowledgeBases.isLoading}
-              knowledgeBasesError={knowledgeBases.error}
-              requiresKnowledgeBaseSelection={requiresKnowledgeBaseSelection}
-              onToggleKnowledgeBase={toggleSelectedKnowledgeBase}
-            />
+            <OnboardingTarget id="chat.source-selector">
+              <KnowledgeSourceSelector
+                localization={localization}
+                knowledgeBaseMode={knowledgeBaseMode}
+                onKnowledgeBaseModeChange={setKnowledgeBaseMode}
+                knowledgeBases={selectableKnowledgeBases}
+                selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}
+                knowledgeBasesLoading={knowledgeBases.isLoading}
+                knowledgeBasesError={knowledgeBases.error}
+                requiresKnowledgeBaseSelection={requiresKnowledgeBaseSelection}
+                onToggleKnowledgeBase={toggleSelectedKnowledgeBase}
+              />
+            </OnboardingTarget>
           </header>
           <ChatTranscript
             localization={localization}
@@ -888,31 +891,33 @@ export function ChatWorkspace() {
             onChatScroll={handleChatScroll}
             onReplayAssistantMessage={handleReplayAssistantMessage}
           />
-          <ComposerBar
-            localization={localization}
-            draft={draft}
-            onDraftChange={setDraft}
-            onSubmit={handleSend}
-            visibleQueuedMessage={visibleQueuedMessage}
-            queuedHelper={queuedHelper}
-            knowledgeBases={knowledgeBases.data ?? []}
-            conversationIsBusy={conversationIsBusy}
-            activeId={activeId}
-            isCancelling={isCancelling}
-            isPrimaryActionDisabled={isPrimaryActionDisabled}
-            primaryActionLabel={primaryActionLabel}
-            isStreaming={isStreaming}
-            isSendNowDisabled={isSendNowDisabled}
-            onSendNow={handleSendNow}
-            sendNowHelper={sendNowHelper}
-            showGuestNotice={showGuestNotice}
-            streamError={streamError}
-            statusAnnouncement={statusAnnouncement}
-            onSendQueuedMessage={handleSendQueuedMessage}
-            onEditQueuedMessage={handleEditQueuedMessage}
-            onCancelQueuedMessage={handleCancelQueuedMessage}
-            composerPlaceholder={composerPlaceholder}
-          />
+          <OnboardingTarget id="chat.composer">
+            <ComposerBar
+              localization={localization}
+              draft={draft}
+              onDraftChange={setDraft}
+              onSubmit={handleSend}
+              visibleQueuedMessage={visibleQueuedMessage}
+              queuedHelper={queuedHelper}
+              knowledgeBases={knowledgeBases.data ?? []}
+              conversationIsBusy={conversationIsBusy}
+              activeId={activeId}
+              isCancelling={isCancelling}
+              isPrimaryActionDisabled={isPrimaryActionDisabled}
+              primaryActionLabel={primaryActionLabel}
+              isStreaming={isStreaming}
+              isSendNowDisabled={isSendNowDisabled}
+              onSendNow={handleSendNow}
+              sendNowHelper={sendNowHelper}
+              showGuestNotice={showGuestNotice}
+              streamError={streamError}
+              statusAnnouncement={statusAnnouncement}
+              onSendQueuedMessage={handleSendQueuedMessage}
+              onEditQueuedMessage={handleEditQueuedMessage}
+              onCancelQueuedMessage={handleCancelQueuedMessage}
+              composerPlaceholder={composerPlaceholder}
+            />
+          </OnboardingTarget>
         </section>
       </div>
     </div>
