@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRef, useState } from "react";
+import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { Button } from "@/components/ui/button";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import { useCurrentUser } from "@/hooks/use-auth";
@@ -34,7 +35,7 @@ import {
   groupKnowledgeBasesForGroup,
   writableDocumentKnowledgeBases,
 } from "./document-knowledge-base";
-import { Field, inputClassName } from "./Field";
+import { Field, inputClassName, selectClassName } from "./Field";
 import {
   buildKnowledgeBaseCreateRequest,
   type KnowledgeBaseCreationScope,
@@ -167,102 +168,106 @@ export function KnowledgeSurface() {
         {localization.knowledge.journeySteps.map((step, index) => (
           <article
             key={step}
-            className="rounded-xl border border-cal-hairline bg-cal-canvas p-4 text-sm leading-6 text-cal-body"
+            className="flex items-start gap-3 rounded-xl border border-cal-hairline bg-cal-canvas p-4 text-sm leading-6 text-cal-body"
           >
-            <span className="mb-3 inline-flex size-8 items-center justify-center rounded-full bg-cal-primary text-sm font-semibold text-white">
+            <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-cal-primary text-sm font-semibold text-white">
               {index + 1}
             </span>
-            {step}
+            <p className="min-w-0 pt-1">{step}</p>
           </article>
         ))}
       </section>
-      <form
-        onSubmit={handleSubmit}
-        className="cal-card grid gap-3 rounded-xl p-4"
-      >
-        <Field label={localization.knowledge.nameLabel}>
-          <input
-            className={inputClassName}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            required
-          />
-        </Field>
-        <div className="grid gap-3 md:grid-cols-2 md:items-start">
-          <Field
-            className="min-w-0"
-            label={localization.knowledge.scopeLabel}
-            hint={localization.knowledge.scopeHint}
-          >
-            <select
-              className={`${inputClassName} w-full min-w-0`}
-              value={scope}
-              onChange={(event) => {
-                const nextScope = event.target
-                  .value as KnowledgeBaseCreationScope;
-                setScope(nextScope);
-                if (nextScope === "personal") {
-                  setSelectedGroupId("");
-                }
-              }}
-            >
-              <option value="personal">
-                {localization.knowledge.scopePersonalOption}
-              </option>
-              <option value="group">
-                {localization.knowledge.scopeGroupOption}
-              </option>
-            </select>
+      <OnboardingTarget id="knowledge.create-form">
+        <form
+          onSubmit={handleSubmit}
+          className="cal-card grid gap-3 rounded-xl p-4"
+        >
+          <Field label={localization.knowledge.nameLabel}>
+            <input
+              className={inputClassName}
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              required
+            />
           </Field>
-          <Field
-            className="min-w-0"
-            label={localization.knowledge.groupLabel}
-            hint={
-              isGroupScope
-                ? localization.knowledge.groupHint
-                : localization.knowledge.groupDisabledHint
-            }
-          >
-            <select
-              aria-invalid={isGroupScope && !selectedGroupId ? true : undefined}
-              className={`${inputClassName} w-full min-w-0`}
-              disabled={!isGroupScope || groups.isLoading}
-              required={isGroupScope}
-              value={selectedGroupId}
-              onChange={(event) => setSelectedGroupId(event.target.value)}
+          <div className="grid gap-3 md:grid-cols-2 md:items-start">
+            <Field
+              className="min-w-0"
+              label={localization.knowledge.scopeLabel}
+              hint={localization.knowledge.scopeHint}
             >
-              <option value="">
-                {groups.isLoading
-                  ? localization.knowledge.loadingGroupsOption
-                  : localization.knowledge.groupPlaceholder}
-              </option>
-              {groupOptions.map((group) => (
-                <option key={group.id} value={group.id}>
-                  {group.name} · {group.role}
+              <select
+                className={selectClassName}
+                value={scope}
+                onChange={(event) => {
+                  const nextScope = event.target
+                    .value as KnowledgeBaseCreationScope;
+                  setScope(nextScope);
+                  if (nextScope === "personal") {
+                    setSelectedGroupId("");
+                  }
+                }}
+              >
+                <option value="personal">
+                  {localization.knowledge.scopePersonalOption}
                 </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-        <p className="rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-xs leading-5 text-cal-muted">
-          {localization.knowledge.scopeBoundaryNote}
-        </p>
-        {isGroupScope && !groups.isLoading && groupOptions.length === 0 ? (
-          <EmptyState
-            title={localization.knowledge.noGroupsTitle}
-            description={localization.knowledge.noGroupsDescription}
-          />
-        ) : null}
-        {groups.error ? <ErrorState error={groups.error} /> : null}
-        <Button type="submit" disabled={isSubmitDisabled}>
-          {isGroupScope
-            ? localization.knowledge.createGroupButton
-            : localization.knowledge.createPersonalButton}
-        </Button>
-        {createKnowledgeBase.error ? (
-          <ErrorState error={createKnowledgeBase.error} />
-        ) : null}
-      </form>
+                <option value="group">
+                  {localization.knowledge.scopeGroupOption}
+                </option>
+              </select>
+            </Field>
+            <Field
+              className="min-w-0"
+              label={localization.knowledge.groupLabel}
+              hint={
+                isGroupScope
+                  ? localization.knowledge.groupHint
+                  : localization.knowledge.groupDisabledHint
+              }
+            >
+              <select
+                aria-invalid={
+                  isGroupScope && !selectedGroupId ? true : undefined
+                }
+                className={selectClassName}
+                disabled={!isGroupScope || groups.isLoading}
+                required={isGroupScope}
+                value={selectedGroupId}
+                onChange={(event) => setSelectedGroupId(event.target.value)}
+              >
+                <option value="">
+                  {groups.isLoading
+                    ? localization.knowledge.loadingGroupsOption
+                    : localization.knowledge.groupPlaceholder}
+                </option>
+                {groupOptions.map((group) => (
+                  <option key={group.id} value={group.id}>
+                    {group.name} · {group.role}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <p className="rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-xs leading-5 text-cal-muted">
+            {localization.knowledge.scopeBoundaryNote}
+          </p>
+          {isGroupScope && !groups.isLoading && groupOptions.length === 0 ? (
+            <EmptyState
+              title={localization.knowledge.noGroupsTitle}
+              description={localization.knowledge.noGroupsDescription}
+            />
+          ) : null}
+          {groups.error ? <ErrorState error={groups.error} /> : null}
+          <Button type="submit" disabled={isSubmitDisabled}>
+            {isGroupScope
+              ? localization.knowledge.createGroupButton
+              : localization.knowledge.createPersonalButton}
+          </Button>
+          {createKnowledgeBase.error ? (
+            <ErrorState error={createKnowledgeBase.error} />
+          ) : null}
+        </form>
+      </OnboardingTarget>
       <ResourceList
         loading={knowledgeBases.isLoading}
         error={knowledgeBases.error}
@@ -904,70 +909,129 @@ export function DocumentsSurface() {
       <div className="responsive-panel">
         <div className="responsive-panel-grid" data-layout="form-aside">
           <div className="grid gap-4">
-            <section className="cal-card grid gap-3 rounded-xl p-4">
-              <div>
-                <h2 className="font-semibold">
-                  {localization.documents.knowledgeBaseTitle}
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-cal-muted">
-                  {localization.documents.knowledgeBaseHint}
-                </p>
-              </div>
-              <Field label={localization.documents.destinationLabel}>
-                <select
-                  className={inputClassName}
-                  value={documentDestination}
-                  onChange={(event) => {
-                    setDocumentDestination(
-                      event.target.value as DocumentDestination,
-                    );
-                    setSelectedDocumentId(undefined);
-                  }}
-                  disabled={isKnowledgeBaseSelectionLocked}
-                >
-                  <option value="personal">
-                    {localization.documents.destinationPersonalOption}
-                  </option>
-                  <option value="team">
-                    {localization.documents.destinationTeamOption}
-                  </option>
-                </select>
-              </Field>
-              {documentDestination === "team" ? (
-                <div className="grid gap-3 rounded-xl border border-cal-hairline bg-cal-canvas p-3">
-                  <Field label={localization.documents.teamGroupLabel}>
+            <OnboardingTarget id="documents.knowledge-destination">
+              <section className="cal-card grid gap-3 rounded-xl p-4">
+                <div>
+                  <h2 className="font-semibold">
+                    {localization.documents.knowledgeBaseTitle}
+                  </h2>
+                  <p className="mt-1 text-sm leading-6 text-cal-muted">
+                    {localization.documents.knowledgeBaseHint}
+                  </p>
+                </div>
+                <Field label={localization.documents.destinationLabel}>
+                  <select
+                    className={selectClassName}
+                    value={documentDestination}
+                    onChange={(event) => {
+                      setDocumentDestination(
+                        event.target.value as DocumentDestination,
+                      );
+                      setSelectedDocumentId(undefined);
+                    }}
+                    disabled={isKnowledgeBaseSelectionLocked}
+                  >
+                    <option value="personal">
+                      {localization.documents.destinationPersonalOption}
+                    </option>
+                    <option value="team">
+                      {localization.documents.destinationTeamOption}
+                    </option>
+                  </select>
+                </Field>
+                {documentDestination === "team" ? (
+                  <div className="grid gap-3 rounded-xl border border-cal-hairline bg-cal-canvas p-3">
+                    <Field label={localization.documents.teamGroupLabel}>
+                      <select
+                        className={selectClassName}
+                        value={activeTeamGroupId ?? ""}
+                        onChange={(event) => {
+                          setSelectedTeamGroupId(
+                            event.target.value || undefined,
+                          );
+                          setSelectedTeamKnowledgeBaseId(undefined);
+                          setSelectedDocumentId(undefined);
+                        }}
+                        disabled={
+                          groups.isLoading || isKnowledgeBaseSelectionLocked
+                        }
+                        required
+                      >
+                        <option value="">
+                          {localization.documents.teamGroupPlaceholder}
+                        </option>
+                        {teamGroups.map((group) => (
+                          <option key={group.id} value={group.id}>
+                            {group.name} ·{" "}
+                            {localization.groups.roles[group.role]}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <Field
+                      label={localization.documents.teamKnowledgeBaseLabel}
+                    >
+                      <select
+                        className={selectClassName}
+                        value={activeTeamKnowledgeBaseId ?? ""}
+                        onChange={(event) =>
+                          setSelectedTeamKnowledgeBaseId(
+                            event.target.value || undefined,
+                          )
+                        }
+                        disabled={
+                          knowledgeBases.isLoading ||
+                          isKnowledgeBaseSelectionLocked
+                        }
+                        required
+                      >
+                        <option value="">
+                          {localization.documents.teamKnowledgeBasePlaceholder}
+                        </option>
+                        {activeGroupKnowledgeBases.map((knowledgeBase) => (
+                          <option
+                            key={knowledgeBase.id}
+                            value={knowledgeBase.id}
+                          >
+                            {knowledgeBase.name}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+                    <p className="text-xs leading-5 text-cal-muted">
+                      {canAutoApproveTeamUpload
+                        ? localization.documents.teamUploadAutoApproveHint
+                        : localization.documents.teamUploadApprovalHint}
+                    </p>
+                    {groups.error ? <ErrorState error={groups.error} /> : null}
+                    {!groups.isLoading && teamGroups.length === 0 ? (
+                      <EmptyState
+                        title={localization.documents.noTeamTitle}
+                        description={localization.documents.noTeamDescription}
+                      />
+                    ) : null}
+                    {!knowledgeBases.isLoading &&
+                    activeTeamGroupId &&
+                    activeGroupKnowledgeBases.length === 0 ? (
+                      <EmptyState
+                        title={localization.documents.noTeamKnowledgeBaseTitle}
+                        description={
+                          localization.documents.noTeamKnowledgeBaseDescription
+                        }
+                      />
+                    ) : null}
+                  </div>
+                ) : (
+                  <Field label={localization.documents.knowledgeBaseLabel}>
                     <select
-                      className={inputClassName}
-                      value={activeTeamGroupId ?? ""}
+                      className={selectClassName}
+                      value={activeKnowledgeBaseId ?? ""}
                       onChange={(event) => {
-                        setSelectedTeamGroupId(event.target.value || undefined);
-                        setSelectedTeamKnowledgeBaseId(undefined);
+                        setSelectedKnowledgeBaseId(
+                          event.target.value || undefined,
+                        );
                         setSelectedDocumentId(undefined);
                       }}
-                      disabled={
-                        groups.isLoading || isKnowledgeBaseSelectionLocked
-                      }
-                      required
-                    >
-                      <option value="">
-                        {localization.documents.teamGroupPlaceholder}
-                      </option>
-                      {teamGroups.map((group) => (
-                        <option key={group.id} value={group.id}>
-                          {group.name} · {localization.groups.roles[group.role]}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                  <Field label={localization.documents.teamKnowledgeBaseLabel}>
-                    <select
-                      className={inputClassName}
-                      value={activeTeamKnowledgeBaseId ?? ""}
-                      onChange={(event) =>
-                        setSelectedTeamKnowledgeBaseId(
-                          event.target.value || undefined,
-                        )
-                      }
                       disabled={
                         knowledgeBases.isLoading ||
                         isKnowledgeBaseSelectionLocked
@@ -975,92 +1039,44 @@ export function DocumentsSurface() {
                       required
                     >
                       <option value="">
-                        {localization.documents.teamKnowledgeBasePlaceholder}
+                        {localization.documents.knowledgeBasePlaceholder}
                       </option>
-                      {activeGroupKnowledgeBases.map((knowledgeBase) => (
+                      {documentKnowledgeBases.map((knowledgeBase) => (
                         <option key={knowledgeBase.id} value={knowledgeBase.id}>
                           {knowledgeBase.name}
                         </option>
                       ))}
                     </select>
                   </Field>
+                )}
+                {isKnowledgeBaseSelectionLocked ? (
                   <p className="text-xs leading-5 text-cal-muted">
-                    {canAutoApproveTeamUpload
-                      ? localization.documents.teamUploadAutoApproveHint
-                      : localization.documents.teamUploadApprovalHint}
+                    {localization.documents.knowledgeBaseLockedHint}
                   </p>
-                  {groups.error ? <ErrorState error={groups.error} /> : null}
-                  {!groups.isLoading && teamGroups.length === 0 ? (
-                    <EmptyState
-                      title={localization.documents.noTeamTitle}
-                      description={localization.documents.noTeamDescription}
-                    />
-                  ) : null}
-                  {!knowledgeBases.isLoading &&
-                  activeTeamGroupId &&
-                  activeGroupKnowledgeBases.length === 0 ? (
-                    <EmptyState
-                      title={localization.documents.noTeamKnowledgeBaseTitle}
-                      description={
-                        localization.documents.noTeamKnowledgeBaseDescription
-                      }
-                    />
-                  ) : null}
-                </div>
-              ) : (
-                <Field label={localization.documents.knowledgeBaseLabel}>
-                  <select
-                    className={inputClassName}
-                    value={activeKnowledgeBaseId ?? ""}
-                    onChange={(event) => {
-                      setSelectedKnowledgeBaseId(
-                        event.target.value || undefined,
-                      );
-                      setSelectedDocumentId(undefined);
-                    }}
-                    disabled={
-                      knowledgeBases.isLoading || isKnowledgeBaseSelectionLocked
+                ) : null}
+                {knowledgeBases.error ? (
+                  <ErrorState error={knowledgeBases.error} />
+                ) : null}
+                {!knowledgeBases.isLoading &&
+                documentKnowledgeBases.length === 0 ? (
+                  <EmptyState
+                    title={localization.documents.noKnowledgeBaseTitle}
+                    description={
+                      localization.documents.noKnowledgeBaseDescription
                     }
-                    required
-                  >
-                    <option value="">
-                      {localization.documents.knowledgeBasePlaceholder}
-                    </option>
-                    {documentKnowledgeBases.map((knowledgeBase) => (
-                      <option key={knowledgeBase.id} value={knowledgeBase.id}>
-                        {knowledgeBase.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              )}
-              {isKnowledgeBaseSelectionLocked ? (
-                <p className="text-xs leading-5 text-cal-muted">
-                  {localization.documents.knowledgeBaseLockedHint}
-                </p>
-              ) : null}
-              {knowledgeBases.error ? (
-                <ErrorState error={knowledgeBases.error} />
-              ) : null}
-              {!knowledgeBases.isLoading &&
-              documentKnowledgeBases.length === 0 ? (
-                <EmptyState
-                  title={localization.documents.noKnowledgeBaseTitle}
-                  description={
-                    localization.documents.noKnowledgeBaseDescription
-                  }
-                  action={
-                    <Button
-                      nativeButton={false}
-                      render={<Link href="/knowledge" />}
-                      size="sm"
-                    >
-                      {localization.documents.createKnowledgeBaseAction}
-                    </Button>
-                  }
-                />
-              ) : null}
-            </section>
+                    action={
+                      <Button
+                        nativeButton={false}
+                        render={<Link href="/knowledge" />}
+                        size="sm"
+                      >
+                        {localization.documents.createKnowledgeBaseAction}
+                      </Button>
+                    }
+                  />
+                ) : null}
+              </section>
+            </OnboardingTarget>
             <form
               onSubmit={handleCreate}
               className="cal-card grid gap-3 rounded-xl p-4"
@@ -1110,49 +1126,51 @@ export function DocumentsSurface() {
                   {localization.documents.fileUploadHint}
                 </p>
               </div>
-              <fieldset
-                data-testid="document-upload-dropzone"
-                onDragEnter={handleUploadDragEnter}
-                onDragOver={handleUploadDragOver}
-                onDragLeave={handleUploadDragLeave}
-                onDrop={handleUploadDrop}
-                aria-disabled={!hasActiveKnowledgeBase}
-                className={`grid gap-3 rounded-xl border border-dashed p-4 transition-colors ${
-                  isUploadDropActive
-                    ? "border-km-accent bg-km-accent/10"
-                    : "border-cal-hairline bg-cal-canvas"
-                } ${hasActiveKnowledgeBase ? "" : "cursor-not-allowed opacity-60"}`}
-              >
-                <legend className="sr-only">
-                  {localization.documents.dropTitle}
-                </legend>
-                <div className="grid gap-1 text-sm leading-6">
-                  <p className="font-semibold text-cal-ink">
-                    {isUploadDropActive
-                      ? localization.documents.dropActiveTitle
-                      : localization.documents.dropTitle}
-                  </p>
-                  <p className="text-cal-muted">
-                    {localization.documents.dropDescription}
-                  </p>
-                </div>
-                <Field
-                  label={localization.documents.fileLabel}
-                  hint={localization.documents.multiFileUploadHint.replace(
-                    "{maxSize}",
-                    formatFileSize(MAX_UPLOAD_BYTES),
-                  )}
+              <OnboardingTarget id="documents.upload-dropzone">
+                <fieldset
+                  data-testid="document-upload-dropzone"
+                  onDragEnter={handleUploadDragEnter}
+                  onDragOver={handleUploadDragOver}
+                  onDragLeave={handleUploadDragLeave}
+                  onDrop={handleUploadDrop}
+                  aria-disabled={!hasActiveKnowledgeBase}
+                  className={`grid gap-3 rounded-xl border border-dashed p-4 transition-colors ${
+                    isUploadDropActive
+                      ? "border-km-accent bg-km-accent/10"
+                      : "border-cal-hairline bg-cal-canvas"
+                  } ${hasActiveKnowledgeBase ? "" : "cursor-not-allowed opacity-60"}`}
                 >
-                  <input
-                    className={inputClassName}
-                    type="file"
-                    accept={UPLOAD_ACCEPT}
-                    multiple
-                    onChange={handleFileSelection}
-                    disabled={!hasActiveKnowledgeBase}
-                  />
-                </Field>
-              </fieldset>
+                  <legend className="sr-only">
+                    {localization.documents.dropTitle}
+                  </legend>
+                  <div className="grid gap-1 text-sm leading-6">
+                    <p className="font-semibold text-cal-ink">
+                      {isUploadDropActive
+                        ? localization.documents.dropActiveTitle
+                        : localization.documents.dropTitle}
+                    </p>
+                    <p className="text-cal-muted">
+                      {localization.documents.dropDescription}
+                    </p>
+                  </div>
+                  <Field
+                    label={localization.documents.fileLabel}
+                    hint={localization.documents.multiFileUploadHint.replace(
+                      "{maxSize}",
+                      formatFileSize(MAX_UPLOAD_BYTES),
+                    )}
+                  >
+                    <input
+                      className={inputClassName}
+                      type="file"
+                      accept={UPLOAD_ACCEPT}
+                      multiple
+                      onChange={handleFileSelection}
+                      disabled={!hasActiveKnowledgeBase}
+                    />
+                  </Field>
+                </fieldset>
+              </OnboardingTarget>
               <p className="sr-only" aria-live="polite">
                 {uploadAnnouncement}
               </p>
@@ -1720,7 +1738,7 @@ export function GroupsSurface() {
       >
         <Field className="min-w-0" label={localization.groups.nameLabel}>
           <input
-            className={`${inputClassName} w-full min-w-0`}
+            className={selectClassName}
             value={name}
             onChange={(event) => setName(event.target.value)}
             required
@@ -1877,7 +1895,7 @@ export function GroupsSurface() {
             >
               <Field label={localization.groups.publishSourceKindLabel}>
                 <select
-                  className={inputClassName}
+                  className={selectClassName}
                   value={publishSourceKind}
                   onChange={(event) => {
                     const nextKind = event.target.value as PublishSourceKind;
@@ -1901,7 +1919,7 @@ export function GroupsSurface() {
                   hint={localization.groups.publishSourceKnowledgeBaseHint}
                 >
                   <select
-                    className={inputClassName}
+                    className={selectClassName}
                     value={sourceKnowledgeBaseId}
                     onChange={(event) =>
                       setSourceKnowledgeBaseId(event.target.value)
@@ -1939,7 +1957,7 @@ export function GroupsSurface() {
                     hint={localization.groups.publishTargetKnowledgeBaseHint}
                   >
                     <select
-                      className={inputClassName}
+                      className={selectClassName}
                       value={targetKnowledgeBaseId}
                       onChange={(event) =>
                         setTargetKnowledgeBaseId(event.target.value)
@@ -2111,7 +2129,7 @@ function RoleSelect({
   return (
     <Field label={label}>
       <select
-        className={inputClassName}
+        className={selectClassName}
         value={value}
         onChange={(event) => onChange(event.target.value as GroupRole)}
         disabled={disabled}

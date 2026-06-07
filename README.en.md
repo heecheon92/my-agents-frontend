@@ -4,12 +4,12 @@
 
 Frontend companion for the `../my-agents` FastAPI + LangGraph backend.
 
-This app is a user-facing AI workspace built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zod, and Biome. The core journey is add/manage knowledge → ask questions → inspect citations next to answers. It keeps service, model, query-key, app component, and localization patterns documented as project-local conventions so the project owner can follow and maintain the code manually.
+This app is a user-facing AI workspace built with Next.js 16, React 19, TypeScript, Tailwind CSS 4, TanStack Query, Zustand, Zod, and Biome. The core journey is add/manage knowledge → ask questions → inspect citations next to answers. It keeps service, model, query-key, app component, and localization patterns documented as project-local conventions so the project owner can follow and maintain the code manually.
 
 ## What this UI wires
 
 - Auth: signup, email verification, login, password reset request/confirm, logout, current user restore.
-- Ask: conversations, server-owned messages, streamed assistant-answer conversation runs, citations near answers, a top-of-chat knowledge selector, and collapsed response evidence/work history.
+- Ask: conversations, server-owned messages, streamed assistant-answer conversation runs, citations near answers, a top-of-chat knowledge selector, collapsed response evidence/work history, and guest demo orientation.
 - Knowledge/source workflows: knowledge-space create/list, text source creation, PDF/Markdown/plain-text drag-and-drop or file-picker upload into a selected knowledge space, source preparation, and processing history.
 - Teams: create/list, shared-knowledge requests, and advanced ID-based member/permission controls.
 
@@ -78,6 +78,7 @@ Important folders:
 - `server/my-agents/` — BFF configuration, cookie helpers, proxy allowlist, CSRF/same-origin policy.
 - `hooks/` — TanStack Query hooks for auth, conversations, documents, knowledge, groups.
 - `components/` — app-specific UI helpers and product surfaces.
+- `components/onboarding/` — guest/new-user tour definitions, target registry, and overlay runtime. Guest dismissal/completion stays in sessionStorage; authenticated decisions use an opaque localStorage bucket. This feature intentionally uses Zustand as the thin client-state/partial-persistence layer approved for the onboarding plan.
 - `components/chat/` — Ask workspace subcomponents.
 - `DESIGN.md` — active design contract for UI/theme/layout decisions.
 - `docs/implementation-log.md` — followable implementation status and verification notes.

@@ -1,4 +1,5 @@
 import { Trash2 } from "lucide-react";
+import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { EmptyState, ErrorState } from "@/components/Status";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -54,9 +55,11 @@ export function ConversationSidebar({
             {localization.description}
           </p>
         </div>
-        <Button size="sm" onClick={onCreate} disabled={isCreatePending}>
-          {localization.newButton}
-        </Button>
+        <OnboardingTarget id="chat.new-conversation">
+          <Button size="sm" onClick={onCreate} disabled={isCreatePending}>
+            {localization.newButton}
+          </Button>
+        </OnboardingTarget>
       </div>
       <div className="mt-5 grid gap-2">
         {error ? <ErrorState error={error} /> : null}

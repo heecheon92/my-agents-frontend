@@ -145,9 +145,9 @@ export function ComposerBar({
             conversationIsBusy ? "chat-steering-helper" : undefined
           }
         />
-        <div className="mt-2 grid gap-2 sm:mt-0 sm:grid-cols-2">
+        <div className="mt-2 flex flex-wrap gap-2 sm:mt-0 sm:justify-end">
           <Button
-            className="w-full sm:w-auto"
+            className="w-full px-4 sm:w-auto"
             type="submit"
             size="lg"
             disabled={isPrimaryActionDisabled}
@@ -156,7 +156,7 @@ export function ComposerBar({
           </Button>
           {isStreaming ? (
             <Button
-              className="w-full sm:w-auto"
+              className="w-full px-4 sm:w-auto"
               type="button"
               size="lg"
               variant="secondary"
