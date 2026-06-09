@@ -69,8 +69,23 @@ type UploadQueueItem = {
   error?: string;
 };
 
-const UPLOAD_ACCEPT =
-  "application/pdf,text/markdown,text/plain,.pdf,.md,.markdown,.txt";
+const XLSX_CONTENT_TYPE =
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+const PPTX_CONTENT_TYPE =
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+const UPLOAD_ACCEPT = [
+  "application/pdf",
+  "text/markdown",
+  "text/plain",
+  XLSX_CONTENT_TYPE,
+  PPTX_CONTENT_TYPE,
+  ".pdf",
+  ".md",
+  ".markdown",
+  ".txt",
+  ".xlsx",
+  ".pptx",
+].join(",");
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 const UPLOAD_CONCURRENCY = 3;
 const EXTRACTION_POLL_INTERVAL_MS = 1000;
@@ -80,11 +95,15 @@ const SUPPORTED_UPLOAD_EXTENSIONS = new Set([
   ".md",
   ".markdown",
   ".txt",
+  ".xlsx",
+  ".pptx",
 ]);
 const SUPPORTED_UPLOAD_TYPES = new Set([
   "application/pdf",
   "text/markdown",
   "text/plain",
+  XLSX_CONTENT_TYPE,
+  PPTX_CONTENT_TYPE,
 ]);
 
 function buildLocalUploadId(file: File) {
@@ -1456,6 +1475,8 @@ function UploadQueueRow({
     fileTypePdf: string;
     fileTypeMarkdown: string;
     fileTypeText: string;
+    fileTypeSpreadsheet: string;
+    fileTypePresentation: string;
     fileTitleLabel: string;
     retryUpload: string;
     removeUpload: string;
@@ -1598,6 +1619,8 @@ function uploadFileTypeLabel(
     fileTypePdf: string;
     fileTypeMarkdown: string;
     fileTypeText: string;
+    fileTypeSpreadsheet: string;
+    fileTypePresentation: string;
   },
 ) {
   const extension = fileExtension(file.name);
@@ -1610,6 +1633,12 @@ function uploadFileTypeLabel(
     file.type === "text/markdown"
   ) {
     return localization.fileTypeMarkdown;
+  }
+  if (extension === ".xlsx" || file.type === XLSX_CONTENT_TYPE) {
+    return localization.fileTypeSpreadsheet;
+  }
+  if (extension === ".pptx" || file.type === PPTX_CONTENT_TYPE) {
+    return localization.fileTypePresentation;
   }
   return localization.fileTypeText;
 }
@@ -2180,6 +2209,10 @@ function documentMeta(
       markdownSource: string;
       uploadedTextSourcePrefix: string;
       uploadedTextSource: string;
+      spreadsheetSourcePrefix: string;
+      spreadsheetSource: string;
+      presentationSourcePrefix: string;
+      presentationSource: string;
       textSource: string;
       pagesLabel: string;
     };
@@ -2204,9 +2237,16 @@ function documentSourceLabel(
     markdownSource: string;
     uploadedTextSourcePrefix: string;
     uploadedTextSource: string;
+    spreadsheetSourcePrefix: string;
+    spreadsheetSource: string;
+    presentationSourcePrefix: string;
+    presentationSource: string;
     textSource: string;
   },
 ) {
+  const extension = doc.source_filename
+    ? fileExtension(doc.source_filename)
+    : "";
   if (doc.source_type === "pdf") {
     return doc.source_filename
       ? `${localization.pdfSourcePrefix} ${doc.source_filename}`
@@ -2216,6 +2256,16 @@ function documentSourceLabel(
     return doc.source_filename
       ? `${localization.markdownSourcePrefix} ${doc.source_filename}`
       : localization.markdownSource;
+  }
+  if (doc.source_type === "spreadsheet" || extension === ".xlsx") {
+    return doc.source_filename
+      ? `${localization.spreadsheetSourcePrefix} ${doc.source_filename}`
+      : localization.spreadsheetSource;
+  }
+  if (doc.source_type === "presentation" || extension === ".pptx") {
+    return doc.source_filename
+      ? `${localization.presentationSourcePrefix} ${doc.source_filename}`
+      : localization.presentationSource;
   }
   if (doc.source_filename) {
     return `${localization.uploadedTextSourcePrefix} ${doc.source_filename}`;

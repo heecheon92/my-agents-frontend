@@ -57,6 +57,16 @@ test("Documents upload drop zone adds dropped files to the queue", async ({
         type: "text/plain",
       }),
     );
+    transfer.items.add(
+      new File(["workbook"], "pipeline.xlsx", {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      }),
+    );
+    transfer.items.add(
+      new File(["deck"], "roadmap.pptx", {
+        type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      }),
+    );
     return transfer;
   });
 
@@ -66,4 +76,8 @@ test("Documents upload drop zone adds dropped files to the queue", async ({
 
   await expect(page.getByTestId("upload-queue")).toBeVisible();
   await expect(page.getByText("drop-note.txt")).toBeVisible();
+  await expect(page.getByText("pipeline.xlsx")).toBeVisible();
+  await expect(page.getByText("roadmap.pptx")).toBeVisible();
+  await expect(page.getByText(/Spreadsheet|스프레드시트/)).toBeVisible();
+  await expect(page.getByText(/Presentation|프레젠테이션/)).toBeVisible();
 });

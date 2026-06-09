@@ -110,7 +110,7 @@ streamed Ask answer with `All` or selected knowledge scope -> citations beside t
 answer -> response evidence disclosure with completed run/work history -> persisted
 run-detail citations after reload.
 
-Upload smoke should use an active backend with the KB-nested upload contract: login -> Documents -> select a knowledge base -> upload a supported PDF, Markdown (`.md`/`.markdown`), or plain text (`.txt`) file through `POST /knowledge-bases/{knowledge_base_id}/documents/upload` -> verify document source metadata -> run KB-scoped ingest -> confirm citations can render backend-provided filename/page/KB provenance.
+Upload smoke should use an active backend with the KB-nested upload contract: login -> Documents -> select a knowledge base -> upload a supported PDF, Markdown (`.md`/`.markdown`), plain text (`.txt`), Excel workbook (`.xlsx`), or PowerPoint deck (`.pptx`) through `POST /knowledge-bases/{knowledge_base_id}/documents/upload` -> verify document source metadata -> run KB-scoped ingest -> confirm citations can render backend-provided filename/page/KB provenance.
 
 
 ## V1 public visitor smoke (preview/public final proof)

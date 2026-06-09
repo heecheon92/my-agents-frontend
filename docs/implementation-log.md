@@ -1,3 +1,11 @@
+## 2026-06-09 — Office file upload frontend wiring
+
+- Extended the Documents/Add sources upload queue from PDF/Markdown/plain-text to also accept modern Office files: Excel workbooks (`.xlsx`) and PowerPoint decks (`.pptx`). Legacy `.xls`/`.ppt` remain unsupported.
+- Kept the existing KB-nested multipart upload path and backend boundary intact; the frontend only updates local accept/validation, per-file type labels, and source metadata labels for backend `spreadsheet` / `presentation` documents.
+- Updated English/Korean UI copy plus README/runbook contract notes so supported upload claims include `.xlsx`/`.pptx` without implying arbitrary file support.
+
+Verification passed for this slice: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (17 files / 99 tests), `pnpm build`, and full Playwright on an isolated temporary port because port 3000 was already occupied by an unrelated GreetSchool Next server: `pnpm exec playwright test --config /tmp/my-agents-frontend-playwright-3107.config.ts --reporter=line` (11 passed / 2 skipped).
+
 ## 2026-06-07 — Guest demo guided onboarding slice
 
 - Added a lightweight product-specific onboarding runtime under the protected service shell. G001 currently enables only the guest demo flow; authenticated new-user prompting remains disabled until the later new-user slice is implemented.
