@@ -72,9 +72,10 @@ describe("group publish copy", () => {
   it("frames Groups as shared knowledge spaces in English", () => {
     const copy = en.admin.groups;
 
-    expect(copy.description).toContain("shared spaces for knowledge");
+    expect(copy.description).toContain("invite-accepted spaces");
     expect(copy.membershipActions).toBe("Team access");
-    expect(copy.memberIdNote).toContain("add or update members by user ID");
+    expect(copy.memberIdNote).toContain("email invitation acceptance");
+    expect(copy.inviteEmailHint).toContain("does not reveal");
     expect(copy.publishBoundaryTitle).toBe("Shared knowledge");
     expect(copy.publishBoundaryDescription).toContain(
       "share a personal knowledge space",
@@ -90,9 +91,10 @@ describe("group publish copy", () => {
   it("frames Groups as shared knowledge spaces in Korean", () => {
     const copy = ko.admin.groups;
 
-    expect(copy.description).toContain("지식을 함께 쓰는 공간");
+    expect(copy.description).toContain("초대를 수락한 뒤");
     expect(copy.membershipActions).toBe("팀 접근");
-    expect(copy.memberIdNote).toContain("사용자 ID를 붙여넣어");
+    expect(copy.memberIdNote).toContain("이메일 초대 수락");
+    expect(copy.inviteEmailHint).toContain("계정 존재 여부");
     expect(copy.publishBoundaryTitle).toBe("공유 지식");
     expect(copy.publishBoundaryDescription).toContain("개인 지식 공간");
     expect(copy.publishSourceKnowledgeBaseHint).toContain(

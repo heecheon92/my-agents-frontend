@@ -8,13 +8,17 @@ import { Button } from "@/components/ui/button";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import { useCurrentUser } from "@/hooks/use-auth";
 import {
-  useAddMember,
   useApprovePublishRequest,
+  useCancelGroupInvitation,
   useCreateGroup,
+  useCreateGroupInvitation,
   useCreatePublishRequest,
+  useGroupInvitations,
   useGroups,
   usePublishRequests,
   useRejectPublishRequest,
+  useResendGroupInvitation,
+  useUpdateGroupInvitation,
   useUpdateMember,
 } from "@/hooks/use-groups";
 import {
@@ -1669,9 +1673,25 @@ export function GroupsSurface() {
   const createPublishRequest = useCreatePublishRequest(activeGroupId);
   const approvePublishRequest = useApprovePublishRequest(activeGroupId);
   const rejectPublishRequest = useRejectPublishRequest(activeGroupId);
-  const addMember = useAddMember(activeGroupId);
-  const [memberUserId, setMemberUserId] = useState("");
-  const [memberRole, setMemberRole] = useState<GroupRole>("viewer");
+  const invitations = useGroupInvitations(activeGroupId, canManageMembers);
+  const createInvitation = useCreateGroupInvitation(activeGroupId);
+  const [invitationEmail, setInvitationEmail] = useState("");
+  const [invitationRole, setInvitationRole] = useState<GroupRole>("viewer");
+  const [invitationActionId, setInvitationActionId] = useState("");
+  const [invitationActionRole, setInvitationActionRole] =
+    useState<GroupRole>("viewer");
+  const updateInvitation = useUpdateGroupInvitation(
+    activeGroupId,
+    invitationActionId,
+  );
+  const resendInvitation = useResendGroupInvitation(
+    activeGroupId,
+    invitationActionId,
+  );
+  const cancelInvitation = useCancelGroupInvitation(
+    activeGroupId,
+    invitationActionId,
+  );
   const [updateUserId, setUpdateUserId] = useState("");
   const [updateRole, setUpdateRole] = useState<GroupRole>("viewer");
   const [publishSourceKind, setPublishSourceKind] =
@@ -1694,12 +1714,48 @@ export function GroupsSurface() {
     }
   }
 
-  async function handleAddMember(event: React.FormEvent<HTMLFormElement>) {
+  async function handleCreateInvitation(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
     if (!canManageMembers) return;
     try {
-      await addMember.mutateAsync({ user_id: memberUserId, role: memberRole });
-      setMemberUserId("");
+      await createInvitation.mutateAsync({
+        email: invitationEmail,
+        role: invitationRole,
+      });
+      setInvitationEmail("");
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
+  }
+
+  async function handleUpdateInvitation(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    if (!canManageMembers || !invitationActionId.trim()) return;
+    try {
+      await updateInvitation.mutateAsync({ role: invitationActionRole });
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
+  }
+
+  async function handleResendInvitation() {
+    if (!canManageMembers || !invitationActionId.trim()) return;
+    try {
+      await resendInvitation.mutateAsync();
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
+  }
+
+  async function handleCancelInvitation() {
+    if (!canManageMembers || !invitationActionId.trim()) return;
+    try {
+      await cancelInvitation.mutateAsync();
+      setInvitationActionId("");
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -1812,25 +1868,33 @@ export function GroupsSurface() {
                 description={localization.groups.noSelectedDescription}
               />
             )}
-            <details className="mt-4 border-t border-cal-hairline pt-4">
+            <details className="mt-4 border-t border-cal-hairline pt-4" open>
               <summary className="cursor-pointer text-sm font-semibold text-cal-ink">
                 {localization.groups.advancedMembershipTitle}
               </summary>
-              <div className="mt-3 grid gap-3">
-                <form onSubmit={handleAddMember} className="grid gap-3">
-                  <Field label={localization.groups.addMemberLabel}>
+              <div className="mt-3 grid gap-4">
+                <form onSubmit={handleCreateInvitation} className="grid gap-3">
+                  <Field
+                    label={localization.groups.inviteEmailLabel}
+                    hint={localization.groups.inviteEmailHint}
+                  >
                     <input
                       className={inputClassName}
-                      value={memberUserId}
-                      onChange={(event) => setMemberUserId(event.target.value)}
+                      type="email"
+                      autoComplete="email"
+                      value={invitationEmail}
+                      onChange={(event) =>
+                        setInvitationEmail(event.target.value)
+                      }
                       disabled={!canManageMembers}
+                      required
                     />
                   </Field>
                   <RoleSelect
                     label={localization.groups.roleLabel}
                     labels={localization.groups.roles}
-                    value={memberRole}
-                    onChange={setMemberRole}
+                    value={invitationRole}
+                    onChange={setInvitationRole}
                     disabled={!canManageMembers}
                   />
                   <Button
@@ -1838,23 +1902,174 @@ export function GroupsSurface() {
                     disabled={
                       !canManageMembers ||
                       !activeGroupId ||
-                      !memberUserId.trim() ||
-                      addMember.isPending
+                      !invitationEmail.trim() ||
+                      createInvitation.isPending
                     }
                   >
-                    {localization.groups.upsertMember}
+                    {localization.groups.sendInvitation}
                   </Button>
                 </form>
-                {addMember.error ? (
+                {createInvitation.error ? (
                   <div>
-                    <ErrorState error={addMember.error} />
+                    <ErrorState error={createInvitation.error} />
                   </div>
                 ) : null}
+
+                <section className="rounded-xl border border-cal-hairline bg-cal-canvas p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-cal-ink">
+                      {localization.groups.invitationsTitle}
+                    </h3>
+                    {invitations.isLoading ? (
+                      <InlineLoadingIndicator
+                        label={localization.groups.invitationsLoading}
+                      />
+                    ) : null}
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    {(invitations.data ?? []).length > 0 ? (
+                      (invitations.data ?? []).map((invitation) => (
+                        <article
+                          key={invitation.id}
+                          className="rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-sm"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Pill
+                              tone={invitationStatusTone(invitation.status)}
+                            >
+                              {
+                                localization.groups.invitationStatuses[
+                                  invitation.status
+                                ]
+                              }
+                            </Pill>
+                            <span className="font-medium text-cal-ink">
+                              {invitation.invited_email_normalized}
+                            </span>
+                            <span className="text-cal-muted">
+                              {localization.groups.roles[invitation.role]}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs leading-5 text-cal-muted">
+                            {localization.groups.invitationExpiryLabel}:{" "}
+                            {invitation.expires_at}
+                          </p>
+                          <details className="mt-2 text-xs text-cal-muted">
+                            <summary className="cursor-pointer font-medium text-cal-ink">
+                              {localization.groups.advancedGroupDetails}
+                            </summary>
+                            <p className="mt-1 break-all font-mono">
+                              {localization.groups.invitationIdLabel}:{" "}
+                              {invitation.id}
+                            </p>
+                          </details>
+                        </article>
+                      ))
+                    ) : (
+                      <EmptyState
+                        title={localization.groups.noInvitationsTitle}
+                        description={
+                          localization.groups.noInvitationsDescription
+                        }
+                      />
+                    )}
+                  </div>
+                  {invitations.error ? (
+                    <div className="mt-3">
+                      <ErrorState error={invitations.error} />
+                    </div>
+                  ) : null}
+                </section>
+
+                <form
+                  onSubmit={handleUpdateInvitation}
+                  className="grid gap-3 border-t border-cal-hairline pt-4"
+                >
+                  <Field
+                    label={localization.groups.invitationActionIdLabel}
+                    hint={localization.groups.invitationActionHint}
+                  >
+                    <input
+                      className={inputClassName}
+                      value={invitationActionId}
+                      onChange={(event) =>
+                        setInvitationActionId(event.target.value)
+                      }
+                      disabled={!canManageMembers}
+                    />
+                  </Field>
+                  <RoleSelect
+                    label={localization.groups.roleLabel}
+                    labels={localization.groups.roles}
+                    value={invitationActionRole}
+                    onChange={setInvitationActionRole}
+                    disabled={!canManageMembers}
+                  />
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={
+                        !canManageMembers ||
+                        !activeGroupId ||
+                        !invitationActionId.trim() ||
+                        updateInvitation.isPending
+                      }
+                    >
+                      {localization.groups.updateInvitationRole}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={
+                        !canManageMembers ||
+                        !activeGroupId ||
+                        !invitationActionId.trim() ||
+                        resendInvitation.isPending
+                      }
+                      onClick={handleResendInvitation}
+                    >
+                      {localization.groups.resendInvitation}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={
+                        !canManageMembers ||
+                        !activeGroupId ||
+                        !invitationActionId.trim() ||
+                        cancelInvitation.isPending
+                      }
+                      onClick={handleCancelInvitation}
+                    >
+                      {localization.groups.cancelInvitation}
+                    </Button>
+                  </div>
+                </form>
+                {updateInvitation.error ? (
+                  <div>
+                    <ErrorState error={updateInvitation.error} />
+                  </div>
+                ) : null}
+                {resendInvitation.error ? (
+                  <div>
+                    <ErrorState error={resendInvitation.error} />
+                  </div>
+                ) : null}
+                {cancelInvitation.error ? (
+                  <div>
+                    <ErrorState error={cancelInvitation.error} />
+                  </div>
+                ) : null}
+
                 <form
                   onSubmit={handleUpdateMember}
                   className="grid gap-3 border-t border-cal-hairline pt-4"
                 >
-                  <Field label={localization.groups.patchMemberLabel}>
+                  <Field
+                    label={localization.groups.patchMemberLabel}
+                    hint={localization.groups.patchMemberHint}
+                  >
                     <input
                       className={inputClassName}
                       value={updateUserId}
@@ -2140,6 +2355,12 @@ export function GroupsSurface() {
       </ResourceList>
     </PageCard>
   );
+}
+
+function invitationStatusTone(status: string): StatusTone {
+  if (status === "accepted") return "green";
+  if (status === "cancelled" || status === "expired") return "rose";
+  return "amber";
 }
 
 function RoleSelect({

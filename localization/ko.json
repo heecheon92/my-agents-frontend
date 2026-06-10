@@ -93,7 +93,17 @@
     "passwordResetSuccessDescription": "비밀번호가 변경되었습니다. 새 비밀번호로 로그인하세요.",
     "passwordResetFailedTitle": "비밀번호 재설정에 실패했습니다",
     "passwordResetSubmit": "비밀번호 재설정",
-    "newPassword": "새 비밀번호"
+    "newPassword": "새 비밀번호",
+    "groupInvitationEyebrow": "팀 초대",
+    "groupInvitationWorkingTitle": "초대를 수락하는 중입니다",
+    "groupInvitationWorkingDescription": "로그인한 계정으로 이 초대를 확인하고 있습니다.",
+    "groupInvitationSuccessTitle": "초대를 수락했습니다",
+    "groupInvitationSuccessDescription": "이제 팀 화면을 열고 역할에 따라 공유 지식을 사용할 수 있습니다. 대화와 메모리는 계속 비공개입니다.",
+    "groupInvitationFailedTitle": "초대를 수락하지 못했습니다",
+    "groupInvitationFailedDescription": "초대받은 이메일 주소로 로그인한 뒤 초대 링크를 다시 여세요. 만료되었거나 취소된 초대는 사용할 수 없습니다.",
+    "groupInvitationMissingTitle": "초대 토큰이 없습니다",
+    "groupInvitationMissingDescription": "이메일에서 token 쿼리 파라미터가 포함된 전체 초대 링크를 열어 주세요.",
+    "groupsLink": "팀 열기"
   },
   "service": {
     "nav": {
@@ -469,18 +479,16 @@
     },
     "groups": {
       "title": "팀",
-      "description": "팀은 지식을 함께 쓰는 공간입니다. 필요할 때 멤버를 추가하고 개인 지식을 팀과 공유하는 요청을 검토하세요.",
+      "description": "팀은 초대를 수락한 뒤 참여하는 공유 지식 공간입니다. 이메일로 사람을 초대하고 개인 지식을 팀과 공유하는 요청을 검토하세요.",
       "nameLabel": "팀 이름",
       "createButton": "팀 만들기",
       "membershipActions": "팀 접근",
       "activeGroupLabel": "선택한 팀",
       "noSelectedTitle": "선택된 팀이 없습니다",
       "noSelectedDescription": "먼저 팀을 만들거나 선택하세요.",
-      "addMemberLabel": "멤버 사용자 ID 추가/수정",
-      "upsertMember": "멤버 업서트",
-      "patchMemberLabel": "기존 멤버 사용자 ID 수정",
-      "patchRole": "역할 패치",
-      "membershipManagerOnlyHint": "그룹 소유자와 관리자만 멤버를 추가하거나 역할을 변경할 수 있습니다.",
+      "patchMemberLabel": "역할을 바꿀 활성 멤버 사용자 ID",
+      "patchRole": "활성 역할 수정",
+      "membershipManagerOnlyHint": "팀 소유자와 관리자만 사람을 초대하거나 활성 멤버 역할을 바꿀 수 있습니다.",
       "empty": "아직 그룹이 없습니다.",
       "roleLabel": "역할",
       "roles": {
@@ -513,8 +521,29 @@
       "advancedGroupDetails": "고급 팀 정보",
       "groupIdLabel": "그룹 ID",
       "sharedKnowledgeSpaceLabel": "공유 지식 공간",
-      "memberIdNote": "고급: 현재는 사용자 ID를 붙여넣어 멤버를 추가하거나 수정합니다. 사용자 검색은 나중에 추가할 수 있습니다.",
-      "advancedMembershipTitle": "고급 팀 멤버 제어"
+      "memberIdNote": "새 접근 권한은 이메일 초대 수락으로 시작합니다. 사용자 ID 기반 활성 멤버 역할 수정은 고급 제어이며 멤버를 만들지 않습니다.",
+      "advancedMembershipTitle": "팀 초대와 활성 역할",
+      "inviteEmailLabel": "이메일로 초대",
+      "inviteEmailHint": "응답은 이 이메일의 계정 존재 여부를 드러내지 않습니다.",
+      "sendInvitation": "초대 보내기",
+      "invitationsTitle": "대기 중 및 최근 초대",
+      "invitationsLoading": "초대를 불러오는 중...",
+      "noInvitationsTitle": "아직 초대가 없습니다",
+      "noInvitationsDescription": "이메일로 팀원을 초대하세요. 멤버십은 로그인한 사용자가 수락한 뒤 시작됩니다.",
+      "invitationStatuses": {
+        "pending": "대기 중",
+        "accepted": "수락됨",
+        "cancelled": "취소됨",
+        "expired": "만료됨"
+      },
+      "invitationExpiryLabel": "만료",
+      "invitationIdLabel": "초대 ID",
+      "invitationActionIdLabel": "수정/재전송/취소할 초대 ID",
+      "invitationActionHint": "목록의 초대 ID를 사용하세요. 이 작업은 계정 존재 여부를 드러내지 않습니다.",
+      "updateInvitationRole": "초대 역할 수정",
+      "resendInvitation": "초대 재전송",
+      "cancelInvitation": "초대 취소",
+      "patchMemberHint": "이미 수락한 멤버에게만 사용하세요. 멤버십을 새로 만들 수 없습니다."
     }
   },
   "errors": {

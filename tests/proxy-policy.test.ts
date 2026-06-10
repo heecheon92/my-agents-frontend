@@ -104,7 +104,13 @@ describe("proxy policy", () => {
     ).toBe(true);
   });
 
-  it("blocks legacy assistant chat and unknown paths before forwarding", () => {
+  it("blocks direct member creation, legacy assistant chat, and unknown paths before forwarding", () => {
+    expect(
+      isAllowedBackendPath("POST", "/groups/group-1/members"),
+    ).toMatchObject({
+      allowed: false,
+      code: "path_not_allowed",
+    });
     expect(isAllowedBackendPath("POST", "/assistant/chat")).toMatchObject({
       allowed: false,
       code: "legacy_chat_blocked",
