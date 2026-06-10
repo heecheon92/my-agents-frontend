@@ -95,8 +95,14 @@ The BFF allowlist currently covers:
 - `POST /groups`
 - `GET /groups`
 - `GET /groups/{group_id}`
-- `POST /groups/{group_id}/members`
-- `PATCH /groups/{group_id}/members/{user_id}`
+- `POST /groups/{group_id}/invitations`
+- `GET /groups/{group_id}/invitations`
+- `PATCH /groups/{group_id}/invitations/{invitation_id}`
+- `POST /groups/{group_id}/invitations/{invitation_id}/resend`
+- `DELETE /groups/{group_id}/invitations/{invitation_id}`
+- `POST /group-invitations/accept`
+- `GET /groups/{group_id}/members` for owner/admin member role maintenance only
+- `PATCH /groups/{group_id}/members/{user_id}` for already-active member role updates only
 - `POST /knowledge-bases`
 - `GET /knowledge-bases`
 - `GET /knowledge-bases/{knowledge_base_id}`

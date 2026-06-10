@@ -52,6 +52,25 @@ const personalConversation = {
   title: "Private conversation",
   owner_user_id: user.id,
 };
+const invitation = {
+  id: "invite-1",
+  group_id: ownerGroup.id,
+  invited_email: "teammate@example.com",
+  role: "viewer",
+  status: "pending",
+  created_at: now,
+  expires_at: "2026-06-17T07:55:00.000Z",
+  accepted_at: null,
+  cancelled_at: null,
+  resent_at: null,
+};
+const member = {
+  member_id: "member-1",
+  user_id: user.id,
+  role: "owner",
+  created_at: now,
+};
+
 const publishRequest = {
   id: "pr-1",
   requester_user_id: user.id,
@@ -118,6 +137,18 @@ async function mockGroupKnowledgeApi(
       ]);
     }
     if (method === "GET" && path.endsWith("/runs")) return json([]);
+    if (method === "GET" && path === `/groups/${group.id}/invitations`) {
+      return json(
+        role === "owner" ? [invitation] : [],
+        role === "owner" ? 200 : 403,
+      );
+    }
+    if (method === "GET" && path === `/groups/${group.id}/members`) {
+      return json(
+        role === "owner" ? [member] : [],
+        role === "owner" ? 200 : 403,
+      );
+    }
     if (method === "GET" && path === `/groups/${group.id}/publish-requests`) {
       return json([publishRequest]);
     }
@@ -210,9 +241,8 @@ test("Publish review controls are owner-only in Group admin UI", async ({
   await expect(
     page.getByRole("button", { name: ko.admin.groups.publishRejectButton }),
   ).toHaveCount(0);
-  await page.getByText(ko.admin.groups.advancedMembershipTitle).click();
   await expect(
-    page.getByRole("button", { name: ko.admin.groups.upsertMember }),
+    page.getByRole("button", { name: ko.admin.groups.sendInvitation }),
   ).toBeDisabled();
   await expect(
     page.getByRole("button", { name: ko.admin.groups.patchRole }),

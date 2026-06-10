@@ -52,6 +52,15 @@ export const API_PATH = {
     member(groupId: string, userId: string) {
       return `${this.members(groupId)}/${userId}`;
     },
+    invitations(groupId: string) {
+      return `${this.detail(groupId)}/invitations`;
+    },
+    invitation(groupId: string, invitationId: string) {
+      return `${this.invitations(groupId)}/${invitationId}`;
+    },
+    invitationResend(groupId: string, invitationId: string) {
+      return `${this.invitation(groupId, invitationId)}/resend`;
+    },
     publishRequests(groupId: string) {
       return `${this.detail(groupId)}/publish-requests`;
     },
@@ -61,6 +70,9 @@ export const API_PATH = {
     publishRequestReject(groupId: string, requestId: string) {
       return `${this.publishRequests(groupId)}/${requestId}/reject`;
     },
+  },
+  groupInvitations: {
+    accept: "/group-invitations/accept",
   },
   knowledgeBases: {
     root: "/knowledge-bases",

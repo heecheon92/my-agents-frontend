@@ -2,12 +2,18 @@ import { API_PATH } from "@/constants/api-path";
 import {
   type Group,
   type GroupCreateRequest,
+  type GroupInvitation,
+  type GroupInvitationAcceptRequest,
+  type GroupInvitationCreateRequest,
+  type GroupInvitationUpdateRequest,
+  type GroupMember,
+  groupInvitationSchema,
+  groupMemberSchema,
   groupSchema,
   type KnowledgePublishRequest,
   type KnowledgePublishRequestCreateRequest,
   knowledgePublishRequestSchema,
   type MemberPatchRequest,
-  type MemberUpsertRequest,
 } from "@/model/my-agents";
 import { type MyAgentsFetchClient, myAgentsFetchClient } from "./fetch-client";
 import { parseArrayWithSchema, parseWithSchema } from "./parser";
@@ -44,14 +50,74 @@ export class MyAgentsGroupAPI {
     );
   }
 
-  async addMember(
+  async createInvitation(
     groupId: string,
-    payload: MemberUpsertRequest,
-  ): Promise<void> {
-    await this.client.fetch(API_PATH.groups.members(groupId), {
+    payload: GroupInvitationCreateRequest,
+  ): Promise<GroupInvitation> {
+    return parseWithSchema(
+      groupInvitationSchema,
+      await this.client.fetch(API_PATH.groups.invitations(groupId), {
+        method: "POST",
+        body: payload,
+      }),
+    );
+  }
+
+  async invitations(groupId: string): Promise<GroupInvitation[]> {
+    return parseArrayWithSchema(
+      groupInvitationSchema,
+      await this.client.fetch(API_PATH.groups.invitations(groupId)),
+    );
+  }
+
+  async updateInvitation(
+    groupId: string,
+    invitationId: string,
+    payload: GroupInvitationUpdateRequest,
+  ): Promise<GroupInvitation> {
+    return parseWithSchema(
+      groupInvitationSchema,
+      await this.client.fetch(
+        API_PATH.groups.invitation(groupId, invitationId),
+        {
+          method: "PATCH",
+          body: payload,
+        },
+      ),
+    );
+  }
+
+  async resendInvitation(
+    groupId: string,
+    invitationId: string,
+  ): Promise<GroupInvitation> {
+    return parseWithSchema(
+      groupInvitationSchema,
+      await this.client.fetch(
+        API_PATH.groups.invitationResend(groupId, invitationId),
+        { method: "POST" },
+      ),
+    );
+  }
+
+  async cancelInvitation(groupId: string, invitationId: string): Promise<void> {
+    await this.client.fetch(API_PATH.groups.invitation(groupId, invitationId), {
+      method: "DELETE",
+    });
+  }
+
+  async acceptInvitation(payload: GroupInvitationAcceptRequest): Promise<void> {
+    await this.client.fetch(API_PATH.groupInvitations.accept, {
       method: "POST",
       body: payload,
     });
+  }
+
+  async members(groupId: string): Promise<GroupMember[]> {
+    return parseArrayWithSchema(
+      groupMemberSchema,
+      await this.client.fetch(API_PATH.groups.members(groupId)),
+    );
   }
 
   async updateMember(
