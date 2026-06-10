@@ -40,7 +40,7 @@
   - Make the first-time journey legible in five seconds: add documents, ask questions, inspect citations.
   - Keep citations visually attached to assistant answers while moving run history and activity events into progressive disclosure.
   - Make Add sources and Knowledge feel like one mental model: documents/notes are sources inside knowledge spaces.
-  - Make team, membership, and permission workflows usable while keeping raw ID-based controls in advanced/admin disclosure.
+  - Make team, invitation, membership, and permission workflows usable without implying user search or direct `user_id` membership activation.
   - Support Korean and English with comfortable typography, wrapping, and no hardcoded user-facing strings.
   - Give frontend engineers a stable theme/component contract that can be implemented with current Next.js, Tailwind v4, Base UI/shadcn-style primitives, and no new component library.
   - Reduce future UI churn by moving repeated panel/list/message patterns out of ad hoc Tailwind strings and into small repo-native primitives.
@@ -68,7 +68,7 @@
   - Create/select a conversation, send a message, stream the response, queue or steer a next prompt, and understand run outcome.
   - Inspect redacted activity events and citations tied to the latest run.
   - Create/upload documents, ingest them, monitor extraction progress, and confirm source metadata.
-  - Create knowledge bases, groups, and ID-based membership/permission changes without mistaking rough backend contracts for polished search/list UX.
+  - Create knowledge bases and groups, manage invitations/permissions, and avoid mistaking backend identifiers for a polished user-search UX.
 - Key contexts of use:
   - Local development and review, with backend at `http://127.0.0.1:8000` or `http://localhost:8000` depending on configured CORS.
   - Public/demo review where privacy, redaction, honest guest limits, and no-secret browser storage matter.
@@ -85,7 +85,7 @@
   - `/chat`: Ask-first workspace with conversation list, top-of-chat knowledge selector, transcript, dominant composer, compact citation summaries near answers, and progressively disclosed citation details plus response evidence/work history.
   - `/documents`: Add sources screen for text/file sources inside a selected knowledge space; permissions and processing internals stay in Advanced sections.
   - `/knowledge`: Create/list knowledge spaces and explain add sources → ask → inspect citations.
-  - `/groups`: Teams screen for shared knowledge and advanced ID-based member role actions.
+  - `/groups`: Teams screen for shared knowledge, invitation lifecycle, accepted-member roles, and publish-request review.
 - Content hierarchy:
   - Level 1: Page purpose and current user/session context.
   - Level 2: Primary action for the route, e.g. create conversation, send message, upload/ingest document.
@@ -108,7 +108,7 @@
 - Tradeoffs:
   - Prioritize transcript-first chat polish over equal visual richness in admin surfaces, but use the same tokens and state language everywhere.
   - Keep the current CSS/token implementation lightweight; rename or migrate legacy `cal-*` aliases only when a UI-code task explicitly includes it.
-  - Accept ID-heavy admin workflows until backend search/member-list contracts exist; design should make the limitation clear without shaming the product.
+  - Accept identifier-heavy advanced permission workflows only where the backend contract requires them; membership UX should use email invitations and must not imply user discovery.
   - Prefer progressive disclosure over always-visible density for inspectors and admin action panels; default view should show the task and the most relevant evidence first.
 
 ## Visual language
@@ -280,7 +280,7 @@
 - Microcopy rules:
   - Avoid “magic”, “brain”, “thinking”, “autonomous reasoning trace”, or claims of hidden intelligence.
   - Say what happened and what to do next: “Run failed. Try again or edit the message.”
-  - For ID-based fields, explicitly ask for “user ID” or “group ID”; do not imply user search exists.
+  - For any remaining ID-based advanced fields, explicitly ask for “user ID” or “group ID”; normal team membership copy should use email invitations and must not imply user search exists.
   - Keep user-visible strings in `localization/ko.json` and `localization/en.json`.
 
 ## Implementation constraints
@@ -316,4 +316,4 @@
 - [ ] Frontend owner / token migration: Should future implementation keep `cal-*` class names as compatibility aliases or migrate them to product-neutral names? Impact: diff size and risk during UI polish.
 - [ ] Frontend owner / primitive extraction: Which primitive should be extracted first after token work: `WorkspacePanel`, `ResourceList`, `MessageBubble`, or `EvidenceCard`? Impact: reduces ad hoc class strings without forcing a large refactor.
 - [ ] Backend/product owner / event display contract: Which event payload keys are guaranteed safe and stable for public display? Impact: activity timeline formatting and redaction confidence.
-- [ ] Backend/product owner / admin UX: Will user search/member listing arrive, or should ID-based group/permission workflows remain first-class? Impact: layout priority and field guidance.
+- [ ] Backend/product owner / admin UX: Will future opt-in user discovery arrive, or should email invitations plus accepted-member lists remain first-class? Impact: layout priority and field guidance.

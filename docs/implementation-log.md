@@ -1,3 +1,11 @@
+## 2026-06-10 — Invite-only team membership docs sync
+
+- Aligned frontend README/backend-request copy with the approved invite-only group/team boundary: no user search, no account-existence leak, and no direct `user_id` member activation.
+- Recorded the expected invitation lifecycle contract for hosted OpenAPI follow-up before runtime model/client changes.
+- Preserved the existing shared-knowledge mental model: group KBs and publish requests are shared after acceptance, while conversations and opt-in memory stay private to the authenticated user.
+
+Verification for this docs-only entry is part of the current worker-4 backend/frontend documentation pass.
+
 ## 2026-06-09 — Office file upload frontend wiring
 
 - Extended the Documents/Add sources upload queue from PDF/Markdown/plain-text to also accept modern Office files: Excel workbooks (`.xlsx`) and PowerPoint decks (`.pptx`). Legacy `.xls`/`.ppt` remain unsupported.
