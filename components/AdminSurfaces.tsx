@@ -12,7 +12,8 @@ import {
   UploadIcon,
 } from "lucide-react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { Button } from "@/components/ui/button";
 import {
@@ -88,6 +89,10 @@ import { EmptyState, ErrorState, Pill } from "./Status";
 type GroupRole = "owner" | "admin" | "editor" | "viewer";
 type PublishSourceKind = "document" | "knowledge-base";
 type DocumentDestination = "personal" | "team";
+
+type SourcesSurfaceProps = {
+  initialSourceId?: string;
+};
 
 type UploadQueueStatus =
   | "selected"
@@ -187,8 +192,22 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export function SourcesSurface() {
+function knowledgeSourceHref(sourceId: string) {
+  return `/knowledge/${encodeURIComponent(sourceId)}`;
+}
+
+function decodeRouteSegment(segment?: string) {
+  if (!segment) return undefined;
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const groups = useGroups();
   const knowledgeBases = useKnowledgeBases();
   const currentUser = useCurrentUser();
@@ -272,6 +291,7 @@ export function SourcesSurface() {
   const [isTextSourceDialogOpen, setIsTextSourceDialogOpen] = useState(false);
   const [isFileUploadDialogOpen, setIsFileUploadDialogOpen] = useState(false);
   const uploadDragDepthRef = useRef(0);
+  const lastAppliedRouteSourceIdRef = useRef<string | undefined>(undefined);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>();
   const activeDocumentId = selectedDocumentId ?? documents.data?.[0]?.id;
   const activeDocument = documents.data?.find(
@@ -371,6 +391,71 @@ export function SourcesSurface() {
     0,
     (documents.data?.length ?? 0) - activeIngestionDocumentIds.size,
   );
+
+  useEffect(() => {
+    const routeSourceId = decodeRouteSegment(initialSourceId);
+    if (!routeSourceId) {
+      lastAppliedRouteSourceIdRef.current = undefined;
+      return;
+    }
+
+    if (
+      lastAppliedRouteSourceIdRef.current === routeSourceId ||
+      isKnowledgeBaseSelectionLocked ||
+      knowledgeBases.isLoading ||
+      groups.isLoading
+    ) {
+      return;
+    }
+
+    const personalKnowledgeBase = documentKnowledgeBases.find(
+      (knowledgeBase) => knowledgeBase.id === routeSourceId,
+    );
+    if (personalKnowledgeBase) {
+      setDocumentDestination("personal");
+      setSelectedKnowledgeBaseId(personalKnowledgeBase.id);
+      setSelectedDocumentId(undefined);
+      lastAppliedRouteSourceIdRef.current = routeSourceId;
+      return;
+    }
+
+    const teamKnowledgeBase = (knowledgeBases.data ?? []).find(
+      (knowledgeBase) =>
+        knowledgeBase.scope === "group" &&
+        knowledgeBase.purpose === "standard" &&
+        knowledgeBase.id === routeSourceId &&
+        Boolean(knowledgeBase.group_id),
+    );
+    if (teamKnowledgeBase?.group_id) {
+      setDocumentDestination("team");
+      setSelectedTeamGroupId(teamKnowledgeBase.group_id);
+      setSelectedTeamKnowledgeBaseId(teamKnowledgeBase.id);
+      setSelectedDocumentId(undefined);
+      lastAppliedRouteSourceIdRef.current = routeSourceId;
+      return;
+    }
+
+    const teamGroup = teamGroups.find((group) => group.id === routeSourceId);
+    if (teamGroup) {
+      const groupSourceSpaces = groupKnowledgeBasesForGroup(
+        knowledgeBases.data ?? [],
+        teamGroup.id,
+      );
+      setDocumentDestination("team");
+      setSelectedTeamGroupId(teamGroup.id);
+      setSelectedTeamKnowledgeBaseId(groupSourceSpaces[0]?.id);
+      setSelectedDocumentId(undefined);
+      lastAppliedRouteSourceIdRef.current = routeSourceId;
+    }
+  }, [
+    documentKnowledgeBases,
+    groups.isLoading,
+    initialSourceId,
+    isKnowledgeBaseSelectionLocked,
+    knowledgeBases.data,
+    knowledgeBases.isLoading,
+    teamGroups,
+  ]);
 
   function updateQueueItem(
     localId: string,
@@ -748,11 +833,13 @@ export function SourcesSurface() {
         setSelectedTeamGroupId(created.group_id ?? undefined);
         setSelectedTeamKnowledgeBaseId(created.id);
         setIsCreateSourceSpaceDialogOpen(false);
+        router.push(knowledgeSourceHref(created.id), { scroll: false });
         return;
       }
       setDocumentDestination("personal");
       setSelectedKnowledgeBaseId(created.id);
       setIsCreateSourceSpaceDialogOpen(false);
+      router.push(knowledgeSourceHref(created.id), { scroll: false });
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -992,6 +1079,19 @@ export function SourcesSurface() {
     setIsSourceSpaceBrowserOpen(false);
   }
 
+  function selectTeamGroup(groupId: string) {
+    if (isKnowledgeBaseSelectionLocked) return;
+    const groupSourceSpaces = groupKnowledgeBasesForGroup(
+      knowledgeBases.data ?? [],
+      groupId,
+    );
+    setDocumentDestination("team");
+    setSelectedTeamGroupId(groupId);
+    setSelectedTeamKnowledgeBaseId(groupSourceSpaces[0]?.id);
+    setSelectedDocumentId(undefined);
+    setIsSourceSpaceBrowserOpen(false);
+  }
+
   function selectTeamSourceSpace(groupId: string, knowledgeBaseId: string) {
     if (isKnowledgeBaseSelectionLocked) return;
     setDocumentDestination("team");
@@ -1011,13 +1111,21 @@ export function SourcesSurface() {
     onSelect: () => void;
   }) {
     return (
-      <button
+      <Link
         key={knowledgeBase.id}
-        type="button"
-        onClick={onSelect}
-        disabled={isKnowledgeBaseSelectionLocked}
+        href={knowledgeSourceHref(knowledgeBase.id)}
+        scroll={false}
+        aria-current={active ? "page" : undefined}
+        aria-disabled={isKnowledgeBaseSelectionLocked ? true : undefined}
+        onClick={(event) => {
+          if (isKnowledgeBaseSelectionLocked) {
+            event.preventDefault();
+            return;
+          }
+          onSelect();
+        }}
         className={cn(
-          "group flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+          "group flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors aria-disabled:pointer-events-none aria-disabled:opacity-60",
           active
             ? "bg-cal-primary text-white shadow-[0_10px_24px_rgb(20_33_61/0.16)]"
             : "text-cal-ink hover:bg-cal-surface-soft",
@@ -1027,7 +1135,7 @@ export function SourcesSurface() {
         <span className="min-w-0 flex-1 truncate font-medium">
           {knowledgeBase.name}
         </span>
-      </button>
+      </Link>
     );
   }
 
@@ -1116,13 +1224,39 @@ export function SourcesSurface() {
 
                 return (
                   <div key={group.id} className="grid gap-1">
-                    <div className="flex min-w-0 items-center gap-2 px-3 text-xs font-medium text-cal-muted">
+                    <Link
+                      href={knowledgeSourceHref(group.id)}
+                      scroll={false}
+                      aria-current={
+                        documentDestination === "team" &&
+                        activeTeamGroupId === group.id
+                          ? "page"
+                          : undefined
+                      }
+                      aria-disabled={
+                        isKnowledgeBaseSelectionLocked ? true : undefined
+                      }
+                      onClick={(event) => {
+                        if (isKnowledgeBaseSelectionLocked) {
+                          event.preventDefault();
+                          return;
+                        }
+                        selectTeamGroup(group.id);
+                      }}
+                      className={cn(
+                        "flex min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors aria-disabled:pointer-events-none aria-disabled:opacity-60",
+                        documentDestination === "team" &&
+                          activeTeamGroupId === group.id
+                          ? "bg-cal-surface-soft text-cal-ink"
+                          : "text-cal-muted hover:bg-cal-surface-soft/80 hover:text-cal-ink",
+                      )}
+                    >
                       <NetworkIcon className="size-3.5 shrink-0" />
                       <span className="truncate">{group.name}</span>
                       <span className="shrink-0">
                         · {localization.groups.roles[group.role]}
                       </span>
-                    </div>
+                    </Link>
                     {groupSourceSpaces.length > 0 ? (
                       groupSourceSpaces.map((knowledgeBase) =>
                         renderSourceSpaceButton({
@@ -1408,10 +1542,11 @@ export function SourcesSurface() {
   return (
     <>
       <PageCard
+        fullWidth
         title={localization.documents.title}
         description={localization.documents.description}
       >
-        <div className="flex min-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-3xl border border-cal-hairline bg-white shadow-[0_18px_60px_rgb(20_22_23/0.08)] lg:grid lg:grid-cols-[18rem_minmax(0,1fr)]">
+        <div className="flex min-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-3xl border border-cal-hairline bg-white shadow-[0_18px_60px_rgb(20_22_23/0.08)] lg:grid lg:grid-cols-[20rem_minmax(0,1fr)]">
           <OnboardingTarget id="documents.knowledge-destination">
             <aside className="hidden min-h-0 border-r border-cal-hairline lg:flex">
               {renderSourceSpaceTree()}
@@ -2747,13 +2882,20 @@ function PageCard({
   title,
   description,
   children,
+  fullWidth = false,
 }: {
   title: string;
   description: string;
   children: React.ReactNode;
+  fullWidth?: boolean;
 }) {
   return (
-    <div className="mx-auto grid max-w-6xl gap-6">
+    <div
+      className={cn(
+        "grid gap-6",
+        fullWidth ? "w-full max-w-none" : "mx-auto max-w-6xl",
+      )}
+    >
       <header>
         <h1 className="cal-heading cal-fluid-title">{title}</h1>
         <p className="cal-subcopy mt-3 max-w-3xl">{description}</p>

@@ -18,6 +18,24 @@ const personalKnowledgeBase = {
   created_at: "2026-05-25T00:00:00.000Z",
 };
 
+const teamGroup = {
+  id: "g-research",
+  name: "Research Team",
+  role: "admin",
+  created_at: "2026-05-25T00:00:00.000Z",
+};
+
+const teamKnowledgeBase = {
+  id: "kb-team-research",
+  name: "Team Research Library",
+  scope: "group",
+  owner_user_id: user.id,
+  group_id: teamGroup.id,
+  purpose: "standard",
+  published_group_ids: [],
+  created_at: "2026-05-25T00:00:00.000Z",
+};
+
 test("Sources upload drop zone adds dropped files to the queue", async ({
   page,
 }) => {
@@ -118,6 +136,70 @@ test("legacy Documents URL redirects to the Sources workflow", async ({
   await expect(page).toHaveURL(/\/knowledge$/);
   await expect(
     page.getByRole("heading", { name: ko.admin.documents.title, exact: true }),
+  ).toBeVisible();
+});
+
+test("Knowledge subroutes preserve selected source spaces and groups", async ({
+  page,
+}) => {
+  const knowledgeBases = [personalKnowledgeBase, teamKnowledgeBase];
+
+  await page.route("**/api/my-agents/**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace("/api/my-agents", "");
+    const method = request.method();
+    const json = (value: unknown) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(value),
+      });
+
+    if (method === "GET" && path === "/auth/me") return json(user);
+    if (method === "GET" && path === "/knowledge-bases") {
+      return json(knowledgeBases);
+    }
+    if (
+      method === "GET" &&
+      path === `/knowledge-bases/${personalKnowledgeBase.id}/documents`
+    ) {
+      return json([]);
+    }
+    if (
+      method === "GET" &&
+      path === `/knowledge-bases/${teamKnowledgeBase.id}/documents`
+    ) {
+      return json([]);
+    }
+    if (method === "GET" && path === "/groups") return json([teamGroup]);
+    return route.fulfill({ status: 404, body: "{}" });
+  });
+
+  await page.goto(`/knowledge/${teamKnowledgeBase.id}`);
+  await expect(
+    page.getByRole("heading", { name: teamKnowledgeBase.name }),
+  ).toBeVisible();
+
+  await page.reload();
+  await expect(page).toHaveURL(
+    new RegExp(`/knowledge/${teamKnowledgeBase.id}$`),
+  );
+  await expect(
+    page.getByRole("heading", { name: teamKnowledgeBase.name }),
+  ).toBeVisible();
+
+  await page.goto(`/knowledge/${teamGroup.id}`);
+  await expect(page).toHaveURL(new RegExp(`/knowledge/${teamGroup.id}$`));
+  await expect(
+    page.getByRole("heading", { name: teamKnowledgeBase.name }),
+  ).toBeVisible();
+
+  await page.getByRole("link", { name: personalKnowledgeBase.name }).click();
+  await expect(page).toHaveURL(
+    new RegExp(`/knowledge/${personalKnowledgeBase.id}$`),
+  );
+  await expect(
+    page.getByRole("heading", { name: personalKnowledgeBase.name }),
   ).toBeVisible();
 });
 

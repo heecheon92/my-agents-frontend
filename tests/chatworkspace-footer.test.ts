@@ -58,7 +58,7 @@ describe("ChatWorkspace assistant message footer", () => {
     expect(en.chat.replaySourcesUnavailable).toContain(
       "currently available sources",
     );
-    expect(ko.chat.replaySourcesUnavailable).toContain("현재 사용 가능한 소스");
+    expect(ko.chat.replaySourcesUnavailable).toContain("현재 사용 가능한 지식");
     expect(en.chat.activeRunStale).toContain("interrupted");
     expect(ko.chat.activeRunStale).toContain("중단");
     expect(en.chat.activeRunStaleHelper).toContain("checking its status");
@@ -98,7 +98,7 @@ describe("ChatWorkspace assistant message footer", () => {
 
   it("summarizes agentic run events into localized compact trace stages", () => {
     expect(en.chat.agentTrace.stages.planning).toBe("Planning");
-    expect(ko.chat.agentTrace.stages.searchingKnowledge).toBe("소스 검색");
+    expect(ko.chat.agentTrace.stages.searchingKnowledge).toBe("지식 검색");
     expect(en.chat.agentTrace.stages.checkingCitations).toBe(
       "Checking citations",
     );

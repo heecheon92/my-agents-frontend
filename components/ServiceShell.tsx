@@ -89,7 +89,9 @@ export function ServiceShell({
   }
 
   const currentRoute =
-    navRoutes.find((item) => pathname === item.href) ?? navRoutes[0];
+    navRoutes.find(
+      (item) => pathname === item.href || pathname.startsWith(`${item.href}/`),
+    ) ?? navRoutes[0];
   const sessionLabel = user.data?.is_guest
     ? localization.service.guestSessionLabel
     : user.data?.email;
@@ -139,7 +141,9 @@ export function ServiceShell({
               <SidebarMenu className="gap-1">
                 {navRoutes.map((item) => {
                   const Icon = item.icon;
-                  const isActive = pathname === item.href;
+                  const isActive =
+                    pathname === item.href ||
+                    pathname.startsWith(`${item.href}/`);
                   return (
                     <SidebarMenuItem key={item.href}>
                       <OnboardingTarget id={`nav.${item.key}`}>

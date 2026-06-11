@@ -24,7 +24,7 @@ describe("localized product copy guardrails", () => {
 });
 
 describe("document source empty-state copy", () => {
-  it("offers an inline localized path to create a source space", () => {
+  it("offers an inline localized path to create a knowledge space", () => {
     expect(en.admin.documents.createFirstSourceSpaceTitle).toContain(
       "Create your first source space",
     );
@@ -32,9 +32,9 @@ describe("document source empty-state copy", () => {
       "Go to Knowledge",
     );
     expect(ko.admin.documents.createFirstSourceSpaceTitle).toContain(
-      "첫 소스 공간 만들기",
+      "첫 지식 공간 만들기",
     );
-    expect(ko.admin.documents.noKnowledgeBaseDescription).not.toContain("지식");
+    expect(ko.admin.documents.noKnowledgeBaseDescription).not.toContain("이동");
   });
 });
 
@@ -84,9 +84,9 @@ describe("source-space creation copy", () => {
 
     expect(copy.description).toContain("파일과 메모");
     expect(copy.description).toContain("Ask에서");
-    expect(copy.nameLabel).toBe("소스 공간 이름");
-    expect(copy.scopeHint).toContain("개인 소스 공간");
-    expect(copy.scopeHint).toContain("팀 소스 공간");
+    expect(copy.nameLabel).toBe("지식 공간 이름");
+    expect(copy.scopeHint).toContain("개인 지식 공간");
+    expect(copy.scopeHint).toContain("팀 지식 공간");
     expect(copy.scopeBoundaryNote).toContain("먼저 개인 공간에 추가");
     expect(copy.scopeBoundaryNote).toContain("승인이 필요");
     expect(copy.scopeBoundaryNote).toContain("멤버 대화");
@@ -120,10 +120,10 @@ describe("group publish copy", () => {
     expect(copy.membershipActions).toBe("팀 접근");
     expect(copy.memberIdNote).toContain("이메일 초대 수락");
     expect(copy.inviteEmailHint).toContain("계정 존재 여부");
-    expect(copy.publishBoundaryTitle).toBe("공유 소스");
-    expect(copy.publishBoundaryDescription).toContain("개인 소스 공간");
+    expect(copy.publishBoundaryTitle).toBe("공유 지식");
+    expect(copy.publishBoundaryDescription).toContain("개인 지식 공간");
     expect(copy.publishSourceKnowledgeBaseHint).toContain(
-      "개인 소스 공간 전체",
+      "개인 지식 공간 전체",
     );
     expect(copy.publishTargetKnowledgeBaseHint).toContain("문서 복사 요청");
   });

@@ -1,3 +1,12 @@
+## 2026-06-11 — Addressable Knowledge workspace polish
+
+- Added `/knowledge/[sourceId]` so a selected personal knowledge space, team knowledge space, or team group can be opened directly and survives refresh.
+- Kept the GreetSchool-style organization-tree behavior: tree rows navigate with links, group rows select the group context, and child knowledge-space rows select that exact space.
+- Widened and left-aligned the Knowledge workspace so the table/inspector use the available service-shell width instead of sitting in a centered narrow column.
+- Updated Korean copy to prefer “지식” / “지식 공간” over the less intuitive “소스” wording while keeping the English “Sources” mental model unchanged.
+
+Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (18 files / 105 tests), `pnpm build`, targeted `pnpm exec playwright test e2e/document-upload-dropzone.spec.ts --reporter=line` (4 passed), full `pnpm exec playwright test --reporter=line` (15 passed / 2 skipped), browser navigation smoke of `/knowledge/kb-personal` (expected unauthenticated 401 only), and `git diff --check`.
+
 ## 2026-06-11 — Merged Sources workflow
 
 - Merged the former Knowledge/Add sources mental model into one visible Sources entry: `/knowledge` now hosts source-space selection, source readiness, and selected-source advanced controls; `/documents` redirects to the merged page for compatibility.

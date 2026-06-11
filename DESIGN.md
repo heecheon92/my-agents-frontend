@@ -83,7 +83,8 @@
   - `/`: Entry page that promises “내 문서를 기반으로 답하는 AI 워크스페이스,” not a generic marketing site.
   - `/login` and `/signup`: Two-panel trust/auth experience with guest path and account-created handoff.
   - `/chat`: Ask-first workspace with conversation list, top-of-chat source selector, transcript, dominant composer, compact citation summaries near answers, and progressively disclosed citation details plus response evidence/work history.
-  - `/knowledge`: Sources screen with an organization-tree-style source-space browser, table-style source list, selected-source inspector, and dialog-based add flows for source spaces/text/files; permissions, team sharing, and processing internals stay in Advanced sections.
+  - `/knowledge`: Sources/Knowledge screen with an organization-tree-style source-space browser, table-style source list, selected-source inspector, and dialog-based add flows for source spaces/text/files; permissions, team sharing, and processing internals stay in Advanced sections.
+  - `/knowledge/{knowledge-base-id}` and `/knowledge/{group-id}`: selected source-space/group subroutes. Refresh must preserve the current tree selection and main-pane context rather than falling back to the first available space.
   - `/documents`: Legacy compatibility route that redirects to `/knowledge`.
   - `/groups`: Teams screen for shared knowledge, invitation lifecycle, accepted-member roles, and publish-request review.
 - Content hierarchy:
@@ -240,7 +241,7 @@
     - Wide desktop: detailed run history, activity events, and citation cards may sit side by side only after a disclosure is opened; the transcript remains the dominant surface.
   - Admin surfaces:
     - Use current container-query-ready `responsive-panel-grid[data-layout="form-aside"]`; forms and selected-action panels split only when the container is wide enough.
-    - Sources should prefer a GreetSchool-style organization shell: persistent source-space tree on desktop, sheet/browser on compact screens, table-like source rows in the main pane, and shadcn/Base UI dialogs for create/upload forms.
+    - Sources should prefer a GreetSchool-style organization shell: persistent source-space tree on desktop, sheet/browser on compact screens, table-like source rows in the main pane, route-backed tree selection, and shadcn/Base UI dialogs for create/upload forms.
     - De-emphasize admin-heavy density with grouped sections, collapsible/secondary action areas, and clear selected-resource context.
     - Resource rows must wrap IDs and filenames without page overflow.
 - Touch/hover differences:

@@ -104,13 +104,15 @@ The backend local demo seed helper currently provides the verified account
 `test@test.com`, password `correct horse battery staple`, and seeded text document
 `V1 Product Chat Service Demo`.
 
-Expected seeded text flow: login -> create or choose a source space on Sources -> add a text
-source under that space -> bodyless KB-scoped ingest through the BFF ->
+Expected seeded text flow: login -> create or choose a knowledge/source space on
+Knowledge/Sources -> confirm the URL may use `/knowledge/{knowledge-base-id}` or
+`/knowledge/{group-id}` for the selected context -> add a text source under that
+space -> bodyless KB-scoped ingest through the BFF ->
 streamed Ask answer with `All` or selected source scope -> citations beside the
 answer -> response evidence disclosure with completed run/work history -> persisted
 run-detail citations after reload.
 
-Upload smoke should use an active backend with the KB-nested upload contract: login -> Sources -> create or select a source space -> upload a supported PDF, Markdown (`.md`/`.markdown`), plain text (`.txt`), Excel workbook (`.xlsx`), or PowerPoint deck (`.pptx`) through `POST /knowledge-bases/{knowledge_base_id}/documents/upload` -> verify document source metadata -> run KB-scoped ingest -> confirm citations can render backend-provided filename/page/space provenance.
+Upload smoke should use an active backend with the KB-nested upload contract: login -> Sources -> create or select a source space -> upload a supported PDF, Markdown (`.md`/`.markdown`), plain text (`.txt`), Excel workbook (`.xlsx`), or PowerPoint deck (`.pptx`) through `POST /knowledge-bases/{knowledge_base_id}/documents/upload` -> verify document source metadata -> refresh the selected `/knowledge/{id}` route -> run KB-scoped ingest -> confirm citations can render backend-provided filename/page/space provenance.
 
 
 ## V1 public visitor smoke (preview/public final proof)
