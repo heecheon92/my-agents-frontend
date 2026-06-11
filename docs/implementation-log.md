@@ -1,3 +1,11 @@
+## 2026-06-11 — Row-owned Knowledge actions
+
+- Removed the separate “selected knowledge/source” action panel from the Knowledge workspace so the main pane stays focused on the table.
+- Added per-row Manage dialogs for direct user access grants, source deletion, source metadata, and advanced processing history.
+- Kept upload/preparation as the primary path, while adding a row-level async prepare/retry action in the Manage dialog for recovery when upload-time preparation fails.
+
+Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (18 files / 105 tests), `pnpm build`, targeted `pnpm exec playwright test e2e/document-upload-dropzone.spec.ts --reporter=line` (5 passed), full `pnpm exec playwright test --reporter=line` (16 passed / 2 skipped), browser navigation smoke of `/knowledge/kb-personal` (expected unauthenticated 401 only), and `git diff --check`.
+
 ## 2026-06-11 — Addressable Knowledge workspace polish
 
 - Added `/knowledge/[sourceId]` so a selected personal knowledge space, team knowledge space, or team group can be opened directly and survives refresh.

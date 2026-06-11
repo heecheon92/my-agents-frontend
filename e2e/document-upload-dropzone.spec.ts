@@ -36,6 +36,27 @@ const teamKnowledgeBase = {
   created_at: "2026-05-25T00:00:00.000Z",
 };
 
+const firstDocument = {
+  id: "doc-actions-1",
+  title: "Quarterly planning note",
+  owner_user_id: user.id,
+  group_id: null,
+  knowledge_base_id: personalKnowledgeBase.id,
+  source_type: "text",
+  source_filename: null,
+  source_content_type: null,
+  source_byte_size: null,
+  source_sha256: null,
+  source_page_count: null,
+  parser_name: null,
+};
+
+const secondDocument = {
+  ...firstDocument,
+  id: "doc-actions-2",
+  title: "Retained research note",
+};
+
 test("Sources upload drop zone adds dropped files to the queue", async ({
   page,
 }) => {
@@ -272,4 +293,151 @@ test("Sources page creates the first source space from the dialog", async ({
     .getByRole("button", { name: ko.admin.documents.uploadFilesAction })
     .click();
   await expect(page.getByTestId("document-upload-dropzone")).toBeVisible();
+});
+
+test("Sources table row actions grant access and delete one source", async ({
+  page,
+}) => {
+  let documents = [firstDocument, secondDocument];
+  let grantedUserId: string | undefined;
+  let preparedDocumentId: string | undefined;
+
+  await page.route("**/api/my-agents/**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace("/api/my-agents", "");
+    const method = request.method();
+    const json = (value: unknown, status = 200) =>
+      route.fulfill({
+        status,
+        contentType: "application/json",
+        body: JSON.stringify(value),
+      });
+
+    if (method === "GET" && path === "/auth/me") return json(user);
+    if (method === "GET" && path === "/knowledge-bases") {
+      return json([personalKnowledgeBase]);
+    }
+    if (
+      method === "GET" &&
+      path === `/knowledge-bases/${personalKnowledgeBase.id}/documents`
+    ) {
+      return json(documents);
+    }
+    if (
+      method === "GET" &&
+      path ===
+        `/knowledge-bases/${personalKnowledgeBase.id}/documents/${firstDocument.id}/extraction-runs`
+    ) {
+      return json(
+        preparedDocumentId
+          ? [
+              {
+                id: "run-actions-1",
+                document_id: firstDocument.id,
+                status: "pending",
+                stage: "queued",
+                progress_percent: 0,
+                chunk_count: 0,
+                entity_count: 0,
+                relationship_count: 0,
+                error: null,
+              },
+            ]
+          : [],
+      );
+    }
+    if (method === "GET" && path === "/groups") return json([]);
+    if (
+      method === "POST" &&
+      path ===
+        `/knowledge-bases/${personalKnowledgeBase.id}/documents/${firstDocument.id}/ingest/async`
+    ) {
+      preparedDocumentId = firstDocument.id;
+      return json({
+        id: "run-actions-1",
+        document_id: firstDocument.id,
+        status: "pending",
+        stage: "queued",
+        progress_percent: 0,
+        chunk_count: 0,
+        entity_count: 0,
+        relationship_count: 0,
+        error: null,
+      });
+    }
+    if (
+      method === "PATCH" &&
+      path === `/documents/${firstDocument.id}/permissions`
+    ) {
+      const payload = await request.postDataJSON();
+      expect(payload).toMatchObject({
+        user_id: "u-row-access",
+        can_read: true,
+        can_write: false,
+        can_manage: false,
+        can_ingest: false,
+      });
+      grantedUserId = payload.user_id;
+      return json({
+        document_id: firstDocument.id,
+        user_id: payload.user_id,
+        can_read: true,
+        can_write: false,
+        can_manage: false,
+        can_ingest: false,
+      });
+    }
+    if (method === "DELETE" && path === `/documents/${firstDocument.id}`) {
+      documents = documents.filter(
+        (document) => document.id !== firstDocument.id,
+      );
+      return route.fulfill({ status: 204, body: "" });
+    }
+    return route.fulfill({ status: 404, body: "{}" });
+  });
+
+  await page.goto(`/knowledge/${personalKnowledgeBase.id}`);
+  await expect(page.getByText(firstDocument.title)).toBeVisible();
+
+  await page
+    .getByRole("button", {
+      name: ko.admin.documents.sourceRowActionsLabel.replace(
+        "{title}",
+        firstDocument.title,
+      ),
+    })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: ko.admin.documents.sourceActionsTitle }),
+  ).toBeVisible();
+
+  await page
+    .getByRole("button", { name: ko.admin.documents.runIngest })
+    .click();
+  await expect.poll(() => preparedDocumentId).toBe(firstDocument.id);
+
+  await page
+    .getByLabel(ko.admin.documents.permissionLabel)
+    .fill("u-row-access");
+  await page
+    .getByRole("button", { name: ko.admin.documents.patchPermission })
+    .click();
+  await expect.poll(() => grantedUserId).toBe("u-row-access");
+  await expect(page.getByLabel(ko.admin.documents.permissionLabel)).toHaveValue(
+    "",
+  );
+
+  page.once("dialog", (dialog) => dialog.accept());
+  await page
+    .getByRole("button", { name: ko.admin.documents.deleteButton })
+    .click();
+  await expect(page.getByText(firstDocument.title)).toHaveCount(0);
+  await expect(
+    page.getByRole("button", {
+      name: ko.admin.documents.openSourceDetails.replace(
+        "{title}",
+        secondDocument.title,
+      ),
+    }),
+  ).toBeVisible();
 });

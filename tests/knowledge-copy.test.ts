@@ -47,15 +47,19 @@ describe("document upload workflow copy", () => {
     expect(enDocuments.uploadAndIngestButton).toBe("Upload and prepare files");
     expect(enDocuments.dropDescription).toContain("one workflow");
     expect(enDocuments.uploadStatusLabels.ingesting).toBe("Preparing source");
-    expect(enDocuments.runIngest).toBe("Prepare selected source");
-    expect(enDocuments.prepareSelectedHint).toContain(
-      "File uploads are prepared automatically",
-    );
+    expect(enDocuments.runIngest).toBe("Prepare or retry source");
+    expect(enDocuments.sourceActionsTitle).toBe("Manage source");
+    expect(enDocuments.sourceTableActions).toBe("Actions");
+    expect(enDocuments).not.toHaveProperty("selectedActions");
+    expect(enDocuments.prepareRecoveryHint).toContain("preparation failed");
 
     expect(koDocuments.fileUploadTitle).toBe("파일 업로드 및 준비");
     expect(koDocuments.uploadStatusLabels.ingesting).not.toContain("수집");
-    expect(koDocuments.runIngest).not.toContain("검색 가능");
-    expect(koDocuments.prepareSelectedHint).toContain("자동으로 준비");
+    expect(koDocuments.runIngest).toBe("지식 준비 또는 재시도");
+    expect(koDocuments.sourceActionsTitle).toBe("지식 관리");
+    expect(koDocuments.sourceTableActions).toBe("작업");
+    expect(koDocuments).not.toHaveProperty("selectedActions");
+    expect(koDocuments.prepareRecoveryHint).toContain("준비가 실패");
   });
 });
 

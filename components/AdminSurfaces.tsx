@@ -18,6 +18,7 @@ import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -92,6 +93,10 @@ type DocumentDestination = "personal" | "team";
 
 type SourcesSurfaceProps = {
   initialSourceId?: string;
+};
+
+type SourceActionsDialogState = {
+  documentId: string;
 };
 
 type UploadQueueStatus =
@@ -290,10 +295,13 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     useState(false);
   const [isTextSourceDialogOpen, setIsTextSourceDialogOpen] = useState(false);
   const [isFileUploadDialogOpen, setIsFileUploadDialogOpen] = useState(false);
+  const [sourceActionsDialog, setSourceActionsDialog] =
+    useState<SourceActionsDialogState>();
   const uploadDragDepthRef = useRef(0);
   const lastAppliedRouteSourceIdRef = useRef<string | undefined>(undefined);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>();
-  const activeDocumentId = selectedDocumentId ?? documents.data?.[0]?.id;
+  const activeDocumentId =
+    sourceActionsDialog?.documentId ?? selectedDocumentId;
   const activeDocument = documents.data?.find(
     (document) => document.id === activeDocumentId,
   );
@@ -938,6 +946,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
       await deleteDocument.mutateAsync();
       await refreshDocumentQueries();
       setSelectedDocumentId(nextDocumentId);
+      setSourceActionsDialog(undefined);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -959,6 +968,22 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
+  }
+
+  function openSourceActionsDialog(documentId: string) {
+    setSelectedDocumentId(documentId);
+    setPermissionUserId("");
+    patchPermission.reset();
+    deleteDocument.reset();
+    setSourceActionsDialog({ documentId });
+  }
+
+  function handleSourceActionsDialogOpenChange(open: boolean) {
+    if (open) return;
+    setSourceActionsDialog(undefined);
+    setPermissionUserId("");
+    patchPermission.reset();
+    deleteDocument.reset();
   }
 
   function renderSourceSpaceCreateForm({
@@ -1286,7 +1311,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
 
   function renderDocumentsTable() {
     return (
-      <Table className="min-w-[48rem]">
+      <Table className="min-w-[56rem]">
         <TableHeader>
           <TableRow className="border-cal-hairline bg-cal-surface-soft hover:bg-cal-surface-soft">
             <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
@@ -1301,13 +1326,16 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
             <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
               {localization.documents.sourceTableDetails}
             </TableHead>
+            <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+              {localization.documents.sourceTableActions}
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {documents.isLoading ? (
             <TableRow className="hover:bg-transparent">
               <TableCell
-                colSpan={4}
+                colSpan={5}
                 className="px-4 py-14 text-center text-sm text-cal-muted"
               >
                 {localization.common.loading}
@@ -1316,7 +1344,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
           ) : null}
           {documents.error ? (
             <TableRow className="hover:bg-transparent">
-              <TableCell colSpan={4} className="px-4 py-6 whitespace-normal">
+              <TableCell colSpan={5} className="px-4 py-6 whitespace-normal">
                 <ErrorState error={documents.error} />
               </TableCell>
             </TableRow>
@@ -1325,7 +1353,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
           !documents.error &&
           (documents.data?.length ?? 0) === 0 ? (
             <TableRow className="hover:bg-transparent">
-              <TableCell colSpan={4} className="px-4 py-12 whitespace-normal">
+              <TableCell colSpan={5} className="px-4 py-12 whitespace-normal">
                 <EmptyState
                   title={localization.documents.empty}
                   description={localization.common.emptyListDescription}
@@ -1351,7 +1379,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                 <TableCell className="px-4 py-4 whitespace-normal">
                   <button
                     type="button"
-                    onClick={() => setSelectedDocumentId(document.id)}
+                    onClick={() => openSourceActionsDialog(document.id)}
                     className="grid min-w-0 gap-1 text-left"
                     aria-label={localization.documents.openSourceDetails.replace(
                       "{title}",
@@ -1383,6 +1411,20 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                 <TableCell className="px-4 py-4 whitespace-normal text-sm text-cal-muted">
                   {documentMeta(document, localization)}
                 </TableCell>
+                <TableCell className="px-4 py-4 whitespace-normal">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openSourceActionsDialog(document.id)}
+                    aria-label={localization.documents.sourceRowActionsLabel.replace(
+                      "{title}",
+                      document.title,
+                    )}
+                  >
+                    {localization.documents.sourceRowActions}
+                  </Button>
+                </TableCell>
               </TableRow>
             );
           })}
@@ -1391,20 +1433,24 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     );
   }
 
-  function renderSelectedSourcePanel() {
+  function renderSourceActionsDialog() {
     return (
-      <section className="grid min-w-0 gap-4 rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
-        <div>
-          <h2 className="font-semibold text-cal-ink">
-            {localization.documents.selectedActions}
-          </h2>
-          <p className="mt-1 text-sm leading-6 text-cal-muted">
-            {localization.documents.prepareSelectedHint}
-          </p>
-        </div>
-        {activeDocumentId ? (
-          <div className="grid gap-3 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm">
-            {activeDocument ? (
+      <Dialog
+        open={Boolean(sourceActionsDialog)}
+        onOpenChange={handleSourceActionsDialogOpenChange}
+      >
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {localization.documents.sourceActionsTitle}
+            </DialogTitle>
+            <DialogDescription>
+              {localization.documents.sourceActionsDescription}
+            </DialogDescription>
+          </DialogHeader>
+
+          {activeDocument ? (
+            <div className="grid gap-3 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm">
               <div>
                 <p className="break-words font-medium text-cal-ink">
                   {activeDocument.title}
@@ -1413,41 +1459,59 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                   {documentMeta(activeDocument, localization)}
                 </p>
               </div>
-            ) : null}
-            <details className="rounded-lg bg-cal-canvas p-2 text-xs text-cal-muted">
-              <summary className="cursor-pointer font-medium text-cal-ink">
-                {localization.documents.advancedDetails}
-              </summary>
-              <p className="mt-2 break-all font-mono">ID: {activeDocumentId}</p>
-            </details>
-          </div>
-        ) : (
-          <EmptyState
-            title={localization.documents.noSelectedTitle}
-            description={localization.documents.noSelectedDescription}
-          />
-        )}
-        <Button
-          className="w-full"
-          onClick={() => ingest.mutate()}
-          disabled={
-            !activeDocumentId || ingest.isPending || activeDocumentHasIngestion
-          }
-        >
-          {activeDocumentHasIngestion
-            ? localization.documents.ingestionLoading
-            : localization.documents.runIngest}
-        </Button>
-        {ingest.error ? <ErrorState error={ingest.error} /> : null}
-        <details className="border-t border-cal-hairline pt-4">
-          <summary className="cursor-pointer text-sm font-semibold text-cal-ink">
-            {localization.documents.permissionAdvancedTitle}
-          </summary>
-          <form onSubmit={handlePatchPermission} className="mt-3 grid gap-3">
-            <Field
-              label={localization.documents.permissionLabel}
-              hint={localization.documents.permissionHint}
+              <details className="rounded-lg bg-cal-canvas p-2 text-xs text-cal-muted">
+                <summary className="cursor-pointer font-medium text-cal-ink">
+                  {localization.documents.advancedDetails}
+                </summary>
+                <p className="mt-2 break-all font-mono">
+                  ID: {activeDocument.id}
+                </p>
+              </details>
+            </div>
+          ) : (
+            <EmptyState
+              title={localization.documents.noSelectedTitle}
+              description={localization.documents.noSelectedDescription}
+            />
+          )}
+
+          <div className="grid gap-3 rounded-xl border border-cal-hairline bg-cal-canvas p-3">
+            <div>
+              <h3 className="font-semibold text-cal-ink">
+                {localization.documents.prepareRecoveryTitle}
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-cal-muted">
+                {localization.documents.prepareRecoveryHint}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => ingest.mutate()}
+              disabled={
+                !activeDocumentId ||
+                !displayKnowledgeBaseId ||
+                ingest.isPending ||
+                activeDocumentHasIngestion
+              }
             >
+              {activeDocumentHasIngestion
+                ? localization.documents.ingestionLoading
+                : localization.documents.runIngest}
+            </Button>
+            {ingest.error ? <ErrorState error={ingest.error} /> : null}
+          </div>
+
+          <form onSubmit={handlePatchPermission} className="grid gap-3">
+            <div>
+              <h3 className="font-semibold text-cal-ink">
+                {localization.documents.permissionAdvancedTitle}
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-cal-muted">
+                {localization.documents.permissionHint}
+              </p>
+            </div>
+            <Field label={localization.documents.permissionLabel}>
               <input
                 className={inputClassName}
                 value={permissionUserId}
@@ -1466,76 +1530,88 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
               {localization.documents.patchPermission}
             </Button>
           </form>
-        </details>
-        {patchPermission.error ? (
-          <ErrorState error={patchPermission.error} />
-        ) : null}
-        <div className="grid gap-3 border-t border-cal-hairline pt-4">
-          <div>
-            <h3 className="font-semibold text-cal-ink">
-              {localization.documents.deleteTitle}
-            </h3>
-            <p className="mt-1 text-sm leading-6 text-cal-muted">
-              {localization.documents.deleteDescription}
-            </p>
-          </div>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleDeleteDocument}
-            disabled={!activeDocumentId || deleteDocument.isPending}
-          >
-            {localization.documents.deleteButton}
-          </Button>
-          {deleteDocument.error ? (
-            <ErrorState error={deleteDocument.error} />
+          {patchPermission.error ? (
+            <ErrorState error={patchPermission.error} />
           ) : null}
-        </div>
-        <details className="border-t border-cal-hairline pt-4">
-          <summary className="cursor-pointer font-semibold text-cal-ink">
-            {localization.documents.extractionRuns}
-          </summary>
-          <div className="mt-3 grid gap-2">
-            {extractionRuns.data?.length === 0 ? (
-              <EmptyState
-                title={localization.documents.noExtractionRunsTitle}
-                description={localization.documents.noExtractionRunsDescription}
-              />
+
+          <div className="grid gap-3 rounded-xl border border-cal-error/20 bg-cal-error/5 p-3">
+            <div>
+              <h3 className="font-semibold text-cal-error">
+                {localization.documents.deleteTitle}
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-cal-muted">
+                {localization.documents.deleteDescription}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteDocument}
+              disabled={!activeDocumentId || deleteDocument.isPending}
+            >
+              {localization.documents.deleteButton}
+            </Button>
+            {deleteDocument.error ? (
+              <ErrorState error={deleteDocument.error} />
             ) : null}
-            {extractionRuns.data?.map((run) => (
-              <div
-                key={run.id}
-                className="rounded-lg bg-cal-surface-soft p-3 text-sm"
-              >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <Pill tone={extractionRunTone(run.status)}>{run.status}</Pill>
-                  {isActiveExtractionRunStatus(run.status) ? (
-                    <InlineLoadingIndicator
-                      label={localization.documents.ingestionLoading}
-                    />
+          </div>
+
+          <details className="border-t border-cal-hairline pt-4">
+            <summary className="cursor-pointer font-semibold text-cal-ink">
+              {localization.documents.extractionRuns}
+            </summary>
+            <div className="mt-3 grid gap-2">
+              {extractionRuns.data?.length === 0 ? (
+                <EmptyState
+                  title={localization.documents.noExtractionRunsTitle}
+                  description={
+                    localization.documents.noExtractionRunsDescription
+                  }
+                />
+              ) : null}
+              {extractionRuns.data?.map((run) => (
+                <div
+                  key={run.id}
+                  className="rounded-lg bg-cal-surface-soft p-3 text-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Pill tone={extractionRunTone(run.status)}>
+                      {run.status}
+                    </Pill>
+                    {isActiveExtractionRunStatus(run.status) ? (
+                      <InlineLoadingIndicator
+                        label={localization.documents.ingestionLoading}
+                      />
+                    ) : null}
+                  </div>
+                  <p className="mt-2 break-all font-mono text-xs text-cal-muted">
+                    ID: {run.id}
+                  </p>
+                  <p className="mt-2 text-cal-muted">
+                    {run.chunk_count} {localization.common.chunks} ·{" "}
+                    {run.entity_count} {localization.common.entities} ·{" "}
+                    {run.relationship_count} {localization.common.relationships}
+                  </p>
+                  {run.stage ? (
+                    <p className="mt-1 text-xs text-cal-muted">
+                      {localization.documents.stageLabel}: {run.stage}
+                    </p>
+                  ) : null}
+                  {run.error ? (
+                    <p className="mt-1 text-xs text-cal-error">{run.error}</p>
                   ) : null}
                 </div>
-                <p className="mt-2 break-all font-mono text-xs text-cal-muted">
-                  ID: {run.id}
-                </p>
-                <p className="mt-2 text-cal-muted">
-                  {run.chunk_count} {localization.common.chunks} ·{" "}
-                  {run.entity_count} {localization.common.entities} ·{" "}
-                  {run.relationship_count} {localization.common.relationships}
-                </p>
-                {run.stage ? (
-                  <p className="mt-1 text-xs text-cal-muted">
-                    {localization.documents.stageLabel}: {run.stage}
-                  </p>
-                ) : null}
-                {run.error ? (
-                  <p className="mt-1 text-xs text-cal-error">{run.error}</p>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </details>
-      </section>
+              ))}
+            </div>
+          </details>
+
+          <DialogFooter className="sm:justify-end">
+            <DialogClose render={<Button type="button" variant="outline" />}>
+              {localization.common.close}
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     );
   }
 
@@ -1650,11 +1726,12 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                   {renderDocumentsTable()}
                 </div>
               </section>
-              {renderSelectedSourcePanel()}
             </div>
           </div>
         </div>
       </PageCard>
+
+      {renderSourceActionsDialog()}
 
       <Sheet
         open={isSourceSpaceBrowserOpen}
