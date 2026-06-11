@@ -1,3 +1,11 @@
+## 2026-06-11 — Backend-configured document upload fan-out
+
+- Replaced the Documents queue's hardcoded multi-file upload concurrency with a backend-owned `/health` runtime hint: `frontend_config.documents.upload_concurrency`.
+- Kept the historical fallback at 3 so older or mocked backends do not break the Documents page before the backend contract is deployed.
+- Added frontend model coverage for the new health response shape and fallback behavior.
+
+Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (18 files / 104 tests), `pnpm build`, full `pnpm exec playwright test --reporter=line` (12 passed / 2 skipped), and `git diff --check`.
+
 ## 2026-06-11 — Persisted shadcn service sidebar
 
 - Replaced the protected service shell's custom desktop aside/mobile scroll nav with the shadcn/Base UI `Sidebar` stack while preserving the existing Ask, Add sources, Knowledge, and Teams routes.

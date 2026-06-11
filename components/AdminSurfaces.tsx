@@ -1,6 +1,6 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRef, useState } from "react";
 import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
@@ -33,7 +33,10 @@ import {
   usePatchDocumentPermission,
 } from "@/hooks/use-knowledge";
 import { useLocalization } from "@/hooks/useLocalization";
-import type { ExtractionRun } from "@/model/my-agents";
+import {
+  documentUploadConcurrencyFromHealth,
+  type ExtractionRun,
+} from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 import {
   canAutoApproveTeamDocumentUpload,
@@ -92,7 +95,7 @@ const UPLOAD_ACCEPT = [
   ".pptx",
 ].join(",");
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-const UPLOAD_CONCURRENCY = 3;
+const HEALTH_CONFIG_STALE_TIME_MS = 5 * 60 * 1000;
 const EXTRACTION_POLL_INTERVAL_MS = 1000;
 const TERMINAL_EXTRACTION_STATUSES = new Set(["completed", "failed"]);
 const SUPPORTED_UPLOAD_EXTENSIONS = new Set([
@@ -327,6 +330,11 @@ export function DocumentsSurface() {
   const groups = useGroups();
   const knowledgeBases = useKnowledgeBases();
   const currentUser = useCurrentUser();
+  const health = useQuery({
+    queryKey: MyAgentsQueryKeys.health(),
+    queryFn: () => myAgentsAPI.health(),
+    staleTime: HEALTH_CONFIG_STALE_TIME_MS,
+  });
   const [documentDestination, setDocumentDestination] =
     useState<DocumentDestination>("personal");
   const [selectedKnowledgeBaseId, setSelectedKnowledgeBaseId] =
@@ -831,7 +839,10 @@ export function DocumentsSurface() {
     setIsProcessingQueue(true);
     setUploadAnnouncement(localization.documents.uploadStartedAnnouncement);
     let nextIndex = 0;
-    const workerCount = Math.min(UPLOAD_CONCURRENCY, processableItems.length);
+    const workerCount = Math.min(
+      documentUploadConcurrencyFromHealth(health.data),
+      processableItems.length,
+    );
 
     async function runWorker() {
       while (nextIndex < processableItems.length) {
