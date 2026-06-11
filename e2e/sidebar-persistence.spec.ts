@@ -117,6 +117,35 @@ test("service sidebar collapse preference persists across reloads", async ({
   await toggle.click();
   await expect(sidebar).toHaveAttribute("data-state", "collapsed");
   await expect
+    .poll(async () => {
+      const collapsedButtonBoxes = await page
+        .locator('[data-slot="sidebar-menu-button"]')
+        .evaluateAll((elements) =>
+          elements
+            .filter(
+              (element): element is HTMLElement =>
+                element instanceof HTMLElement && element.offsetParent !== null,
+            )
+            .map((element) => {
+              const rect = element.getBoundingClientRect();
+              return {
+                centerX: rect.x + rect.width / 2,
+                height: rect.height,
+                width: rect.width,
+              };
+            }),
+        );
+      if (collapsedButtonBoxes.length < 5) return false;
+      const railCenterX = collapsedButtonBoxes[0]?.centerX ?? 0;
+      return collapsedButtonBoxes.every(
+        (box) =>
+          Math.abs(box.centerX - railCenterX) <= 0.5 &&
+          Math.abs(box.width - 32) <= 0.5 &&
+          Math.abs(box.height - 32) <= 0.5,
+      );
+    })
+    .toBe(true);
+  await expect
     .poll(() => page.evaluate(() => document.cookie))
     .toContain("sidebar_state=false");
 

@@ -117,7 +117,7 @@ export function ServiceShell({
               <SidebarMenuButton
                 size="lg"
                 tooltip={localization.brand.name}
-                className="min-h-12 rounded-xl bg-cal-primary text-white hover:bg-cal-primary-active hover:text-white data-active:bg-cal-primary"
+                className="rounded-xl bg-cal-primary text-white hover:bg-cal-primary-active hover:text-white data-active:bg-cal-primary"
                 render={<Link href="/chat" />}
               >
                 <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/12 text-sm font-semibold text-white ring-1 ring-white/20">
@@ -136,7 +136,7 @@ export function ServiceShell({
           </SidebarMenu>
         </SidebarHeader>
         <SidebarContent>
-          <SidebarGroup className="py-3">
+          <SidebarGroup className="py-3 group-data-[collapsible=icon]:px-3">
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
                 {navRoutes.map((item) => {
@@ -148,7 +148,7 @@ export function ServiceShell({
                         <SidebarMenuButton
                           tooltip={localization.service.nav[item.key]}
                           isActive={isActive}
-                          className="min-h-10 rounded-lg text-cal-muted data-active:bg-cal-primary data-active:text-white hover:text-cal-ink data-active:hover:bg-cal-primary data-active:hover:text-white"
+                          className="h-10 rounded-lg text-cal-muted data-active:bg-cal-primary data-active:text-white hover:text-cal-ink data-active:hover:bg-cal-primary data-active:hover:text-white"
                           render={
                             <Link
                               href={item.href}
@@ -189,7 +189,7 @@ export function ServiceShell({
                 tooltip={localization.service.logout}
                 onClick={handleLogout}
                 disabled={logout.isPending}
-                className="min-h-10 rounded-lg text-cal-muted hover:text-cal-ink"
+                className="h-10 rounded-lg text-cal-muted hover:text-cal-ink"
               >
                 <LogOutIcon />
                 <span>{localization.service.logout}</span>
