@@ -229,6 +229,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   const [selectedTeamGroupId, setSelectedTeamGroupId] = useState<string>();
   const [selectedTeamKnowledgeBaseId, setSelectedTeamKnowledgeBaseId] =
     useState<string>();
+  const [optimisticSourceId, setOptimisticSourceId] = useState<string>();
   const [sourceSpaceName, setSourceSpaceName] = useState("");
   const [sourceSpaceScope, setSourceSpaceScope] =
     useState<KnowledgeBaseCreationScope>("personal");
@@ -241,17 +242,46 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   const sourceSpaceGroupOptions = teamGroups.filter(
     (group) => group.role === "owner" || group.role === "admin",
   );
+  const routeSourceId = decodeRouteSegment(initialSourceId);
+  // The route segment changes after a link click, so keep the clicked source
+  // active while Next remounts /knowledge/[sourceId] and the URL catches up.
+  const effectiveRouteSourceId = optimisticSourceId ?? routeSourceId;
+  const routePersonalKnowledgeBase = documentKnowledgeBases.find(
+    (knowledgeBase) => knowledgeBase.id === effectiveRouteSourceId,
+  );
+  const routeTeamKnowledgeBase = (knowledgeBases.data ?? []).find(
+    (knowledgeBase) =>
+      knowledgeBase.scope === "group" &&
+      knowledgeBase.purpose === "standard" &&
+      knowledgeBase.id === effectiveRouteSourceId &&
+      Boolean(knowledgeBase.group_id),
+  );
+  const routeTeamGroup = teamGroups.find(
+    (group) => group.id === effectiveRouteSourceId,
+  );
+  const routeDocumentDestination: DocumentDestination | undefined =
+    routePersonalKnowledgeBase
+      ? "personal"
+      : routeTeamKnowledgeBase || routeTeamGroup
+        ? "team"
+        : undefined;
+  const effectiveDocumentDestination =
+    routeDocumentDestination ?? documentDestination;
+  const routeTeamGroupId =
+    routeTeamKnowledgeBase?.group_id ?? routeTeamGroup?.id;
   const createSourceSpacePayload = buildKnowledgeBaseCreateRequest({
     groupId: sourceSpaceGroupId,
     name: sourceSpaceName,
     scope: sourceSpaceScope,
   });
   const isCreatingTeamSourceSpace = sourceSpaceScope === "group";
-  const activeTeamGroupId =
+  const selectedTeamGroupStillExists = Boolean(
     selectedTeamGroupId &&
-    teamGroups.some((group) => group.id === selectedTeamGroupId)
-      ? selectedTeamGroupId
-      : teamGroups[0]?.id;
+      teamGroups.some((group) => group.id === selectedTeamGroupId),
+  );
+  const activeTeamGroupId =
+    routeTeamGroupId ??
+    (selectedTeamGroupStillExists ? selectedTeamGroupId : teamGroups[0]?.id);
   const activeTeamGroup = teamGroups.find(
     (group) => group.id === activeTeamGroupId,
   );
@@ -259,26 +289,37 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     knowledgeBases.data ?? [],
     activeTeamGroupId,
   );
-  const activeTeamKnowledgeBaseId =
+  const selectedTeamKnowledgeBaseStillExists = Boolean(
     selectedTeamKnowledgeBaseId &&
-    activeGroupKnowledgeBases.some(
-      (knowledgeBase) => knowledgeBase.id === selectedTeamKnowledgeBaseId,
-    )
+      activeGroupKnowledgeBases.some(
+        (knowledgeBase) => knowledgeBase.id === selectedTeamKnowledgeBaseId,
+      ),
+  );
+  const activeTeamKnowledgeBaseId =
+    routeTeamKnowledgeBase?.id ??
+    (routeTeamGroup ? activeGroupKnowledgeBases[0]?.id : undefined) ??
+    (selectedTeamKnowledgeBaseStillExists
       ? selectedTeamKnowledgeBaseId
-      : activeGroupKnowledgeBases[0]?.id;
-  const activeKnowledgeBaseId =
+      : activeGroupKnowledgeBases[0]?.id);
+  const selectedPersonalKnowledgeBaseStillExists = Boolean(
     selectedKnowledgeBaseId &&
-    documentKnowledgeBases.some(
-      (knowledgeBase) => knowledgeBase.id === selectedKnowledgeBaseId,
-    )
+      documentKnowledgeBases.some(
+        (knowledgeBase) => knowledgeBase.id === selectedKnowledgeBaseId,
+      ),
+  );
+  const activeKnowledgeBaseId =
+    routePersonalKnowledgeBase?.id ??
+    (selectedPersonalKnowledgeBaseStillExists
       ? selectedKnowledgeBaseId
-      : documentKnowledgeBases[0]?.id;
+      : documentKnowledgeBases[0]?.id);
   const displayKnowledgeBaseId =
-    documentDestination === "team"
+    effectiveDocumentDestination === "team"
       ? activeTeamKnowledgeBaseId
       : activeKnowledgeBaseId;
   const personalWriteKnowledgeBaseId =
-    documentDestination === "personal" ? activeKnowledgeBaseId : undefined;
+    effectiveDocumentDestination === "personal"
+      ? activeKnowledgeBaseId
+      : undefined;
   const documents = useKnowledgeBaseDocuments(displayKnowledgeBaseId);
   const createDocument = useCreateKnowledgeBaseDocument(
     personalWriteKnowledgeBaseId,
@@ -323,11 +364,11 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   const canAutoApproveTeamUpload =
     canAutoApproveTeamDocumentUpload(activeTeamGroup);
   const hasActiveKnowledgeBase =
-    documentDestination === "team"
+    effectiveDocumentDestination === "team"
       ? Boolean(activeTeamGroupId && activeTeamKnowledgeBaseId)
       : Boolean(personalWriteKnowledgeBaseId);
   const activeSourceSpace =
-    documentDestination === "team"
+    effectiveDocumentDestination === "team"
       ? activeGroupKnowledgeBases.find(
           (knowledgeBase) => knowledgeBase.id === activeTeamKnowledgeBaseId,
         )
@@ -401,7 +442,13 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   );
 
   useEffect(() => {
-    const routeSourceId = decodeRouteSegment(initialSourceId);
+    if (!optimisticSourceId) return;
+    if (!routeSourceId || routeSourceId === optimisticSourceId) {
+      setOptimisticSourceId(undefined);
+    }
+  }, [optimisticSourceId, routeSourceId]);
+
+  useEffect(() => {
     if (!routeSourceId) {
       lastAppliedRouteSourceIdRef.current = undefined;
       return;
@@ -458,10 +505,10 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   }, [
     documentKnowledgeBases,
     groups.isLoading,
-    initialSourceId,
     isKnowledgeBaseSelectionLocked,
     knowledgeBases.data,
     knowledgeBases.isLoading,
+    routeSourceId,
     teamGroups,
   ]);
 
@@ -628,7 +675,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
 
   async function publishDocumentToTeam(documentId: string) {
     if (
-      documentDestination !== "team" ||
+      effectiveDocumentDestination !== "team" ||
       !activeTeamGroupId ||
       !activeTeamKnowledgeBaseId
     ) {
@@ -704,7 +751,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
           error: undefined,
         });
         const uploadKnowledgeBaseId =
-          documentDestination === "team"
+          effectiveDocumentDestination === "team"
             ? (await myAgentsAPI.knowledgeBases.ensureTeamUploadStaging()).id
             : personalWriteKnowledgeBaseId;
         if (!uploadKnowledgeBaseId) {
@@ -718,7 +765,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
           },
         );
         documentId = uploaded.id;
-        if (documentDestination === "personal") {
+        if (effectiveDocumentDestination === "personal") {
           setSelectedDocumentId(uploaded.id);
         }
         updateQueueItem(item.localId, {
@@ -726,12 +773,12 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
           status: "uploaded",
           progressPercent: 0,
         });
-        if (documentDestination === "personal") {
+        if (effectiveDocumentDestination === "personal") {
           await refreshDocumentQueries(uploaded.id, uploadKnowledgeBaseId);
         }
       }
 
-      if (documentDestination === "team") {
+      if (effectiveDocumentDestination === "team") {
         updateQueueItem(item.localId, {
           status: "publishing",
           progressPercent: 0,
@@ -840,12 +887,14 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
         setDocumentDestination("team");
         setSelectedTeamGroupId(created.group_id ?? undefined);
         setSelectedTeamKnowledgeBaseId(created.id);
+        setOptimisticSourceId(created.id);
         setIsCreateSourceSpaceDialogOpen(false);
         router.push(knowledgeSourceHref(created.id), { scroll: false });
         return;
       }
       setDocumentDestination("personal");
       setSelectedKnowledgeBaseId(created.id);
+      setOptimisticSourceId(created.id);
       setIsCreateSourceSpaceDialogOpen(false);
       router.push(knowledgeSourceHref(created.id), { scroll: false });
     } catch {
@@ -896,13 +945,13 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     try {
       if (!hasActiveKnowledgeBase) return;
       const created =
-        documentDestination === "team"
+        effectiveDocumentDestination === "team"
           ? await myAgentsAPI.documents.createInKnowledgeBase(
               (await myAgentsAPI.knowledgeBases.ensureTeamUploadStaging()).id,
               { title, content },
             )
           : await createDocument.mutateAsync({ title, content });
-      if (documentDestination === "team") {
+      if (effectiveDocumentDestination === "team") {
         const publishResult = await publishDocumentToTeam(created.id);
         setUploadAnnouncement(
           publishResult.status === "approved"
@@ -1098,6 +1147,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
 
   function selectPersonalSourceSpace(knowledgeBaseId: string) {
     if (isKnowledgeBaseSelectionLocked) return;
+    setOptimisticSourceId(knowledgeBaseId);
     setDocumentDestination("personal");
     setSelectedKnowledgeBaseId(knowledgeBaseId);
     setSelectedDocumentId(undefined);
@@ -1110,6 +1160,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
       knowledgeBases.data ?? [],
       groupId,
     );
+    setOptimisticSourceId(groupId);
     setDocumentDestination("team");
     setSelectedTeamGroupId(groupId);
     setSelectedTeamKnowledgeBaseId(groupSourceSpaces[0]?.id);
@@ -1119,6 +1170,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
 
   function selectTeamSourceSpace(groupId: string, knowledgeBaseId: string) {
     if (isKnowledgeBaseSelectionLocked) return;
+    setOptimisticSourceId(knowledgeBaseId);
     setDocumentDestination("team");
     setSelectedTeamGroupId(groupId);
     setSelectedTeamKnowledgeBaseId(knowledgeBaseId);
@@ -1229,7 +1281,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                 renderSourceSpaceButton({
                   knowledgeBase,
                   active:
-                    documentDestination === "personal" &&
+                    effectiveDocumentDestination === "personal" &&
                     knowledgeBase.id === activeKnowledgeBaseId,
                   onSelect: () => selectPersonalSourceSpace(knowledgeBase.id),
                 }),
@@ -1253,7 +1305,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                       href={knowledgeSourceHref(group.id)}
                       scroll={false}
                       aria-current={
-                        documentDestination === "team" &&
+                        effectiveDocumentDestination === "team" &&
                         activeTeamGroupId === group.id
                           ? "page"
                           : undefined
@@ -1270,7 +1322,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                       }}
                       className={cn(
                         "flex min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors aria-disabled:pointer-events-none aria-disabled:opacity-60",
-                        documentDestination === "team" &&
+                        effectiveDocumentDestination === "team" &&
                           activeTeamGroupId === group.id
                           ? "bg-cal-surface-soft text-cal-ink"
                           : "text-cal-muted hover:bg-cal-surface-soft/80 hover:text-cal-ink",
@@ -1287,7 +1339,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                         renderSourceSpaceButton({
                           knowledgeBase,
                           active:
-                            documentDestination === "team" &&
+                            effectiveDocumentDestination === "team" &&
                             knowledgeBase.id === activeTeamKnowledgeBaseId,
                           onSelect: () =>
                             selectTeamSourceSpace(group.id, knowledgeBase.id),
@@ -1639,7 +1691,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                   <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
                     <DatabaseIcon className="size-3.5" />
                     <span>
-                      {documentDestination === "team"
+                      {effectiveDocumentDestination === "team"
                         ? localization.common.scopeGroup
                         : localization.common.scopePersonal}
                     </span>
@@ -1809,7 +1861,8 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                 onChange={(event) => setContent(event.target.value)}
               />
             </Field>
-            {documentDestination === "personal" && createDocument.error ? (
+            {effectiveDocumentDestination === "personal" &&
+            createDocument.error ? (
               <ErrorState error={createDocument.error} />
             ) : null}
             <DialogFooter>
@@ -1823,7 +1876,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
               <Button
                 type="submit"
                 disabled={
-                  (documentDestination === "personal" &&
+                  (effectiveDocumentDestination === "personal" &&
                     createDocument.isPending) ||
                   !title.trim() ||
                   !hasActiveKnowledgeBase

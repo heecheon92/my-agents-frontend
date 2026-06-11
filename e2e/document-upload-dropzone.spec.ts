@@ -36,6 +36,12 @@ const teamKnowledgeBase = {
   created_at: "2026-05-25T00:00:00.000Z",
 };
 
+const secondPersonalKnowledgeBase = {
+  ...personalKnowledgeBase,
+  id: "kb-personal-second",
+  name: "Second Knowledge Base",
+};
+
 const firstDocument = {
   id: "doc-actions-1",
   title: "Quarterly planning note",
@@ -222,6 +228,99 @@ test("Knowledge subroutes preserve selected source spaces and groups", async ({
   await expect(
     page.getByRole("heading", { name: personalKnowledgeBase.name }),
   ).toBeVisible();
+});
+
+test("Knowledge selection does not flash the first source space after clicking another one", async ({
+  page,
+}) => {
+  const knowledgeBases = [
+    personalKnowledgeBase,
+    secondPersonalKnowledgeBase,
+    teamKnowledgeBase,
+  ];
+
+  await page.route("**/api/my-agents/**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace("/api/my-agents", "");
+    const method = request.method();
+    const json = (value: unknown) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(value),
+      });
+
+    if (method === "GET" && path === "/auth/me") return json(user);
+    if (method === "GET" && path === "/knowledge-bases") {
+      return json(knowledgeBases);
+    }
+    for (const knowledgeBase of knowledgeBases) {
+      if (
+        method === "GET" &&
+        path === `/knowledge-bases/${knowledgeBase.id}/documents`
+      ) {
+        return json([]);
+      }
+    }
+    if (method === "GET" && path === "/groups") return json([teamGroup]);
+    return route.fulfill({ status: 404, body: "{}" });
+  });
+
+  await page.goto(`/knowledge/${personalKnowledgeBase.id}`);
+  await expect(
+    page.getByRole("link", { name: personalKnowledgeBase.name }),
+  ).toHaveAttribute("aria-current", "page");
+
+  const transitionSamples = page.evaluate(
+    async ({ firstName, secondName }) => {
+      const normalize = (value: string | null | undefined) =>
+        value?.replace(/\s+/g, " ").trim() ?? "";
+      const activeSourceSpaces = () =>
+        Array.from(document.querySelectorAll('a[aria-current="page"]'))
+          .map((link) => normalize(link.textContent))
+          .filter(
+            (label) => label.includes(firstName) || label.includes(secondName),
+          );
+      const secondLink = Array.from(document.querySelectorAll("a")).find(
+        (link) => normalize(link.textContent).includes(secondName),
+      );
+      if (!secondLink) throw new Error("Second source-space link not found.");
+
+      return new Promise<string[][]>((resolve) => {
+        secondLink.addEventListener(
+          "click",
+          () => {
+            requestAnimationFrame(async () => {
+              const samples: string[][] = [];
+              for (let index = 0; index < 40; index += 1) {
+                samples.push(activeSourceSpaces());
+                await new Promise(requestAnimationFrame);
+              }
+              resolve(samples);
+            });
+          },
+          { once: true },
+        );
+      });
+    },
+    {
+      firstName: personalKnowledgeBase.name,
+      secondName: secondPersonalKnowledgeBase.name,
+    },
+  );
+
+  await page
+    .getByRole("link", { name: secondPersonalKnowledgeBase.name })
+    .click();
+
+  const activeSamples = await transitionSamples;
+  await expect(page).toHaveURL(
+    new RegExp(`/knowledge/${secondPersonalKnowledgeBase.id}$`),
+  );
+  await expect(
+    page.getByRole("link", { name: secondPersonalKnowledgeBase.name }),
+  ).toHaveAttribute("aria-current", "page");
+  expect(activeSamples).not.toContainEqual([personalKnowledgeBase.name]);
 });
 
 test("Sources page creates the first source space from the dialog", async ({
