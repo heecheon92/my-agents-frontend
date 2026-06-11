@@ -48,7 +48,7 @@ export function Pill({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-3 py-1 text-[13px] font-semibold",
+        "inline-flex items-center whitespace-nowrap rounded-full border px-3 py-1 text-[13px] font-semibold",
         tone === "slate" &&
           "border-km-hairline bg-km-surface-muted text-km-ink",
         tone === "green" &&

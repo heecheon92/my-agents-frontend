@@ -1397,7 +1397,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                 <TableCell className="px-4 py-4 whitespace-normal text-sm text-cal-body">
                   {documentSourceLabel(document, localization.documents)}
                 </TableCell>
-                <TableCell className="px-4 py-4 whitespace-normal">
+                <TableCell className="px-4 py-4 whitespace-nowrap">
                   {isPreparing ? (
                     <InlineLoadingIndicator
                       label={localization.documents.ingestionLoading}
@@ -1623,11 +1623,14 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
         description={localization.documents.description}
       >
         <div className="flex min-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-3xl border border-cal-hairline bg-white shadow-[0_18px_60px_rgb(20_22_23/0.08)] lg:grid lg:grid-cols-[20rem_minmax(0,1fr)]">
-          <OnboardingTarget id="documents.knowledge-destination">
-            <aside className="hidden min-h-0 border-r border-cal-hairline lg:flex">
+          <aside className="hidden min-h-0 border-r border-cal-hairline lg:flex">
+            <OnboardingTarget
+              id="documents.knowledge-destination"
+              className="flex min-h-0 flex-1"
+            >
               {renderSourceSpaceTree()}
-            </aside>
-          </OnboardingTarget>
+            </OnboardingTarget>
+          </aside>
 
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <div className="shrink-0 border-b border-cal-hairline bg-cal-canvas/60 px-4 py-4 sm:px-6">
@@ -2120,7 +2123,7 @@ function isUploadQueueItemBusy(status: UploadQueueStatus) {
 
 function InlineLoadingIndicator({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-cal-muted">
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-cal-muted">
       <span
         aria-hidden="true"
         className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent"
