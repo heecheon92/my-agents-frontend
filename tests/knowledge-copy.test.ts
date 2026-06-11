@@ -34,6 +34,27 @@ describe("document source empty-state copy", () => {
   });
 });
 
+describe("document upload workflow copy", () => {
+  it("frames file upload and preparation as one workflow", () => {
+    const enDocuments = en.admin.documents;
+    const koDocuments = ko.admin.documents;
+
+    expect(enDocuments.fileUploadTitle).toBe("Upload and prepare files");
+    expect(enDocuments.uploadAndIngestButton).toBe("Upload and prepare files");
+    expect(enDocuments.dropDescription).toContain("one workflow");
+    expect(enDocuments.uploadStatusLabels.ingesting).toBe("Preparing source");
+    expect(enDocuments.runIngest).toBe("Prepare selected source");
+    expect(enDocuments.prepareSelectedHint).toContain(
+      "File uploads are prepared automatically",
+    );
+
+    expect(koDocuments.fileUploadTitle).toBe("파일 업로드 및 준비");
+    expect(koDocuments.uploadStatusLabels.ingesting).not.toContain("수집");
+    expect(koDocuments.runIngest).not.toContain("검색 가능");
+    expect(koDocuments.prepareSelectedHint).toContain("자동으로 준비");
+  });
+});
+
 describe("knowledge-base creation copy", () => {
   it("states the private and group knowledge-base boundary in English", () => {
     const copy = en.admin.knowledge;

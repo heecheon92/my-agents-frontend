@@ -1,3 +1,11 @@
+## 2026-06-11 — Unified document upload preparation UX
+
+- Reframed the Documents file flow so upload and preparation read as one user workflow: primary titles/buttons, queue states, announcements, and Korean copy now say files are uploaded and prepared together instead of exposing ingestion jargon.
+- Kept the backend extraction-run mechanics available as advanced processing history, while adding helper copy that file uploads are prepared automatically and the manual selected-source action is only for existing text sources or refreshes.
+- Updated the design contract and copy guardrail tests so future upload UI work preserves the unified workflow language.
+
+Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (18 files / 105 tests), `pnpm build`, full `pnpm exec playwright test --reporter=line` (12 passed / 2 skipped), and `git diff --check`.
+
 ## 2026-06-11 — Backend-configured document upload fan-out
 
 - Replaced the Documents queue's hardcoded multi-file upload concurrency with a backend-owned `/health` runtime hint: `frontend_config.documents.upload_concurrency`.

@@ -67,7 +67,7 @@
   - Sign up, log in, log out, restore a session, or continue as a limited guest.
   - Create/select a conversation, send a message, stream the response, queue or steer a next prompt, and understand run outcome.
   - Inspect redacted activity events and citations tied to the latest run.
-  - Create/upload documents, ingest them, monitor extraction progress, and confirm source metadata.
+  - Create/upload sources, prepare them for Ask as one workflow, monitor advanced processing progress, and confirm source metadata.
   - Create knowledge bases and groups, manage invitations/permissions, and avoid mistaking backend identifiers for a polished user-search UX.
 - Key contexts of use:
   - Local development and review, with backend at `http://127.0.0.1:8000` or `http://localhost:8000` depending on configured CORS.
@@ -88,7 +88,7 @@
   - `/groups`: Teams screen for shared knowledge, invitation lifecycle, accepted-member roles, and publish-request review.
 - Content hierarchy:
   - Level 1: Page purpose and current user/session context.
-  - Level 2: Primary action for the route, e.g. create conversation, send message, upload/ingest document.
+  - Level 2: Primary action for the route, e.g. create conversation, send message, upload and prepare sources.
   - Level 3: Progressive evidence, e.g. citation snippet, response history, event payload, document IDs, permissions; show compact answer-level cues first, then reveal detailed cards and implementation-heavy metadata in panels/tabs/accordions.
   - Level 4: Backend limitation notes and safe recovery paths.
 
@@ -164,7 +164,7 @@
     - `WorkspacePanel`: consistent card shell with title, description, optional action, and scroll containment.
     - `EvidenceCard`: citation/event/source metadata display with type label, provenance, and snippet/body.
     - `TimelineStep`: redacted agent activity row with sequence, event type, timestamp when available, and safe payload preview.
-    - `DocumentQueueItem`: standardized upload/ingest row state; current `UploadQueueRow` already points in this direction.
+    - `DocumentQueueItem`: standardized upload/preparation row state; current `UploadQueueRow` already points in this direction.
     - `ResourceList` / `ResourceRow`: reusable list and selectable-row primitives for conversations, documents, knowledge bases, and groups.
     - `ConversationSidebar`, `ChatTranscript`, `MessageBubble`, `EvidencePanel`, `KnowledgeSourceSelector`, and `ComposerBar`: Ask primitives that keep Markdown-safe assistant rendering, plain-text user messages, queued state, compact source selection, citations, and send/stop affordances consistent.
     - `ShellIdentity`: brand/session block to reduce duplication between desktop sidebar and mobile header.
@@ -259,7 +259,7 @@
   - Errors appear close to the failed control or panel.
   - For failed stream/upload, preserve recoverable user input where possible.
 - Success:
-  - Success states should confirm the user-visible result and next step, e.g. account created then log in, upload completed then ingest/inspect.
+  - Success states should confirm the user-visible result and next step, e.g. account created then log in, source ready then inspect processing details if needed.
   - Avoid toast-only success for workflow-critical transitions; persistent inline status is better.
 - Disabled:
   - Disabled actions require visible context through labels, hints, or helper text when the reason is not obvious.

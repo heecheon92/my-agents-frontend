@@ -1324,6 +1324,9 @@ export function DocumentsSurface() {
                 ? localization.documents.ingestionLoading
                 : localization.documents.runIngest}
             </Button>
+            <p className="mt-2 text-xs leading-5 text-cal-muted">
+              {localization.documents.prepareSelectedHint}
+            </p>
             {ingest.error ? (
               <div className="mt-3">
                 <ErrorState error={ingest.error} />
