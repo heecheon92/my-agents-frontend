@@ -56,7 +56,7 @@ describe("ChatWorkspace assistant message footer", () => {
     expect(en.chat.viewCitationDetails).toBe("View citation details");
     expect(ko.chat.viewCitationDetails).toBe("인용 자세히 보기");
     expect(en.chat.replaySourcesUnavailable).toContain(
-      "current knowledge only",
+      "currently available sources",
     );
     expect(ko.chat.replaySourcesUnavailable).toContain("현재 사용 가능한 지식");
     expect(en.chat.activeRunStale).toContain("interrupted");
@@ -92,7 +92,7 @@ describe("ChatWorkspace assistant message footer", () => {
       reply: "Visible answer",
       nested: { safe: "kept" },
     });
-    expect(en.chat.runEvidenceLabel).toBe("Knowledge used");
+    expect(en.chat.runEvidenceLabel).toBe("Sources used");
     expect(ko.chat.activityPayloadHidden).toBe("내부 처리 정보는 숨김");
   });
 

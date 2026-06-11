@@ -1,3 +1,62 @@
+## 2026-06-11 — Row-owned Knowledge actions
+
+- Removed the separate “selected knowledge/source” action panel from the Knowledge workspace so the main pane stays focused on the table.
+- Added per-row Manage dialogs for direct user access grants, source deletion, source metadata, and advanced processing history.
+- Kept upload/preparation as the primary path, while adding a row-level async prepare/retry action in the Manage dialog for recovery when upload-time preparation fails.
+
+Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (18 files / 105 tests), `pnpm build`, targeted `pnpm exec playwright test e2e/document-upload-dropzone.spec.ts --reporter=line` (5 passed), full `pnpm exec playwright test --reporter=line` (16 passed / 2 skipped), browser navigation smoke of `/knowledge/kb-personal` (expected unauthenticated 401 only), and `git diff --check`.
+
+## 2026-06-11 — Addressable Knowledge workspace polish
+
+- Added `/knowledge/[sourceId]` so a selected personal knowledge space, team knowledge space, or team group can be opened directly and survives refresh.
+- Kept the GreetSchool-style organization-tree behavior: tree rows navigate with links, group rows select the group context, and child knowledge-space rows select that exact space.
+- Widened and left-aligned the Knowledge workspace so the table/inspector use the available service-shell width instead of sitting in a centered narrow column.
+- Updated Korean copy to prefer “지식” / “지식 공간” over the less intuitive “소스” wording while keeping the English “Sources” mental model unchanged.
+
+Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (18 files / 105 tests), `pnpm build`, targeted `pnpm exec playwright test e2e/document-upload-dropzone.spec.ts --reporter=line` (4 passed), full `pnpm exec playwright test --reporter=line` (15 passed / 2 skipped), browser navigation smoke of `/knowledge/kb-personal` (expected unauthenticated 401 only), and `git diff --check`.
+
+## 2026-06-11 — Merged Sources workflow
+
+- Merged the former Knowledge/Add sources mental model into one visible Sources entry: `/knowledge` now hosts source-space selection, source readiness, and selected-source advanced controls; `/documents` redirects to the merged page for compatibility.
+- Re-laid out Sources around a GreetSchool-inspired organization shell: a persistent source-space tree on desktop, a mobile source-space sheet, and a table-style source list with a selected-source inspector.
+- Moved source-space creation, text-source creation, and file upload/preparation into shadcn/Base UI dialogs so the default page reads as “choose a space, review its sources, add when needed” instead of stacked setup forms.
+- Updated onboarding, localized copy, route tests, and active docs to minimize cross-page depth while keeping team sharing, raw IDs, permissions, and processing history behind secondary/Advanced controls.
+
+Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (18 files / 105 tests), `pnpm build`, full `pnpm exec playwright test --reporter=line` (14 passed / 2 skipped), mocked desktop browser smoke of `/knowledge` with zero console errors and readable source-space tree/table layout, and `git diff --check`.
+
+## 2026-06-11 — Unified document upload preparation UX
+
+- Reframed the Documents file flow so upload and preparation read as one user workflow: primary titles/buttons, queue states, announcements, and Korean copy now say files are uploaded and prepared together instead of exposing ingestion jargon.
+- Kept the backend extraction-run mechanics available as advanced processing history, while adding helper copy that file uploads are prepared automatically and the manual selected-source action is only for existing text sources or refreshes.
+- Updated the design contract and copy guardrail tests so future upload UI work preserves the unified workflow language.
+
+Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (18 files / 105 tests), `pnpm build`, full `pnpm exec playwright test --reporter=line` (12 passed / 2 skipped), and `git diff --check`.
+
+## 2026-06-11 — Backend-configured document upload fan-out
+
+- Replaced the Documents queue's hardcoded multi-file upload concurrency with a backend-owned `/health` runtime hint: `frontend_config.documents.upload_concurrency`.
+- Kept the historical fallback at 3 so older or mocked backends do not break the Documents page before the backend contract is deployed.
+- Added frontend model coverage for the new health response shape and fallback behavior.
+
+Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (18 files / 104 tests), `pnpm build`, full `pnpm exec playwright test --reporter=line` (12 passed / 2 skipped), and `git diff --check`.
+
+## 2026-06-11 — Persisted shadcn service sidebar
+
+- Replaced the protected service shell's custom desktop aside/mobile scroll nav with the shadcn/Base UI `Sidebar` stack while preserving the existing Ask, Add sources, Knowledge, and Teams routes.
+- Added the missing shadcn sidebar support primitives (`Sidebar`, `Sheet`, `Tooltip`, `Input`, `Separator`, `Skeleton`, and mobile breakpoint hook) without overwriting the repo's customized `Button`.
+- Persisted the desktop icon-collapsed state through the non-sensitive `sidebar_state` cookie: the client sidebar writes the preference and the service layout reads it as `defaultOpen` on reload.
+- Kept session restore copy visible in the expanded sidebar for existing smoke checks, exposed a mobile header trigger/logout path, and added localized accessible toggle labels.
+
+Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (17 files / 102 tests), `pnpm build`, targeted `pnpm exec playwright test e2e/sidebar-persistence.spec.ts --reporter=line` (1 passed), full `pnpm exec playwright test --reporter=line` (12 passed / 2 skipped), and `git diff --check`.
+
+## 2026-06-10 — Invite-only team membership docs sync
+
+- Aligned frontend README/backend-request copy with the approved invite-only group/team boundary: no user search, no account-existence leak, and no direct `user_id` member activation.
+- Recorded the expected invitation lifecycle contract for hosted OpenAPI follow-up before runtime model/client changes.
+- Preserved the existing shared-knowledge mental model: group KBs and publish requests are shared after acceptance, while conversations and opt-in memory stay private to the authenticated user.
+
+Verification for this docs-only entry is part of the current worker-4 backend/frontend documentation pass.
+
 ## 2026-06-09 — Office file upload frontend wiring
 
 - Extended the Documents/Add sources upload queue from PDF/Markdown/plain-text to also accept modern Office files: Excel workbooks (`.xlsx`) and PowerPoint decks (`.pptx`). Legacy `.xls`/`.ppt` remain unsupported.

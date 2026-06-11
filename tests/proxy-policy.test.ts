@@ -102,9 +102,21 @@ describe("proxy policy", () => {
         "/conversations/abc/messages/message-1/replay/stream",
       ).allowed,
     ).toBe(true);
+    expect(isAllowedBackendPath("GET", "/groups/group-1/members").allowed).toBe(
+      true,
+    );
+    expect(
+      isAllowedBackendPath("PATCH", "/groups/group-1/members/user-1").allowed,
+    ).toBe(true);
   });
 
-  it("blocks legacy assistant chat and unknown paths before forwarding", () => {
+  it("blocks direct member creation, legacy assistant chat, and unknown paths before forwarding", () => {
+    expect(
+      isAllowedBackendPath("POST", "/groups/group-1/members"),
+    ).toMatchObject({
+      allowed: false,
+      code: "path_not_allowed",
+    });
     expect(isAllowedBackendPath("POST", "/assistant/chat")).toMatchObject({
       allowed: false,
       code: "legacy_chat_blocked",

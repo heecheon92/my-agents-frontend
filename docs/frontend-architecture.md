@@ -43,9 +43,10 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | `/` | `app/page.tsx` | Marketing/landing entry point. |
 | `/login` | `components/AuthPanel.tsx` | Login through BFF `/auth/login`. |
 | `/signup` | `components/AuthPanel.tsx` | Signup parses the backend `SignupResponse` envelope and shows an account-created handoff before login. |
-| `/chat` | `components/ChatWorkspace.tsx` + `components/chat/*` | Anchor Ask journey. Uses conversations, messages, streamed answers, citations near assistant replies, a compact top-of-chat knowledge selector, and collapsed response evidence/work history. |
-| `/documents` | `components/AdminSurfaces.tsx` | “Add sources” journey. Adds text/files to a selected knowledge space; low-level permission and processing details are behind Advanced disclosure. |
-| `/knowledge` | `components/AdminSurfaces.tsx` | “Knowledge” journey. Creates/lists personal and team knowledge spaces and explains add sources → ask → inspect citations. |
+| `/chat` | `components/ChatWorkspace.tsx` + `components/chat/*` | Anchor Ask journey. Uses conversations, messages, streamed answers, citations near assistant replies, a compact top-of-chat source selector, and collapsed response evidence/work history. |
+| `/knowledge` | `components/AdminSurfaces.tsx` | Knowledge journey root. Uses a source-space tree + source table shell, shadcn/Base UI dialogs for add flows, and keeps row-level permission/deletion controls in per-source Manage dialogs. |
+| `/knowledge/[sourceId]` | `components/AdminSurfaces.tsx` | Addressable selected knowledge route. The segment may be a knowledge-base ID or group ID; refresh preserves the selected space/group instead of resetting to the first available item. |
+| `/documents` | `next/navigation` redirect | Legacy compatibility path that redirects to `/knowledge` so old links land on the merged Sources workflow. |
 | `/groups` | `components/AdminSurfaces.tsx` | “Teams” journey. Manages shared knowledge requests and keeps raw ID-based member controls in Advanced disclosure. |
 
 All service routes live under `app/(service)/layout.tsx`, which renders `ServiceShell` and restores auth through `/auth/me`.
@@ -95,8 +96,14 @@ The BFF allowlist currently covers:
 - `POST /groups`
 - `GET /groups`
 - `GET /groups/{group_id}`
-- `POST /groups/{group_id}/members`
-- `PATCH /groups/{group_id}/members/{user_id}`
+- `POST /groups/{group_id}/invitations`
+- `GET /groups/{group_id}/invitations`
+- `PATCH /groups/{group_id}/invitations/{invitation_id}`
+- `POST /groups/{group_id}/invitations/{invitation_id}/resend`
+- `DELETE /groups/{group_id}/invitations/{invitation_id}`
+- `POST /group-invitations/accept`
+- `GET /groups/{group_id}/members` for owner/admin member role maintenance only
+- `PATCH /groups/{group_id}/members/{user_id}` for already-active member role updates only
 - `POST /knowledge-bases`
 - `GET /knowledge-bases`
 - `GET /knowledge-bases/{knowledge_base_id}`
@@ -135,7 +142,8 @@ The UI should stay polished but not noisy:
 
 - Use readable spacing, generous body text, and clear empty/error/loading states.
 - Keep Ask/chat as the primary product anchor surface.
-- Treat Documents/Add sources and Knowledge as one mental model: sources live inside knowledge spaces and then power cited answers.
+- Treat source setup as one mental model: sources live inside source spaces and then power cited answers; avoid sending users across pages for first-run source creation.
+- On `/knowledge`, keep the default layout review-first: source spaces are chosen from the tree/sheet, source rows are scanned in the table, creation/upload forms open in dialogs, and per-source grant/delete/retry-preparation operations live in each row's Manage dialog instead of a persistent selected-item panel.
 - Keep admin surfaces honest and usable even when backend contracts are ID-based, but hide raw IDs in Advanced disclosure by default.
 - Prefer `components/` extraction over large route-page component trees.
 

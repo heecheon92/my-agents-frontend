@@ -35,6 +35,23 @@ describe("API_PATH", () => {
     ).toBe("/conversations/conversation-1/messages/msg-1/replay/stream");
   });
 
+  it("builds group invitation paths", () => {
+    expect(API_PATH.groups.members("group-1")).toBe("/groups/group-1/members");
+    expect(API_PATH.groups.member("group-1", "user-1")).toBe(
+      "/groups/group-1/members/user-1",
+    );
+    expect(API_PATH.groups.invitations("group-1")).toBe(
+      "/groups/group-1/invitations",
+    );
+    expect(API_PATH.groups.invitation("group-1", "invite-1")).toBe(
+      "/groups/group-1/invitations/invite-1",
+    );
+    expect(API_PATH.groups.invitationResend("group-1", "invite-1")).toBe(
+      "/groups/group-1/invitations/invite-1/resend",
+    );
+    expect(API_PATH.groupInvitations.accept).toBe("/group-invitations/accept");
+  });
+
   it("builds group publish request paths", () => {
     expect(API_PATH.groups.publishRequests("group-1")).toBe(
       "/groups/group-1/publish-requests",
@@ -115,6 +132,18 @@ describe("MyAgentsQueryKeys", () => {
       "run",
       conversationId,
       runId,
+    ]);
+    expect(MyAgentsQueryKeys.groups.invitations("group-1")).toEqual([
+      "my-agents",
+      "groups",
+      "invitations",
+      "group-1",
+    ]);
+    expect(MyAgentsQueryKeys.groups.members("group-1")).toEqual([
+      "my-agents",
+      "groups",
+      "members",
+      "group-1",
     ]);
     expect(MyAgentsQueryKeys.documents.extractionRun("doc-1", runId)).toEqual([
       "my-agents",

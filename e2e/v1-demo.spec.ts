@@ -209,7 +209,12 @@ test.describe("V1 seeded demo", () => {
       page.getByRole("button", { name: new RegExp(seededDocumentTitle) }),
     ).toBeVisible();
     await page
-      .getByRole("button", { name: new RegExp(seededDocumentTitle) })
+      .getByRole("button", {
+        name: ko.admin.documents.sourceRowActionsLabel.replace(
+          "{title}",
+          seededDocumentTitle,
+        ),
+      })
       .click();
     await page
       .getByRole("button", { name: ko.admin.documents.runIngest })
@@ -220,14 +225,15 @@ test.describe("V1 seeded demo", () => {
         exact: true,
       }),
     ).toBeVisible();
-    const extractionRunsSection = page
-      .locator("section")
-      .filter({ hasText: ko.admin.documents.extractionRuns });
+    const extractionRunsSection = page.getByRole("dialog", {
+      name: ko.admin.documents.sourceActionsTitle,
+    });
     await expect(
       extractionRunsSection
         .getByText(new RegExp(`\\d+ ${ko.admin.common.chunks}`))
         .first(),
     ).toBeVisible();
+    await page.getByRole("button", { name: ko.admin.common.close }).click();
 
     await page.getByRole("link", { name: ko.service.nav.chat }).click();
     const activeConversationHeading = page
@@ -328,17 +334,26 @@ test.describe("V1 public visitor smoke", () => {
       }),
     ).toBeVisible();
     await page
+      .getByRole("button", {
+        name: ko.admin.documents.sourceRowActionsLabel.replace(
+          "{title}",
+          config.documentTitle,
+        ),
+      })
+      .click();
+    await page
       .getByRole("button", { name: ko.admin.documents.runIngest })
       .click();
 
-    const extractionRunsSection = page
-      .locator("section")
-      .filter({ hasText: ko.admin.documents.extractionRuns });
+    const extractionRunsSection = page.getByRole("dialog", {
+      name: ko.admin.documents.sourceActionsTitle,
+    });
     await expect(
       extractionRunsSection
         .getByText(new RegExp(`\\d+ ${ko.admin.common.chunks}`))
         .first(),
     ).toBeVisible({ timeout: 30_000 });
+    await page.getByRole("button", { name: ko.admin.common.close }).click();
 
     await page.getByRole("link", { name: ko.service.nav.chat }).click();
     const activeConversationHeading = page

@@ -1,20 +1,60 @@
 "use client";
 
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  DatabaseIcon,
+  FileTextIcon,
+  FolderIcon,
+  ListTreeIcon,
+  NetworkIcon,
+  PlusIcon,
+  SearchIcon,
+  UploadIcon,
+} from "lucide-react";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import { useCurrentUser } from "@/hooks/use-auth";
 import {
-  useAddMember,
   useApprovePublishRequest,
+  useCancelGroupInvitation,
   useCreateGroup,
+  useCreateGroupInvitation,
   useCreatePublishRequest,
+  useGroupInvitations,
+  useGroupMembers,
   useGroups,
   usePublishRequests,
   useRejectPublishRequest,
+  useResendGroupInvitation,
+  useUpdateGroupInvitation,
   useUpdateMember,
 } from "@/hooks/use-groups";
 import {
@@ -28,7 +68,12 @@ import {
   usePatchDocumentPermission,
 } from "@/hooks/use-knowledge";
 import { useLocalization } from "@/hooks/useLocalization";
-import type { ExtractionRun } from "@/model/my-agents";
+import { cn } from "@/lib/utils";
+import {
+  documentUploadConcurrencyFromHealth,
+  type ExtractionRun,
+  type KnowledgeBase,
+} from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 import {
   canAutoApproveTeamDocumentUpload,
@@ -45,6 +90,14 @@ import { EmptyState, ErrorState, Pill } from "./Status";
 type GroupRole = "owner" | "admin" | "editor" | "viewer";
 type PublishSourceKind = "document" | "knowledge-base";
 type DocumentDestination = "personal" | "team";
+
+type SourcesSurfaceProps = {
+  initialSourceId?: string;
+};
+
+type SourceActionsDialogState = {
+  documentId: string;
+};
 
 type UploadQueueStatus =
   | "selected"
@@ -87,7 +140,7 @@ const UPLOAD_ACCEPT = [
   ".pptx",
 ].join(",");
 const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-const UPLOAD_CONCURRENCY = 3;
+const HEALTH_CONFIG_STALE_TIME_MS = 5 * 60 * 1000;
 const EXTRACTION_POLL_INTERVAL_MS = 1000;
 const TERMINAL_EXTRACTION_STATUSES = new Set(["completed", "failed"]);
 const SUPPORTED_UPLOAD_EXTENSIONS = new Set([
@@ -144,184 +197,31 @@ function wait(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export function KnowledgeSurface() {
-  const groups = useGroups();
-  const knowledgeBases = useKnowledgeBases();
-  const createKnowledgeBase = useCreateKnowledgeBase();
-  const [name, setName] = useState("");
-  const [scope, setScope] = useState<KnowledgeBaseCreationScope>("personal");
-  const [selectedGroupId, setSelectedGroupId] = useState("");
-  const { localization } = useLocalization((state) => state.localization.admin);
-  const groupOptions = (groups.data ?? []).filter(
-    (group) => group.role === "owner" || group.role === "admin",
-  );
-  const createPayload = buildKnowledgeBaseCreateRequest({
-    groupId: selectedGroupId,
-    name,
-    scope,
-  });
-  const isGroupScope = scope === "group";
-  const isSubmitDisabled =
-    createKnowledgeBase.isPending ||
-    groups.isLoading ||
-    !createPayload ||
-    (isGroupScope && groupOptions.length === 0);
-
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!createPayload) return;
-    try {
-      await createKnowledgeBase.mutateAsync(createPayload);
-      setName("");
-    } catch {
-      // React Query stores the API error on the mutation; render it below.
-    }
-  }
-
-  return (
-    <PageCard
-      title={localization.knowledge.title}
-      description={localization.knowledge.description}
-    >
-      <section className="responsive-card-grid">
-        {localization.knowledge.journeySteps.map((step, index) => (
-          <article
-            key={step}
-            className="flex items-start gap-3 rounded-xl border border-cal-hairline bg-cal-canvas p-4 text-sm leading-6 text-cal-body"
-          >
-            <span className="inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-cal-primary text-sm font-semibold text-white">
-              {index + 1}
-            </span>
-            <p className="min-w-0 pt-1">{step}</p>
-          </article>
-        ))}
-      </section>
-      <OnboardingTarget id="knowledge.create-form">
-        <form
-          onSubmit={handleSubmit}
-          className="cal-card grid gap-3 rounded-xl p-4"
-        >
-          <Field label={localization.knowledge.nameLabel}>
-            <input
-              className={inputClassName}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              required
-            />
-          </Field>
-          <div className="grid gap-3 md:grid-cols-2 md:items-start">
-            <Field
-              className="min-w-0"
-              label={localization.knowledge.scopeLabel}
-              hint={localization.knowledge.scopeHint}
-            >
-              <select
-                className={selectClassName}
-                value={scope}
-                onChange={(event) => {
-                  const nextScope = event.target
-                    .value as KnowledgeBaseCreationScope;
-                  setScope(nextScope);
-                  if (nextScope === "personal") {
-                    setSelectedGroupId("");
-                  }
-                }}
-              >
-                <option value="personal">
-                  {localization.knowledge.scopePersonalOption}
-                </option>
-                <option value="group">
-                  {localization.knowledge.scopeGroupOption}
-                </option>
-              </select>
-            </Field>
-            <Field
-              className="min-w-0"
-              label={localization.knowledge.groupLabel}
-              hint={
-                isGroupScope
-                  ? localization.knowledge.groupHint
-                  : localization.knowledge.groupDisabledHint
-              }
-            >
-              <select
-                aria-invalid={
-                  isGroupScope && !selectedGroupId ? true : undefined
-                }
-                className={selectClassName}
-                disabled={!isGroupScope || groups.isLoading}
-                required={isGroupScope}
-                value={selectedGroupId}
-                onChange={(event) => setSelectedGroupId(event.target.value)}
-              >
-                <option value="">
-                  {groups.isLoading
-                    ? localization.knowledge.loadingGroupsOption
-                    : localization.knowledge.groupPlaceholder}
-                </option>
-                {groupOptions.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {group.name} · {group.role}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-          <p className="rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-xs leading-5 text-cal-muted">
-            {localization.knowledge.scopeBoundaryNote}
-          </p>
-          {isGroupScope && !groups.isLoading && groupOptions.length === 0 ? (
-            <EmptyState
-              title={localization.knowledge.noGroupsTitle}
-              description={localization.knowledge.noGroupsDescription}
-            />
-          ) : null}
-          {groups.error ? <ErrorState error={groups.error} /> : null}
-          <Button type="submit" disabled={isSubmitDisabled}>
-            {isGroupScope
-              ? localization.knowledge.createGroupButton
-              : localization.knowledge.createPersonalButton}
-          </Button>
-          {createKnowledgeBase.error ? (
-            <ErrorState error={createKnowledgeBase.error} />
-          ) : null}
-        </form>
-      </OnboardingTarget>
-      <ResourceList
-        loading={knowledgeBases.isLoading}
-        error={knowledgeBases.error}
-        empty={localization.knowledge.empty}
-      >
-        {knowledgeBases.data?.map((kb) => {
-          const isGroupKnowledgeBase = kb.scope === "group";
-
-          return (
-            <ResourceRow
-              key={kb.id}
-              title={kb.name}
-              subtitle={
-                isGroupKnowledgeBase
-                  ? localization.knowledge.listGroupSubtitle
-                  : localization.knowledge.listPersonalSubtitle
-              }
-              meta={
-                isGroupKnowledgeBase
-                  ? localization.common.scopeGroup
-                  : localization.common.scopePersonal
-              }
-            />
-          );
-        })}
-      </ResourceList>
-    </PageCard>
-  );
+function knowledgeSourceHref(sourceId: string) {
+  return `/knowledge/${encodeURIComponent(sourceId)}`;
 }
 
-export function DocumentsSurface() {
+function decodeRouteSegment(segment?: string) {
+  if (!segment) return undefined;
+  try {
+    return decodeURIComponent(segment);
+  } catch {
+    return segment;
+  }
+}
+
+export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   const queryClient = useQueryClient();
+  const router = useRouter();
   const groups = useGroups();
   const knowledgeBases = useKnowledgeBases();
   const currentUser = useCurrentUser();
+  const createKnowledgeBase = useCreateKnowledgeBase();
+  const health = useQuery({
+    queryKey: MyAgentsQueryKeys.health(),
+    queryFn: () => myAgentsAPI.health(),
+    staleTime: HEALTH_CONFIG_STALE_TIME_MS,
+  });
   const [documentDestination, setDocumentDestination] =
     useState<DocumentDestination>("personal");
   const [selectedKnowledgeBaseId, setSelectedKnowledgeBaseId] =
@@ -329,16 +229,59 @@ export function DocumentsSurface() {
   const [selectedTeamGroupId, setSelectedTeamGroupId] = useState<string>();
   const [selectedTeamKnowledgeBaseId, setSelectedTeamKnowledgeBaseId] =
     useState<string>();
+  const [optimisticSourceId, setOptimisticSourceId] = useState<string>();
+  const [sourceSpaceName, setSourceSpaceName] = useState("");
+  const [sourceSpaceScope, setSourceSpaceScope] =
+    useState<KnowledgeBaseCreationScope>("personal");
+  const [sourceSpaceGroupId, setSourceSpaceGroupId] = useState("");
   const documentKnowledgeBases = writableDocumentKnowledgeBases(
     knowledgeBases.data ?? [],
     currentUser.data?.id,
   );
   const teamGroups = groups.data ?? [];
-  const activeTeamGroupId =
+  const sourceSpaceGroupOptions = teamGroups.filter(
+    (group) => group.role === "owner" || group.role === "admin",
+  );
+  const routeSourceId = decodeRouteSegment(initialSourceId);
+  // The route segment changes after a link click, so keep the clicked source
+  // active while Next remounts /knowledge/[sourceId] and the URL catches up.
+  const effectiveRouteSourceId = optimisticSourceId ?? routeSourceId;
+  const routePersonalKnowledgeBase = documentKnowledgeBases.find(
+    (knowledgeBase) => knowledgeBase.id === effectiveRouteSourceId,
+  );
+  const routeTeamKnowledgeBase = (knowledgeBases.data ?? []).find(
+    (knowledgeBase) =>
+      knowledgeBase.scope === "group" &&
+      knowledgeBase.purpose === "standard" &&
+      knowledgeBase.id === effectiveRouteSourceId &&
+      Boolean(knowledgeBase.group_id),
+  );
+  const routeTeamGroup = teamGroups.find(
+    (group) => group.id === effectiveRouteSourceId,
+  );
+  const routeDocumentDestination: DocumentDestination | undefined =
+    routePersonalKnowledgeBase
+      ? "personal"
+      : routeTeamKnowledgeBase || routeTeamGroup
+        ? "team"
+        : undefined;
+  const effectiveDocumentDestination =
+    routeDocumentDestination ?? documentDestination;
+  const routeTeamGroupId =
+    routeTeamKnowledgeBase?.group_id ?? routeTeamGroup?.id;
+  const createSourceSpacePayload = buildKnowledgeBaseCreateRequest({
+    groupId: sourceSpaceGroupId,
+    name: sourceSpaceName,
+    scope: sourceSpaceScope,
+  });
+  const isCreatingTeamSourceSpace = sourceSpaceScope === "group";
+  const selectedTeamGroupStillExists = Boolean(
     selectedTeamGroupId &&
-    teamGroups.some((group) => group.id === selectedTeamGroupId)
-      ? selectedTeamGroupId
-      : teamGroups[0]?.id;
+      teamGroups.some((group) => group.id === selectedTeamGroupId),
+  );
+  const activeTeamGroupId =
+    routeTeamGroupId ??
+    (selectedTeamGroupStillExists ? selectedTeamGroupId : teamGroups[0]?.id);
   const activeTeamGroup = teamGroups.find(
     (group) => group.id === activeTeamGroupId,
   );
@@ -346,26 +289,37 @@ export function DocumentsSurface() {
     knowledgeBases.data ?? [],
     activeTeamGroupId,
   );
-  const activeTeamKnowledgeBaseId =
+  const selectedTeamKnowledgeBaseStillExists = Boolean(
     selectedTeamKnowledgeBaseId &&
-    activeGroupKnowledgeBases.some(
-      (knowledgeBase) => knowledgeBase.id === selectedTeamKnowledgeBaseId,
-    )
+      activeGroupKnowledgeBases.some(
+        (knowledgeBase) => knowledgeBase.id === selectedTeamKnowledgeBaseId,
+      ),
+  );
+  const activeTeamKnowledgeBaseId =
+    routeTeamKnowledgeBase?.id ??
+    (routeTeamGroup ? activeGroupKnowledgeBases[0]?.id : undefined) ??
+    (selectedTeamKnowledgeBaseStillExists
       ? selectedTeamKnowledgeBaseId
-      : activeGroupKnowledgeBases[0]?.id;
-  const activeKnowledgeBaseId =
+      : activeGroupKnowledgeBases[0]?.id);
+  const selectedPersonalKnowledgeBaseStillExists = Boolean(
     selectedKnowledgeBaseId &&
-    documentKnowledgeBases.some(
-      (knowledgeBase) => knowledgeBase.id === selectedKnowledgeBaseId,
-    )
+      documentKnowledgeBases.some(
+        (knowledgeBase) => knowledgeBase.id === selectedKnowledgeBaseId,
+      ),
+  );
+  const activeKnowledgeBaseId =
+    routePersonalKnowledgeBase?.id ??
+    (selectedPersonalKnowledgeBaseStillExists
       ? selectedKnowledgeBaseId
-      : documentKnowledgeBases[0]?.id;
+      : documentKnowledgeBases[0]?.id);
   const displayKnowledgeBaseId =
-    documentDestination === "team"
+    effectiveDocumentDestination === "team"
       ? activeTeamKnowledgeBaseId
       : activeKnowledgeBaseId;
   const personalWriteKnowledgeBaseId =
-    documentDestination === "personal" ? activeKnowledgeBaseId : undefined;
+    effectiveDocumentDestination === "personal"
+      ? activeKnowledgeBaseId
+      : undefined;
   const documents = useKnowledgeBaseDocuments(displayKnowledgeBaseId);
   const createDocument = useCreateKnowledgeBaseDocument(
     personalWriteKnowledgeBaseId,
@@ -376,9 +330,19 @@ export function DocumentsSurface() {
   const [isProcessingQueue, setIsProcessingQueue] = useState(false);
   const [uploadAnnouncement, setUploadAnnouncement] = useState("");
   const [isUploadDropActive, setIsUploadDropActive] = useState(false);
+  const [isSourceSpaceBrowserOpen, setIsSourceSpaceBrowserOpen] =
+    useState(false);
+  const [isCreateSourceSpaceDialogOpen, setIsCreateSourceSpaceDialogOpen] =
+    useState(false);
+  const [isTextSourceDialogOpen, setIsTextSourceDialogOpen] = useState(false);
+  const [isFileUploadDialogOpen, setIsFileUploadDialogOpen] = useState(false);
+  const [sourceActionsDialog, setSourceActionsDialog] =
+    useState<SourceActionsDialogState>();
   const uploadDragDepthRef = useRef(0);
+  const lastAppliedRouteSourceIdRef = useRef<string | undefined>(undefined);
   const [selectedDocumentId, setSelectedDocumentId] = useState<string>();
-  const activeDocumentId = selectedDocumentId ?? documents.data?.[0]?.id;
+  const activeDocumentId =
+    sourceActionsDialog?.documentId ?? selectedDocumentId;
   const activeDocument = documents.data?.find(
     (document) => document.id === activeDocumentId,
   );
@@ -400,9 +364,25 @@ export function DocumentsSurface() {
   const canAutoApproveTeamUpload =
     canAutoApproveTeamDocumentUpload(activeTeamGroup);
   const hasActiveKnowledgeBase =
-    documentDestination === "team"
+    effectiveDocumentDestination === "team"
       ? Boolean(activeTeamGroupId && activeTeamKnowledgeBaseId)
       : Boolean(personalWriteKnowledgeBaseId);
+  const activeSourceSpace =
+    effectiveDocumentDestination === "team"
+      ? activeGroupKnowledgeBases.find(
+          (knowledgeBase) => knowledgeBase.id === activeTeamKnowledgeBaseId,
+        )
+      : documentKnowledgeBases.find(
+          (knowledgeBase) => knowledgeBase.id === activeKnowledgeBaseId,
+        );
+  const visibleTeamSourceSpaceCount = teamGroups.reduce(
+    (count, group) =>
+      count +
+      groupKnowledgeBasesForGroup(knowledgeBases.data ?? [], group.id).length,
+    0,
+  );
+  const sourceSpaceCount =
+    documentKnowledgeBases.length + visibleTeamSourceSpaceCount;
 
   const pendingQueueCount = uploadQueue.filter(
     (item) =>
@@ -437,6 +417,14 @@ export function DocumentsSurface() {
     .replace("{total}", String(uploadQueue.length));
   const isKnowledgeBaseSelectionLocked =
     isProcessingQueue || pendingQueueCount > 0;
+  const isCreateSourceSpaceDisabled =
+    isKnowledgeBaseSelectionLocked ||
+    createKnowledgeBase.isPending ||
+    groups.isLoading ||
+    !createSourceSpacePayload ||
+    (isCreatingTeamSourceSpace && sourceSpaceGroupOptions.length === 0);
+  const shouldShowFirstSourceSpaceForm =
+    !knowledgeBases.isLoading && documentKnowledgeBases.length === 0;
   const activeDocumentHasIngestion = Boolean(
     extractionRuns.data?.some((run) => isActiveExtractionRunStatus(run.status)),
   );
@@ -448,6 +436,81 @@ export function DocumentsSurface() {
   if (activeDocumentId && activeDocumentHasIngestion) {
     activeIngestionDocumentIds.add(activeDocumentId);
   }
+  const readyDocumentCount = Math.max(
+    0,
+    (documents.data?.length ?? 0) - activeIngestionDocumentIds.size,
+  );
+
+  useEffect(() => {
+    if (!optimisticSourceId) return;
+    if (!routeSourceId || routeSourceId === optimisticSourceId) {
+      setOptimisticSourceId(undefined);
+    }
+  }, [optimisticSourceId, routeSourceId]);
+
+  useEffect(() => {
+    if (!routeSourceId) {
+      lastAppliedRouteSourceIdRef.current = undefined;
+      return;
+    }
+
+    if (
+      lastAppliedRouteSourceIdRef.current === routeSourceId ||
+      isKnowledgeBaseSelectionLocked ||
+      knowledgeBases.isLoading ||
+      groups.isLoading
+    ) {
+      return;
+    }
+
+    const personalKnowledgeBase = documentKnowledgeBases.find(
+      (knowledgeBase) => knowledgeBase.id === routeSourceId,
+    );
+    if (personalKnowledgeBase) {
+      setDocumentDestination("personal");
+      setSelectedKnowledgeBaseId(personalKnowledgeBase.id);
+      setSelectedDocumentId(undefined);
+      lastAppliedRouteSourceIdRef.current = routeSourceId;
+      return;
+    }
+
+    const teamKnowledgeBase = (knowledgeBases.data ?? []).find(
+      (knowledgeBase) =>
+        knowledgeBase.scope === "group" &&
+        knowledgeBase.purpose === "standard" &&
+        knowledgeBase.id === routeSourceId &&
+        Boolean(knowledgeBase.group_id),
+    );
+    if (teamKnowledgeBase?.group_id) {
+      setDocumentDestination("team");
+      setSelectedTeamGroupId(teamKnowledgeBase.group_id);
+      setSelectedTeamKnowledgeBaseId(teamKnowledgeBase.id);
+      setSelectedDocumentId(undefined);
+      lastAppliedRouteSourceIdRef.current = routeSourceId;
+      return;
+    }
+
+    const teamGroup = teamGroups.find((group) => group.id === routeSourceId);
+    if (teamGroup) {
+      const groupSourceSpaces = groupKnowledgeBasesForGroup(
+        knowledgeBases.data ?? [],
+        teamGroup.id,
+      );
+      setDocumentDestination("team");
+      setSelectedTeamGroupId(teamGroup.id);
+      setSelectedTeamKnowledgeBaseId(groupSourceSpaces[0]?.id);
+      setSelectedDocumentId(undefined);
+      lastAppliedRouteSourceIdRef.current = routeSourceId;
+    }
+  }, [
+    documentKnowledgeBases,
+    groups.isLoading,
+    isKnowledgeBaseSelectionLocked,
+    knowledgeBases.data,
+    knowledgeBases.isLoading,
+    routeSourceId,
+    teamGroups,
+  ]);
 
   function updateQueueItem(
     localId: string,
@@ -612,7 +675,7 @@ export function DocumentsSurface() {
 
   async function publishDocumentToTeam(documentId: string) {
     if (
-      documentDestination !== "team" ||
+      effectiveDocumentDestination !== "team" ||
       !activeTeamGroupId ||
       !activeTeamKnowledgeBaseId
     ) {
@@ -688,7 +751,7 @@ export function DocumentsSurface() {
           error: undefined,
         });
         const uploadKnowledgeBaseId =
-          documentDestination === "team"
+          effectiveDocumentDestination === "team"
             ? (await myAgentsAPI.knowledgeBases.ensureTeamUploadStaging()).id
             : personalWriteKnowledgeBaseId;
         if (!uploadKnowledgeBaseId) {
@@ -702,7 +765,7 @@ export function DocumentsSurface() {
           },
         );
         documentId = uploaded.id;
-        if (documentDestination === "personal") {
+        if (effectiveDocumentDestination === "personal") {
           setSelectedDocumentId(uploaded.id);
         }
         updateQueueItem(item.localId, {
@@ -710,12 +773,12 @@ export function DocumentsSurface() {
           status: "uploaded",
           progressPercent: 0,
         });
-        if (documentDestination === "personal") {
+        if (effectiveDocumentDestination === "personal") {
           await refreshDocumentQueries(uploaded.id, uploadKnowledgeBaseId);
         }
       }
 
-      if (documentDestination === "team") {
+      if (effectiveDocumentDestination === "team") {
         updateQueueItem(item.localId, {
           status: "publishing",
           progressPercent: 0,
@@ -808,6 +871,37 @@ export function DocumentsSurface() {
     }
   }
 
+  async function handleCreateSourceSpace(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    if (!createSourceSpacePayload || isCreateSourceSpaceDisabled) return;
+
+    try {
+      const created = await createKnowledgeBase.mutateAsync(
+        createSourceSpacePayload,
+      );
+      setSourceSpaceName("");
+      setSelectedDocumentId(undefined);
+      if (created.scope === "group") {
+        setDocumentDestination("team");
+        setSelectedTeamGroupId(created.group_id ?? undefined);
+        setSelectedTeamKnowledgeBaseId(created.id);
+        setOptimisticSourceId(created.id);
+        setIsCreateSourceSpaceDialogOpen(false);
+        router.push(knowledgeSourceHref(created.id), { scroll: false });
+        return;
+      }
+      setDocumentDestination("personal");
+      setSelectedKnowledgeBaseId(created.id);
+      setOptimisticSourceId(created.id);
+      setIsCreateSourceSpaceDialogOpen(false);
+      router.push(knowledgeSourceHref(created.id), { scroll: false });
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
+  }
+
   async function handleProcessUploadQueue() {
     const processableItems = uploadQueue.filter(
       (item) =>
@@ -826,7 +920,10 @@ export function DocumentsSurface() {
     setIsProcessingQueue(true);
     setUploadAnnouncement(localization.documents.uploadStartedAnnouncement);
     let nextIndex = 0;
-    const workerCount = Math.min(UPLOAD_CONCURRENCY, processableItems.length);
+    const workerCount = Math.min(
+      documentUploadConcurrencyFromHealth(health.data),
+      processableItems.length,
+    );
 
     async function runWorker() {
       while (nextIndex < processableItems.length) {
@@ -848,13 +945,13 @@ export function DocumentsSurface() {
     try {
       if (!hasActiveKnowledgeBase) return;
       const created =
-        documentDestination === "team"
+        effectiveDocumentDestination === "team"
           ? await myAgentsAPI.documents.createInKnowledgeBase(
               (await myAgentsAPI.knowledgeBases.ensureTeamUploadStaging()).id,
               { title, content },
             )
           : await createDocument.mutateAsync({ title, content });
-      if (documentDestination === "team") {
+      if (effectiveDocumentDestination === "team") {
         const publishResult = await publishDocumentToTeam(created.id);
         setUploadAnnouncement(
           publishResult.status === "approved"
@@ -871,6 +968,7 @@ export function DocumentsSurface() {
       }
       setTitle("");
       setContent("");
+      setIsTextSourceDialogOpen(false);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -897,6 +995,7 @@ export function DocumentsSurface() {
       await deleteDocument.mutateAsync();
       await refreshDocumentQueries();
       setSelectedDocumentId(nextDocumentId);
+      setSourceActionsDialog(undefined);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -920,211 +1019,864 @@ export function DocumentsSurface() {
     }
   }
 
-  return (
-    <PageCard
-      title={localization.documents.title}
-      description={localization.documents.description}
-    >
-      <div className="responsive-panel">
-        <div className="responsive-panel-grid" data-layout="form-aside">
-          <div className="grid gap-4">
-            <OnboardingTarget id="documents.knowledge-destination">
-              <section className="cal-card grid gap-3 rounded-xl p-4">
-                <div>
-                  <h2 className="font-semibold">
-                    {localization.documents.knowledgeBaseTitle}
-                  </h2>
-                  <p className="mt-1 text-sm leading-6 text-cal-muted">
-                    {localization.documents.knowledgeBaseHint}
-                  </p>
-                </div>
-                <Field label={localization.documents.destinationLabel}>
-                  <select
-                    className={selectClassName}
-                    value={documentDestination}
-                    onChange={(event) => {
-                      setDocumentDestination(
-                        event.target.value as DocumentDestination,
-                      );
-                      setSelectedDocumentId(undefined);
-                    }}
-                    disabled={isKnowledgeBaseSelectionLocked}
-                  >
-                    <option value="personal">
-                      {localization.documents.destinationPersonalOption}
-                    </option>
-                    <option value="team">
-                      {localization.documents.destinationTeamOption}
-                    </option>
-                  </select>
-                </Field>
-                {documentDestination === "team" ? (
-                  <div className="grid gap-3 rounded-xl border border-cal-hairline bg-cal-canvas p-3">
-                    <Field label={localization.documents.teamGroupLabel}>
-                      <select
-                        className={selectClassName}
-                        value={activeTeamGroupId ?? ""}
-                        onChange={(event) => {
-                          setSelectedTeamGroupId(
-                            event.target.value || undefined,
-                          );
-                          setSelectedTeamKnowledgeBaseId(undefined);
-                          setSelectedDocumentId(undefined);
-                        }}
-                        disabled={
-                          groups.isLoading || isKnowledgeBaseSelectionLocked
+  function openSourceActionsDialog(documentId: string) {
+    setSelectedDocumentId(documentId);
+    setPermissionUserId("");
+    patchPermission.reset();
+    deleteDocument.reset();
+    setSourceActionsDialog({ documentId });
+  }
+
+  function handleSourceActionsDialogOpenChange(open: boolean) {
+    if (open) return;
+    setSourceActionsDialog(undefined);
+    setPermissionUserId("");
+    patchPermission.reset();
+    deleteDocument.reset();
+  }
+
+  function renderSourceSpaceCreateForm({
+    description,
+    title,
+  }: {
+    description: string;
+    title: string;
+  }) {
+    return (
+      <form
+        onSubmit={handleCreateSourceSpace}
+        className="grid gap-3 rounded-xl border border-cal-hairline bg-cal-canvas p-3"
+      >
+        <div>
+          <h3 className="font-semibold text-cal-ink">{title}</h3>
+          <p className="mt-1 text-sm leading-6 text-cal-muted">{description}</p>
+        </div>
+        <Field label={localization.knowledge.nameLabel}>
+          <input
+            className={inputClassName}
+            value={sourceSpaceName}
+            onChange={(event) => setSourceSpaceName(event.target.value)}
+            required
+          />
+        </Field>
+        <div className="grid gap-3 md:grid-cols-2 md:items-start">
+          <Field
+            className="min-w-0"
+            label={localization.knowledge.scopeLabel}
+            hint={localization.knowledge.scopeHint}
+          >
+            <select
+              className={selectClassName}
+              value={sourceSpaceScope}
+              onChange={(event) => {
+                const nextScope = event.target
+                  .value as KnowledgeBaseCreationScope;
+                setSourceSpaceScope(nextScope);
+                if (nextScope === "personal") setSourceSpaceGroupId("");
+              }}
+              disabled={isKnowledgeBaseSelectionLocked}
+            >
+              <option value="personal">
+                {localization.knowledge.scopePersonalOption}
+              </option>
+              <option value="group">
+                {localization.knowledge.scopeGroupOption}
+              </option>
+            </select>
+          </Field>
+          <Field
+            className="min-w-0"
+            label={localization.knowledge.groupLabel}
+            hint={
+              isCreatingTeamSourceSpace
+                ? localization.knowledge.groupHint
+                : localization.knowledge.groupDisabledHint
+            }
+          >
+            <select
+              aria-invalid={
+                isCreatingTeamSourceSpace && !sourceSpaceGroupId
+                  ? true
+                  : undefined
+              }
+              className={selectClassName}
+              disabled={
+                !isCreatingTeamSourceSpace ||
+                groups.isLoading ||
+                isKnowledgeBaseSelectionLocked
+              }
+              required={isCreatingTeamSourceSpace}
+              value={sourceSpaceGroupId}
+              onChange={(event) => setSourceSpaceGroupId(event.target.value)}
+            >
+              <option value="">
+                {groups.isLoading
+                  ? localization.knowledge.loadingGroupsOption
+                  : localization.knowledge.groupPlaceholder}
+              </option>
+              {sourceSpaceGroupOptions.map((group) => (
+                <option key={group.id} value={group.id}>
+                  {group.name} · {localization.groups.roles[group.role]}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        <p className="rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-xs leading-5 text-cal-muted">
+          {localization.knowledge.scopeBoundaryNote}
+        </p>
+        {isCreatingTeamSourceSpace &&
+        !groups.isLoading &&
+        sourceSpaceGroupOptions.length === 0 ? (
+          <EmptyState
+            title={localization.knowledge.noGroupsTitle}
+            description={localization.knowledge.noGroupsDescription}
+          />
+        ) : null}
+        {createKnowledgeBase.error ? (
+          <ErrorState error={createKnowledgeBase.error} />
+        ) : null}
+        <Button type="submit" disabled={isCreateSourceSpaceDisabled}>
+          {isCreatingTeamSourceSpace
+            ? localization.knowledge.createGroupButton
+            : localization.knowledge.createPersonalButton}
+        </Button>
+      </form>
+    );
+  }
+
+  function selectPersonalSourceSpace(knowledgeBaseId: string) {
+    if (isKnowledgeBaseSelectionLocked) return;
+    setOptimisticSourceId(knowledgeBaseId);
+    setDocumentDestination("personal");
+    setSelectedKnowledgeBaseId(knowledgeBaseId);
+    setSelectedDocumentId(undefined);
+    setIsSourceSpaceBrowserOpen(false);
+  }
+
+  function selectTeamGroup(groupId: string) {
+    if (isKnowledgeBaseSelectionLocked) return;
+    const groupSourceSpaces = groupKnowledgeBasesForGroup(
+      knowledgeBases.data ?? [],
+      groupId,
+    );
+    setOptimisticSourceId(groupId);
+    setDocumentDestination("team");
+    setSelectedTeamGroupId(groupId);
+    setSelectedTeamKnowledgeBaseId(groupSourceSpaces[0]?.id);
+    setSelectedDocumentId(undefined);
+    setIsSourceSpaceBrowserOpen(false);
+  }
+
+  function selectTeamSourceSpace(groupId: string, knowledgeBaseId: string) {
+    if (isKnowledgeBaseSelectionLocked) return;
+    setOptimisticSourceId(knowledgeBaseId);
+    setDocumentDestination("team");
+    setSelectedTeamGroupId(groupId);
+    setSelectedTeamKnowledgeBaseId(knowledgeBaseId);
+    setSelectedDocumentId(undefined);
+    setIsSourceSpaceBrowserOpen(false);
+  }
+
+  function renderSourceSpaceButton({
+    knowledgeBase,
+    active,
+    onSelect,
+  }: {
+    knowledgeBase: KnowledgeBase;
+    active: boolean;
+    onSelect: () => void;
+  }) {
+    return (
+      <Link
+        key={knowledgeBase.id}
+        href={knowledgeSourceHref(knowledgeBase.id)}
+        scroll={false}
+        aria-current={active ? "page" : undefined}
+        aria-disabled={isKnowledgeBaseSelectionLocked ? true : undefined}
+        onClick={(event) => {
+          if (isKnowledgeBaseSelectionLocked) {
+            event.preventDefault();
+            return;
+          }
+          onSelect();
+        }}
+        className={cn(
+          "group flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors aria-disabled:pointer-events-none aria-disabled:opacity-60",
+          active
+            ? "bg-cal-primary text-white shadow-[0_10px_24px_rgb(20_33_61/0.16)]"
+            : "text-cal-ink hover:bg-cal-surface-soft",
+        )}
+      >
+        <FolderIcon className="size-4 shrink-0" />
+        <span className="min-w-0 flex-1 truncate font-medium">
+          {knowledgeBase.name}
+        </span>
+      </Link>
+    );
+  }
+
+  function renderSourceSpaceTree() {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col bg-white">
+        <div className="shrink-0 border-b border-cal-hairline px-4 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-semibold text-cal-ink">
+                {localization.documents.sourceSpacesTitle}
+              </h2>
+              <p className="mt-1 text-xs leading-5 text-cal-muted">
+                {localization.documents.sourceSpacesDescription.replace(
+                  "{count}",
+                  String(sourceSpaceCount),
+                )}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label={localization.documents.addSourceSpaceAction}
+              onClick={() => setIsCreateSourceSpaceDialogOpen(true)}
+            >
+              <PlusIcon />
+            </Button>
+          </div>
+          {isKnowledgeBaseSelectionLocked ? (
+            <p className="mt-3 rounded-lg bg-cal-surface-soft px-3 py-2 text-xs leading-5 text-cal-muted">
+              {localization.documents.knowledgeBaseLockedHint}
+            </p>
+          ) : null}
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
+          {knowledgeBases.isLoading ? (
+            <p className="px-3 text-sm text-cal-muted">
+              {localization.common.loading}
+            </p>
+          ) : null}
+          {knowledgeBases.error ? (
+            <ErrorState error={knowledgeBases.error} />
+          ) : null}
+          {!knowledgeBases.isLoading && sourceSpaceCount === 0 ? (
+            <div className="px-1">
+              <EmptyState
+                title={localization.documents.noKnowledgeBaseTitle}
+                description={localization.documents.noKnowledgeBaseDescription}
+              />
+              <Button
+                type="button"
+                className="mt-3 w-full"
+                onClick={() => setIsCreateSourceSpaceDialogOpen(true)}
+              >
+                {localization.documents.addSourceSpaceAction}
+              </Button>
+            </div>
+          ) : null}
+          {documentKnowledgeBases.length > 0 ? (
+            <section className="grid gap-1">
+              <h3 className="px-3 pb-1 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+                {localization.documents.personalSourceSpacesTitle}
+              </h3>
+              {documentKnowledgeBases.map((knowledgeBase) =>
+                renderSourceSpaceButton({
+                  knowledgeBase,
+                  active:
+                    effectiveDocumentDestination === "personal" &&
+                    knowledgeBase.id === activeKnowledgeBaseId,
+                  onSelect: () => selectPersonalSourceSpace(knowledgeBase.id),
+                }),
+              )}
+            </section>
+          ) : null}
+          {teamGroups.length > 0 ? (
+            <section className="mt-5 grid gap-3">
+              <h3 className="px-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+                {localization.documents.teamSourceSpacesTitle}
+              </h3>
+              {teamGroups.map((group) => {
+                const groupSourceSpaces = groupKnowledgeBasesForGroup(
+                  knowledgeBases.data ?? [],
+                  group.id,
+                );
+
+                return (
+                  <div key={group.id} className="grid gap-1">
+                    <Link
+                      href={knowledgeSourceHref(group.id)}
+                      scroll={false}
+                      aria-current={
+                        effectiveDocumentDestination === "team" &&
+                        activeTeamGroupId === group.id
+                          ? "page"
+                          : undefined
+                      }
+                      aria-disabled={
+                        isKnowledgeBaseSelectionLocked ? true : undefined
+                      }
+                      onClick={(event) => {
+                        if (isKnowledgeBaseSelectionLocked) {
+                          event.preventDefault();
+                          return;
                         }
-                        required
-                      >
-                        <option value="">
-                          {localization.documents.teamGroupPlaceholder}
-                        </option>
-                        {teamGroups.map((group) => (
-                          <option key={group.id} value={group.id}>
-                            {group.name} ·{" "}
-                            {localization.groups.roles[group.role]}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field
-                      label={localization.documents.teamKnowledgeBaseLabel}
+                        selectTeamGroup(group.id);
+                      }}
+                      className={cn(
+                        "flex min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors aria-disabled:pointer-events-none aria-disabled:opacity-60",
+                        effectiveDocumentDestination === "team" &&
+                          activeTeamGroupId === group.id
+                          ? "bg-cal-surface-soft text-cal-ink"
+                          : "text-cal-muted hover:bg-cal-surface-soft/80 hover:text-cal-ink",
+                      )}
                     >
-                      <select
-                        className={selectClassName}
-                        value={activeTeamKnowledgeBaseId ?? ""}
-                        onChange={(event) =>
-                          setSelectedTeamKnowledgeBaseId(
-                            event.target.value || undefined,
-                          )
-                        }
-                        disabled={
-                          knowledgeBases.isLoading ||
-                          isKnowledgeBaseSelectionLocked
-                        }
-                        required
-                      >
-                        <option value="">
-                          {localization.documents.teamKnowledgeBasePlaceholder}
-                        </option>
-                        {activeGroupKnowledgeBases.map((knowledgeBase) => (
-                          <option
-                            key={knowledgeBase.id}
-                            value={knowledgeBase.id}
-                          >
-                            {knowledgeBase.name}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <p className="text-xs leading-5 text-cal-muted">
-                      {canAutoApproveTeamUpload
-                        ? localization.documents.teamUploadAutoApproveHint
-                        : localization.documents.teamUploadApprovalHint}
-                    </p>
-                    {groups.error ? <ErrorState error={groups.error} /> : null}
-                    {!groups.isLoading && teamGroups.length === 0 ? (
-                      <EmptyState
-                        title={localization.documents.noTeamTitle}
-                        description={localization.documents.noTeamDescription}
-                      />
-                    ) : null}
-                    {!knowledgeBases.isLoading &&
-                    activeTeamGroupId &&
-                    activeGroupKnowledgeBases.length === 0 ? (
-                      <EmptyState
-                        title={localization.documents.noTeamKnowledgeBaseTitle}
-                        description={
-                          localization.documents.noTeamKnowledgeBaseDescription
-                        }
+                      <NetworkIcon className="size-3.5 shrink-0" />
+                      <span className="truncate">{group.name}</span>
+                      <span className="shrink-0">
+                        · {localization.groups.roles[group.role]}
+                      </span>
+                    </Link>
+                    {groupSourceSpaces.length > 0 ? (
+                      groupSourceSpaces.map((knowledgeBase) =>
+                        renderSourceSpaceButton({
+                          knowledgeBase,
+                          active:
+                            effectiveDocumentDestination === "team" &&
+                            knowledgeBase.id === activeTeamKnowledgeBaseId,
+                          onSelect: () =>
+                            selectTeamSourceSpace(group.id, knowledgeBase.id),
+                        }),
+                      )
+                    ) : (
+                      <p className="px-3 py-2 text-xs leading-5 text-cal-muted">
+                        {localization.documents.noTeamKnowledgeBaseDescription}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </section>
+          ) : null}
+          {groups.error ? <ErrorState error={groups.error} /> : null}
+        </div>
+      </div>
+    );
+  }
+
+  function renderDocumentsTable() {
+    return (
+      <Table className="min-w-[56rem]">
+        <TableHeader>
+          <TableRow className="border-cal-hairline bg-cal-surface-soft hover:bg-cal-surface-soft">
+            <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+              {localization.documents.sourceTableSource}
+            </TableHead>
+            <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+              {localization.documents.sourceTableType}
+            </TableHead>
+            <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+              {localization.documents.sourceTableStatus}
+            </TableHead>
+            <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+              {localization.documents.sourceTableDetails}
+            </TableHead>
+            <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+              {localization.documents.sourceTableActions}
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {documents.isLoading ? (
+            <TableRow className="hover:bg-transparent">
+              <TableCell
+                colSpan={5}
+                className="px-4 py-14 text-center text-sm text-cal-muted"
+              >
+                {localization.common.loading}
+              </TableCell>
+            </TableRow>
+          ) : null}
+          {documents.error ? (
+            <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={5} className="px-4 py-6 whitespace-normal">
+                <ErrorState error={documents.error} />
+              </TableCell>
+            </TableRow>
+          ) : null}
+          {!documents.isLoading &&
+          !documents.error &&
+          (documents.data?.length ?? 0) === 0 ? (
+            <TableRow className="hover:bg-transparent">
+              <TableCell colSpan={5} className="px-4 py-12 whitespace-normal">
+                <EmptyState
+                  title={localization.documents.empty}
+                  description={localization.common.emptyListDescription}
+                />
+              </TableCell>
+            </TableRow>
+          ) : null}
+          {documents.data?.map((document) => {
+            const isActive = document.id === activeDocumentId;
+            const isPreparing = activeIngestionDocumentIds.has(document.id);
+
+            return (
+              <TableRow
+                key={document.id}
+                data-state={isActive ? "selected" : undefined}
+                className={cn(
+                  "border-cal-hairline bg-white",
+                  isActive
+                    ? "bg-cal-surface-soft/80 hover:bg-cal-surface-soft"
+                    : "",
+                )}
+              >
+                <TableCell className="px-4 py-4 whitespace-normal">
+                  <button
+                    type="button"
+                    onClick={() => openSourceActionsDialog(document.id)}
+                    className="grid min-w-0 gap-1 text-left"
+                    aria-label={localization.documents.openSourceDetails.replace(
+                      "{title}",
+                      document.title,
+                    )}
+                  >
+                    <span className="break-words text-[15px] font-semibold leading-6 text-cal-ink">
+                      {document.title}
+                    </span>
+                    <span className="break-all text-xs text-cal-muted">
+                      {document.id}
+                    </span>
+                  </button>
+                </TableCell>
+                <TableCell className="px-4 py-4 whitespace-normal text-sm text-cal-body">
+                  {documentSourceLabel(document, localization.documents)}
+                </TableCell>
+                <TableCell className="px-4 py-4 whitespace-nowrap">
+                  {isPreparing ? (
+                    <InlineLoadingIndicator
+                      label={localization.documents.ingestionLoading}
+                    />
+                  ) : (
+                    <Pill tone="green">
+                      {localization.documents.sourceReadyStatus}
+                    </Pill>
+                  )}
+                </TableCell>
+                <TableCell className="px-4 py-4 whitespace-normal text-sm text-cal-muted">
+                  {documentMeta(document, localization)}
+                </TableCell>
+                <TableCell className="px-4 py-4 whitespace-normal">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => openSourceActionsDialog(document.id)}
+                    aria-label={localization.documents.sourceRowActionsLabel.replace(
+                      "{title}",
+                      document.title,
+                    )}
+                  >
+                    {localization.documents.sourceRowActions}
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    );
+  }
+
+  function renderSourceActionsDialog() {
+    return (
+      <Dialog
+        open={Boolean(sourceActionsDialog)}
+        onOpenChange={handleSourceActionsDialogOpenChange}
+      >
+        <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {localization.documents.sourceActionsTitle}
+            </DialogTitle>
+            <DialogDescription>
+              {localization.documents.sourceActionsDescription}
+            </DialogDescription>
+          </DialogHeader>
+
+          {activeDocument ? (
+            <div className="grid gap-3 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm">
+              <div>
+                <p className="break-words font-medium text-cal-ink">
+                  {activeDocument.title}
+                </p>
+                <p className="mt-1 break-words text-xs text-cal-muted">
+                  {documentMeta(activeDocument, localization)}
+                </p>
+              </div>
+              <details className="rounded-lg bg-cal-canvas p-2 text-xs text-cal-muted">
+                <summary className="cursor-pointer font-medium text-cal-ink">
+                  {localization.documents.advancedDetails}
+                </summary>
+                <p className="mt-2 break-all font-mono">
+                  ID: {activeDocument.id}
+                </p>
+              </details>
+            </div>
+          ) : (
+            <EmptyState
+              title={localization.documents.noSelectedTitle}
+              description={localization.documents.noSelectedDescription}
+            />
+          )}
+
+          <div className="grid gap-3 rounded-xl border border-cal-hairline bg-cal-canvas p-3">
+            <div>
+              <h3 className="font-semibold text-cal-ink">
+                {localization.documents.prepareRecoveryTitle}
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-cal-muted">
+                {localization.documents.prepareRecoveryHint}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => ingest.mutate()}
+              disabled={
+                !activeDocumentId ||
+                !displayKnowledgeBaseId ||
+                ingest.isPending ||
+                activeDocumentHasIngestion
+              }
+            >
+              {activeDocumentHasIngestion
+                ? localization.documents.ingestionLoading
+                : localization.documents.runIngest}
+            </Button>
+            {ingest.error ? <ErrorState error={ingest.error} /> : null}
+          </div>
+
+          <form onSubmit={handlePatchPermission} className="grid gap-3">
+            <div>
+              <h3 className="font-semibold text-cal-ink">
+                {localization.documents.permissionAdvancedTitle}
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-cal-muted">
+                {localization.documents.permissionHint}
+              </p>
+            </div>
+            <Field label={localization.documents.permissionLabel}>
+              <input
+                className={inputClassName}
+                value={permissionUserId}
+                onChange={(event) => setPermissionUserId(event.target.value)}
+              />
+            </Field>
+            <Button
+              type="submit"
+              variant="outline"
+              disabled={
+                !activeDocumentId ||
+                !permissionUserId.trim() ||
+                patchPermission.isPending
+              }
+            >
+              {localization.documents.patchPermission}
+            </Button>
+          </form>
+          {patchPermission.error ? (
+            <ErrorState error={patchPermission.error} />
+          ) : null}
+
+          <div className="grid gap-3 rounded-xl border border-cal-error/20 bg-cal-error/5 p-3">
+            <div>
+              <h3 className="font-semibold text-cal-error">
+                {localization.documents.deleteTitle}
+              </h3>
+              <p className="mt-1 text-sm leading-6 text-cal-muted">
+                {localization.documents.deleteDescription}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDeleteDocument}
+              disabled={!activeDocumentId || deleteDocument.isPending}
+            >
+              {localization.documents.deleteButton}
+            </Button>
+            {deleteDocument.error ? (
+              <ErrorState error={deleteDocument.error} />
+            ) : null}
+          </div>
+
+          <details className="border-t border-cal-hairline pt-4">
+            <summary className="cursor-pointer font-semibold text-cal-ink">
+              {localization.documents.extractionRuns}
+            </summary>
+            <div className="mt-3 grid gap-2">
+              {extractionRuns.data?.length === 0 ? (
+                <EmptyState
+                  title={localization.documents.noExtractionRunsTitle}
+                  description={
+                    localization.documents.noExtractionRunsDescription
+                  }
+                />
+              ) : null}
+              {extractionRuns.data?.map((run) => (
+                <div
+                  key={run.id}
+                  className="rounded-lg bg-cal-surface-soft p-3 text-sm"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <Pill tone={extractionRunTone(run.status)}>
+                      {run.status}
+                    </Pill>
+                    {isActiveExtractionRunStatus(run.status) ? (
+                      <InlineLoadingIndicator
+                        label={localization.documents.ingestionLoading}
                       />
                     ) : null}
                   </div>
-                ) : (
-                  <Field label={localization.documents.knowledgeBaseLabel}>
-                    <select
-                      className={selectClassName}
-                      value={activeKnowledgeBaseId ?? ""}
-                      onChange={(event) => {
-                        setSelectedKnowledgeBaseId(
-                          event.target.value || undefined,
-                        );
-                        setSelectedDocumentId(undefined);
-                      }}
-                      disabled={
-                        knowledgeBases.isLoading ||
-                        isKnowledgeBaseSelectionLocked
-                      }
-                      required
-                    >
-                      <option value="">
-                        {localization.documents.knowledgeBasePlaceholder}
-                      </option>
-                      {documentKnowledgeBases.map((knowledgeBase) => (
-                        <option key={knowledgeBase.id} value={knowledgeBase.id}>
-                          {knowledgeBase.name}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                )}
-                {isKnowledgeBaseSelectionLocked ? (
-                  <p className="text-xs leading-5 text-cal-muted">
-                    {localization.documents.knowledgeBaseLockedHint}
+                  <p className="mt-2 break-all font-mono text-xs text-cal-muted">
+                    ID: {run.id}
                   </p>
-                ) : null}
-                {knowledgeBases.error ? (
-                  <ErrorState error={knowledgeBases.error} />
-                ) : null}
-                {!knowledgeBases.isLoading &&
-                documentKnowledgeBases.length === 0 ? (
-                  <EmptyState
-                    title={localization.documents.noKnowledgeBaseTitle}
-                    description={
-                      localization.documents.noKnowledgeBaseDescription
-                    }
-                    action={
-                      <Button
-                        nativeButton={false}
-                        render={<Link href="/knowledge" />}
-                        size="sm"
-                      >
-                        {localization.documents.createKnowledgeBaseAction}
-                      </Button>
-                    }
-                  />
-                ) : null}
-              </section>
-            </OnboardingTarget>
-            <form
-              onSubmit={handleCreate}
-              className="cal-card grid gap-3 rounded-xl p-4"
+                  <p className="mt-2 text-cal-muted">
+                    {run.chunk_count} {localization.common.chunks} ·{" "}
+                    {run.entity_count} {localization.common.entities} ·{" "}
+                    {run.relationship_count} {localization.common.relationships}
+                  </p>
+                  {run.stage ? (
+                    <p className="mt-1 text-xs text-cal-muted">
+                      {localization.documents.stageLabel}: {run.stage}
+                    </p>
+                  ) : null}
+                  {run.error ? (
+                    <p className="mt-1 text-xs text-cal-error">{run.error}</p>
+                  ) : null}
+                </div>
+              ))}
+            </div>
+          </details>
+
+          <DialogFooter className="sm:justify-end">
+            <DialogClose render={<Button type="button" variant="outline" />}>
+              {localization.common.close}
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  return (
+    <>
+      <PageCard
+        fullWidth
+        title={localization.documents.title}
+        description={localization.documents.description}
+      >
+        <div className="flex min-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-3xl border border-cal-hairline bg-white shadow-[0_18px_60px_rgb(20_22_23/0.08)] lg:grid lg:grid-cols-[20rem_minmax(0,1fr)]">
+          <aside className="hidden min-h-0 border-r border-cal-hairline lg:flex">
+            <OnboardingTarget
+              id="documents.knowledge-destination"
+              className="flex min-h-0 flex-1"
             >
-              <h2 className="font-semibold">
-                {localization.documents.textCreateTitle}
-              </h2>
-              <Field label={localization.documents.titleLabel}>
-                <input
-                  className={inputClassName}
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  required
-                />
-              </Field>
-              <Field
-                label={localization.documents.contentLabel}
-                hint={localization.documents.contentHint}
+              {renderSourceSpaceTree()}
+            </OnboardingTarget>
+          </aside>
+
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <div className="shrink-0 border-b border-cal-hairline bg-cal-canvas/60 px-4 py-4 sm:px-6">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+                    <DatabaseIcon className="size-3.5" />
+                    <span>
+                      {effectiveDocumentDestination === "team"
+                        ? localization.common.scopeGroup
+                        : localization.common.scopePersonal}
+                    </span>
+                  </div>
+                  <h2 className="mt-2 truncate text-2xl font-semibold tracking-[-0.03em] text-cal-ink">
+                    {activeSourceSpace?.name ??
+                      localization.documents.noSelectedSourceSpaceTitle}
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-cal-muted">
+                    {localization.documents.sourceCountLabel
+                      .replace("{count}", String(documents.data?.length ?? 0))
+                      .replace("{ready}", String(readyDocumentCount))}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="lg:hidden"
+                    onClick={() => setIsSourceSpaceBrowserOpen(true)}
+                  >
+                    <ListTreeIcon />
+                    {localization.documents.browseSourceSpacesAction}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCreateSourceSpaceDialogOpen(true)}
+                  >
+                    <PlusIcon />
+                    {localization.documents.addSourceSpaceAction}
+                  </Button>
+                  <OnboardingTarget id="documents.upload-action">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsFileUploadDialogOpen(true)}
+                      disabled={!hasActiveKnowledgeBase}
+                    >
+                      <UploadIcon />
+                      {localization.documents.uploadFilesAction}
+                    </Button>
+                  </OnboardingTarget>
+                  <Button
+                    type="button"
+                    onClick={() => setIsTextSourceDialogOpen(true)}
+                    disabled={!hasActiveKnowledgeBase}
+                  >
+                    <FileTextIcon />
+                    {localization.documents.addTextSourceAction}
+                  </Button>
+                </div>
+              </div>
+              {(documents.data?.length ?? 0) > 0 ? (
+                <div className="mt-4 flex flex-col gap-3 rounded-xl border border-cal-hairline bg-white p-4 text-sm text-cal-muted sm:flex-row sm:items-center sm:justify-between">
+                  <p className="leading-6">
+                    {localization.documents.askSourcesHint}
+                  </p>
+                  <Button
+                    nativeButton={false}
+                    render={<Link href="/chat" />}
+                    size="sm"
+                  >
+                    {localization.documents.askSourcesAction}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="grid min-h-0 flex-1 gap-4 overflow-auto bg-cal-canvas/40 p-4 xl:p-6">
+              <section className="flex min-h-[28rem] min-w-0 flex-col rounded-2xl border border-cal-hairline bg-white shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
+                <div className="flex shrink-0 flex-col gap-3 border-b border-cal-hairline p-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <h2 className="font-semibold text-cal-ink">
+                      {localization.documents.sourceTableTitle}
+                    </h2>
+                    <p className="mt-1 text-sm leading-6 text-cal-muted">
+                      {localization.documents.sourceTableDescription}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2 rounded-xl border border-cal-hairline bg-cal-canvas px-3 py-2 text-sm text-cal-muted">
+                    <SearchIcon className="size-4" />
+                    <span>{localization.documents.sourceTableSearchHint}</span>
+                  </div>
+                </div>
+                <div className="min-h-0 flex-1 overflow-auto">
+                  {renderDocumentsTable()}
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </PageCard>
+
+      {renderSourceActionsDialog()}
+
+      <Sheet
+        open={isSourceSpaceBrowserOpen}
+        onOpenChange={setIsSourceSpaceBrowserOpen}
+      >
+        <SheetContent
+          side="left"
+          showCloseButton={false}
+          className="w-full max-w-sm gap-0 border-r border-cal-hairline bg-white p-0"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>{localization.documents.sourceSpacesTitle}</SheetTitle>
+            <SheetDescription>
+              {localization.documents.sourceSpacesSheetDescription}
+            </SheetDescription>
+          </SheetHeader>
+          {renderSourceSpaceTree()}
+        </SheetContent>
+      </Sheet>
+
+      <Dialog
+        open={isCreateSourceSpaceDialogOpen}
+        onOpenChange={setIsCreateSourceSpaceDialogOpen}
+      >
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              {localization.documents.addSourceSpaceAction}
+            </DialogTitle>
+            <DialogDescription>
+              {localization.documents.createSourceSpaceDialogDescription}
+            </DialogDescription>
+          </DialogHeader>
+          {renderSourceSpaceCreateForm({
+            title: shouldShowFirstSourceSpaceForm
+              ? localization.documents.createFirstSourceSpaceTitle
+              : localization.documents.createSourceSpaceTitle,
+            description: shouldShowFirstSourceSpaceForm
+              ? localization.documents.createFirstSourceSpaceDescription
+              : localization.documents.createSourceSpaceDescription,
+          })}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isTextSourceDialogOpen}
+        onOpenChange={setIsTextSourceDialogOpen}
+      >
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{localization.documents.textCreateTitle}</DialogTitle>
+            <DialogDescription>
+              {localization.documents.contentHint}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreate} className="grid gap-4">
+            <Field label={localization.documents.titleLabel}>
+              <input
+                className={inputClassName}
+                value={title}
+                onChange={(event) => setTitle(event.target.value)}
+                required
+              />
+            </Field>
+            <Field
+              label={localization.documents.contentLabel}
+              hint={localization.documents.contentHint}
+            >
+              <textarea
+                className={`${inputClassName} min-h-48`}
+                value={content}
+                onChange={(event) => setContent(event.target.value)}
+              />
+            </Field>
+            {effectiveDocumentDestination === "personal" &&
+            createDocument.error ? (
+              <ErrorState error={createDocument.error} />
+            ) : null}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsTextSourceDialogOpen(false)}
               >
-                <textarea
-                  className={`${inputClassName} min-h-40`}
-                  value={content}
-                  onChange={(event) => setContent(event.target.value)}
-                />
-              </Field>
+                {localization.common.cancel}
+              </Button>
               <Button
                 type="submit"
                 disabled={
-                  (documentDestination === "personal" &&
+                  (effectiveDocumentDestination === "personal" &&
                     createDocument.isPending) ||
                   !title.trim() ||
                   !hasActiveKnowledgeBase
@@ -1132,120 +1884,134 @@ export function DocumentsSurface() {
               >
                 {localization.documents.createButton}
               </Button>
-              {documentDestination === "personal" && createDocument.error ? (
-                <ErrorState error={createDocument.error} />
-              ) : null}
-            </form>
-            <section className="cal-card grid gap-3 rounded-xl p-4">
-              <div>
-                <h2 className="font-semibold">
-                  {localization.documents.fileUploadTitle}
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-cal-muted">
-                  {localization.documents.fileUploadHint}
-                </p>
-              </div>
-              <OnboardingTarget id="documents.upload-dropzone">
-                <fieldset
-                  data-testid="document-upload-dropzone"
-                  onDragEnter={handleUploadDragEnter}
-                  onDragOver={handleUploadDragOver}
-                  onDragLeave={handleUploadDragLeave}
-                  onDrop={handleUploadDrop}
-                  aria-disabled={!hasActiveKnowledgeBase}
-                  className={`grid gap-3 rounded-xl border border-dashed p-4 transition-colors ${
-                    isUploadDropActive
-                      ? "border-km-accent bg-km-accent/10"
-                      : "border-cal-hairline bg-cal-canvas"
-                  } ${hasActiveKnowledgeBase ? "" : "cursor-not-allowed opacity-60"}`}
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={isFileUploadDialogOpen}
+        onOpenChange={setIsFileUploadDialogOpen}
+      >
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>{localization.documents.fileUploadTitle}</DialogTitle>
+            <DialogDescription>
+              {localization.documents.fileUploadHint}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4">
+            <OnboardingTarget id="documents.upload-dropzone">
+              <fieldset
+                data-testid="document-upload-dropzone"
+                onDragEnter={handleUploadDragEnter}
+                onDragOver={handleUploadDragOver}
+                onDragLeave={handleUploadDragLeave}
+                onDrop={handleUploadDrop}
+                aria-disabled={!hasActiveKnowledgeBase}
+                className={cn(
+                  "grid gap-3 rounded-xl border border-dashed p-4 transition-colors",
+                  isUploadDropActive
+                    ? "border-km-accent bg-km-accent/10"
+                    : "border-cal-hairline bg-cal-canvas",
+                  !hasActiveKnowledgeBase && "cursor-not-allowed opacity-60",
+                )}
+              >
+                <legend className="sr-only">
+                  {localization.documents.dropTitle}
+                </legend>
+                <div className="grid gap-1 text-sm leading-6">
+                  <p className="font-semibold text-cal-ink">
+                    {isUploadDropActive
+                      ? localization.documents.dropActiveTitle
+                      : localization.documents.dropTitle}
+                  </p>
+                  <p className="text-cal-muted">
+                    {localization.documents.dropDescription}
+                  </p>
+                </div>
+                <Field
+                  label={localization.documents.fileLabel}
+                  hint={localization.documents.multiFileUploadHint.replace(
+                    "{maxSize}",
+                    formatFileSize(MAX_UPLOAD_BYTES),
+                  )}
                 >
-                  <legend className="sr-only">
-                    {localization.documents.dropTitle}
-                  </legend>
-                  <div className="grid gap-1 text-sm leading-6">
-                    <p className="font-semibold text-cal-ink">
-                      {isUploadDropActive
-                        ? localization.documents.dropActiveTitle
-                        : localization.documents.dropTitle}
-                    </p>
-                    <p className="text-cal-muted">
-                      {localization.documents.dropDescription}
-                    </p>
+                  <input
+                    className={inputClassName}
+                    type="file"
+                    accept={UPLOAD_ACCEPT}
+                    multiple
+                    onChange={handleFileSelection}
+                    disabled={!hasActiveKnowledgeBase}
+                  />
+                </Field>
+              </fieldset>
+            </OnboardingTarget>
+            <p className="sr-only" aria-live="polite">
+              {uploadAnnouncement}
+            </p>
+            {uploadQueue.length > 0 ? (
+              <div className="grid gap-3" data-testid="upload-queue">
+                <div className="grid gap-3 rounded-xl bg-cal-surface-soft p-3 text-sm text-cal-muted">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <span>{queueSummary}</span>
+                    <span>
+                      {failedQueueCount > 0
+                        ? localization.documents.uploadQueueFailedSummary.replace(
+                            "{count}",
+                            String(failedQueueCount),
+                          )
+                        : localization.documents.uploadQueueReadySummary.replace(
+                            "{count}",
+                            String(pendingQueueCount),
+                          )}
+                    </span>
                   </div>
-                  <Field
-                    label={localization.documents.fileLabel}
-                    hint={localization.documents.multiFileUploadHint.replace(
-                      "{maxSize}",
-                      formatFileSize(MAX_UPLOAD_BYTES),
+                  <div className="flex flex-wrap gap-2">
+                    {Object.entries(queueStatusCounts).map(([status, count]) =>
+                      count > 0 ? (
+                        <Pill
+                          key={status}
+                          tone={uploadStatusTone(status as UploadQueueStatus)}
+                        >
+                          {
+                            localization.documents.uploadStatusLabels[
+                              status as UploadQueueStatus
+                            ]
+                          }
+                          : {count}
+                        </Pill>
+                      ) : null,
                     )}
-                  >
-                    <input
-                      className={inputClassName}
-                      type="file"
-                      accept={UPLOAD_ACCEPT}
-                      multiple
-                      onChange={handleFileSelection}
-                      disabled={!hasActiveKnowledgeBase}
-                    />
-                  </Field>
-                </fieldset>
-              </OnboardingTarget>
-              <p className="sr-only" aria-live="polite">
-                {uploadAnnouncement}
-              </p>
-              {uploadQueue.length > 0 ? (
-                <div className="grid gap-3" data-testid="upload-queue">
-                  <div className="grid gap-3 rounded-xl bg-cal-surface-soft p-3 text-sm text-cal-muted">
-                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                      <span>{queueSummary}</span>
-                      <span>
-                        {failedQueueCount > 0
-                          ? localization.documents.uploadQueueFailedSummary.replace(
-                              "{count}",
-                              String(failedQueueCount),
-                            )
-                          : localization.documents.uploadQueueReadySummary.replace(
-                              "{count}",
-                              String(pendingQueueCount),
-                            )}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {Object.entries(queueStatusCounts).map(
-                        ([status, count]) =>
-                          count > 0 ? (
-                            <Pill
-                              key={status}
-                              tone={uploadStatusTone(
-                                status as UploadQueueStatus,
-                              )}
-                            >
-                              {
-                                localization.documents.uploadStatusLabels[
-                                  status as UploadQueueStatus
-                                ]
-                              }
-                              : {count}
-                            </Pill>
-                          ) : null,
-                      )}
-                    </div>
-                  </div>
-                  <div className="grid gap-2">
-                    {uploadQueue.map((item) => (
-                      <UploadQueueRow
-                        key={item.localId}
-                        item={item}
-                        localization={localization.documents}
-                        onTitleChange={handleQueueTitleChange}
-                        onRemove={handleRemoveQueueItem}
-                        onRetry={handleRetryQueueItem}
-                        disabled={isProcessingQueue}
-                      />
-                    ))}
                   </div>
                 </div>
-              ) : null}
+                <div className="grid gap-2">
+                  {uploadQueue.map((item) => (
+                    <UploadQueueRow
+                      key={item.localId}
+                      item={item}
+                      localization={localization.documents}
+                      onTitleChange={handleQueueTitleChange}
+                      onRemove={handleRemoveQueueItem}
+                      onRetry={handleRetryQueueItem}
+                      disabled={isProcessingQueue}
+                    />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            <p className="text-xs leading-5 text-cal-muted">
+              {localization.documents.guestUploadLimitHint}
+            </p>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsFileUploadDialogOpen(false)}
+              >
+                {localization.common.close}
+              </Button>
               <Button
                 type="button"
                 onClick={handleProcessUploadQueue}
@@ -1259,204 +2025,11 @@ export function DocumentsSurface() {
                   ? localization.documents.uploadProcessingButton
                   : localization.documents.uploadAndIngestButton}
               </Button>
-              <p className="text-xs leading-5 text-cal-muted">
-                {localization.documents.guestUploadLimitHint}
-              </p>
-            </section>
+            </DialogFooter>
           </div>
-          <section className="cal-card rounded-xl p-4">
-            <h2 className="font-semibold">
-              {localization.documents.selectedActions}
-            </h2>
-            {activeDocumentId ? (
-              <div className="mt-3 grid gap-3 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm">
-                {activeDocument ? (
-                  <div>
-                    <p className="break-words font-medium text-cal-ink">
-                      {activeDocument.title}
-                    </p>
-                    <p className="mt-1 break-words text-xs text-cal-muted">
-                      {documentMeta(activeDocument, localization)}
-                    </p>
-                  </div>
-                ) : null}
-                <details className="rounded-lg bg-cal-canvas p-2 text-xs text-cal-muted">
-                  <summary className="cursor-pointer font-medium text-cal-ink">
-                    {localization.documents.advancedDetails}
-                  </summary>
-                  <p className="mt-2 break-all font-mono">
-                    ID: {activeDocumentId}
-                  </p>
-                </details>
-              </div>
-            ) : (
-              <EmptyState
-                title={localization.documents.noSelectedTitle}
-                description={localization.documents.noSelectedDescription}
-              />
-            )}
-            <Button
-              className="mt-4 w-full"
-              onClick={() => ingest.mutate()}
-              disabled={
-                !activeDocumentId ||
-                ingest.isPending ||
-                activeDocumentHasIngestion
-              }
-            >
-              {activeDocumentHasIngestion
-                ? localization.documents.ingestionLoading
-                : localization.documents.runIngest}
-            </Button>
-            {ingest.error ? (
-              <div className="mt-3">
-                <ErrorState error={ingest.error} />
-              </div>
-            ) : null}
-            <details className="mt-4 border-t border-cal-hairline pt-4">
-              <summary className="cursor-pointer text-sm font-semibold text-cal-ink">
-                {localization.documents.permissionAdvancedTitle}
-              </summary>
-              <form
-                onSubmit={handlePatchPermission}
-                className="mt-3 grid gap-3"
-              >
-                <Field
-                  label={localization.documents.permissionLabel}
-                  hint={localization.documents.permissionHint}
-                >
-                  <input
-                    className={inputClassName}
-                    value={permissionUserId}
-                    onChange={(event) =>
-                      setPermissionUserId(event.target.value)
-                    }
-                  />
-                </Field>
-                <Button
-                  type="submit"
-                  variant="outline"
-                  disabled={
-                    !activeDocumentId ||
-                    !permissionUserId.trim() ||
-                    patchPermission.isPending
-                  }
-                >
-                  {localization.documents.patchPermission}
-                </Button>
-              </form>
-            </details>
-            {patchPermission.error ? (
-              <div className="mt-3">
-                <ErrorState error={patchPermission.error} />
-              </div>
-            ) : null}
-            <div className="mt-4 grid gap-3 border-t border-cal-hairline pt-4">
-              <div>
-                <h3 className="font-semibold">
-                  {localization.documents.deleteTitle}
-                </h3>
-                <p className="mt-1 text-sm leading-6 text-cal-muted">
-                  {localization.documents.deleteDescription}
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={handleDeleteDocument}
-                disabled={!activeDocumentId || deleteDocument.isPending}
-              >
-                {localization.documents.deleteButton}
-              </Button>
-              {deleteDocument.error ? (
-                <ErrorState error={deleteDocument.error} />
-              ) : null}
-            </div>
-            <details className="mt-6 border-t border-cal-hairline pt-4">
-              <summary className="cursor-pointer font-semibold text-cal-ink">
-                {localization.documents.extractionRuns}
-              </summary>
-              <div className="mt-3 grid gap-2">
-                {extractionRuns.data?.length === 0 ? (
-                  <EmptyState
-                    title={localization.documents.noExtractionRunsTitle}
-                    description={
-                      localization.documents.noExtractionRunsDescription
-                    }
-                  />
-                ) : null}
-                {extractionRuns.data?.map((run) => (
-                  <div
-                    key={run.id}
-                    className="rounded-lg bg-cal-surface-soft p-3 text-sm"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <Pill tone={extractionRunTone(run.status)}>
-                        {run.status}
-                      </Pill>
-                      {isActiveExtractionRunStatus(run.status) ? (
-                        <InlineLoadingIndicator
-                          label={localization.documents.ingestionLoading}
-                        />
-                      ) : null}
-                    </div>
-                    <p className="mt-2 break-all font-mono text-xs text-cal-muted">
-                      ID: {run.id}
-                    </p>
-                    <p className="mt-2 text-cal-muted">
-                      {run.chunk_count} {localization.common.chunks} ·{" "}
-                      {run.entity_count} {localization.common.entities} ·{" "}
-                      {run.relationship_count}{" "}
-                      {localization.common.relationships}
-                    </p>
-                    {run.stage ? (
-                      <p className="mt-1 text-xs text-cal-muted">
-                        {localization.documents.stageLabel}: {run.stage}
-                      </p>
-                    ) : null}
-                    {run.error ? (
-                      <p className="mt-1 text-xs text-cal-error">{run.error}</p>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            </details>
-          </section>
-          <ResourceList
-            loading={documents.isLoading}
-            error={documents.error}
-            empty={localization.documents.empty}
-          >
-            {documents.data?.map((doc) => (
-              <button
-                key={doc.id}
-                type="button"
-                onClick={() => setSelectedDocumentId(doc.id)}
-                className={`rounded-lg border p-3 text-left text-sm ${
-                  doc.id === activeDocumentId
-                    ? "border-cal-primary bg-cal-primary text-white"
-                    : "border-cal-hairline bg-cal-canvas text-cal-ink"
-                }`}
-              >
-                <span className="block break-words font-medium">
-                  {doc.title}
-                </span>
-                <span className="mt-1 block break-words text-xs opacity-70">
-                  {documentMeta(doc, localization)}
-                </span>
-                {activeIngestionDocumentIds.has(doc.id) ? (
-                  <span className="mt-2 inline-flex">
-                    <InlineLoadingIndicator
-                      label={localization.documents.ingestionLoading}
-                    />
-                  </span>
-                ) : null}
-              </button>
-            ))}
-          </ResourceList>
-        </div>
-      </div>
-    </PageCard>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -1603,7 +2176,7 @@ function isUploadQueueItemBusy(status: UploadQueueStatus) {
 
 function InlineLoadingIndicator({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-cal-muted">
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-cal-muted">
       <span
         aria-hidden="true"
         className="h-3 w-3 animate-spin rounded-full border border-current border-t-transparent"
@@ -1669,9 +2242,26 @@ export function GroupsSurface() {
   const createPublishRequest = useCreatePublishRequest(activeGroupId);
   const approvePublishRequest = useApprovePublishRequest(activeGroupId);
   const rejectPublishRequest = useRejectPublishRequest(activeGroupId);
-  const addMember = useAddMember(activeGroupId);
-  const [memberUserId, setMemberUserId] = useState("");
-  const [memberRole, setMemberRole] = useState<GroupRole>("viewer");
+  const invitations = useGroupInvitations(activeGroupId, canManageMembers);
+  const members = useGroupMembers(activeGroupId, canManageMembers);
+  const createInvitation = useCreateGroupInvitation(activeGroupId);
+  const [invitationEmail, setInvitationEmail] = useState("");
+  const [invitationRole, setInvitationRole] = useState<GroupRole>("viewer");
+  const [invitationActionId, setInvitationActionId] = useState("");
+  const [invitationActionRole, setInvitationActionRole] =
+    useState<GroupRole>("viewer");
+  const updateInvitation = useUpdateGroupInvitation(
+    activeGroupId,
+    invitationActionId,
+  );
+  const resendInvitation = useResendGroupInvitation(
+    activeGroupId,
+    invitationActionId,
+  );
+  const cancelInvitation = useCancelGroupInvitation(
+    activeGroupId,
+    invitationActionId,
+  );
   const [updateUserId, setUpdateUserId] = useState("");
   const [updateRole, setUpdateRole] = useState<GroupRole>("viewer");
   const [publishSourceKind, setPublishSourceKind] =
@@ -1694,12 +2284,48 @@ export function GroupsSurface() {
     }
   }
 
-  async function handleAddMember(event: React.FormEvent<HTMLFormElement>) {
+  async function handleCreateInvitation(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
     if (!canManageMembers) return;
     try {
-      await addMember.mutateAsync({ user_id: memberUserId, role: memberRole });
-      setMemberUserId("");
+      await createInvitation.mutateAsync({
+        email: invitationEmail,
+        role: invitationRole,
+      });
+      setInvitationEmail("");
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
+  }
+
+  async function handleUpdateInvitation(
+    event: React.FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+    if (!canManageMembers || !invitationActionId.trim()) return;
+    try {
+      await updateInvitation.mutateAsync({ role: invitationActionRole });
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
+  }
+
+  async function handleResendInvitation() {
+    if (!canManageMembers || !invitationActionId.trim()) return;
+    try {
+      await resendInvitation.mutateAsync();
+    } catch {
+      // React Query stores the API error on the mutation; render it below.
+    }
+  }
+
+  async function handleCancelInvitation() {
+    if (!canManageMembers || !invitationActionId.trim()) return;
+    try {
+      await cancelInvitation.mutateAsync();
+      setInvitationActionId("");
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -1812,25 +2438,33 @@ export function GroupsSurface() {
                 description={localization.groups.noSelectedDescription}
               />
             )}
-            <details className="mt-4 border-t border-cal-hairline pt-4">
+            <details className="mt-4 border-t border-cal-hairline pt-4" open>
               <summary className="cursor-pointer text-sm font-semibold text-cal-ink">
                 {localization.groups.advancedMembershipTitle}
               </summary>
-              <div className="mt-3 grid gap-3">
-                <form onSubmit={handleAddMember} className="grid gap-3">
-                  <Field label={localization.groups.addMemberLabel}>
+              <div className="mt-3 grid gap-4">
+                <form onSubmit={handleCreateInvitation} className="grid gap-3">
+                  <Field
+                    label={localization.groups.inviteEmailLabel}
+                    hint={localization.groups.inviteEmailHint}
+                  >
                     <input
                       className={inputClassName}
-                      value={memberUserId}
-                      onChange={(event) => setMemberUserId(event.target.value)}
+                      type="email"
+                      autoComplete="email"
+                      value={invitationEmail}
+                      onChange={(event) =>
+                        setInvitationEmail(event.target.value)
+                      }
                       disabled={!canManageMembers}
+                      required
                     />
                   </Field>
                   <RoleSelect
                     label={localization.groups.roleLabel}
                     labels={localization.groups.roles}
-                    value={memberRole}
-                    onChange={setMemberRole}
+                    value={invitationRole}
+                    onChange={setInvitationRole}
                     disabled={!canManageMembers}
                   />
                   <Button
@@ -1838,23 +2472,221 @@ export function GroupsSurface() {
                     disabled={
                       !canManageMembers ||
                       !activeGroupId ||
-                      !memberUserId.trim() ||
-                      addMember.isPending
+                      !invitationEmail.trim() ||
+                      createInvitation.isPending
                     }
                   >
-                    {localization.groups.upsertMember}
+                    {localization.groups.sendInvitation}
                   </Button>
                 </form>
-                {addMember.error ? (
+                {createInvitation.error ? (
                   <div>
-                    <ErrorState error={addMember.error} />
+                    <ErrorState error={createInvitation.error} />
                   </div>
                 ) : null}
+
+                <section className="rounded-xl border border-cal-hairline bg-cal-canvas p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-cal-ink">
+                      {localization.groups.invitationsTitle}
+                    </h3>
+                    {invitations.isLoading ? (
+                      <InlineLoadingIndicator
+                        label={localization.groups.invitationsLoading}
+                      />
+                    ) : null}
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    {(invitations.data ?? []).length > 0 ? (
+                      (invitations.data ?? []).map((invitation) => (
+                        <article
+                          key={invitation.id}
+                          className="rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-sm"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Pill
+                              tone={invitationStatusTone(invitation.status)}
+                            >
+                              {
+                                localization.groups.invitationStatuses[
+                                  invitation.status
+                                ]
+                              }
+                            </Pill>
+                            <span className="font-medium text-cal-ink">
+                              {invitation.invited_email}
+                            </span>
+                            <span className="text-cal-muted">
+                              {localization.groups.roles[invitation.role]}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs leading-5 text-cal-muted">
+                            {localization.groups.invitationExpiryLabel}:{" "}
+                            {invitation.expires_at}
+                          </p>
+                          <details className="mt-2 text-xs text-cal-muted">
+                            <summary className="cursor-pointer font-medium text-cal-ink">
+                              {localization.groups.advancedGroupDetails}
+                            </summary>
+                            <p className="mt-1 break-all font-mono">
+                              {localization.groups.invitationIdLabel}:{" "}
+                              {invitation.id}
+                            </p>
+                          </details>
+                        </article>
+                      ))
+                    ) : (
+                      <EmptyState
+                        title={localization.groups.noInvitationsTitle}
+                        description={
+                          localization.groups.noInvitationsDescription
+                        }
+                      />
+                    )}
+                  </div>
+                  {invitations.error ? (
+                    <div className="mt-3">
+                      <ErrorState error={invitations.error} />
+                    </div>
+                  ) : null}
+                </section>
+
+                <section className="rounded-xl border border-cal-hairline bg-cal-canvas p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-cal-ink">
+                      {localization.groups.membersTitle}
+                    </h3>
+                    {members.isLoading ? (
+                      <InlineLoadingIndicator
+                        label={localization.groups.membersLoading}
+                      />
+                    ) : null}
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    {(members.data ?? []).length > 0 ? (
+                      (members.data ?? []).map((member) => (
+                        <article
+                          key={member.member_id}
+                          className="rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-sm"
+                        >
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Pill tone="info">
+                              {localization.groups.roles[member.role]}
+                            </Pill>
+                            <span className="break-all font-mono text-xs text-cal-ink">
+                              {localization.groups.memberUserIdLabel}:{" "}
+                              {member.user_id}
+                            </span>
+                          </div>
+                          <p className="mt-2 text-xs leading-5 text-cal-muted">
+                            {localization.groups.memberJoinedLabel}:{" "}
+                            {member.created_at}
+                          </p>
+                        </article>
+                      ))
+                    ) : (
+                      <EmptyState
+                        title={localization.groups.noMembersTitle}
+                        description={localization.groups.noMembersDescription}
+                      />
+                    )}
+                  </div>
+                  {members.error ? (
+                    <div className="mt-3">
+                      <ErrorState error={members.error} />
+                    </div>
+                  ) : null}
+                </section>
+
+                <form
+                  onSubmit={handleUpdateInvitation}
+                  className="grid gap-3 border-t border-cal-hairline pt-4"
+                >
+                  <Field
+                    label={localization.groups.invitationActionIdLabel}
+                    hint={localization.groups.invitationActionHint}
+                  >
+                    <input
+                      className={inputClassName}
+                      value={invitationActionId}
+                      onChange={(event) =>
+                        setInvitationActionId(event.target.value)
+                      }
+                      disabled={!canManageMembers}
+                    />
+                  </Field>
+                  <RoleSelect
+                    label={localization.groups.roleLabel}
+                    labels={localization.groups.roles}
+                    value={invitationActionRole}
+                    onChange={setInvitationActionRole}
+                    disabled={!canManageMembers}
+                  />
+                  <div className="grid gap-2 sm:grid-cols-3">
+                    <Button
+                      type="submit"
+                      variant="outline"
+                      disabled={
+                        !canManageMembers ||
+                        !activeGroupId ||
+                        !invitationActionId.trim() ||
+                        updateInvitation.isPending
+                      }
+                    >
+                      {localization.groups.updateInvitationRole}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={
+                        !canManageMembers ||
+                        !activeGroupId ||
+                        !invitationActionId.trim() ||
+                        resendInvitation.isPending
+                      }
+                      onClick={handleResendInvitation}
+                    >
+                      {localization.groups.resendInvitation}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      disabled={
+                        !canManageMembers ||
+                        !activeGroupId ||
+                        !invitationActionId.trim() ||
+                        cancelInvitation.isPending
+                      }
+                      onClick={handleCancelInvitation}
+                    >
+                      {localization.groups.cancelInvitation}
+                    </Button>
+                  </div>
+                </form>
+                {updateInvitation.error ? (
+                  <div>
+                    <ErrorState error={updateInvitation.error} />
+                  </div>
+                ) : null}
+                {resendInvitation.error ? (
+                  <div>
+                    <ErrorState error={resendInvitation.error} />
+                  </div>
+                ) : null}
+                {cancelInvitation.error ? (
+                  <div>
+                    <ErrorState error={cancelInvitation.error} />
+                  </div>
+                ) : null}
+
                 <form
                   onSubmit={handleUpdateMember}
                   className="grid gap-3 border-t border-cal-hairline pt-4"
                 >
-                  <Field label={localization.groups.patchMemberLabel}>
+                  <Field
+                    label={localization.groups.patchMemberLabel}
+                    hint={localization.groups.patchMemberHint}
+                  >
                     <input
                       className={inputClassName}
                       value={updateUserId}
@@ -2142,6 +2974,12 @@ export function GroupsSurface() {
   );
 }
 
+function invitationStatusTone(status: string): StatusTone {
+  if (status === "accepted") return "green";
+  if (status === "cancelled" || status === "expired") return "rose";
+  return "amber";
+}
+
 function RoleSelect({
   label,
   labels,
@@ -2177,13 +3015,20 @@ function PageCard({
   title,
   description,
   children,
+  fullWidth = false,
 }: {
   title: string;
   description: string;
   children: React.ReactNode;
+  fullWidth?: boolean;
 }) {
   return (
-    <div className="mx-auto grid max-w-6xl gap-6">
+    <div
+      className={cn(
+        "grid gap-6",
+        fullWidth ? "w-full max-w-none" : "mx-auto max-w-6xl",
+      )}
+    >
       <header>
         <h1 className="cal-heading cal-fluid-title">{title}</h1>
         <p className="cal-subcopy mt-3 max-w-3xl">{description}</p>

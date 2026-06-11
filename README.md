@@ -11,9 +11,9 @@
 - 인증: 회원가입, 이메일 인증, 로그인, 비밀번호 재설정 요청/확정, 로그아웃, 현재 사용자 복원.
 - Ask: 대화, 서버 소유 메시지, streamed assistant-answer conversation run, 답변 옆 citation, 상단 지식 선택, 접힌 응답 근거/작업 내역, 게스트 데모 사용 안내.
 - 지식/소스 워크플로: 지식 공간 생성/목록, 선택한 지식 공간으로 PDF/Markdown/plain-text와 `.xlsx`/`.pptx` 드래그 앤 드롭 또는 파일 선택 업로드, 텍스트 소스 추가, 검색 준비/처리 내역.
-- 팀: 생성/목록, 공유 지식 요청, 고급 섹션 안의 ID 기반 멤버/권한 관리.
+- 팀: 생성/목록, 초대 수락 기반 멤버십, 공유 지식 게시 요청, 사용자 탐색 없는 고급 권한 관리.
 
-Ask 화면은 `/conversations/{id}/runs`를 사용합니다. `/assistant/chat`은 레거시/개발용이므로 제품 BFF proxy에서 차단합니다. 회원가입은 hosted OpenAPI 계약을 그대로 따릅니다. 계정 생성은 `{ user, verification_email_sent }`를 반환하며, 사용자는 필요한 인증 흐름 이후 같은 자격 증명으로 로그인할 수 있습니다.
+Ask 화면은 `/conversations/{id}/runs`를 사용합니다. `/assistant/chat`은 레거시/개발용이므로 제품 BFF proxy에서 차단합니다. 팀 멤버십은 초대 수락 전용입니다. UI는 사용자 검색, 계정 존재 여부 확인, 직접 `user_id` 활성화를 암시하지 않아야 하며, group knowledge를 선택해도 conversation과 memory는 사용자별 private 범위로 남습니다. 회원가입은 hosted OpenAPI 계약을 그대로 따릅니다. 계정 생성은 `{ user, verification_email_sent }`를 반환하며, 사용자는 필요한 인증 흐름 이후 같은 자격 증명으로 로그인할 수 있습니다.
 
 ## 로컬 실행
 

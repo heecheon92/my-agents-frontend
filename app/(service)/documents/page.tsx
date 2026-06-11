@@ -1,5 +1,5 @@
-import { DocumentsSurface } from "@/components/AdminSurfaces";
+import { redirect } from "next/navigation";
 
 export default function DocumentsPage() {
-  return <DocumentsSurface />;
+  redirect("/knowledge");
 }

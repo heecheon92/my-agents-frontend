@@ -17,9 +17,50 @@ export const groupCreateRequestSchema = z.object({
   name: z.string().min(1).max(120),
 });
 
-export const memberUpsertRequestSchema = z.object({
+export const groupInvitationStatusSchema = z.enum([
+  "pending",
+  "accepted",
+  "cancelled",
+  "expired",
+]);
+
+export const groupInvitationCreateRequestSchema = z
+  .object({
+    email: z.string().email(),
+    role: membershipRoleSchema,
+  })
+  .strict();
+
+export const groupInvitationUpdateRequestSchema = z
+  .object({
+    role: membershipRoleSchema,
+  })
+  .strict();
+
+export const groupInvitationAcceptRequestSchema = z
+  .object({
+    token: z.string().min(1).max(256),
+  })
+  .strict();
+
+export const groupInvitationSchema = z.object({
+  id: z.string().min(1),
+  group_id: z.string().min(1),
+  invited_email: z.string().min(1),
+  role: membershipRoleSchema,
+  status: groupInvitationStatusSchema,
+  created_at: z.string(),
+  expires_at: z.string(),
+  accepted_at: z.string().nullable().optional(),
+  cancelled_at: z.string().nullable().optional(),
+  resent_at: z.string().nullable().optional(),
+});
+
+export const groupMemberSchema = z.object({
+  member_id: z.string().min(1),
   user_id: z.string().min(1),
   role: membershipRoleSchema,
+  created_at: z.string(),
 });
 
 export const memberPatchRequestSchema = z.object({
@@ -56,7 +97,18 @@ export const knowledgePublishRequestSchema = z.object({
 export type MembershipRole = z.infer<typeof membershipRoleSchema>;
 export type Group = z.infer<typeof groupSchema>;
 export type GroupCreateRequest = z.infer<typeof groupCreateRequestSchema>;
-export type MemberUpsertRequest = z.infer<typeof memberUpsertRequestSchema>;
+export type GroupInvitationStatus = z.infer<typeof groupInvitationStatusSchema>;
+export type GroupInvitationCreateRequest = z.infer<
+  typeof groupInvitationCreateRequestSchema
+>;
+export type GroupInvitationUpdateRequest = z.infer<
+  typeof groupInvitationUpdateRequestSchema
+>;
+export type GroupInvitationAcceptRequest = z.infer<
+  typeof groupInvitationAcceptRequestSchema
+>;
+export type GroupInvitation = z.infer<typeof groupInvitationSchema>;
+export type GroupMember = z.infer<typeof groupMemberSchema>;
 export type MemberPatchRequest = z.infer<typeof memberPatchRequestSchema>;
 export type KnowledgePublishRequestStatus = z.infer<
   typeof knowledgePublishRequestStatusSchema
