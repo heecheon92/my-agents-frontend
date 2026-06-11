@@ -8,7 +8,7 @@
   - Auth: `/login`, `/signup` through `components/AuthPanel.tsx`.
   - Protected service shell: `app/(service)/layout.tsx` through `components/ServiceShell.tsx`.
   - Anchor workspace: `/chat` through `components/ChatWorkspace.tsx` and focused Ask components under `components/chat/`.
-  - Operations/admin surfaces: `/documents`, `/knowledge`, `/groups` through `components/AdminSurfaces.tsx`.
+  - Operations/admin surfaces: `/knowledge` (Sources), `/documents` compatibility redirect, and `/groups` through `components/AdminSurfaces.tsx`.
 - Evidence reviewed:
   - `AGENTS.md` product intent, frontend boundary, design/accessibility rules, and verification commands.
   - `app/globals.css` Tailwind v4 theme, semantic variables, inherited `cal-*` aliases, fluid type/spacing helpers, responsive primitives, card helpers.
@@ -36,10 +36,10 @@
 
 ## Product goals
 - Goals:
-  - Make Ask/chat the obvious primary journey after users add knowledge.
-  - Make the first-time journey legible in five seconds: add documents, ask questions, inspect citations.
+  - Make Ask/chat the obvious primary journey after users add sources.
+  - Make the first-time journey legible in five seconds: add sources, ask questions, inspect citations.
   - Keep citations visually attached to assistant answers while moving run history and activity events into progressive disclosure.
-  - Make Add sources and Knowledge feel like one mental model: documents/notes are sources inside knowledge spaces.
+  - Keep source setup as one shallow mental model: files/notes live inside source spaces, then Ask uses them with citations.
   - Make team, invitation, membership, and permission workflows usable without implying user search or direct `user_id` membership activation.
   - Support Korean and English with comfortable typography, wrapping, and no hardcoded user-facing strings.
   - Give frontend engineers a stable theme/component contract that can be implemented with current Next.js, Tailwind v4, Base UI/shadcn-style primitives, and no new component library.
@@ -55,7 +55,7 @@
   - A new user can answer: “Am I authenticated?”, “Which conversation am I in?”, “What did the agent do?”, “What sources support this answer?”, and “What can I do next?” without reading docs.
   - Narrow, tablet, and desktop layouts remain readable without horizontal page overflow.
   - Chat feels like the product center; admin surfaces feel like supporting control rooms, not afterthought forms.
-  - Component states are consistent across auth, chat, documents, knowledge, and groups.
+  - Component states are consistent across auth, chat, sources, and groups.
 
 ## Personas and jobs
 - Primary personas:
@@ -76,15 +76,15 @@
 
 ## Information architecture
 - Primary navigation:
-  - Protected app navigation is task-oriented: Ask, Add sources, Knowledge, Teams.
+  - Protected app navigation is task-oriented: Ask, Sources, Teams.
   - Ask is first and should be visually weighted as the default route from the service index.
   - Mobile navigation remains horizontal-scrollable or transformed into an accessible compact pattern; it must not disappear below desktop.
 - Core routes/screens:
   - `/`: Entry page that promises “내 문서를 기반으로 답하는 AI 워크스페이스,” not a generic marketing site.
   - `/login` and `/signup`: Two-panel trust/auth experience with guest path and account-created handoff.
-  - `/chat`: Ask-first workspace with conversation list, top-of-chat knowledge selector, transcript, dominant composer, compact citation summaries near answers, and progressively disclosed citation details plus response evidence/work history.
-  - `/documents`: Add sources screen for text/file sources inside a selected knowledge space; permissions and processing internals stay in Advanced sections.
-  - `/knowledge`: Create/list knowledge spaces and explain add sources → ask → inspect citations.
+  - `/chat`: Ask-first workspace with conversation list, top-of-chat source selector, transcript, dominant composer, compact citation summaries near answers, and progressively disclosed citation details plus response evidence/work history.
+  - `/knowledge`: Sources screen with an organization-tree-style source-space browser, table-style source list, selected-source inspector, and dialog-based add flows for source spaces/text/files; permissions, team sharing, and processing internals stay in Advanced sections.
+  - `/documents`: Legacy compatibility route that redirects to `/knowledge`.
   - `/groups`: Teams screen for shared knowledge, invitation lifecycle, accepted-member roles, and publish-request review.
 - Content hierarchy:
   - Level 1: Page purpose and current user/session context.
@@ -240,6 +240,7 @@
     - Wide desktop: detailed run history, activity events, and citation cards may sit side by side only after a disclosure is opened; the transcript remains the dominant surface.
   - Admin surfaces:
     - Use current container-query-ready `responsive-panel-grid[data-layout="form-aside"]`; forms and selected-action panels split only when the container is wide enough.
+    - Sources should prefer a GreetSchool-style organization shell: persistent source-space tree on desktop, sheet/browser on compact screens, table-like source rows in the main pane, and shadcn/Base UI dialogs for create/upload forms.
     - De-emphasize admin-heavy density with grouped sections, collapsible/secondary action areas, and clear selected-resource context.
     - Resource rows must wrap IDs and filenames without page overflow.
 - Touch/hover differences:

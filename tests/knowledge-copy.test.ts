@@ -24,13 +24,17 @@ describe("localized product copy guardrails", () => {
 });
 
 describe("document source empty-state copy", () => {
-  it("offers a localized path to create a personal knowledge space", () => {
-    expect(en.admin.documents.createKnowledgeBaseAction).toContain(
-      "Create a personal knowledge space",
+  it("offers an inline localized path to create a source space", () => {
+    expect(en.admin.documents.createFirstSourceSpaceTitle).toContain(
+      "Create your first source space",
     );
-    expect(ko.admin.documents.createKnowledgeBaseAction).toContain(
-      "개인 지식 공간 만들기",
+    expect(en.admin.documents.noKnowledgeBaseDescription).not.toContain(
+      "Go to Knowledge",
     );
+    expect(ko.admin.documents.createFirstSourceSpaceTitle).toContain(
+      "첫 소스 공간 만들기",
+    );
+    expect(ko.admin.documents.noKnowledgeBaseDescription).not.toContain("지식");
   });
 });
 
@@ -55,16 +59,17 @@ describe("document upload workflow copy", () => {
   });
 });
 
-describe("knowledge-base creation copy", () => {
-  it("states the private and group knowledge-base boundary in English", () => {
+describe("source-space creation copy", () => {
+  it("states the private and group source-space boundary in English", () => {
     const copy = en.admin.knowledge;
 
     expect(copy.description).toContain("Create spaces");
-    expect(copy.description).toContain("Add sources");
-    expect(copy.scopeHint).toContain("Personal spaces stay private");
-    expect(copy.scopeHint).toContain("Team spaces");
+    expect(copy.description).toContain("add sources");
+    expect(copy.nameLabel).toBe("Source space name");
+    expect(copy.scopeHint).toContain("Personal source spaces stay private");
+    expect(copy.scopeHint).toContain("Team source spaces");
     expect(copy.scopeBoundaryNote).toContain(
-      "Add documents to personal spaces first",
+      "Add sources to personal spaces first",
     );
     expect(copy.scopeBoundaryNote).toContain("requires owner/admin approval");
     expect(copy.scopeBoundaryNote).toContain(
@@ -77,10 +82,11 @@ describe("knowledge-base creation copy", () => {
   it("states the same ownership boundary in Korean", () => {
     const copy = ko.admin.knowledge;
 
-    expect(copy.description).toContain("AI가 검색할 문서와 메모");
-    expect(copy.description).toContain("Ask에서 질문");
-    expect(copy.scopeHint).toContain("개인 공간은 내 계정");
-    expect(copy.scopeHint).toContain("팀 공간");
+    expect(copy.description).toContain("파일과 메모");
+    expect(copy.description).toContain("Ask에서");
+    expect(copy.nameLabel).toBe("소스 공간 이름");
+    expect(copy.scopeHint).toContain("개인 소스 공간");
+    expect(copy.scopeHint).toContain("팀 소스 공간");
     expect(copy.scopeBoundaryNote).toContain("먼저 개인 공간에 추가");
     expect(copy.scopeBoundaryNote).toContain("승인이 필요");
     expect(copy.scopeBoundaryNote).toContain("멤버 대화");
@@ -90,36 +96,34 @@ describe("knowledge-base creation copy", () => {
 });
 
 describe("group publish copy", () => {
-  it("frames Groups as shared knowledge spaces in English", () => {
+  it("frames Groups as shared source spaces in English", () => {
     const copy = en.admin.groups;
 
     expect(copy.description).toContain("invite-accepted spaces");
     expect(copy.membershipActions).toBe("Team access");
     expect(copy.memberIdNote).toContain("email invitation acceptance");
     expect(copy.inviteEmailHint).toContain("does not reveal");
-    expect(copy.publishBoundaryTitle).toBe("Shared knowledge");
-    expect(copy.publishBoundaryDescription).toContain(
-      "share a personal knowledge space",
-    );
+    expect(copy.publishBoundaryTitle).toBe("Shared sources");
+    expect(copy.publishBoundaryDescription).toContain("personal source space");
     expect(copy.publishSourceKnowledgeBaseHint).toContain(
-      "whole personal knowledge space",
+      "whole personal source space",
     );
     expect(copy.publishTargetKnowledgeBaseHint).toContain(
       "document-copy requests",
     );
   });
 
-  it("frames Groups as shared knowledge spaces in Korean", () => {
+  it("frames Groups as shared source spaces in Korean", () => {
     const copy = ko.admin.groups;
 
     expect(copy.description).toContain("초대를 수락한 뒤");
     expect(copy.membershipActions).toBe("팀 접근");
     expect(copy.memberIdNote).toContain("이메일 초대 수락");
     expect(copy.inviteEmailHint).toContain("계정 존재 여부");
-    expect(copy.publishBoundaryTitle).toBe("공유 지식");
-    expect(copy.publishBoundaryDescription).toContain("개인 지식 공간");
+    expect(copy.publishBoundaryTitle).toBe("공유 소스");
+    expect(copy.publishBoundaryDescription).toContain("개인 소스 공간");
     expect(copy.publishSourceKnowledgeBaseHint).toContain(
-      "개인 지식 공간 전체",
+      "개인 소스 공간 전체",
     );
     expect(copy.publishTargetKnowledgeBaseHint).toContain("문서 복사 요청");
   });

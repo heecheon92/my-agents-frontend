@@ -280,6 +280,10 @@ test("Admin creation controls stay compact and aligned", async ({ page }) => {
   expect(groupCreateFormBox?.height).toBeLessThanOrEqual(120);
 
   await page.goto("/knowledge");
+  await page
+    .getByRole("button", { name: ko.admin.documents.addSourceSpaceAction })
+    .first()
+    .click();
   const scopeSelect = page.getByRole("combobox", {
     name: ko.admin.knowledge.scopeLabel,
   });

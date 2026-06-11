@@ -1,5 +1,5 @@
-import { KnowledgeSurface } from "@/components/AdminSurfaces";
+import { SourcesSurface } from "@/components/AdminSurfaces";
 
 export default function KnowledgePage() {
-  return <KnowledgeSurface />;
+  return <SourcesSurface />;
 }

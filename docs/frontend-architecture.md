@@ -43,9 +43,9 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | `/` | `app/page.tsx` | Marketing/landing entry point. |
 | `/login` | `components/AuthPanel.tsx` | Login through BFF `/auth/login`. |
 | `/signup` | `components/AuthPanel.tsx` | Signup parses the backend `SignupResponse` envelope and shows an account-created handoff before login. |
-| `/chat` | `components/ChatWorkspace.tsx` + `components/chat/*` | Anchor Ask journey. Uses conversations, messages, streamed answers, citations near assistant replies, a compact top-of-chat knowledge selector, and collapsed response evidence/work history. |
-| `/documents` | `components/AdminSurfaces.tsx` | “Add sources” journey. Adds text/files to a selected knowledge space; low-level permission and processing details are behind Advanced disclosure. |
-| `/knowledge` | `components/AdminSurfaces.tsx` | “Knowledge” journey. Creates/lists personal and team knowledge spaces and explains add sources → ask → inspect citations. |
+| `/chat` | `components/ChatWorkspace.tsx` + `components/chat/*` | Anchor Ask journey. Uses conversations, messages, streamed answers, citations near assistant replies, a compact top-of-chat source selector, and collapsed response evidence/work history. |
+| `/knowledge` | `components/AdminSurfaces.tsx` | “Sources” journey. Uses a source-space tree + source table shell, shadcn/Base UI dialogs for add flows, and keeps low-level permission/processing details behind Advanced disclosure. |
+| `/documents` | `next/navigation` redirect | Legacy compatibility path that redirects to `/knowledge` so old links land on the merged Sources workflow. |
 | `/groups` | `components/AdminSurfaces.tsx` | “Teams” journey. Manages shared knowledge requests and keeps raw ID-based member controls in Advanced disclosure. |
 
 All service routes live under `app/(service)/layout.tsx`, which renders `ServiceShell` and restores auth through `/auth/me`.
@@ -141,7 +141,8 @@ The UI should stay polished but not noisy:
 
 - Use readable spacing, generous body text, and clear empty/error/loading states.
 - Keep Ask/chat as the primary product anchor surface.
-- Treat Documents/Add sources and Knowledge as one mental model: sources live inside knowledge spaces and then power cited answers.
+- Treat source setup as one mental model: sources live inside source spaces and then power cited answers; avoid sending users across pages for first-run source creation.
+- On `/knowledge`, keep the default layout review-first: source spaces are chosen from the tree/sheet, source rows are scanned in the table, and creation/upload forms open in dialogs instead of occupying the main page by default.
 - Keep admin surfaces honest and usable even when backend contracts are ID-based, but hide raw IDs in Advanced disclosure by default.
 - Prefer `components/` extraction over large route-page component trees.
 

@@ -2,7 +2,6 @@
 
 import {
   FilePlus2Icon,
-  LibraryIcon,
   LogOutIcon,
   MessageSquareTextIcon,
   SparklesIcon,
@@ -34,8 +33,7 @@ import { ErrorState } from "./Status";
 
 const navRoutes = [
   { href: "/chat", key: "chat", icon: MessageSquareTextIcon },
-  { href: "/documents", key: "documents", icon: FilePlus2Icon },
-  { href: "/knowledge", key: "knowledge", icon: LibraryIcon },
+  { href: "/knowledge", key: "knowledge", icon: FilePlus2Icon },
   { href: "/groups", key: "groups", icon: UsersRoundIcon },
 ] as const;
 

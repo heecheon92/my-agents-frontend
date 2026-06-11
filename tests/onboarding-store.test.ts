@@ -33,7 +33,6 @@ describe("onboarding plan", () => {
 
     expect(newUserSteps.map((step) => step.id)).toEqual([
       "new-knowledge-space",
-      "new-source-destination",
       "new-upload-source",
       "new-chat-thread",
       "new-select-knowledge",
@@ -41,7 +40,7 @@ describe("onboarding plan", () => {
       "new-review-evidence",
     ]);
     expect(new Set(newUserSteps.map((step) => step.path))).toEqual(
-      new Set(["/knowledge", "/documents", "/chat"]),
+      new Set(["/knowledge", "/chat"]),
     );
     expect(newUserSteps.every((step) => step.targetId.length > 0)).toBe(true);
   });

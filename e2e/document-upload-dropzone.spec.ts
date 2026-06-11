@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import ko from "@/localization/ko.json";
 
 const user = {
   id: "u-docs",
@@ -17,7 +18,7 @@ const personalKnowledgeBase = {
   created_at: "2026-05-25T00:00:00.000Z",
 };
 
-test("Documents upload drop zone adds dropped files to the queue", async ({
+test("Sources upload drop zone adds dropped files to the queue", async ({
   page,
 }) => {
   await page.route("**/api/my-agents/**", async (route) => {
@@ -45,7 +46,10 @@ test("Documents upload drop zone adds dropped files to the queue", async ({
     return route.fulfill({ status: 404, body: "{}" });
   });
 
-  await page.goto("/documents");
+  await page.goto("/knowledge");
+  await page
+    .getByRole("button", { name: ko.admin.documents.uploadFilesAction })
+    .click();
 
   const dropZone = page.getByTestId("document-upload-dropzone");
   await expect(dropZone).toBeVisible();
@@ -80,4 +84,110 @@ test("Documents upload drop zone adds dropped files to the queue", async ({
   await expect(page.getByText("roadmap.pptx")).toBeVisible();
   await expect(page.getByText(/Spreadsheet|스프레드시트/)).toBeVisible();
   await expect(page.getByText(/Presentation|프레젠테이션/)).toBeVisible();
+});
+
+test("legacy Documents URL redirects to the Sources workflow", async ({
+  page,
+}) => {
+  await page.route("**/api/my-agents/**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace("/api/my-agents", "");
+    const method = request.method();
+    const json = (value: unknown) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(value),
+      });
+
+    if (method === "GET" && path === "/auth/me") return json(user);
+    if (method === "GET" && path === "/knowledge-bases") {
+      return json([personalKnowledgeBase]);
+    }
+    if (
+      method === "GET" &&
+      path === `/knowledge-bases/${personalKnowledgeBase.id}/documents`
+    ) {
+      return json([]);
+    }
+    if (method === "GET" && path === "/groups") return json([]);
+    return route.fulfill({ status: 404, body: "{}" });
+  });
+
+  await page.goto("/documents");
+  await expect(page).toHaveURL(/\/knowledge$/);
+  await expect(
+    page.getByRole("heading", { name: ko.admin.documents.title, exact: true }),
+  ).toBeVisible();
+});
+
+test("Sources page creates the first source space from the dialog", async ({
+  page,
+}) => {
+  let createdSourceSpace = false;
+  const firstSourceSpace = {
+    ...personalKnowledgeBase,
+    id: "kb-first",
+    name: "First research sources",
+  };
+
+  await page.route("**/api/my-agents/**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace("/api/my-agents", "");
+    const method = request.method();
+    const json = (value: unknown, status = 200) =>
+      route.fulfill({
+        status,
+        contentType: "application/json",
+        body: JSON.stringify(value),
+      });
+
+    if (method === "GET" && path === "/auth/me") return json(user);
+    if (method === "GET" && path === "/knowledge-bases") {
+      return json(createdSourceSpace ? [firstSourceSpace] : []);
+    }
+    if (
+      method === "GET" &&
+      path === `/knowledge-bases/${firstSourceSpace.id}/documents`
+    ) {
+      return json([]);
+    }
+    if (method === "GET" && path === "/groups") return json([]);
+    if (method === "POST" && path === "/knowledge-bases") {
+      const payload = await request.postDataJSON();
+      expect(payload).toMatchObject({
+        name: "First research sources",
+        scope: "personal",
+      });
+      createdSourceSpace = true;
+      return json(firstSourceSpace, 201);
+    }
+    return route.fulfill({ status: 404, body: "{}" });
+  });
+
+  await page.goto("/knowledge");
+
+  await page
+    .getByRole("button", { name: ko.admin.documents.addSourceSpaceAction })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("heading", {
+      name: ko.admin.documents.createFirstSourceSpaceTitle,
+    }),
+  ).toBeVisible();
+  await page
+    .getByLabel(ko.admin.knowledge.nameLabel)
+    .fill("First research sources");
+  await page
+    .getByRole("button", { name: ko.admin.knowledge.createPersonalButton })
+    .click();
+
+  await expect(
+    page.getByRole("heading", { name: firstSourceSpace.name }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: ko.admin.documents.uploadFilesAction })
+    .click();
+  await expect(page.getByTestId("document-upload-dropzone")).toBeVisible();
 });

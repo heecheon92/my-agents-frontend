@@ -133,7 +133,6 @@ test("authenticated users can complete the normal workflow tour", async ({
 
   for (const title of [
     ko.onboarding.steps.newKnowledgeSpaceTitle,
-    ko.onboarding.steps.newSourceDestinationTitle,
     ko.onboarding.steps.newUploadSourceTitle,
     ko.onboarding.steps.newChatThreadTitle,
     ko.onboarding.steps.newSelectKnowledgeTitle,
