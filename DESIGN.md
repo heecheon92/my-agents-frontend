@@ -229,8 +229,8 @@
   - Wide desktop: 1536px+ for multi-pane chat inspection.
 - Layout adaptations:
   - Global/service shell:
-    - Mobile: visible header, logout, horizontally reachable primary nav, route content stacked.
-    - Desktop: persistent sidebar with brand, nav, session card, content region with bounded padding.
+    - Mobile: visible header, logout, route content stacked, and a shadcn/Base UI sidebar trigger that opens primary navigation in a sheet.
+    - Desktop: shadcn/Base UI persistent sidebar with brand, nav, session card, content region with bounded padding, and a persisted icon-collapsed state for repeat users.
   - Auth:
     - Mobile: form should appear before excessive explanation if conversion suffers; current two-panel stack is acceptable but should be tested for scroll length.
     - Desktop: trust/feature panel + form panel side by side.

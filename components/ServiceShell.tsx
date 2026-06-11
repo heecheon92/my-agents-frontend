@@ -1,23 +1,53 @@
 "use client";
 
+import {
+  FilePlus2Icon,
+  LibraryIcon,
+  LogOutIcon,
+  MessageSquareTextIcon,
+  SparklesIcon,
+  UsersRoundIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { OnboardingRuntime } from "@/components/onboarding/OnboardingRuntime";
 import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { Button } from "@/components/ui/button";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarRail,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 import { useCurrentUser, useLogout } from "@/hooks/use-auth";
 import { useLocalization } from "@/hooks/useLocalization";
-import { cn } from "@/lib/utils";
 import { ErrorState } from "./Status";
 
 const navRoutes = [
-  { href: "/chat", key: "chat" },
-  { href: "/documents", key: "documents" },
-  { href: "/knowledge", key: "knowledge" },
-  { href: "/groups", key: "groups" },
+  { href: "/chat", key: "chat", icon: MessageSquareTextIcon },
+  { href: "/documents", key: "documents", icon: FilePlus2Icon },
+  { href: "/knowledge", key: "knowledge", icon: LibraryIcon },
+  { href: "/groups", key: "groups", icon: UsersRoundIcon },
 ] as const;
 
-export function ServiceShell({ children }: { children: React.ReactNode }) {
+type ServiceShellProps = {
+  children: React.ReactNode;
+  defaultSidebarOpen?: boolean;
+};
+
+export function ServiceShell({
+  children,
+  defaultSidebarOpen = true,
+}: ServiceShellProps) {
   const pathname = usePathname();
   const router = useRouter();
   const user = useCurrentUser();
@@ -60,113 +90,146 @@ export function ServiceShell({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const currentRoute =
+    navRoutes.find((item) => pathname === item.href) ?? navRoutes[0];
+  const sessionLabel = user.data?.is_guest
+    ? localization.service.guestSessionLabel
+    : user.data?.email;
+
   return (
-    <main className="flex min-h-dvh flex-col bg-cal-canvas text-cal-ink lg:flex-row">
-      <aside className="hidden w-72 flex-col border-r border-cal-hairline bg-cal-surface-soft p-5 lg:flex">
-        <Link
-          href="/chat"
-          className="rounded-lg bg-cal-primary px-5 py-4 font-heading text-2xl font-semibold tracking-[-0.04em] text-white"
-        >
-          {localization.brand.name}
-        </Link>
-        <nav className="mt-8 grid gap-2">
-          {navRoutes.map((item) => (
-            <OnboardingTarget key={item.href} id={`nav.${item.key}`}>
-              <Link
-                href={item.href}
-                className={cn(
-                  "block rounded-md px-4 py-2 text-sm font-medium text-cal-muted transition hover:bg-cal-canvas hover:text-cal-ink",
-                  pathname === item.href &&
-                    "bg-cal-primary text-white hover:bg-cal-primary hover:text-white",
-                )}
+    <SidebarProvider
+      defaultOpen={defaultSidebarOpen}
+      className="min-h-dvh bg-cal-canvas text-cal-ink"
+      style={
+        {
+          "--sidebar-width": "18rem",
+          "--sidebar-width-icon": "3.5rem",
+        } as React.CSSProperties
+      }
+    >
+      <Sidebar
+        collapsible="icon"
+        className="border-cal-hairline bg-cal-surface-soft"
+      >
+        <SidebarHeader className="gap-3 border-b border-cal-hairline p-3">
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                size="lg"
+                tooltip={localization.brand.name}
+                className="min-h-12 rounded-xl bg-cal-primary text-white hover:bg-cal-primary-active hover:text-white data-active:bg-cal-primary"
+                render={<Link href="/chat" />}
               >
-                {localization.service.nav[item.key]}
-              </Link>
-            </OnboardingTarget>
-          ))}
-        </nav>
-        <OnboardingTarget id="service.guest-session-card" className="mt-auto">
-          <div className="rounded-xl border border-cal-hairline bg-cal-canvas p-4 text-sm text-cal-muted shadow-[0_4px_16px_rgb(0_0_0/0.04)]">
-            <p className="font-medium text-cal-ink">
-              {user.data?.is_guest
-                ? localization.service.guestSessionLabel
-                : user.data?.email}
-            </p>
-            <p className="mt-2 text-xs leading-5">
-              {localization.service.sessionRestored}
-            </p>
-            <Button
-              className="mt-4 w-full"
-              variant="outline"
-              onClick={handleLogout}
-              disabled={logout.isPending}
-            >
-              {localization.service.logout}
-            </Button>
-            {logout.error ? (
-              <div className="mt-3">
-                <ErrorState error={logout.error} />
-              </div>
-            ) : null}
-          </div>
-        </OnboardingTarget>
-      </aside>
-      <section className="flex min-w-0 flex-1 flex-col">
-        <header className="border-b border-cal-hairline bg-cal-surface-soft px-4 py-3 lg:hidden">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <Link
-                href="/chat"
-                className="font-heading text-2xl font-semibold tracking-[-0.04em]"
-              >
-                {localization.brand.name}
-              </Link>
-              <OnboardingTarget id="service.guest-session-mobile">
-                <p className="mt-1 truncate text-xs text-cal-muted">
-                  {user.data?.is_guest
-                    ? localization.service.guestSessionLabel
-                    : user.data?.email}
-                </p>
-              </OnboardingTarget>
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-white/12 text-sm font-semibold text-white ring-1 ring-white/20">
+                  <SparklesIcon />
+                </span>
+                <span className="flex min-w-0 flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
+                  <span className="truncate font-heading text-lg font-semibold tracking-[-0.04em]">
+                    {localization.brand.name}
+                  </span>
+                  <span className="truncate text-xs font-medium text-white/75">
+                    {localization.service.sessionEvidenceTitle}
+                  </span>
+                </span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarHeader>
+        <SidebarContent>
+          <SidebarGroup className="py-3">
+            <SidebarGroupContent>
+              <SidebarMenu className="gap-1">
+                {navRoutes.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = pathname === item.href;
+                  return (
+                    <SidebarMenuItem key={item.href}>
+                      <OnboardingTarget id={`nav.${item.key}`}>
+                        <SidebarMenuButton
+                          tooltip={localization.service.nav[item.key]}
+                          isActive={isActive}
+                          className="min-h-10 rounded-lg text-cal-muted data-active:bg-cal-primary data-active:text-white hover:text-cal-ink data-active:hover:bg-cal-primary data-active:hover:text-white"
+                          render={
+                            <Link
+                              href={item.href}
+                              aria-current={isActive ? "page" : undefined}
+                            />
+                          }
+                        >
+                          <Icon />
+                          <span>{localization.service.nav[item.key]}</span>
+                        </SidebarMenuButton>
+                      </OnboardingTarget>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </SidebarContent>
+        <SidebarFooter className="gap-3 border-t border-cal-hairline p-3">
+          <OnboardingTarget id="service.guest-session-card">
+            <div className="rounded-xl border border-cal-hairline bg-cal-canvas p-4 text-sm text-cal-muted shadow-[0_4px_16px_rgb(0_0_0/0.04)] group-data-[collapsible=icon]:hidden">
+              <p className="truncate font-medium text-cal-ink">
+                {sessionLabel}
+              </p>
+              <p className="mt-2 text-xs leading-5">
+                {localization.service.sessionRestored}
+              </p>
+              {logout.error ? (
+                <div className="mt-3">
+                  <ErrorState error={logout.error} />
+                </div>
+              ) : null}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleLogout}
-              disabled={logout.isPending}
-            >
-              {localization.service.logout}
-            </Button>
-          </div>
-          <nav
-            aria-label="Primary"
-            className="responsive-scroll -mx-4 mt-3 flex gap-2 px-4 pb-1"
-          >
-            {navRoutes.map((item) => (
-              <OnboardingTarget
-                key={item.href}
-                id={`nav.${item.key}.mobile`}
-                className="shrink-0"
+          </OnboardingTarget>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                tooltip={localization.service.logout}
+                onClick={handleLogout}
+                disabled={logout.isPending}
+                className="min-h-10 rounded-lg text-cal-muted hover:text-cal-ink"
               >
-                <Link
-                  href={item.href}
-                  className={cn(
-                    "inline-flex min-h-10 shrink-0 items-center rounded-full border border-cal-hairline bg-cal-canvas px-4 text-sm font-medium text-cal-muted transition hover:text-cal-ink",
-                    pathname === item.href &&
-                      "border-cal-primary bg-cal-primary text-white hover:text-white",
-                  )}
-                >
-                  {localization.service.nav[item.key]}
-                </Link>
-              </OnboardingTarget>
-            ))}
-          </nav>
+                <LogOutIcon />
+                <span>{localization.service.logout}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarFooter>
+        <SidebarRail />
+      </Sidebar>
+      <SidebarInset className="min-w-0 bg-cal-canvas">
+        <header className="sticky top-0 z-20 flex min-h-16 items-center gap-3 border-b border-cal-hairline bg-cal-surface-soft/95 px-4 backdrop-blur supports-backdrop-filter:bg-cal-surface-soft/85 sm:px-6 lg:px-8">
+          <SidebarTrigger
+            aria-label={localization.service.toggleSidebar}
+            title={localization.service.toggleSidebar}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold text-cal-ink">
+              {localization.service.nav[currentRoute.key]}
+            </p>
+            <OnboardingTarget id="service.guest-session-mobile">
+              <p className="truncate text-xs text-cal-muted sm:hidden">
+                {sessionLabel}
+              </p>
+            </OnboardingTarget>
+          </div>
+          <Button
+            className="md:hidden"
+            variant="outline"
+            size="sm"
+            onClick={handleLogout}
+            disabled={logout.isPending}
+          >
+            {localization.service.logout}
+          </Button>
         </header>
         <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
           {children}
         </div>
-      </section>
+      </SidebarInset>
       <OnboardingRuntime user={user.data} />
-    </main>
+    </SidebarProvider>
   );
 }

@@ -123,7 +123,8 @@
       "Add sources, then ask in chat.",
       "Citations stay attached to answers.",
       "Team sharing is available when needed."
-    ]
+    ],
+    "toggleSidebar": "Toggle sidebar"
   },
   "onboarding": {
     "eyebrow": "Guided tour",

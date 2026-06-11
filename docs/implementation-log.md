@@ -1,3 +1,12 @@
+## 2026-06-11 — Persisted shadcn service sidebar
+
+- Replaced the protected service shell's custom desktop aside/mobile scroll nav with the shadcn/Base UI `Sidebar` stack while preserving the existing Ask, Add sources, Knowledge, and Teams routes.
+- Added the missing shadcn sidebar support primitives (`Sidebar`, `Sheet`, `Tooltip`, `Input`, `Separator`, `Skeleton`, and mobile breakpoint hook) without overwriting the repo's customized `Button`.
+- Persisted the desktop icon-collapsed state through the non-sensitive `sidebar_state` cookie: the client sidebar writes the preference and the service layout reads it as `defaultOpen` on reload.
+- Kept session restore copy visible in the expanded sidebar for existing smoke checks, exposed a mobile header trigger/logout path, and added localized accessible toggle labels.
+
+Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (17 files / 102 tests), `pnpm build`, targeted `pnpm exec playwright test e2e/sidebar-persistence.spec.ts --reporter=line` (1 passed), full `pnpm exec playwright test --reporter=line` (12 passed / 2 skipped), and `git diff --check`.
+
 ## 2026-06-10 — Invite-only team membership docs sync
 
 - Aligned frontend README/backend-request copy with the approved invite-only group/team boundary: no user search, no account-existence leak, and no direct `user_id` member activation.
