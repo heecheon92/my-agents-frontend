@@ -232,10 +232,12 @@ test("Publish review controls are owner-only in Group admin UI", async ({
   await page.goto("/groups");
 
   await expect(
-    page.getByRole("heading", { name: ko.admin.groups.publishBoundaryTitle }),
+    page.getByRole("heading", { name: ko.admin.groups.publishRequestsTitle }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: ko.admin.groups.publishRequestButton }),
+    page
+      .getByRole("button", { name: ko.admin.groups.requestShareAction })
+      .first(),
   ).toBeVisible();
   await expect(
     page.getByRole("button", { name: ko.admin.groups.publishApproveButton }),
@@ -244,11 +246,14 @@ test("Publish review controls are owner-only in Group admin UI", async ({
     page.getByRole("button", { name: ko.admin.groups.publishRejectButton }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: ko.admin.groups.sendInvitation }),
+    page.getByRole("button", { name: ko.admin.groups.inviteMemberAction }),
   ).toBeDisabled();
   await expect(
+    page.getByRole("button", { name: ko.admin.groups.sendInvitation }),
+  ).toHaveCount(0);
+  await expect(
     page.getByRole("button", { name: ko.admin.groups.patchRole }),
-  ).toBeDisabled();
+  ).toHaveCount(0);
   await expect(
     page.getByText(ko.admin.groups.membershipManagerOnlyHint),
   ).toBeVisible();
@@ -260,13 +265,20 @@ test("Member roster shows nickname while keeping user ID secondary", async ({
   await mockGroupKnowledgeApi(page);
   await page.goto("/groups");
 
-  await expect(page.getByText(user.nickname)).toBeVisible();
+  const memberRow = page.locator("article").filter({ hasText: user.nickname });
+  await expect(memberRow.getByText(user.nickname)).toBeVisible();
   await expect(
-    page.getByText(`${ko.admin.groups.memberUserIdLabel}: ${user.id}`),
+    memberRow.getByText(`${ko.admin.groups.memberUserIdLabel}: ${user.id}`),
+  ).toBeHidden();
+  await memberRow.getByText(ko.admin.groups.advancedGroupDetails).click();
+  await expect(
+    memberRow.getByText(`${ko.admin.groups.memberUserIdLabel}: ${user.id}`),
   ).toBeVisible();
 });
 
-test("Admin creation controls stay compact and aligned", async ({ page }) => {
+test("Admin creation controls stay dialog-scoped and aligned", async ({
+  page,
+}) => {
   await mockGroupKnowledgeApi(page);
   await page.setViewportSize({ width: 1280, height: 720 });
 
@@ -274,10 +286,24 @@ test("Admin creation controls stay compact and aligned", async ({ page }) => {
   const groupNameInput = page.getByRole("textbox", {
     name: ko.admin.groups.nameLabel,
   });
-  const createGroupButton = page.getByRole("button", {
-    name: ko.admin.groups.createButton,
-  });
+  await expect(groupNameInput).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: ko.admin.groups.sendInvitation }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: ko.admin.groups.patchRole }),
+  ).toHaveCount(0);
+
+  await page
+    .getByRole("button", { name: ko.admin.groups.createButton })
+    .first()
+    .click();
   await expect(groupNameInput).toBeVisible();
+  const createGroupButton = page
+    .getByTestId("group-create-form")
+    .getByRole("button", {
+      name: ko.admin.groups.createButton,
+    });
   await expect(createGroupButton).toBeVisible();
   const groupNameBox = await groupNameInput.boundingBox();
   const createGroupBox = await createGroupButton.boundingBox();
@@ -287,11 +313,8 @@ test("Admin creation controls stay compact and aligned", async ({ page }) => {
   expect(groupNameBox).not.toBeNull();
   expect(createGroupBox).not.toBeNull();
   expect(groupCreateFormBox).not.toBeNull();
-  expect(
-    Math.abs((groupNameBox?.y ?? 0) - (createGroupBox?.y ?? 0)),
-  ).toBeLessThan(12);
-  expect(groupNameBox?.width).toBeLessThanOrEqual(360);
-  expect(groupCreateFormBox?.height).toBeLessThanOrEqual(120);
+  expect(groupNameBox?.width).toBeLessThanOrEqual(520);
+  expect(groupCreateFormBox?.height).toBeLessThanOrEqual(240);
 
   await page.goto("/knowledge");
   await page

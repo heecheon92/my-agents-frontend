@@ -71,7 +71,10 @@ import { cn } from "@/lib/utils";
 import {
   documentUploadConcurrencyFromHealth,
   type ExtractionRun,
+  type GroupInvitation,
+  type GroupMember,
   type KnowledgeBase,
+  type KnowledgePublishRequest,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 import {
@@ -2166,6 +2169,18 @@ export function GroupsSurface() {
   const createGroup = useCreateGroup();
   const [name, setName] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState<string>();
+  const [isGroupBrowserOpen, setIsGroupBrowserOpen] = useState(false);
+  const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = useState(false);
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
+  const [invitationAction, setInvitationAction] = useState<
+    | { invitation: GroupInvitation; type: "update" | "resend" | "cancel" }
+    | undefined
+  >();
+  const [memberAction, setMemberAction] = useState<GroupMember>();
+  const [publishReviewAction, setPublishReviewAction] = useState<
+    { request: KnowledgePublishRequest; type: "approve" | "reject" } | undefined
+  >();
   const activeGroupId = selectedGroupId ?? groups.data?.[0]?.id;
   const activeGroup = groups.data?.find((group) => group.id === activeGroupId);
   const canManageMembers =
@@ -2212,9 +2227,12 @@ export function GroupsSurface() {
   const [sourceDocumentId, setSourceDocumentId] = useState("");
   const [sourceKnowledgeBaseId, setSourceKnowledgeBaseId] = useState("");
   const [targetKnowledgeBaseId, setTargetKnowledgeBaseId] = useState("");
-  const [publishRequestId, setPublishRequestId] = useState("");
   const updateMember = useUpdateMember(activeGroupId, updateUserId);
   const { localization } = useLocalization((state) => state.localization.admin);
+  const groupCount = groups.data?.length ?? 0;
+  const invitationCount = invitations.data?.length ?? 0;
+  const memberCount = members.data?.length ?? 0;
+  const publishRequestCount = publishRequests.data?.length ?? 0;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2222,6 +2240,7 @@ export function GroupsSurface() {
       const created = await createGroup.mutateAsync({ name });
       setName("");
       setSelectedGroupId(created.id);
+      setIsCreateGroupDialogOpen(false);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -2238,6 +2257,7 @@ export function GroupsSurface() {
         role: invitationRole,
       });
       setInvitationEmail("");
+      setIsInviteDialogOpen(false);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -2250,6 +2270,8 @@ export function GroupsSurface() {
     if (!canManageMembers || !invitationActionId.trim()) return;
     try {
       await updateInvitation.mutateAsync({ role: invitationActionRole });
+      setInvitationAction(undefined);
+      setInvitationActionId("");
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -2259,6 +2281,8 @@ export function GroupsSurface() {
     if (!canManageMembers || !invitationActionId.trim()) return;
     try {
       await resendInvitation.mutateAsync();
+      setInvitationAction(undefined);
+      setInvitationActionId("");
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -2268,6 +2292,7 @@ export function GroupsSurface() {
     if (!canManageMembers || !invitationActionId.trim()) return;
     try {
       await cancelInvitation.mutateAsync();
+      setInvitationAction(undefined);
       setInvitationActionId("");
     } catch {
       // React Query stores the API error on the mutation; render it below.
@@ -2280,6 +2305,7 @@ export function GroupsSurface() {
     try {
       await updateMember.mutateAsync({ role: updateRole });
       setUpdateUserId("");
+      setMemberAction(undefined);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -2290,498 +2316,985 @@ export function GroupsSurface() {
   ) {
     event.preventDefault();
     try {
-      const request =
-        publishSourceKind === "knowledge-base"
-          ? await createPublishRequest.mutateAsync({
-              source_knowledge_base_id: sourceKnowledgeBaseId,
-            })
-          : await createPublishRequest.mutateAsync({
-              source_document_id: sourceDocumentId,
-              target_knowledge_base_id: targetKnowledgeBaseId,
-            });
+      await (publishSourceKind === "knowledge-base"
+        ? createPublishRequest.mutateAsync({
+            source_knowledge_base_id: sourceKnowledgeBaseId,
+          })
+        : createPublishRequest.mutateAsync({
+            source_document_id: sourceDocumentId,
+            target_knowledge_base_id: targetKnowledgeBaseId,
+          }));
       setSourceDocumentId("");
       setSourceKnowledgeBaseId("");
       setTargetKnowledgeBaseId("");
-      setPublishRequestId(request.id);
+      setIsPublishDialogOpen(false);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
   }
 
-  async function handleApprovePublishRequest() {
+  async function handleApprovePublishRequest(requestId: string) {
     try {
-      await approvePublishRequest.mutateAsync(publishRequestId);
+      await approvePublishRequest.mutateAsync(requestId);
+      setPublishReviewAction(undefined);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
   }
 
-  async function handleRejectPublishRequest() {
+  async function handleRejectPublishRequest(requestId: string) {
     try {
-      await rejectPublishRequest.mutateAsync(publishRequestId);
+      await rejectPublishRequest.mutateAsync(requestId);
+      setPublishReviewAction(undefined);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
   }
 
-  return (
-    <PageCard
-      title={localization.groups.title}
-      description={localization.groups.description}
-    >
-      <form
-        data-testid="group-create-form"
-        onSubmit={handleSubmit}
-        className="cal-card mb-4 grid max-w-2xl gap-3 rounded-xl p-4 sm:grid-cols-[minmax(0,22rem)_auto] sm:items-end sm:justify-start"
-      >
-        <Field className="min-w-0" label={localization.groups.nameLabel}>
-          <input
-            className={selectClassName}
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            required
-          />
-        </Field>
-        <Button
-          type="submit"
-          className="w-full sm:w-auto"
-          disabled={createGroup.isPending || !name.trim()}
-        >
-          {localization.groups.createButton}
-        </Button>
-        {createGroup.error ? <ErrorState error={createGroup.error} /> : null}
-      </form>
-      <div className="responsive-panel">
-        <div className="responsive-panel-grid" data-layout="form-aside">
-          <section className="cal-card rounded-xl p-4">
-            <h2 className="font-semibold">
-              {localization.groups.membershipActions}
-            </h2>
-            {activeGroupId ? (
-              <div className="mt-3 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm">
-                <p className="font-medium text-cal-ink">
-                  {localization.groups.activeGroupLabel}
+  function selectGroup(groupId: string) {
+    setSelectedGroupId(groupId);
+    setIsGroupBrowserOpen(false);
+  }
+
+  function openInvitationAction(
+    invitation: GroupInvitation,
+    type: "update" | "resend" | "cancel",
+  ) {
+    setInvitationActionId(invitation.id);
+    setInvitationActionRole(invitation.role);
+    setInvitationAction({ invitation, type });
+  }
+
+  function openMemberAction(member: GroupMember) {
+    setUpdateUserId(member.user_id);
+    setUpdateRole(member.role);
+    setMemberAction(member);
+  }
+
+  function renderGroupBrowser() {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col bg-white">
+        <div className="shrink-0 border-b border-cal-hairline px-4 py-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="truncate text-base font-semibold text-cal-ink">
+                {localization.groups.title}
+              </h2>
+              <p className="mt-1 text-xs leading-5 text-cal-muted">
+                {localization.groups.groupCountDescription.replace(
+                  "{count}",
+                  String(groupCount),
+                )}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label={localization.groups.createButton}
+              onClick={() => setIsCreateGroupDialogOpen(true)}
+            >
+              <PlusIcon />
+            </Button>
+          </div>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-3 py-4">
+          {groups.isLoading ? (
+            <p className="px-3 text-sm text-cal-muted">
+              {localization.common.loading}
+            </p>
+          ) : null}
+          {groups.error ? <ErrorState error={groups.error} /> : null}
+          {!groups.isLoading && groupCount === 0 ? (
+            <div className="px-1">
+              <EmptyState
+                title={localization.groups.empty}
+                description={localization.groups.emptyDescription}
+              />
+              <Button
+                type="button"
+                className="mt-3 w-full"
+                onClick={() => setIsCreateGroupDialogOpen(true)}
+              >
+                {localization.groups.createButton}
+              </Button>
+            </div>
+          ) : null}
+          <div className="grid gap-1">
+            {groups.data?.map((group) => (
+              <button
+                key={group.id}
+                type="button"
+                onClick={() => selectGroup(group.id)}
+                aria-current={activeGroupId === group.id ? "page" : undefined}
+                className={cn(
+                  "flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors",
+                  activeGroupId === group.id
+                    ? "bg-cal-primary text-white shadow-[0_10px_24px_rgb(20_33_61/0.16)]"
+                    : "text-cal-ink hover:bg-cal-surface-soft",
+                )}
+              >
+                <NetworkIcon className="size-4 shrink-0" />
+                <span className="min-w-0 flex-1 truncate font-medium">
+                  {group.name}
+                </span>
+                <span className="shrink-0 text-xs opacity-80">
+                  {localization.groups.roles[group.role]}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderSummaryCard({
+    title,
+    value,
+    description,
+    action,
+  }: {
+    title: string;
+    value: string;
+    description: string;
+    action?: React.ReactNode;
+  }) {
+    return (
+      <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.05)]">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+              {title}
+            </p>
+            <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-cal-ink">
+              {value}
+            </p>
+          </div>
+          {action}
+        </div>
+        <p className="mt-2 text-sm leading-6 text-cal-muted">{description}</p>
+      </section>
+    );
+  }
+
+  function renderInvitationRows() {
+    if (invitations.isLoading) {
+      return (
+        <InlineLoadingIndicator
+          label={localization.groups.invitationsLoading}
+        />
+      );
+    }
+    if (invitations.error) return <ErrorState error={invitations.error} />;
+    if ((invitations.data ?? []).length === 0) {
+      return (
+        <EmptyState
+          title={localization.groups.noInvitationsTitle}
+          description={localization.groups.noInvitationsDescription}
+        />
+      );
+    }
+    return (
+      <div className="grid gap-2">
+        {invitations.data?.map((invitation) => (
+          <article
+            key={invitation.id}
+            className="rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm"
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Pill tone={invitationStatusTone(invitation.status)}>
+                    {localization.groups.invitationStatuses[invitation.status]}
+                  </Pill>
+                  <span className="font-medium text-cal-ink">
+                    {invitation.invited_email}
+                  </span>
+                  <span className="text-cal-muted">
+                    {localization.groups.roles[invitation.role]}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-cal-muted">
+                  {localization.groups.invitationExpiryLabel}:{" "}
+                  {invitation.expires_at}
                 </p>
-                <p className="mt-1 text-sm text-cal-body">
-                  {activeGroup?.name ??
-                    localization.groups.noSelectedDescription}
+                <details className="mt-2 text-xs text-cal-muted">
+                  <summary className="cursor-pointer font-medium text-cal-ink">
+                    {localization.groups.advancedGroupDetails}
+                  </summary>
+                  <p className="mt-1 break-all font-mono">
+                    {localization.groups.invitationIdLabel}: {invitation.id}
+                  </p>
+                </details>
+              </div>
+              {canManageMembers ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openInvitationAction(invitation, "update")}
+                >
+                  {localization.groups.manageInvitationAction}
+                </Button>
+              ) : null}
+            </div>
+          </article>
+        ))}
+      </div>
+    );
+  }
+
+  function renderMemberRows() {
+    if (members.isLoading) {
+      return (
+        <InlineLoadingIndicator label={localization.groups.membersLoading} />
+      );
+    }
+    if (members.error) return <ErrorState error={members.error} />;
+    if ((members.data ?? []).length === 0) {
+      return (
+        <EmptyState
+          title={localization.groups.noMembersTitle}
+          description={localization.groups.noMembersDescription}
+        />
+      );
+    }
+    return (
+      <div className="grid gap-2">
+        {members.data?.map((member) => (
+          <article
+            key={member.member_id}
+            className="rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm"
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-base font-semibold text-cal-ink">
+                    {member.nickname}
+                  </p>
+                  <Pill tone="info">
+                    {localization.groups.roles[member.role]}
+                  </Pill>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-cal-muted">
+                  {localization.groups.memberJoinedLabel}: {member.created_at}
+                </p>
+                <details className="mt-2 text-xs text-cal-muted">
+                  <summary className="cursor-pointer font-medium text-cal-ink">
+                    {localization.groups.advancedGroupDetails}
+                  </summary>
+                  <p className="mt-1 break-all font-mono">
+                    {localization.groups.memberUserIdLabel}: {member.user_id}
+                  </p>
+                </details>
+              </div>
+              {canManageMembers ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => openMemberAction(member)}
+                >
+                  {localization.groups.updateMemberRoleAction}
+                </Button>
+              ) : null}
+            </div>
+          </article>
+        ))}
+      </div>
+    );
+  }
+
+  function renderPublishRequestRows() {
+    if (publishRequests.error)
+      return <ErrorState error={publishRequests.error} />;
+    if ((publishRequests.data ?? []).length === 0) {
+      return (
+        <EmptyState
+          title={localization.groups.noPublishRequestsTitle}
+          description={localization.groups.noPublishRequestsDescription}
+        />
+      );
+    }
+    return (
+      <div className="grid gap-2">
+        {publishRequests.data?.map((request) => (
+          <article
+            key={request.id}
+            className="rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm"
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Pill
+                    tone={
+                      request.status === "approved"
+                        ? "green"
+                        : request.status === "rejected"
+                          ? "rose"
+                          : "amber"
+                    }
+                  >
+                    {request.status}
+                  </Pill>
+                  <span className="font-medium text-cal-ink">
+                    {request.source_knowledge_base_id
+                      ? localization.groups.publishSourceKnowledgeBaseOption
+                      : localization.groups.publishSourceDocumentOption}
+                  </span>
+                </div>
+                <p className="mt-2 text-xs leading-5 text-cal-muted">
+                  {request.created_at}
                 </p>
                 <details className="mt-2 rounded-lg bg-cal-canvas p-2 text-xs text-cal-muted">
                   <summary className="cursor-pointer font-medium text-cal-ink">
                     {localization.groups.advancedGroupDetails}
                   </summary>
-                  <p className="mt-2 break-all font-mono">
-                    {localization.groups.groupIdLabel}: {activeGroupId}
-                  </p>
+                  <div className="mt-2 grid gap-1 font-mono">
+                    <span className="break-all">{request.id}</span>
+                    <span className="break-all">
+                      {request.source_document_id ??
+                        request.source_knowledge_base_id}{" "}
+                      →{" "}
+                      {request.target_knowledge_base_id ??
+                        request.target_group_id}
+                    </span>
+                  </div>
                 </details>
               </div>
-            ) : (
-              <EmptyState
-                title={localization.groups.noSelectedTitle}
-                description={localization.groups.noSelectedDescription}
-              />
-            )}
-            <details className="mt-4 border-t border-cal-hairline pt-4" open>
-              <summary className="cursor-pointer text-sm font-semibold text-cal-ink">
-                {localization.groups.advancedMembershipTitle}
-              </summary>
-              <div className="mt-3 grid gap-4">
-                <form onSubmit={handleCreateInvitation} className="grid gap-3">
-                  <Field
-                    label={localization.groups.inviteEmailLabel}
-                    hint={localization.groups.inviteEmailHint}
-                  >
-                    <input
-                      className={inputClassName}
-                      type="email"
-                      autoComplete="email"
-                      value={invitationEmail}
-                      onChange={(event) =>
-                        setInvitationEmail(event.target.value)
-                      }
-                      disabled={!canManageMembers}
-                      required
-                    />
-                  </Field>
-                  <RoleSelect
-                    label={localization.groups.roleLabel}
-                    labels={localization.groups.roles}
-                    value={invitationRole}
-                    onChange={setInvitationRole}
-                    disabled={!canManageMembers}
-                  />
-                  <Button
-                    type="submit"
-                    disabled={
-                      !canManageMembers ||
-                      !activeGroupId ||
-                      !invitationEmail.trim() ||
-                      createInvitation.isPending
-                    }
-                  >
-                    {localization.groups.sendInvitation}
-                  </Button>
-                </form>
-                {createInvitation.error ? (
-                  <div>
-                    <ErrorState error={createInvitation.error} />
-                  </div>
-                ) : null}
-
-                <section className="rounded-xl border border-cal-hairline bg-cal-canvas p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-cal-ink">
-                      {localization.groups.invitationsTitle}
-                    </h3>
-                    {invitations.isLoading ? (
-                      <InlineLoadingIndicator
-                        label={localization.groups.invitationsLoading}
-                      />
-                    ) : null}
-                  </div>
-                  <div className="mt-3 grid gap-2">
-                    {(invitations.data ?? []).length > 0 ? (
-                      (invitations.data ?? []).map((invitation) => (
-                        <article
-                          key={invitation.id}
-                          className="rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-sm"
-                        >
-                          <div className="flex flex-wrap items-center gap-2">
-                            <Pill
-                              tone={invitationStatusTone(invitation.status)}
-                            >
-                              {
-                                localization.groups.invitationStatuses[
-                                  invitation.status
-                                ]
-                              }
-                            </Pill>
-                            <span className="font-medium text-cal-ink">
-                              {invitation.invited_email}
-                            </span>
-                            <span className="text-cal-muted">
-                              {localization.groups.roles[invitation.role]}
-                            </span>
-                          </div>
-                          <p className="mt-2 text-xs leading-5 text-cal-muted">
-                            {localization.groups.invitationExpiryLabel}:{" "}
-                            {invitation.expires_at}
-                          </p>
-                          <details className="mt-2 text-xs text-cal-muted">
-                            <summary className="cursor-pointer font-medium text-cal-ink">
-                              {localization.groups.advancedGroupDetails}
-                            </summary>
-                            <p className="mt-1 break-all font-mono">
-                              {localization.groups.invitationIdLabel}:{" "}
-                              {invitation.id}
-                            </p>
-                          </details>
-                        </article>
-                      ))
-                    ) : (
-                      <EmptyState
-                        title={localization.groups.noInvitationsTitle}
-                        description={
-                          localization.groups.noInvitationsDescription
-                        }
-                      />
-                    )}
-                  </div>
-                  {invitations.error ? (
-                    <div className="mt-3">
-                      <ErrorState error={invitations.error} />
-                    </div>
-                  ) : null}
-                </section>
-
-                <section className="rounded-xl border border-cal-hairline bg-cal-canvas p-3">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-cal-ink">
-                      {localization.groups.membersTitle}
-                    </h3>
-                    {members.isLoading ? (
-                      <InlineLoadingIndicator
-                        label={localization.groups.membersLoading}
-                      />
-                    ) : null}
-                  </div>
-                  <div className="mt-3 grid gap-2">
-                    {(members.data ?? []).length > 0 ? (
-                      (members.data ?? []).map((member) => (
-                        <article
-                          key={member.member_id}
-                          className="rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-sm"
-                        >
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <p className="text-base font-semibold text-cal-ink">
-                              {member.nickname}
-                            </p>
-                            <Pill tone="info">
-                              {localization.groups.roles[member.role]}
-                            </Pill>
-                          </div>
-                          <p className="mt-2 break-all font-mono text-xs text-cal-muted">
-                            {localization.groups.memberUserIdLabel}:{" "}
-                            {member.user_id}
-                          </p>
-                          <p className="mt-2 text-xs leading-5 text-cal-muted">
-                            {localization.groups.memberJoinedLabel}:{" "}
-                            {member.created_at}
-                          </p>
-                        </article>
-                      ))
-                    ) : (
-                      <EmptyState
-                        title={localization.groups.noMembersTitle}
-                        description={localization.groups.noMembersDescription}
-                      />
-                    )}
-                  </div>
-                  {members.error ? (
-                    <div className="mt-3">
-                      <ErrorState error={members.error} />
-                    </div>
-                  ) : null}
-                </section>
-
-                <form
-                  onSubmit={handleUpdateInvitation}
-                  className="grid gap-3 border-t border-cal-hairline pt-4"
+              {canReviewPublishRequests && request.status === "pending" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() =>
+                    setPublishReviewAction({ request, type: "approve" })
+                  }
                 >
-                  <Field
-                    label={localization.groups.invitationActionIdLabel}
-                    hint={localization.groups.invitationActionHint}
-                  >
-                    <input
-                      className={inputClassName}
-                      value={invitationActionId}
-                      onChange={(event) =>
-                        setInvitationActionId(event.target.value)
-                      }
-                      disabled={!canManageMembers}
-                    />
-                  </Field>
-                  <RoleSelect
-                    label={localization.groups.roleLabel}
-                    labels={localization.groups.roles}
-                    value={invitationActionRole}
-                    onChange={setInvitationActionRole}
-                    disabled={!canManageMembers}
-                  />
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    <Button
-                      type="submit"
-                      variant="outline"
-                      disabled={
-                        !canManageMembers ||
-                        !activeGroupId ||
-                        !invitationActionId.trim() ||
-                        updateInvitation.isPending
-                      }
-                    >
-                      {localization.groups.updateInvitationRole}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      disabled={
-                        !canManageMembers ||
-                        !activeGroupId ||
-                        !invitationActionId.trim() ||
-                        resendInvitation.isPending
-                      }
-                      onClick={handleResendInvitation}
-                    >
-                      {localization.groups.resendInvitation}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      disabled={
-                        !canManageMembers ||
-                        !activeGroupId ||
-                        !invitationActionId.trim() ||
-                        cancelInvitation.isPending
-                      }
-                      onClick={handleCancelInvitation}
-                    >
-                      {localization.groups.cancelInvitation}
-                    </Button>
-                  </div>
-                </form>
-                {updateInvitation.error ? (
-                  <div>
-                    <ErrorState error={updateInvitation.error} />
-                  </div>
-                ) : null}
-                {resendInvitation.error ? (
-                  <div>
-                    <ErrorState error={resendInvitation.error} />
-                  </div>
-                ) : null}
-                {cancelInvitation.error ? (
-                  <div>
-                    <ErrorState error={cancelInvitation.error} />
-                  </div>
-                ) : null}
-
-                <form
-                  onSubmit={handleUpdateMember}
-                  className="grid gap-3 border-t border-cal-hairline pt-4"
-                >
-                  <Field
-                    label={localization.groups.patchMemberLabel}
-                    hint={localization.groups.patchMemberHint}
-                  >
-                    <input
-                      className={inputClassName}
-                      value={updateUserId}
-                      onChange={(event) => setUpdateUserId(event.target.value)}
-                      disabled={!canManageMembers}
-                    />
-                  </Field>
-                  <RoleSelect
-                    label={localization.groups.roleLabel}
-                    labels={localization.groups.roles}
-                    value={updateRole}
-                    onChange={setUpdateRole}
-                    disabled={!canManageMembers}
-                  />
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    disabled={
-                      !canManageMembers ||
-                      !activeGroupId ||
-                      !updateUserId.trim() ||
-                      updateMember.isPending
-                    }
-                  >
-                    {localization.groups.patchRole}
-                  </Button>
-                </form>
-                {updateMember.error ? (
-                  <div>
-                    <ErrorState error={updateMember.error} />
-                  </div>
-                ) : null}
-                <p className="rounded-lg border border-cal-hairline bg-cal-surface-strong p-3 text-sm leading-6 text-cal-body">
-                  {localization.groups.memberIdNote}
-                </p>
-              </div>
-            </details>
-            {!canManageMembers ? (
-              <p className="mt-4 rounded-lg border border-cal-warning/40 bg-cal-warning/10 p-3 text-sm leading-6 text-cal-body">
-                {localization.groups.membershipManagerOnlyHint}
-              </p>
-            ) : null}
-          </section>
-          <section className="cal-card rounded-xl p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <h2 className="font-semibold">
-                  {localization.groups.publishBoundaryTitle}
-                </h2>
-                <p className="mt-1 text-sm leading-6 text-cal-muted">
-                  {localization.groups.publishBoundaryDescription}
-                </p>
-              </div>
-              <Pill tone="green">{localization.groups.openApiPendingPill}</Pill>
+                  {localization.groups.reviewRequestAction}
+                </Button>
+              ) : null}
             </div>
-            <div className="mt-4 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm">
-              <p className="font-medium text-cal-ink">
-                {localization.groups.publishActiveGroup}
-              </p>
-              <p className="mt-2 rounded-lg bg-cal-canvas p-2 text-sm text-cal-body">
+          </article>
+        ))}
+      </div>
+    );
+  }
+
+  function renderGroupWorkspace() {
+    if (!activeGroupId) {
+      return (
+        <div className="grid min-h-[28rem] place-items-center bg-cal-canvas/40 p-6">
+          <EmptyState
+            title={localization.groups.noSelectedTitle}
+            description={localization.groups.emptyDescription}
+          />
+          <Button
+            type="button"
+            onClick={() => setIsCreateGroupDialogOpen(true)}
+          >
+            {localization.groups.createButton}
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div className="shrink-0 border-b border-cal-hairline bg-cal-canvas/60 px-4 py-4 sm:px-6">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+                <NetworkIcon className="size-3.5" />
+                <span>{localization.groups.activeGroupLabel}</span>
+                {activeGroup ? (
+                  <Pill tone="info">
+                    {localization.groups.roles[activeGroup.role]}
+                  </Pill>
+                ) : null}
+              </div>
+              <h2 className="mt-2 truncate text-2xl font-semibold tracking-[-0.03em] text-cal-ink">
                 {activeGroup?.name ?? localization.groups.noSelectedDescription}
+              </h2>
+              <p className="mt-2 text-sm leading-6 text-cal-muted">
+                {localization.groups.publishBoundaryDescription}
               </p>
+              <details className="mt-3 max-w-xl rounded-lg border border-cal-hairline bg-white p-3 text-xs text-cal-muted">
+                <summary className="cursor-pointer font-medium text-cal-ink">
+                  {localization.groups.advancedGroupDetails}
+                </summary>
+                <p className="mt-2 break-all font-mono">
+                  {localization.groups.groupIdLabel}: {activeGroupId}
+                </p>
+              </details>
             </div>
-            <form
-              onSubmit={handleCreatePublishRequest}
-              className="mt-4 grid gap-3 border-t border-cal-hairline pt-4"
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                className="lg:hidden"
+                onClick={() => setIsGroupBrowserOpen(true)}
+              >
+                <ListTreeIcon />
+                {localization.groups.browseGroupsAction}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsCreateGroupDialogOpen(true)}
+              >
+                <PlusIcon />
+                {localization.groups.createButton}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => setIsInviteDialogOpen(true)}
+                disabled={!canManageMembers}
+              >
+                {localization.groups.inviteMemberAction}
+              </Button>
+            </div>
+          </div>
+          {!canManageMembers ? (
+            <p className="mt-4 rounded-xl border border-cal-warning/40 bg-cal-warning/10 p-3 text-sm leading-6 text-cal-body">
+              {localization.groups.membershipManagerOnlyHint}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-auto bg-cal-canvas/40 p-4 xl:p-6">
+          <div className="grid gap-4 xl:grid-cols-4">
+            {renderSummaryCard({
+              title: localization.groups.membersTitle,
+              value: String(memberCount),
+              description: localization.groups.membersSummary,
+            })}
+            {renderSummaryCard({
+              title: localization.groups.invitationsTitle,
+              value: String(invitationCount),
+              description: localization.groups.invitationsSummary,
+            })}
+            {renderSummaryCard({
+              title: localization.groups.sourceSpacesTitle,
+              value: String(activeGroupKnowledgeBases.length),
+              description: localization.groups.sourceSpacesDescription,
+            })}
+            {renderSummaryCard({
+              title: localization.groups.publishRequestsTitle,
+              value: String(publishRequestCount),
+              description: localization.groups.publishRequestsSummary,
+            })}
+          </div>
+
+          <div className="mt-4 grid gap-4 xl:grid-cols-2">
+            <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-cal-ink">
+                    {localization.groups.membersTitle}
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-cal-muted">
+                    {localization.groups.membersSummary}
+                  </p>
+                </div>
+              </div>
+              {renderMemberRows()}
+            </section>
+
+            <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-cal-ink">
+                    {localization.groups.invitationsTitle}
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-cal-muted">
+                    {localization.groups.invitationsSummary}
+                  </p>
+                </div>
+                {canManageMembers ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsInviteDialogOpen(true)}
+                  >
+                    {localization.groups.inviteMemberAction}
+                  </Button>
+                ) : null}
+              </div>
+              {renderInvitationRows()}
+            </section>
+
+            <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-cal-ink">
+                    {localization.groups.sourceSpacesTitle}
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-cal-muted">
+                    {localization.groups.sourceSpacesDescription}
+                  </p>
+                </div>
+                <Button
+                  nativeButton={false}
+                  render={<Link href="/knowledge" />}
+                  size="sm"
+                  variant="outline"
+                >
+                  {localization.documents.addSourceSpaceAction}
+                </Button>
+              </div>
+              {activeGroupKnowledgeBases.length > 0 ? (
+                <div className="grid gap-2">
+                  {activeGroupKnowledgeBases.map((knowledgeBase) => (
+                    <Link
+                      key={knowledgeBase.id}
+                      href={knowledgeSourceHref(knowledgeBase.id)}
+                      className="flex min-w-0 items-center gap-2 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm text-cal-ink transition-colors hover:bg-cal-canvas"
+                    >
+                      <FolderIcon className="size-4 shrink-0" />
+                      <span className="truncate font-medium">
+                        {knowledgeBase.name}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <EmptyState
+                  title={localization.groups.noSourceSpacesTitle}
+                  description={localization.groups.noSourceSpacesDescription}
+                />
+              )}
+            </section>
+
+            <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
+              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-cal-ink">
+                    {localization.groups.publishRequestsTitle}
+                  </h3>
+                  <p className="mt-1 text-sm leading-6 text-cal-muted">
+                    {localization.groups.publishOpenApiNote}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsPublishDialogOpen(true)}
+                >
+                  {localization.groups.requestShareAction}
+                </Button>
+              </div>
+              {renderPublishRequestRows()}
+            </section>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function handleInvitationActionOpenChange(open: boolean) {
+    if (open) return;
+    setInvitationAction(undefined);
+    setInvitationActionId("");
+  }
+
+  function handleMemberActionOpenChange(open: boolean) {
+    if (open) return;
+    setMemberAction(undefined);
+    setUpdateUserId("");
+  }
+
+  return (
+    <>
+      <PageCard
+        fullWidth
+        title={localization.groups.title}
+        description={localization.groups.description}
+      >
+        <div className="flex min-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-3xl border border-cal-hairline bg-white shadow-[0_18px_60px_rgb(20_22_23/0.08)] lg:grid lg:grid-cols-[20rem_minmax(0,1fr)]">
+          <aside className="hidden min-h-0 border-r border-cal-hairline lg:flex">
+            {renderGroupBrowser()}
+          </aside>
+          {renderGroupWorkspace()}
+        </div>
+      </PageCard>
+
+      <Sheet open={isGroupBrowserOpen} onOpenChange={setIsGroupBrowserOpen}>
+        <SheetContent
+          side="left"
+          showCloseButton={false}
+          className="w-full max-w-sm gap-0 border-r border-cal-hairline bg-white p-0"
+        >
+          <SheetHeader className="sr-only">
+            <SheetTitle>{localization.groups.title}</SheetTitle>
+            <SheetDescription>
+              {localization.groups.groupCountDescription.replace(
+                "{count}",
+                String(groupCount),
+              )}
+            </SheetDescription>
+          </SheetHeader>
+          {renderGroupBrowser()}
+        </SheetContent>
+      </Sheet>
+
+      <Dialog
+        open={isCreateGroupDialogOpen}
+        onOpenChange={setIsCreateGroupDialogOpen}
+      >
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{localization.groups.createButton}</DialogTitle>
+            <DialogDescription>
+              {localization.groups.createGroupDialogDescription}
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            data-testid="group-create-form"
+            onSubmit={handleSubmit}
+            className="grid gap-3"
+          >
+            <Field className="min-w-0" label={localization.groups.nameLabel}>
+              <input
+                className={inputClassName}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
+              />
+            </Field>
+            {createGroup.error ? (
+              <ErrorState error={createGroup.error} />
+            ) : null}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsCreateGroupDialogOpen(false)}
+              >
+                {localization.common.cancel}
+              </Button>
+              <Button
+                type="submit"
+                disabled={createGroup.isPending || !name.trim()}
+              >
+                {localization.groups.createButton}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{localization.groups.inviteMemberAction}</DialogTitle>
+            <DialogDescription>
+              {localization.groups.inviteEmailHint}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateInvitation} className="grid gap-3">
+            <Field
+              label={localization.groups.inviteEmailLabel}
+              hint={localization.groups.inviteEmailHint}
             >
-              <Field label={localization.groups.publishSourceKindLabel}>
+              <input
+                className={inputClassName}
+                type="email"
+                autoComplete="email"
+                value={invitationEmail}
+                onChange={(event) => setInvitationEmail(event.target.value)}
+                disabled={!canManageMembers}
+                required
+              />
+            </Field>
+            <RoleSelect
+              label={localization.groups.roleLabel}
+              labels={localization.groups.roles}
+              value={invitationRole}
+              onChange={setInvitationRole}
+              disabled={!canManageMembers}
+            />
+            {createInvitation.error ? (
+              <ErrorState error={createInvitation.error} />
+            ) : null}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsInviteDialogOpen(false)}
+              >
+                {localization.common.cancel}
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  !canManageMembers ||
+                  !activeGroupId ||
+                  !invitationEmail.trim() ||
+                  createInvitation.isPending
+                }
+              >
+                {localization.groups.sendInvitation}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(invitationAction)}
+        onOpenChange={handleInvitationActionOpenChange}
+      >
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {localization.groups.manageInvitationAction}
+            </DialogTitle>
+            <DialogDescription>
+              {invitationAction?.invitation.invited_email}
+            </DialogDescription>
+          </DialogHeader>
+          {invitationAction?.type === "update" ? (
+            <form onSubmit={handleUpdateInvitation} className="grid gap-3">
+              <RoleSelect
+                label={localization.groups.roleLabel}
+                labels={localization.groups.roles}
+                value={invitationActionRole}
+                onChange={setInvitationActionRole}
+                disabled={!canManageMembers}
+              />
+              {updateInvitation.error ? (
+                <ErrorState error={updateInvitation.error} />
+              ) : null}
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleInvitationActionOpenChange(false)}
+                >
+                  {localization.common.cancel}
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={!canManageMembers || cancelInvitation.isPending}
+                  onClick={handleCancelInvitation}
+                >
+                  {localization.groups.cancelInvitation}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={!canManageMembers || resendInvitation.isPending}
+                  onClick={handleResendInvitation}
+                >
+                  {localization.groups.resendInvitation}
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!canManageMembers || updateInvitation.isPending}
+                >
+                  {localization.groups.updateInvitationRole}
+                </Button>
+              </DialogFooter>
+            </form>
+          ) : (
+            <div className="grid gap-3">
+              <p className="rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-sm leading-6 text-cal-muted">
+                {localization.groups.invitationActionHint}
+              </p>
+              {resendInvitation.error ? (
+                <ErrorState error={resendInvitation.error} />
+              ) : null}
+              {cancelInvitation.error ? (
+                <ErrorState error={cancelInvitation.error} />
+              ) : null}
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => handleInvitationActionOpenChange(false)}
+                >
+                  {localization.common.cancel}
+                </Button>
+                <Button
+                  type="button"
+                  variant={
+                    invitationAction?.type === "cancel"
+                      ? "secondary"
+                      : "default"
+                  }
+                  onClick={
+                    invitationAction?.type === "resend"
+                      ? handleResendInvitation
+                      : handleCancelInvitation
+                  }
+                  disabled={
+                    invitationAction?.type === "resend"
+                      ? resendInvitation.isPending
+                      : cancelInvitation.isPending
+                  }
+                >
+                  {invitationAction?.type === "resend"
+                    ? localization.groups.resendInvitation
+                    : localization.groups.cancelInvitation}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(memberAction)}
+        onOpenChange={handleMemberActionOpenChange}
+      >
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {localization.groups.updateMemberRoleAction}
+            </DialogTitle>
+            <DialogDescription>{memberAction?.nickname}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdateMember} className="grid gap-3">
+            <RoleSelect
+              label={localization.groups.roleLabel}
+              labels={localization.groups.roles}
+              value={updateRole}
+              onChange={setUpdateRole}
+              disabled={!canManageMembers}
+            />
+            <p className="rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-sm leading-6 text-cal-muted">
+              {localization.groups.memberIdNote}
+            </p>
+            {updateMember.error ? (
+              <ErrorState error={updateMember.error} />
+            ) : null}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => handleMemberActionOpenChange(false)}
+              >
+                {localization.common.cancel}
+              </Button>
+              <Button
+                type="submit"
+                disabled={
+                  !canManageMembers ||
+                  !updateUserId.trim() ||
+                  updateMember.isPending
+                }
+              >
+                {localization.groups.patchRole}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isPublishDialogOpen} onOpenChange={setIsPublishDialogOpen}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>{localization.groups.requestShareAction}</DialogTitle>
+            <DialogDescription>
+              {localization.groups.publishBoundaryDescription}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreatePublishRequest} className="grid gap-3">
+            <Field label={localization.groups.publishSourceKindLabel}>
+              <select
+                className={selectClassName}
+                value={publishSourceKind}
+                onChange={(event) => {
+                  const nextKind = event.target.value as PublishSourceKind;
+                  setPublishSourceKind(nextKind);
+                  setSourceDocumentId("");
+                  setSourceKnowledgeBaseId("");
+                  setTargetKnowledgeBaseId("");
+                }}
+              >
+                <option value="knowledge-base">
+                  {localization.groups.publishSourceKnowledgeBaseOption}
+                </option>
+                <option value="document">
+                  {localization.groups.publishSourceDocumentOption}
+                </option>
+              </select>
+            </Field>
+            {publishSourceKind === "knowledge-base" ? (
+              <Field
+                label={localization.groups.publishSourceKnowledgeBaseLabel}
+                hint={localization.groups.publishSourceKnowledgeBaseHint}
+              >
                 <select
                   className={selectClassName}
-                  value={publishSourceKind}
-                  onChange={(event) => {
-                    const nextKind = event.target.value as PublishSourceKind;
-                    setPublishSourceKind(nextKind);
-                    setSourceDocumentId("");
-                    setSourceKnowledgeBaseId("");
-                    setTargetKnowledgeBaseId("");
-                  }}
+                  value={sourceKnowledgeBaseId}
+                  onChange={(event) =>
+                    setSourceKnowledgeBaseId(event.target.value)
+                  }
                 >
-                  <option value="knowledge-base">
-                    {localization.groups.publishSourceKnowledgeBaseOption}
+                  <option value="">
+                    {localization.groups.publishSourceKnowledgeBasePlaceholder}
                   </option>
-                  <option value="document">
-                    {localization.groups.publishSourceDocumentOption}
-                  </option>
+                  {publishablePersonalKnowledgeBases.map((knowledgeBase) => (
+                    <option key={knowledgeBase.id} value={knowledgeBase.id}>
+                      {knowledgeBase.name}
+                    </option>
+                  ))}
                 </select>
               </Field>
-              {publishSourceKind === "knowledge-base" ? (
+            ) : (
+              <>
                 <Field
-                  label={localization.groups.publishSourceKnowledgeBaseLabel}
-                  hint={localization.groups.publishSourceKnowledgeBaseHint}
+                  label={localization.groups.publishSourceDocumentLabel}
+                  hint={localization.groups.publishSourceDocumentHint}
+                >
+                  <input
+                    className={inputClassName}
+                    value={sourceDocumentId}
+                    onChange={(event) =>
+                      setSourceDocumentId(event.target.value)
+                    }
+                  />
+                </Field>
+                <Field
+                  label={localization.groups.publishTargetKnowledgeBaseLabel}
+                  hint={localization.groups.publishTargetKnowledgeBaseHint}
                 >
                   <select
                     className={selectClassName}
-                    value={sourceKnowledgeBaseId}
+                    value={targetKnowledgeBaseId}
                     onChange={(event) =>
-                      setSourceKnowledgeBaseId(event.target.value)
+                      setTargetKnowledgeBaseId(event.target.value)
                     }
                   >
                     <option value="">
-                      {
-                        localization.groups
-                          .publishSourceKnowledgeBasePlaceholder
-                      }
+                      {localization.groups.publishTargetPlaceholder}
                     </option>
-                    {publishablePersonalKnowledgeBases.map((knowledgeBase) => (
+                    {activeGroupKnowledgeBases.map((knowledgeBase) => (
                       <option key={knowledgeBase.id} value={knowledgeBase.id}>
                         {knowledgeBase.name}
                       </option>
                     ))}
                   </select>
                 </Field>
-              ) : (
-                <>
-                  <Field
-                    label={localization.groups.publishSourceDocumentLabel}
-                    hint={localization.groups.publishSourceDocumentHint}
-                  >
-                    <input
-                      className={inputClassName}
-                      value={sourceDocumentId}
-                      onChange={(event) =>
-                        setSourceDocumentId(event.target.value)
-                      }
-                    />
-                  </Field>
-                  <Field
-                    label={localization.groups.publishTargetKnowledgeBaseLabel}
-                    hint={localization.groups.publishTargetKnowledgeBaseHint}
-                  >
-                    <select
-                      className={selectClassName}
-                      value={targetKnowledgeBaseId}
-                      onChange={(event) =>
-                        setTargetKnowledgeBaseId(event.target.value)
-                      }
-                    >
-                      <option value="">
-                        {localization.groups.publishTargetPlaceholder}
-                      </option>
-                      {activeGroupKnowledgeBases.map((knowledgeBase) => (
-                        <option key={knowledgeBase.id} value={knowledgeBase.id}>
-                          {knowledgeBase.name}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
-                </>
-              )}
+              </>
+            )}
+            {createPublishRequest.error ? (
+              <ErrorState error={createPublishRequest.error} />
+            ) : null}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsPublishDialogOpen(false)}
+              >
+                {localization.common.cancel}
+              </Button>
               <Button
                 type="submit"
                 disabled={
@@ -2794,129 +3307,82 @@ export function GroupsSurface() {
               >
                 {localization.groups.publishRequestButton}
               </Button>
-              {createPublishRequest.error ? (
-                <ErrorState error={createPublishRequest.error} />
-              ) : null}
-            </form>
-            {canReviewPublishRequests ? (
-              <form className="mt-4 grid gap-3 border-t border-cal-hairline pt-4">
-                <Field
-                  label={localization.groups.publishReviewRequestLabel}
-                  hint={localization.groups.publishReviewHint}
-                >
-                  <input
-                    className={inputClassName}
-                    value={publishRequestId}
-                    onChange={(event) =>
-                      setPublishRequestId(event.target.value)
-                    }
-                  />
-                </Field>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={
-                      !publishRequestId.trim() ||
-                      approvePublishRequest.isPending
-                    }
-                    onClick={handleApprovePublishRequest}
-                  >
-                    {localization.groups.publishApproveButton}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    disabled={
-                      !publishRequestId.trim() || rejectPublishRequest.isPending
-                    }
-                    onClick={handleRejectPublishRequest}
-                  >
-                    {localization.groups.publishRejectButton}
-                  </Button>
-                </div>
-              </form>
-            ) : (
-              <p className="mt-4 rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-sm leading-6 text-cal-muted">
-                {localization.groups.publishReviewHint}
-              </p>
-            )}
-            {approvePublishRequest.error || rejectPublishRequest.error ? (
-              <div className="mt-3">
-                <ErrorState
-                  error={
-                    approvePublishRequest.error ?? rejectPublishRequest.error
-                  }
-                />
-              </div>
-            ) : null}
-            <div className="mt-4 rounded-lg border border-cal-primary/20 bg-cal-primary/10 p-3 text-sm leading-6 text-cal-body">
-              <p>{localization.groups.publishOpenApiNote}</p>
-              {publishRequests.error ? (
-                <div className="mt-3">
-                  <ErrorState error={publishRequests.error} />
-                </div>
-              ) : null}
-              {publishRequests.data?.length ? (
-                <div className="mt-3 grid gap-2">
-                  {publishRequests.data.map((request) => (
-                    <article
-                      key={request.id}
-                      className="rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-xs leading-5 text-cal-muted"
-                    >
-                      <button
-                        type="button"
-                        className="block w-full text-left font-semibold text-cal-ink"
-                        onClick={() => setPublishRequestId(request.id)}
-                      >
-                        {request.status}
-                      </button>
-                      <details className="mt-2 rounded-md bg-cal-surface-soft p-2">
-                        <summary className="cursor-pointer font-medium text-cal-ink">
-                          {localization.groups.advancedGroupDetails}
-                        </summary>
-                        <div className="mt-2 grid gap-1 font-mono">
-                          <span className="break-all">{request.id}</span>
-                          <span className="break-all">
-                            {request.source_document_id} →{" "}
-                            {request.target_knowledge_base_id}
-                          </span>
-                        </div>
-                      </details>
-                    </article>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          </section>
-        </div>
-      </div>
-      <ResourceList
-        loading={groups.isLoading}
-        error={groups.error}
-        empty={localization.groups.empty}
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={Boolean(publishReviewAction)}
+        onOpenChange={(open) => {
+          if (!open) setPublishReviewAction(undefined);
+        }}
       >
-        {groups.data?.map((group) => (
-          <button
-            key={group.id}
-            type="button"
-            onClick={() => setSelectedGroupId(group.id)}
-            className="text-left"
-          >
-            <ResourceRow
-              title={group.name}
-              subtitle={localization.groups.sharedKnowledgeSpaceLabel}
-              meta={
-                localization.groups.roles[
-                  group.role as keyof typeof localization.groups.roles
-                ] ?? group.role
-              }
-              active={activeGroupId === group.id}
-            />
-          </button>
-        ))}
-      </ResourceList>
-    </PageCard>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>{localization.groups.reviewRequestAction}</DialogTitle>
+            <DialogDescription>
+              {localization.groups.publishReviewHint}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <details
+              className="rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-xs text-cal-muted"
+              open
+            >
+              <summary className="cursor-pointer font-medium text-cal-ink">
+                {localization.groups.advancedGroupDetails}
+              </summary>
+              <p className="mt-2 break-all font-mono">
+                {publishReviewAction?.request.id}
+              </p>
+            </details>
+            {approvePublishRequest.error || rejectPublishRequest.error ? (
+              <ErrorState
+                error={
+                  approvePublishRequest.error ?? rejectPublishRequest.error
+                }
+              />
+            ) : null}
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPublishReviewAction(undefined)}
+              >
+                {localization.common.cancel}
+              </Button>
+              <Button
+                type="button"
+                variant={
+                  publishReviewAction?.type === "reject"
+                    ? "secondary"
+                    : "default"
+                }
+                disabled={
+                  publishReviewAction?.type === "approve"
+                    ? approvePublishRequest.isPending
+                    : rejectPublishRequest.isPending
+                }
+                onClick={() => {
+                  const requestId = publishReviewAction?.request.id;
+                  if (!requestId) return;
+                  if (publishReviewAction?.type === "approve") {
+                    void handleApprovePublishRequest(requestId);
+                  } else {
+                    void handleRejectPublishRequest(requestId);
+                  }
+                }}
+              >
+                {publishReviewAction?.type === "approve"
+                  ? localization.groups.publishApproveButton
+                  : localization.groups.publishRejectButton}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 
@@ -3065,64 +3531,4 @@ function documentSourceLabel(
     return localization.uploadedTextSource;
   }
   return localization.textSource;
-}
-
-function ResourceList({
-  loading,
-  error,
-  empty,
-  children,
-}: {
-  loading: boolean;
-  error: unknown;
-  empty: string;
-  children: React.ReactNode;
-}) {
-  const { localization } = useLocalization((state) => state.localization.admin);
-  const hasChildren = Array.isArray(children)
-    ? children.length > 0
-    : Boolean(children);
-  return (
-    <section className="cal-card grid min-w-0 gap-3 rounded-xl p-4">
-      {loading ? (
-        <p className="text-sm text-cal-muted">{localization.common.loading}</p>
-      ) : null}
-      {error ? <ErrorState error={error} /> : null}
-      {!loading && !error && !hasChildren ? (
-        <EmptyState
-          title={empty}
-          description={localization.common.emptyListDescription}
-        />
-      ) : null}
-      <div className="grid min-w-0 gap-2">{children}</div>
-    </section>
-  );
-}
-
-function ResourceRow({
-  title,
-  subtitle,
-  meta,
-  active,
-}: {
-  title: string;
-  subtitle: string;
-  meta: string;
-  active?: boolean;
-}) {
-  return (
-    <div
-      className={`min-w-0 rounded-lg border p-3 ${active ? "border-cal-primary bg-cal-primary text-white" : "border-cal-hairline bg-cal-canvas"}`}
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="min-w-0 break-words font-medium">{title}</p>
-        <Pill>{meta}</Pill>
-      </div>
-      <p
-        className={`mt-1 break-all text-xs ${active ? "text-white/70" : "text-cal-muted"}`}
-      >
-        {subtitle}
-      </p>
-    </div>
-  );
 }

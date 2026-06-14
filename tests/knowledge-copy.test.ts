@@ -105,6 +105,12 @@ describe("group publish copy", () => {
 
     expect(copy.description).toContain("invite-accepted spaces");
     expect(copy.membershipActions).toBe("Group access");
+    expect(copy.browseGroupsAction).toBe("Browse groups");
+    expect(copy.inviteMemberAction).toBe("Invite member");
+    expect(copy.requestShareAction).toBe("Request share");
+    expect(copy.manageInvitationAction).toBe("Manage invitation");
+    expect(copy.reviewRequestAction).toBe("Review request");
+    expect(copy.emptyDescription).toContain("Create a group");
     expect(copy.memberIdNote).toContain("email invitation acceptance");
     expect(copy.inviteEmailHint).toContain("does not reveal");
     expect(copy.publishBoundaryTitle).toBe("Shared sources");
@@ -122,6 +128,12 @@ describe("group publish copy", () => {
 
     expect(copy.description).toContain("초대를 수락한 뒤");
     expect(copy.membershipActions).toBe("그룹 접근");
+    expect(copy.browseGroupsAction).toBe("그룹 보기");
+    expect(copy.inviteMemberAction).toBe("멤버 초대");
+    expect(copy.requestShareAction).toBe("공유 요청");
+    expect(copy.manageInvitationAction).toBe("초대 관리");
+    expect(copy.reviewRequestAction).toBe("요청 검토");
+    expect(copy.emptyDescription).toContain("그룹을 만드세요");
     expect(copy.memberIdNote).toContain("이메일 초대 수락");
     expect(copy.inviteEmailHint).toContain("계정 존재 여부");
     expect(copy.publishBoundaryTitle).toBe("공유 지식");

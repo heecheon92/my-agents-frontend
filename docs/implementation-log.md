@@ -1,3 +1,11 @@
+## 2026-06-14 — Groups workspace action redesign
+
+- Re-laid out `/groups` around the same organization-shell pattern as `/knowledge`: a persistent group browser on desktop, compact-screen group browser sheet, selected-group header, overview cards, and focused action dialogs.
+- Moved group creation, member invitations, member role changes, share request creation, and publish approval/rejection out of the first-look page and into dialogs or row-owned actions.
+- Kept the invite-only privacy boundary visible: email invitation remains the primary path, nicknames are the member-facing labels, and raw user IDs/invitation IDs/publish IDs stay in Advanced details or focused dialogs.
+
+Verification planned/passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, targeted `pnpm exec vitest run tests/knowledge-copy.test.ts tests/group-api.test.ts`, targeted `pnpm exec playwright test e2e/group-knowledge-v1.spec.ts --reporter=line`, `pnpm build`, and `git diff --check`.
+
 ## 2026-06-11 — Row-owned Knowledge actions
 
 - Removed the separate “selected knowledge/source” action panel from the Knowledge workspace so the main pane stays focused on the table.

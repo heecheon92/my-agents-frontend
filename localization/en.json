@@ -586,7 +586,26 @@
       "updateInvitationRole": "Update invite role",
       "resendInvitation": "Resend invite",
       "cancelInvitation": "Cancel invite",
-      "patchMemberHint": "Only use this for already-accepted members. It cannot create membership."
+      "patchMemberHint": "Only use this for already-accepted members. It cannot create membership.",
+      "browseGroupsAction": "Browse groups",
+      "groupCountDescription": "{count} groups",
+      "emptyDescription": "Create a group to invite members and share source spaces after approval.",
+      "createGroupDialogDescription": "Create an invite-accepted shared space. You can add sources and invite members after the group exists.",
+      "inviteMemberAction": "Invite member",
+      "membersSummary": "Accepted members who can use this group according to their role.",
+      "invitationsSummary": "Pending invitations start by email and become membership only after acceptance.",
+      "sourceSpacesTitle": "Group source spaces",
+      "sourceSpacesDescription": "Approved shared libraries connected to this group.",
+      "noSourceSpacesTitle": "No group source spaces yet",
+      "noSourceSpacesDescription": "Create a group source space from Sources when this group needs shared knowledge.",
+      "publishRequestsTitle": "Share requests",
+      "publishRequestsSummary": "Personal sources waiting to be copied into group source spaces.",
+      "noPublishRequestsTitle": "No share requests",
+      "noPublishRequestsDescription": "Requests appear here when someone shares a personal source space or document with this group.",
+      "requestShareAction": "Request share",
+      "updateMemberRoleAction": "Change role",
+      "manageInvitationAction": "Manage invitation",
+      "reviewRequestAction": "Review request"
     }
   },
   "errors": {

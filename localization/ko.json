@@ -586,7 +586,26 @@
       "updateInvitationRole": "초대 역할 수정",
       "resendInvitation": "초대 재전송",
       "cancelInvitation": "초대 취소",
-      "patchMemberHint": "이미 수락한 멤버에게만 사용하세요. 멤버십을 새로 만들 수 없습니다."
+      "patchMemberHint": "이미 수락한 멤버에게만 사용하세요. 멤버십을 새로 만들 수 없습니다.",
+      "browseGroupsAction": "그룹 보기",
+      "groupCountDescription": "그룹 {count}개",
+      "emptyDescription": "멤버를 초대하고 승인된 지식 공간을 공유하려면 그룹을 만드세요.",
+      "createGroupDialogDescription": "초대 수락 기반 공유 공간을 만듭니다. 그룹을 만든 뒤 지식과 멤버를 추가할 수 있습니다.",
+      "inviteMemberAction": "멤버 초대",
+      "membersSummary": "역할에 따라 이 그룹을 사용할 수 있는 수락된 멤버입니다.",
+      "invitationsSummary": "초대는 이메일로 시작하며 사용자가 수락한 뒤에만 멤버십이 됩니다.",
+      "sourceSpacesTitle": "그룹 지식 공간",
+      "sourceSpacesDescription": "이 그룹에 연결된 승인된 공유 라이브러리입니다.",
+      "noSourceSpacesTitle": "아직 그룹 지식 공간이 없습니다",
+      "noSourceSpacesDescription": "그룹에 공유 지식이 필요하면 지식 화면에서 그룹 지식 공간을 만드세요.",
+      "publishRequestsTitle": "공유 요청",
+      "publishRequestsSummary": "그룹 지식 공간으로 복사되기를 기다리는 개인 지식입니다.",
+      "noPublishRequestsTitle": "공유 요청이 없습니다",
+      "noPublishRequestsDescription": "개인 지식 공간이나 문서를 이 그룹과 공유하면 여기에 요청이 표시됩니다.",
+      "requestShareAction": "공유 요청",
+      "updateMemberRoleAction": "역할 변경",
+      "manageInvitationAction": "초대 관리",
+      "reviewRequestAction": "요청 검토"
     }
   },
   "errors": {
