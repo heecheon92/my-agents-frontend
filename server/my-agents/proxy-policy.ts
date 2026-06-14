@@ -163,6 +163,11 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "group-invitations.accept",
   },
   {
+    method: "POST",
+    pattern: /^\/group-invitations\/signup$/,
+    name: "group-invitations.signup",
+  },
+  {
     method: "GET",
     pattern: new RegExp(`^/groups/${uuidLike}/members$`),
     name: "members.list",
@@ -339,7 +344,8 @@ export function isCsrfExemptPath(path: string) {
     path === "/auth/signup" ||
     path === "/auth/verify-email" ||
     path === "/auth/password-reset/request" ||
-    path === "/auth/password-reset/confirm"
+    path === "/auth/password-reset/confirm" ||
+    path === "/group-invitations/signup"
   );
 }
 

@@ -1,5 +1,10 @@
+import { Suspense } from "react";
 import { AuthPanel } from "@/components/AuthPanel";
 
 export default function SignupPage() {
-  return <AuthPanel mode="signup" />;
+  return (
+    <Suspense fallback={null}>
+      <AuthPanel mode="signup" />
+    </Suspense>
+  );
 }

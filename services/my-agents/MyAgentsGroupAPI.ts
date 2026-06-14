@@ -5,9 +5,12 @@ import {
   type GroupInvitation,
   type GroupInvitationAcceptRequest,
   type GroupInvitationCreateRequest,
+  type GroupInvitationSignupRequest,
+  type GroupInvitationSignupResponse,
   type GroupInvitationUpdateRequest,
   type GroupMember,
   groupInvitationSchema,
+  groupInvitationSignupResponseSchema,
   groupMemberSchema,
   groupSchema,
   type KnowledgePublishRequest,
@@ -113,6 +116,18 @@ export class MyAgentsGroupAPI {
       method: "POST",
       body: payload,
     });
+  }
+
+  async signupFromInvitation(
+    payload: GroupInvitationSignupRequest,
+  ): Promise<GroupInvitationSignupResponse> {
+    return parseWithSchema(
+      groupInvitationSignupResponseSchema,
+      await this.client.fetch(API_PATH.groupInvitations.signup, {
+        method: "POST",
+        body: payload,
+      }),
+    );
   }
 
   async members(groupId: string): Promise<GroupMember[]> {

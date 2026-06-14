@@ -106,7 +106,13 @@
     "groupInvitationFailedDescription": "Sign in with the invited email address, then open the invitation link again. Expired or cancelled invitations cannot be used.",
     "groupInvitationMissingTitle": "Invitation token is missing",
     "groupInvitationMissingDescription": "Open the full invitation link from your email, including the token query parameter.",
-    "groupsLink": "Open Groups"
+    "groupsLink": "Open Groups",
+    "groupInvitationRedirectingTitle": "Create your invited account",
+    "groupInvitationRedirectingDescription": "This invitation link proves the invited email. Continue by choosing a display name and password.",
+    "groupInvitationSignupTitle": "Finish accepting the invitation",
+    "groupInvitationSignupDescription": "Your invitation link already proves the email address. Choose a display name and password; future sign-in uses the invited email and password, not the display name.",
+    "groupInvitationLoginTitle": "Accept after sign-in",
+    "groupInvitationLoginDescription": "Sign in with the invited email address. After login, we will return to this invitation and add the account to the group."
   },
   "service": {
     "nav": {

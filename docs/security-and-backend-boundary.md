@@ -38,8 +38,8 @@ sequenceDiagram
     participant BFF as Next BFF
     participant Backend as FastAPI backend
 
-    Browser->>BFF: POST /api/my-agents/auth/login
-    BFF->>Backend: POST /auth/login
+    Browser->>BFF: POST /api/my-agents/auth/login or /group-invitations/signup
+    BFF->>Backend: POST /auth/login or /group-invitations/signup
     Backend-->>BFF: session cookie + { user, csrf_token }
     BFF-->>Browser: session cookie + HttpOnly CSRF cookie + { user }
 
@@ -68,7 +68,9 @@ Current strategy:
 4. Mutating browser calls go through the BFF.
 5. The BFF injects the backend CSRF header server-side only after safety checks pass.
 
-Unauthenticated auth lifecycle mutations (`/auth/signup`, `/auth/login`, `/auth/verify-email`, `/auth/password-reset/request`, and `/auth/password-reset/confirm`) are exempt from the CSRF-cookie requirement because a user may not have a session yet. They still go through same-origin JSON and fetch-metadata checks.
+Unauthenticated auth lifecycle mutations (`/auth/signup`, `/auth/login`, `/auth/verify-email`, `/auth/password-reset/request`, `/auth/password-reset/confirm`, and `/group-invitations/signup`) are exempt from the CSRF-cookie requirement because a user may not have a session yet. They still go through same-origin JSON and fetch-metadata checks.
+
+Invitation signup is also a session-creating route. The BFF must treat `POST /group-invitations/signup` like login/guest-login for cookie copying and `csrf_token` redaction, while the request body stays token + nickname + password only.
 
 Never regress these rules:
 

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { userSchema } from "./auth";
 
 export const membershipRoleSchema = z.enum([
   "owner",
@@ -39,7 +40,15 @@ export const groupInvitationUpdateRequestSchema = z
 
 export const groupInvitationAcceptRequestSchema = z
   .object({
-    token: z.string().min(1).max(256),
+    token: z.string().min(1).max(512),
+  })
+  .strict();
+
+export const groupInvitationSignupRequestSchema = z
+  .object({
+    token: z.string().min(1).max(512),
+    nickname: z.string().trim().min(1).max(40),
+    password: z.string().min(8).max(128),
   })
   .strict();
 
@@ -63,6 +72,13 @@ export const groupMemberSchema = z.object({
   role: membershipRoleSchema,
   created_at: z.string(),
 });
+
+export const groupInvitationSignupResponseSchema = z
+  .object({
+    user: userSchema,
+    member: groupMemberSchema,
+  })
+  .strict();
 
 export const memberPatchRequestSchema = z.object({
   role: membershipRoleSchema,
@@ -133,6 +149,12 @@ export type GroupInvitationUpdateRequest = z.infer<
 >;
 export type GroupInvitationAcceptRequest = z.infer<
   typeof groupInvitationAcceptRequestSchema
+>;
+export type GroupInvitationSignupRequest = z.infer<
+  typeof groupInvitationSignupRequestSchema
+>;
+export type GroupInvitationSignupResponse = z.infer<
+  typeof groupInvitationSignupResponseSchema
 >;
 export type GroupInvitation = z.infer<typeof groupInvitationSchema>;
 export type GroupMember = z.infer<typeof groupMemberSchema>;
