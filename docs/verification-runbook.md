@@ -68,8 +68,8 @@ Use this after auth, BFF, chat, route, provider, or visual shell changes.
 1. Start backend in deterministic mode.
 2. Start frontend with `pnpm dev`.
 3. Open `http://localhost:3000/signup`.
-4. Create a new account with a unique email and password of at least 8 characters.
-5. Confirm the signup screen shows an account-created handoff from the `{ user, verification_email_sent }` response instead of a Zod/parser error or automatic chat redirect.
+4. Create a new account with a unique email and password of at least 8 characters. After the nickname contract lands, also enter a required display name and confirm duplicate display names are allowed in separate accounts.
+5. Confirm the signup screen shows an account-created handoff from the `{ user, verification_email_sent }` response instead of a Zod/parser error or automatic chat redirect. After the nickname contract lands, confirm `user.nickname` parses from the response.
 6. If the local backend mode requires email verification, use the hosted API/dev mail flow available for that environment; otherwise log in with the newly created credentials and confirm redirect to `/chat`.
 7. Confirm browser `localStorage` and `sessionStorage` do not contain session or CSRF values.
 8. Create a question thread.

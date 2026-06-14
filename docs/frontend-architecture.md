@@ -42,12 +42,12 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | --- | --- | --- |
 | `/` | `app/page.tsx` | Marketing/landing entry point. |
 | `/login` | `components/AuthPanel.tsx` | Login through BFF `/auth/login`. |
-| `/signup` | `components/AuthPanel.tsx` | Signup parses the backend `SignupResponse` envelope and shows an account-created handoff before login. |
+| `/signup` | `components/AuthPanel.tsx` | Signup parses the backend `SignupResponse` envelope and shows an account-created handoff before login. The approved nickname contract should add a required display-only nickname once hosted OpenAPI exposes it. |
 | `/chat` | `components/ChatWorkspace.tsx` + `components/chat/*` | Anchor Ask journey. Uses conversations, messages, streamed answers, citations near assistant replies, a compact top-of-chat source selector, and collapsed response evidence/work history. |
 | `/knowledge` | `components/AdminSurfaces.tsx` | Knowledge journey root. Uses a source-space tree + source table shell, shadcn/Base UI dialogs for add flows, and keeps row-level permission/deletion controls in per-source Manage dialogs. |
 | `/knowledge/[sourceId]` | `components/AdminSurfaces.tsx` | Addressable selected knowledge route. The segment may be a knowledge-base ID or group ID; refresh preserves the selected space/group instead of resetting to the first available item. |
 | `/documents` | `next/navigation` redirect | Legacy compatibility path that redirects to `/knowledge` so old links land on the merged Sources workflow. |
-| `/groups` | `components/AdminSurfaces.tsx` | “Teams” journey. Manages shared knowledge requests and keeps raw ID-based member controls in Advanced disclosure. |
+| `/groups` | `components/AdminSurfaces.tsx` | “Teams” journey. Manages shared knowledge requests, shows accepted-member display names when the backend contract provides them, and keeps raw ID-based member controls in Advanced disclosure. |
 
 All service routes live under `app/(service)/layout.tsx`, which renders `ServiceShell` and restores auth through `/auth/me`.
 
@@ -64,19 +64,20 @@ flowchart TD
 
 When adding or changing a backend-backed feature:
 
-1. Add or update the Zod schema in `model/my-agents/`.
-2. Add or update `constants/api-path.ts` and `constants/query-keys.ts`.
-3. Add a method to the matching service class in `services/my-agents/`.
-4. Add or update a TanStack Query hook in `hooks/`.
-5. Build the UI in `components/` and route page in `app/`.
-6. Add tests for path/query/parser/security behavior when relevant.
+1. Confirm the backend-owned OpenAPI/contract first; do not derive new response fields from backend source inspection alone.
+2. Add or update the Zod schema in `model/my-agents/`.
+3. Add or update `constants/api-path.ts` and `constants/query-keys.ts`.
+4. Add a method to the matching service class in `services/my-agents/`.
+5. Add or update a TanStack Query hook in `hooks/`.
+6. Build the UI in `components/` and route page in `app/`.
+7. Add tests for path/query/parser/security behavior when relevant.
 
 ## Endpoint coverage
 
 The BFF allowlist currently covers:
 
 - `GET /health`
-- `POST /auth/signup`
+- `POST /auth/signup` (planned nickname contract: require duplicate-allowed display-only `nickname` once backend OpenAPI is refreshed)
 - `POST /auth/verify-email`
 - `POST /auth/login`
 - `POST /auth/password-reset/request`
@@ -102,8 +103,8 @@ The BFF allowlist currently covers:
 - `POST /groups/{group_id}/invitations/{invitation_id}/resend`
 - `DELETE /groups/{group_id}/invitations/{invitation_id}`
 - `POST /group-invitations/accept`
-- `GET /groups/{group_id}/members` for owner/admin member role maintenance only
-- `PATCH /groups/{group_id}/members/{user_id}` for already-active member role updates only
+- `GET /groups/{group_id}/members` for owner/admin member role maintenance only (planned nickname contract: accepted members include display-only `nickname`, never member email)
+- `PATCH /groups/{group_id}/members/{user_id}` for already-active member role updates only; duplicate nicknames mean role updates stay user-id based
 - `POST /knowledge-bases`
 - `GET /knowledge-bases`
 - `GET /knowledge-bases/{knowledge_base_id}`
