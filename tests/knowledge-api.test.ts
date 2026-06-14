@@ -28,6 +28,23 @@ describe("knowledge base creation payloads", () => {
       }),
     ).toEqual({ name: "Group research", scope: "group", group_id: "group-1" });
   });
+
+  it("builds system knowledge-base payloads only for system managers", () => {
+    expect(
+      buildKnowledgeBaseCreateRequest({
+        name: "Project facts",
+        scope: "system",
+      }),
+    ).toBeNull();
+
+    expect(
+      buildKnowledgeBaseCreateRequest({
+        canManageSystemKnowledge: true,
+        name: "  Project facts  ",
+        scope: "system",
+      }),
+    ).toEqual({ name: "Project facts", scope: "system" });
+  });
 });
 
 describe("MyAgentsKnowledgeBaseAPI", () => {
@@ -141,6 +158,50 @@ describe("MyAgentsKnowledgeBaseAPI", () => {
             name: "Group research",
             scope: "group",
             group_id: "group-1",
+          },
+        },
+      },
+    ]);
+  });
+
+  it("posts system knowledge-base creation requests to the planned backend contract", async () => {
+    const calls: Array<{
+      path: string;
+      init?: { method?: string; body?: unknown };
+    }> = [];
+    const api = new MyAgentsKnowledgeBaseAPI({
+      fetch: async (path, init) => {
+        calls.push({ path, init });
+        return {
+          id: "kb-system-1",
+          name: "Project facts",
+          scope: "system",
+          owner_user_id: "manager-1",
+          group_id: null,
+          created_at: "2026-06-14T08:00:00Z",
+        };
+      },
+    });
+
+    await expect(
+      api.create({
+        name: "Project facts",
+        scope: "system",
+      }),
+    ).resolves.toMatchObject({
+      id: "kb-system-1",
+      scope: "system",
+      group_id: null,
+    });
+
+    expect(calls).toEqual([
+      {
+        path: "/knowledge-bases",
+        init: {
+          method: "POST",
+          body: {
+            name: "Project facts",
+            scope: "system",
           },
         },
       },

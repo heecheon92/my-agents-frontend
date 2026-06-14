@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+export const userTypeSchema = z.enum(["normal", "root", "system"]);
+
 export const userSchema = z
   .object({
     id: z.string().min(1),
@@ -16,6 +18,8 @@ export const userSchema = z
       .nullable()
       .optional(),
     approval_status: z.enum(["approved", "pending", "rejected"]).optional(),
+    user_type: userTypeSchema.optional(),
+    can_manage_system_knowledge: z.boolean().default(false),
   })
   .strict();
 
@@ -112,6 +116,7 @@ export const signupResponseSchema = z
   .strict();
 
 export type User = z.infer<typeof userSchema>;
+export type UserType = z.infer<typeof userTypeSchema>;
 export type SignupRequest = z.infer<typeof signupRequestSchema>;
 export type SignupResponse = z.infer<typeof signupResponseSchema>;
 export type VerifyEmailRequest = z.infer<typeof verifyEmailRequestSchema>;
@@ -132,3 +137,9 @@ export type AccountPasswordUpdateRequest = z.infer<
   typeof accountPasswordUpdateRequestSchema
 >;
 export type AcceptedResponse = z.infer<typeof acceptedResponseSchema>;
+
+export function canManageSystemKnowledge(
+  user?: Pick<User, "can_manage_system_knowledge"> | null,
+) {
+  return user?.can_manage_system_knowledge === true;
+}

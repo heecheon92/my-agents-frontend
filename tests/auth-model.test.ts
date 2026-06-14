@@ -4,6 +4,7 @@ import {
   accountNicknameUpdateRequestSchema,
   accountPasswordUpdateRequestSchema,
   backendLoginResponseSchema,
+  canManageSystemKnowledge,
   guestAccessRequestSchema,
   guestAccessResponseSchema,
   guestLoginRequestSchema,
@@ -20,11 +21,40 @@ const user = {
   email: "user@example.com",
   nickname: "Test User",
   email_verified_at: null,
+  can_manage_system_knowledge: false,
 };
 
 describe("auth response schemas", () => {
   it("parses current safe user payloads with email verification state", () => {
     expect(userSchema.parse(user)).toEqual(user);
+  });
+
+  it("defaults system knowledge management capability closed", () => {
+    const parsed = userSchema.parse({
+      id: "u1",
+      email: "user@example.com",
+      nickname: "Test User",
+      email_verified_at: null,
+    });
+
+    expect(parsed.can_manage_system_knowledge).toBe(false);
+    expect(canManageSystemKnowledge(parsed)).toBe(false);
+  });
+
+  it("parses read-only user type and canonical system management capability", () => {
+    const manager = userSchema.parse({
+      ...user,
+      user_type: "root",
+      can_manage_system_knowledge: true,
+    });
+    const rawUserTypeOnly = userSchema.parse({
+      ...user,
+      user_type: "system",
+    });
+
+    expect(manager.user_type).toBe("root");
+    expect(canManageSystemKnowledge(manager)).toBe(true);
+    expect(canManageSystemKnowledge(rawUserTypeOnly)).toBe(false);
   });
 
   it("parses backend-local datetime strings for verified users", () => {
@@ -118,8 +148,15 @@ describe("auth response schemas", () => {
       guest_expires_at: "2026-05-22T00:00:00Z",
     };
 
-    expect(userSchema.parse(guest)).toEqual(guest);
-    expect(loginResponseSchema.parse({ user: guest })).toEqual({ user: guest });
+    const parsedGuest = {
+      ...guest,
+      can_manage_system_knowledge: false,
+    };
+
+    expect(userSchema.parse(guest)).toEqual(parsedGuest);
+    expect(loginResponseSchema.parse({ user: guest })).toEqual({
+      user: parsedGuest,
+    });
   });
 
   it("parses backend CSRF response separately from browser-safe response", () => {
@@ -163,6 +200,13 @@ describe("auth response schemas", () => {
       accountNicknameUpdateRequestSchema.parse({
         current_password: "current-password",
         nickname: "x".repeat(41),
+      }),
+    ).toThrow();
+    expect(() =>
+      accountNicknameUpdateRequestSchema.parse({
+        current_password: "current-password",
+        nickname: "Manager",
+        user_type: "root",
       }),
     ).toThrow();
 

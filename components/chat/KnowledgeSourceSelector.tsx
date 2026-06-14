@@ -6,6 +6,10 @@ import type {
   KnowledgeBase,
   KnowledgeBaseSelectionMode,
 } from "@/model/my-agents";
+import {
+  ambientSystemKnowledgeBaseCount,
+  chatSelectableKnowledgeBases,
+} from "../document-knowledge-base";
 import type { ChatLocalization } from "./types";
 
 export function KnowledgeSourceSelector({
@@ -29,10 +33,19 @@ export function KnowledgeSourceSelector({
   requiresKnowledgeBaseSelection: boolean;
   onToggleKnowledgeBase: (knowledgeBaseId: string) => void;
 }) {
+  const selectableKnowledgeBases = chatSelectableKnowledgeBases(knowledgeBases);
+  const ambientSystemSourceCount =
+    ambientSystemKnowledgeBaseCount(knowledgeBases);
+  const selectableKnowledgeBaseIds = new Set(
+    selectableKnowledgeBases.map((knowledgeBase) => knowledgeBase.id),
+  );
+  const selectedSelectableCount = selectedKnowledgeBaseIds.filter((id) =>
+    selectableKnowledgeBaseIds.has(id),
+  ).length;
   const selectedCount =
     knowledgeBaseMode === "all"
-      ? knowledgeBases.length
-      : selectedKnowledgeBaseIds.length;
+      ? selectableKnowledgeBases.length
+      : selectedSelectableCount;
   const sourceSummary =
     knowledgeBaseMode === "all"
       ? localization.knowledgeSourceAllSummary.replace(
@@ -67,10 +80,24 @@ export function KnowledgeSourceSelector({
           <div className="flex flex-wrap gap-2">
             <Badge variant="secondary">{localization.privateChatPill}</Badge>
             <Badge variant="outline">{localization.unifiedSourcesPill}</Badge>
+            <Badge variant="outline">
+              {localization.systemProjectKnowledgePill}
+            </Badge>
           </div>
           <p className="text-xs leading-5 text-cal-muted">
             {localization.knowledgeSourceBoundaryCopy}
           </p>
+          <p className="text-xs leading-5 text-cal-muted">
+            {localization.systemAmbientBoundaryCopy}
+          </p>
+          {ambientSystemSourceCount > 0 ? (
+            <p className="text-xs leading-5 text-cal-muted">
+              {localization.systemAmbientAvailableCopy.replace(
+                "{count}",
+                String(ambientSystemSourceCount),
+              )}
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
           <Button
@@ -100,14 +127,14 @@ export function KnowledgeSourceSelector({
             {knowledgeBasesError ? (
               <ErrorState error={knowledgeBasesError} />
             ) : null}
-            {knowledgeBases.length === 0 ? (
+            {selectableKnowledgeBases.length === 0 ? (
               <EmptyState
                 title={localization.noKnowledgeBasesTitle}
                 description={localization.noKnowledgeBasesDescription}
               />
             ) : null}
             <div className="flex flex-wrap gap-2">
-              {knowledgeBases.map((knowledgeBase) => {
+              {selectableKnowledgeBases.map((knowledgeBase) => {
                 const checked = selectedKnowledgeBaseIds.includes(
                   knowledgeBase.id,
                 );

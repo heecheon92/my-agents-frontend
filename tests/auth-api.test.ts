@@ -6,6 +6,7 @@ const user = {
   email: "user@example.com",
   nickname: "Test User",
   email_verified_at: null,
+  can_manage_system_knowledge: false,
 };
 
 describe("MyAgentsAuthAPI", () => {

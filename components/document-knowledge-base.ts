@@ -24,6 +24,35 @@ export function groupKnowledgeBasesForGroup(
   );
 }
 
+export function systemKnowledgeBasesForManager(
+  knowledgeBases: KnowledgeBase[],
+  canManageSystemKnowledge: boolean,
+) {
+  if (!canManageSystemKnowledge) return [];
+  return knowledgeBases.filter(
+    (knowledgeBase) =>
+      knowledgeBase.scope === "system" &&
+      knowledgeBase.purpose === "standard" &&
+      knowledgeBase.group_id === null,
+  );
+}
+
+export function chatSelectableKnowledgeBases(knowledgeBases: KnowledgeBase[]) {
+  return knowledgeBases.filter(
+    (knowledgeBase) =>
+      knowledgeBase.scope !== "system" && knowledgeBase.purpose === "standard",
+  );
+}
+
+export function ambientSystemKnowledgeBaseCount(
+  knowledgeBases: KnowledgeBase[],
+) {
+  return knowledgeBases.filter(
+    (knowledgeBase) =>
+      knowledgeBase.scope === "system" && knowledgeBase.purpose === "standard",
+  ).length;
+}
+
 export function canAutoApproveTeamDocumentUpload(group?: Pick<Group, "role">) {
   return group?.role === "owner" || group?.role === "admin";
 }

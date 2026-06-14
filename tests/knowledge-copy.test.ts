@@ -72,6 +72,7 @@ describe("source-space creation copy", () => {
     expect(copy.nameLabel).toBe("Source space name");
     expect(copy.scopeHint).toContain("Personal source spaces stay private");
     expect(copy.scopeHint).toContain("Group source spaces");
+    expect(copy.scopeHint).toContain("System source spaces");
     expect(copy.scopeBoundaryNote).toContain(
       "Add sources to personal spaces first",
     );
@@ -79,8 +80,11 @@ describe("source-space creation copy", () => {
     expect(copy.scopeBoundaryNote).toContain(
       "does not share member conversations",
     );
+    expect(copy.scopeBoundaryNote).toContain("never add secrets");
+    expect(copy.scopeSystemOption).toBe("System project source space");
     expect(copy.listPersonalSubtitle).toContain("private to your account");
     expect(copy.listGroupSubtitle).toContain("group members");
+    expect(copy.listSystemSubtitle).toContain("public project knowledge");
   });
 
   it("states the same ownership boundary in Korean", () => {
@@ -91,11 +95,35 @@ describe("source-space creation copy", () => {
     expect(copy.nameLabel).toBe("지식 공간 이름");
     expect(copy.scopeHint).toContain("개인 지식 공간");
     expect(copy.scopeHint).toContain("그룹 지식 공간");
+    expect(copy.scopeHint).toContain("시스템 지식 공간");
     expect(copy.scopeBoundaryNote).toContain("먼저 개인 공간에 추가");
     expect(copy.scopeBoundaryNote).toContain("승인이 필요");
     expect(copy.scopeBoundaryNote).toContain("멤버 대화");
+    expect(copy.scopeBoundaryNote).toContain("비밀");
+    expect(copy.scopeSystemOption).toBe("시스템 프로젝트 지식 공간");
     expect(copy.listPersonalSubtitle).toContain("내 계정 전용");
     expect(copy.listGroupSubtitle).toContain("선택한 그룹 멤버");
+    expect(copy.listSystemSubtitle).toContain("공개 프로젝트 지식");
+  });
+});
+
+describe("ambient system project knowledge copy", () => {
+  it("keeps source selector copy honest in English", () => {
+    expect(en.chat.knowledgeSourceDescription).toContain(
+      "System project knowledge",
+    );
+    expect(en.chat.systemProjectKnowledgePill).toBe("Project knowledge");
+    expect(en.chat.systemAmbientBoundaryCopy).toContain("does not disable it");
+    expect(en.chat.systemAmbientAvailableCopy).toContain("{count}");
+  });
+
+  it("keeps source selector copy honest in Korean", () => {
+    expect(ko.chat.knowledgeSourceDescription).toContain(
+      "시스템 프로젝트 지식",
+    );
+    expect(ko.chat.systemProjectKnowledgePill).toBe("프로젝트 지식");
+    expect(ko.chat.systemAmbientBoundaryCopy).toContain("꺼지지 않습니다");
+    expect(ko.chat.systemAmbientAvailableCopy).toContain("{count}");
   });
 });
 

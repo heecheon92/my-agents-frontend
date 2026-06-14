@@ -106,7 +106,7 @@ The BFF allowlist currently covers:
 - `POST /group-invitations/signup` for no-account invitees; request body is token + nickname + password, never email
 - `GET /groups/{group_id}/members` for owner/admin member role maintenance only (accepted members include display-only `nickname`, never member email)
 - `PATCH /groups/{group_id}/members/{user_id}` for already-active member role updates only; duplicate nicknames mean role updates stay user-id based
-- `POST /knowledge-bases`
+- `POST /knowledge-bases` (personal/group, plus privileged `scope: "system"` project source creation when backend capability allows it)
 - `GET /knowledge-bases`
 - `GET /knowledge-bases/{knowledge_base_id}`
 - `POST /knowledge-bases/{knowledge_base_id}/documents`
@@ -147,7 +147,7 @@ sequenceDiagram
     UI-->>User: /groups
 ```
 
-`POST /assistant/chat` is intentionally excluded from product BFF use. The current product UI prefers the KB-nested document routes above; legacy document routes remain allowlisted for existing detail/delete compatibility and older clients, not as the primary upload/create/ingest journey.
+`POST /assistant/chat` is intentionally excluded from product BFF use. The current product UI prefers the KB-nested document routes above; legacy document routes remain allowlisted for existing detail/delete compatibility and older clients, not as the primary upload/create/ingest journey. System project source management is shown only when `/auth/me` exposes `can_manage_system_knowledge: true`; normal users and guests should benefit from ambient project knowledge in Ask without seeing or selecting system source spaces.
 
 ## Design approach
 

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const knowledgeBaseScopeSchema = z.enum(["personal", "group"]);
+export const knowledgeBaseScopeSchema = z.enum(["personal", "group", "system"]);
 export const knowledgeBasePurposeSchema = z.enum([
   "standard",
   "team_upload_staging",

@@ -501,3 +501,13 @@ Verification passed for this log entry: `pnpm exec vitest run tests/api-path.tes
 - Preserved the per-item publish-review drawer because document preview/review remains a focused item-level flow rather than a list-management surface.
 
 Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/localization.test.ts`, and `pnpm exec playwright test e2e/group-knowledge-v1.spec.ts`.
+
+## 2026-06-14 — System project knowledge frontend lane
+
+- Added frontend parsing for `can_manage_system_knowledge` and optional read-only `user_type`, keeping role mutation out of request schemas and gating system source management only on the capability field.
+- Extended source-space schemas and creation helpers for `scope: "system"`, with manager-only payload construction and source-tree visibility.
+- Added a privileged System project source section in the Documents/Sources surface. Normal users and guests do not see system source spaces; managers see public-content warnings before adding text/files.
+- Updated Ask source-selector copy and filtering so system project knowledge is described as ambient/automatic and is not presented as a user-toggleable personal/group source.
+- Recorded backend contract assumptions in `docs/backend-requests.md` pending authoritative hosted OpenAPI/runtime confirmation.
+
+Verification pending for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build`, and browser/UI smoke after the current edit set is complete.

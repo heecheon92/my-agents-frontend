@@ -80,6 +80,7 @@ import {
 import { useLocalization } from "@/hooks/useLocalization";
 import { cn } from "@/lib/utils";
 import {
+  canManageSystemKnowledge as canManageSystemKnowledgeForUser,
   documentUploadConcurrencyFromHealth,
   type ExtractionRun,
   type GroupInvitation,
@@ -94,6 +95,7 @@ import { myAgentsAPI } from "@/services/my-agents";
 import {
   canAutoApproveTeamDocumentUpload,
   groupKnowledgeBasesForGroup,
+  systemKnowledgeBasesForManager,
   writableDocumentKnowledgeBases,
 } from "./document-knowledge-base";
 import { Field, inputClassName, selectClassName } from "./Field";
@@ -105,7 +107,7 @@ import { EmptyState, ErrorState, Pill } from "./Status";
 
 type GroupRole = "owner" | "admin" | "editor" | "viewer";
 type PublishSourceKind = "document" | "knowledge-base";
-type DocumentDestination = "personal" | "team";
+type DocumentDestination = "personal" | "team" | "system";
 
 type SourcesSurfaceProps = {
   initialSourceId?: string;
@@ -246,6 +248,9 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   const knowledgeBases = useKnowledgeBases();
   const currentUser = useCurrentUser();
   const createKnowledgeBase = useCreateKnowledgeBase();
+  const canManageSystemKnowledge = canManageSystemKnowledgeForUser(
+    currentUser.data,
+  );
   const health = useQuery({
     queryKey: MyAgentsQueryKeys.health(),
     queryFn: () => myAgentsAPI.health(),
@@ -258,6 +263,8 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   const [selectedTeamGroupId, setSelectedTeamGroupId] = useState<string>();
   const [selectedTeamKnowledgeBaseId, setSelectedTeamKnowledgeBaseId] =
     useState<string>();
+  const [selectedSystemKnowledgeBaseId, setSelectedSystemKnowledgeBaseId] =
+    useState<string>();
   const [optimisticSourceId, setOptimisticSourceId] = useState<string>();
   const [sourceSpaceName, setSourceSpaceName] = useState("");
   const [sourceSpaceScope, setSourceSpaceScope] =
@@ -266,6 +273,10 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   const documentKnowledgeBases = writableDocumentKnowledgeBases(
     knowledgeBases.data ?? [],
     currentUser.data?.id,
+  );
+  const systemKnowledgeBases = systemKnowledgeBasesForManager(
+    knowledgeBases.data ?? [],
+    canManageSystemKnowledge,
   );
   const teamGroups = groups.data ?? [];
   const sourceSpaceGroupOptions = teamGroups.filter(
@@ -285,25 +296,32 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
       knowledgeBase.id === effectiveRouteSourceId &&
       Boolean(knowledgeBase.group_id),
   );
+  const routeSystemKnowledgeBase = systemKnowledgeBases.find(
+    (knowledgeBase) => knowledgeBase.id === effectiveRouteSourceId,
+  );
   const routeTeamGroup = teamGroups.find(
     (group) => group.id === effectiveRouteSourceId,
   );
   const routeDocumentDestination: DocumentDestination | undefined =
     routePersonalKnowledgeBase
       ? "personal"
-      : routeTeamKnowledgeBase || routeTeamGroup
-        ? "team"
-        : undefined;
+      : routeSystemKnowledgeBase
+        ? "system"
+        : routeTeamKnowledgeBase || routeTeamGroup
+          ? "team"
+          : undefined;
   const effectiveDocumentDestination =
     routeDocumentDestination ?? documentDestination;
   const routeTeamGroupId =
     routeTeamKnowledgeBase?.group_id ?? routeTeamGroup?.id;
   const createSourceSpacePayload = buildKnowledgeBaseCreateRequest({
+    canManageSystemKnowledge,
     groupId: sourceSpaceGroupId,
     name: sourceSpaceName,
     scope: sourceSpaceScope,
   });
   const isCreatingTeamSourceSpace = sourceSpaceScope === "group";
+  const isCreatingSystemSourceSpace = sourceSpaceScope === "system";
   const selectedTeamGroupStillExists = Boolean(
     selectedTeamGroupId &&
       teamGroups.some((group) => group.id === selectedTeamGroupId),
@@ -330,6 +348,17 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     (selectedTeamKnowledgeBaseStillExists
       ? selectedTeamKnowledgeBaseId
       : activeGroupKnowledgeBases[0]?.id);
+  const selectedSystemKnowledgeBaseStillExists = Boolean(
+    selectedSystemKnowledgeBaseId &&
+      systemKnowledgeBases.some(
+        (knowledgeBase) => knowledgeBase.id === selectedSystemKnowledgeBaseId,
+      ),
+  );
+  const activeSystemKnowledgeBaseId =
+    routeSystemKnowledgeBase?.id ??
+    (selectedSystemKnowledgeBaseStillExists
+      ? selectedSystemKnowledgeBaseId
+      : systemKnowledgeBases[0]?.id);
   const selectedPersonalKnowledgeBaseStillExists = Boolean(
     selectedKnowledgeBaseId &&
       documentKnowledgeBases.some(
@@ -344,14 +373,18 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   const displayKnowledgeBaseId =
     effectiveDocumentDestination === "team"
       ? activeTeamKnowledgeBaseId
-      : activeKnowledgeBaseId;
-  const personalWriteKnowledgeBaseId =
-    effectiveDocumentDestination === "personal"
-      ? activeKnowledgeBaseId
-      : undefined;
+      : effectiveDocumentDestination === "system"
+        ? activeSystemKnowledgeBaseId
+        : activeKnowledgeBaseId;
+  const directWriteKnowledgeBaseId =
+    effectiveDocumentDestination === "system"
+      ? activeSystemKnowledgeBaseId
+      : effectiveDocumentDestination === "personal"
+        ? activeKnowledgeBaseId
+        : undefined;
   const documents = useKnowledgeBaseDocuments(displayKnowledgeBaseId);
   const createDocument = useCreateKnowledgeBaseDocument(
-    personalWriteKnowledgeBaseId,
+    directWriteKnowledgeBaseId,
   );
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
@@ -393,15 +426,19 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   const hasActiveKnowledgeBase =
     effectiveDocumentDestination === "team"
       ? Boolean(activeTeamGroupId && activeTeamKnowledgeBaseId)
-      : Boolean(personalWriteKnowledgeBaseId);
+      : Boolean(directWriteKnowledgeBaseId);
   const activeSourceSpace =
     effectiveDocumentDestination === "team"
       ? activeGroupKnowledgeBases.find(
           (knowledgeBase) => knowledgeBase.id === activeTeamKnowledgeBaseId,
         )
-      : documentKnowledgeBases.find(
-          (knowledgeBase) => knowledgeBase.id === activeKnowledgeBaseId,
-        );
+      : effectiveDocumentDestination === "system"
+        ? systemKnowledgeBases.find(
+            (knowledgeBase) => knowledgeBase.id === activeSystemKnowledgeBaseId,
+          )
+        : documentKnowledgeBases.find(
+            (knowledgeBase) => knowledgeBase.id === activeKnowledgeBaseId,
+          );
   const visibleTeamSourceSpaceCount = teamGroups.reduce(
     (count, group) =>
       count +
@@ -409,7 +446,9 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     0,
   );
   const sourceSpaceCount =
-    documentKnowledgeBases.length + visibleTeamSourceSpaceCount;
+    documentKnowledgeBases.length +
+    visibleTeamSourceSpaceCount +
+    systemKnowledgeBases.length;
 
   const pendingQueueCount = uploadQueue.filter(
     (item) =>
@@ -449,9 +488,10 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     createKnowledgeBase.isPending ||
     groups.isLoading ||
     !createSourceSpacePayload ||
-    (isCreatingTeamSourceSpace && sourceSpaceGroupOptions.length === 0);
+    (isCreatingTeamSourceSpace && sourceSpaceGroupOptions.length === 0) ||
+    (isCreatingSystemSourceSpace && !canManageSystemKnowledge);
   const shouldShowFirstSourceSpaceForm =
-    !knowledgeBases.isLoading && documentKnowledgeBases.length === 0;
+    !knowledgeBases.isLoading && sourceSpaceCount === 0;
   const activeDocumentHasIngestion = Boolean(
     extractionRuns.data?.some((run) => isActiveExtractionRunStatus(run.status)),
   );
@@ -501,6 +541,17 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
       return;
     }
 
+    const systemKnowledgeBase = systemKnowledgeBases.find(
+      (knowledgeBase) => knowledgeBase.id === routeSourceId,
+    );
+    if (systemKnowledgeBase) {
+      setDocumentDestination("system");
+      setSelectedSystemKnowledgeBaseId(systemKnowledgeBase.id);
+      setSelectedDocumentId(undefined);
+      lastAppliedRouteSourceIdRef.current = routeSourceId;
+      return;
+    }
+
     const teamKnowledgeBase = (knowledgeBases.data ?? []).find(
       (knowledgeBase) =>
         knowledgeBase.scope === "group" &&
@@ -536,6 +587,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     knowledgeBases.data,
     knowledgeBases.isLoading,
     routeSourceId,
+    systemKnowledgeBases,
     teamGroups,
   ]);
 
@@ -679,11 +731,11 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   ) {
     let latestRun: ExtractionRun | null = null;
     while (true) {
-      if (!personalWriteKnowledgeBaseId) {
+      if (!directWriteKnowledgeBaseId) {
         throw new Error(localization.documents.knowledgeBaseRequired);
       }
       const run = await myAgentsAPI.documents.extractionRunInKnowledgeBase(
-        personalWriteKnowledgeBaseId,
+        directWriteKnowledgeBaseId,
         documentId,
         runId,
       );
@@ -780,7 +832,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
         const uploadKnowledgeBaseId =
           effectiveDocumentDestination === "team"
             ? (await myAgentsAPI.knowledgeBases.ensureTeamUploadStaging()).id
-            : personalWriteKnowledgeBaseId;
+            : directWriteKnowledgeBaseId;
         if (!uploadKnowledgeBaseId) {
           throw new Error(localization.documents.knowledgeBaseRequired);
         }
@@ -792,7 +844,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
           },
         );
         documentId = uploaded.id;
-        if (effectiveDocumentDestination === "personal") {
+        if (effectiveDocumentDestination !== "team") {
           setSelectedDocumentId(uploaded.id);
         }
         updateQueueItem(item.localId, {
@@ -800,7 +852,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
           status: "uploaded",
           progressPercent: 0,
         });
-        if (effectiveDocumentDestination === "personal") {
+        if (effectiveDocumentDestination !== "team") {
           await refreshDocumentQueries(uploaded.id, uploadKnowledgeBaseId);
         }
       }
@@ -833,7 +885,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
         return;
       }
 
-      const ingestionKnowledgeBaseId = personalWriteKnowledgeBaseId;
+      const ingestionKnowledgeBaseId = directWriteKnowledgeBaseId;
       if (!ingestionKnowledgeBaseId) {
         throw new Error(localization.documents.knowledgeBaseRequired);
       }
@@ -914,6 +966,14 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
         setDocumentDestination("team");
         setSelectedTeamGroupId(created.group_id ?? undefined);
         setSelectedTeamKnowledgeBaseId(created.id);
+        setOptimisticSourceId(created.id);
+        setIsCreateSourceSpaceDialogOpen(false);
+        router.push(knowledgeSourceHref(created.id), { scroll: false });
+        return;
+      }
+      if (created.scope === "system") {
+        setDocumentDestination("system");
+        setSelectedSystemKnowledgeBaseId(created.id);
         setOptimisticSourceId(created.id);
         setIsCreateSourceSpaceDialogOpen(false);
         router.push(knowledgeSourceHref(created.id), { scroll: false });
@@ -1077,7 +1137,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                 const nextScope = event.target
                   .value as KnowledgeBaseCreationScope;
                 setSourceSpaceScope(nextScope);
-                if (nextScope === "personal") setSourceSpaceGroupId("");
+                if (nextScope !== "group") setSourceSpaceGroupId("");
               }}
               disabled={isKnowledgeBaseSelectionLocked}
             >
@@ -1087,6 +1147,11 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
               <option value="group">
                 {localization.knowledge.scopeGroupOption}
               </option>
+              {canManageSystemKnowledge ? (
+                <option value="system">
+                  {localization.knowledge.scopeSystemOption}
+                </option>
+              ) : null}
             </select>
           </Field>
           <Field
@@ -1095,7 +1160,9 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
             hint={
               isCreatingTeamSourceSpace
                 ? localization.knowledge.groupHint
-                : localization.knowledge.groupDisabledHint
+                : isCreatingSystemSourceSpace
+                  ? localization.knowledge.groupSystemDisabledHint
+                  : localization.knowledge.groupDisabledHint
             }
           >
             <select
@@ -1144,7 +1211,9 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
         <Button type="submit" disabled={isCreateSourceSpaceDisabled}>
           {isCreatingTeamSourceSpace
             ? localization.knowledge.createGroupButton
-            : localization.knowledge.createPersonalButton}
+            : isCreatingSystemSourceSpace
+              ? localization.knowledge.createSystemButton
+              : localization.knowledge.createPersonalButton}
         </Button>
       </form>
     );
@@ -1155,6 +1224,15 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     setOptimisticSourceId(knowledgeBaseId);
     setDocumentDestination("personal");
     setSelectedKnowledgeBaseId(knowledgeBaseId);
+    setSelectedDocumentId(undefined);
+    setIsSourceSpaceBrowserOpen(false);
+  }
+
+  function selectSystemSourceSpace(knowledgeBaseId: string) {
+    if (isKnowledgeBaseSelectionLocked) return;
+    setOptimisticSourceId(knowledgeBaseId);
+    setDocumentDestination("system");
+    setSelectedSystemKnowledgeBaseId(knowledgeBaseId);
     setSelectedDocumentId(undefined);
     setIsSourceSpaceBrowserOpen(false);
   }
@@ -1290,6 +1368,28 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                     knowledgeBase.id === activeKnowledgeBaseId,
                   onSelect: () => selectPersonalSourceSpace(knowledgeBase.id),
                 }),
+              )}
+            </section>
+          ) : null}
+          {canManageSystemKnowledge ? (
+            <section className="mt-5 grid gap-1">
+              <h3 className="px-3 pb-1 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+                {localization.documents.systemSourceSpacesTitle}
+              </h3>
+              {systemKnowledgeBases.length > 0 ? (
+                systemKnowledgeBases.map((knowledgeBase) =>
+                  renderSourceSpaceButton({
+                    knowledgeBase,
+                    active:
+                      effectiveDocumentDestination === "system" &&
+                      knowledgeBase.id === activeSystemKnowledgeBaseId,
+                    onSelect: () => selectSystemSourceSpace(knowledgeBase.id),
+                  }),
+                )
+              ) : (
+                <p className="px-3 py-2 text-xs leading-5 text-cal-muted">
+                  {localization.documents.noSystemKnowledgeBaseDescription}
+                </p>
               )}
             </section>
           ) : null}
@@ -1666,7 +1766,9 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                     <span>
                       {effectiveDocumentDestination === "team"
                         ? localization.common.scopeGroup
-                        : localization.common.scopePersonal}
+                        : effectiveDocumentDestination === "system"
+                          ? localization.common.scopeSystem
+                          : localization.common.scopePersonal}
                     </span>
                   </div>
                   <h2 className="mt-2 truncate text-2xl font-semibold tracking-[-0.03em] text-cal-ink">
@@ -1678,6 +1780,11 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                       .replace("{count}", String(documents.data?.length ?? 0))
                       .replace("{ready}", String(readyDocumentCount))}
                   </p>
+                  {effectiveDocumentDestination === "system" ? (
+                    <p className="mt-2 max-w-3xl rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-900">
+                      {localization.documents.systemSourcePublicWarning}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Button

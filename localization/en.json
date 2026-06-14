@@ -278,7 +278,7 @@
     "guestNoticeTitle": "Guest demo limits",
     "guestNoticeDescription": "This guest session lasts 24 hours and is limited to one chat, 5 prompts, and 3 document uploads. If you hit a limit, a safe error appears here.",
     "knowledgeSourceTitle": "Sources for this answer",
-    "knowledgeSourceDescription": "Choose which authorized source spaces Ask may reference. Group sources are selected the same way as personal sources.",
+    "knowledgeSourceDescription": "Choose which authorized personal or group source spaces Ask may reference. System project knowledge may also be added automatically when available.",
     "knowledgeSourceAll": "All sources",
     "knowledgeSourceSelected": "Selected spaces",
     "loadingKnowledgeBases": "Loading source spaces...",
@@ -331,7 +331,11 @@
     "knowledgeSourceSelectedSummary": "Selected source spaces ({count})",
     "sourceScopePersonal": "Personal",
     "sourceScopeShared": "Shared",
-    "sourceScopeTeam": "Group"
+    "sourceScopeTeam": "Group",
+    "systemProjectKnowledgePill": "Project knowledge",
+    "systemAmbientBoundaryCopy": "System project knowledge is managed separately and may be included automatically; selecting fewer personal or group sources does not disable it.",
+    "systemAmbientAvailableCopy": "Project knowledge available automatically: {count}",
+    "sourceScopeSystem": "System"
   },
   "admin": {
     "common": {
@@ -346,7 +350,8 @@
       "relationships": "relationships",
       "scopeGroup": "Group",
       "cancel": "Cancel",
-      "close": "Close"
+      "close": "Close",
+      "scopeSystem": "System"
     },
     "knowledge": {
       "title": "Sources",
@@ -355,7 +360,7 @@
       "createButton": "Create source space",
       "empty": "No source spaces yet.",
       "scopeLabel": "Source space type",
-      "scopeHint": "Personal source spaces stay private to your account. Group source spaces are shared libraries for selected groups after sharing is approved.",
+      "scopeHint": "Personal source spaces stay private to your account. Group source spaces are shared libraries for selected groups after sharing is approved. System source spaces are public project knowledge managed only by privileged users.",
       "scopePersonalOption": "Personal source space",
       "scopeGroupOption": "Group source space",
       "groupLabel": "Existing group",
@@ -367,14 +372,18 @@
       "noGroupsDescription": "Create a group or ask a group owner/admin before creating another group source space.",
       "createPersonalButton": "Create personal source space",
       "createGroupButton": "Create group source space",
-      "scopeBoundaryNote": "New groups automatically get one default group source space. Add sources to personal spaces first; sharing with a group requires owner/admin approval and does not share member conversations or private additions.",
+      "scopeBoundaryNote": "New groups automatically get one default group source space. Add sources to personal spaces first; sharing with a group requires owner/admin approval and does not share member conversations or private additions. System project spaces are available to authenticated Ask users, so never add secrets or private records.",
       "listPersonalSubtitle": "Personal source space · private to your account",
       "listGroupSubtitle": "Group source space · available to selected group members",
       "journeySteps": [
         "Create or choose a source space.",
         "Upload files or add notes in the same place.",
         "Ask questions and inspect citations in Ask."
-      ]
+      ],
+      "scopeSystemOption": "System project source space",
+      "groupSystemDisabledHint": "System project spaces are not tied to a group.",
+      "createSystemButton": "Create system source space",
+      "listSystemSubtitle": "System source space · public project knowledge for authenticated Ask users"
     },
     "documents": {
       "title": "Sources",
@@ -486,7 +495,7 @@
       "createKnowledgeBaseAction": "Create source space",
       "knowledgeBaseLockedHint": "Finish or remove queued uploads before switching source spaces so each file stays attached to the intended library.",
       "advancedDetails": "Advanced details",
-      "askSourcesHint": "Ready sources can be used in Ask with citations.",
+      "askSourcesHint": "Ready sources can be used in Ask with citations. System project knowledge may also be added automatically when available.",
       "askSourcesAction": "Ask with these sources",
       "createFirstSourceSpaceTitle": "Create your first source space",
       "createFirstSourceSpaceDescription": "A source space gives your files and notes one home before you ask from them.",
@@ -494,7 +503,7 @@
       "createSourceSpaceTitle": "New source space",
       "createSourceSpaceDescription": "Use another space when you want to separate personal, project, or group sources.",
       "sourceSpacesTitle": "Source spaces",
-      "sourceSpacesDescription": "{count} spaces for personal or group sources",
+      "sourceSpacesDescription": "{count} spaces for personal, group, or system project sources",
       "sourceSpacesSheetDescription": "Choose the source space to manage.",
       "addSourceSpaceAction": "Add source space",
       "browseSourceSpacesAction": "Browse spaces",
@@ -518,7 +527,10 @@
       "sourceActionsDescription": "Prepare or delete this source without changing the selected knowledge space.",
       "uploadFilesAction": "Upload files",
       "addTextSourceAction": "Add text",
-      "createSourceSpaceDialogDescription": "Create a personal or group source space, then add files or notes from the same page."
+      "createSourceSpaceDialogDescription": "Create a personal or group source space, then add files or notes from the same page.",
+      "systemSourceSpacesTitle": "System project",
+      "noSystemKnowledgeBaseDescription": "Create a system project source space to manage public project knowledge for authenticated Ask users.",
+      "systemSourcePublicWarning": "System project sources can be retrieved automatically for authenticated Ask users, including guests. Do not upload secrets, credentials, or private records here."
     },
     "groups": {
       "title": "Groups",

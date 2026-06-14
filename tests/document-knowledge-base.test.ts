@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  ambientSystemKnowledgeBaseCount,
   canAutoApproveTeamDocumentUpload,
+  chatSelectableKnowledgeBases,
   groupKnowledgeBasesForGroup,
+  systemKnowledgeBasesForManager,
   writableDocumentKnowledgeBases,
 } from "@/components/document-knowledge-base";
 import type { KnowledgeBase } from "@/model/my-agents";
@@ -40,6 +43,18 @@ describe("document writable knowledge bases", () => {
     });
 
     expect(writableDocumentKnowledgeBases([group, personal])).toEqual([
+      personal,
+    ]);
+  });
+
+  it("does not include system source spaces in ordinary personal write choices", () => {
+    const personal = knowledgeBase({ id: "kb-personal", scope: "personal" });
+    const system = knowledgeBase({
+      id: "kb-system",
+      scope: "system",
+    });
+
+    expect(writableDocumentKnowledgeBases([system, personal])).toEqual([
       personal,
     ]);
   });
@@ -86,5 +101,35 @@ describe("document writable knowledge bases", () => {
     expect(canAutoApproveTeamDocumentUpload({ role: "admin" })).toBe(true);
     expect(canAutoApproveTeamDocumentUpload({ role: "editor" })).toBe(false);
     expect(canAutoApproveTeamDocumentUpload({ role: "viewer" })).toBe(false);
+  });
+
+  it("exposes system source spaces only through the manager filter", () => {
+    const system = knowledgeBase({ id: "kb-system", scope: "system" });
+    const group = knowledgeBase({
+      id: "kb-group",
+      scope: "group",
+      group_id: "group-1",
+    });
+
+    expect(systemKnowledgeBasesForManager([group, system], false)).toEqual([]);
+    expect(systemKnowledgeBasesForManager([group, system], true)).toEqual([
+      system,
+    ]);
+  });
+
+  it("keeps ambient system spaces out of explicit chat source toggles", () => {
+    const personal = knowledgeBase({ id: "kb-personal", scope: "personal" });
+    const system = knowledgeBase({ id: "kb-system", scope: "system" });
+    const staging = knowledgeBase({
+      id: "kb-staging",
+      purpose: "team_upload_staging",
+    });
+
+    expect(chatSelectableKnowledgeBases([system, staging, personal])).toEqual([
+      personal,
+    ]);
+    expect(ambientSystemKnowledgeBaseCount([system, staging, personal])).toBe(
+      1,
+    );
   });
 });
