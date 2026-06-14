@@ -94,13 +94,16 @@ test("settings account and experimental routes are navigable and submit expected
   await expect(
     page.getByRole("heading", { name: ko.settings.experimental.title }),
   ).toBeVisible();
+  const memorySwitch = page.getByRole("switch", {
+    name: ko.settings.experimental.memoryTitle,
+  });
+  await expect(memorySwitch).toHaveAttribute("aria-checked", "false");
   await expect(
     page.getByText(ko.settings.experimental.disabledStatus),
   ).toBeVisible();
 
-  await page
-    .getByRole("button", { name: ko.settings.experimental.enableSubmit })
-    .click();
+  await memorySwitch.click();
+  await expect(memorySwitch).toHaveAttribute("aria-checked", "true");
   await expect(
     page.getByText(ko.settings.experimental.enabledStatus),
   ).toBeVisible();

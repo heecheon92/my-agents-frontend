@@ -1,7 +1,7 @@
 "use client";
 
 import { ErrorState } from "@/components/Status";
-import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import {
   useMemorySettings,
   useUpdateMemorySettings,
@@ -37,75 +37,67 @@ export function ExperimentalSettingsPanel() {
       accountTab={copy.tabs.account}
       experimentalTab={copy.tabs.experimental}
     >
-      <div className="cal-card max-w-3xl rounded-xl p-5">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cal-warning">
-              {copy.experimental.warningEyebrow}
-            </p>
-            <h2 className="mt-2 font-heading text-2xl font-semibold tracking-[-0.03em] text-cal-ink">
-              {copy.experimental.memoryTitle}
-            </h2>
-            <p className="mt-3 text-sm leading-6 text-cal-muted">
-              {copy.experimental.memoryDescription}
-            </p>
-          </div>
-          <span
-            className={cn(
-              "inline-flex rounded-full border px-3 py-1 text-sm font-semibold",
-              memoryEnabled
-                ? "border-cal-success/25 bg-cal-success/10 text-cal-success"
-                : "border-cal-hairline bg-cal-surface-soft text-cal-muted",
-            )}
-          >
-            {settings.isLoading
-              ? copy.experimental.loadingStatus
-              : memoryEnabled
-                ? copy.experimental.enabledStatus
-                : copy.experimental.disabledStatus}
-          </span>
-        </div>
+      <div className="max-w-3xl space-y-4">
+        <div className="cal-card rounded-xl p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="font-heading text-xl font-semibold tracking-[-0.03em] text-cal-ink">
+                  {copy.experimental.memoryTitle}
+                </h2>
+                <span className="rounded-full border border-cal-warning/25 bg-cal-warning/10 px-2.5 py-0.5 text-xs font-semibold text-cal-warning">
+                  {copy.experimental.warningEyebrow}
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-6 text-cal-muted">
+                {copy.experimental.memoryDescription}
+              </p>
+              <p className="mt-2 text-xs leading-5 text-cal-muted">
+                {copy.experimental.toggleHint}
+              </p>
+            </div>
 
-        <div className="mt-5 rounded-xl border border-cal-hairline bg-cal-surface-soft p-4 text-sm leading-6 text-cal-muted">
-          <p className="font-semibold text-cal-ink">
-            {copy.experimental.privacyTitle}
-          </p>
-          <p className="mt-2">{copy.experimental.privacyDescription}</p>
+            <div className="flex shrink-0 items-center gap-3 self-start sm:self-center">
+              <span
+                className={cn(
+                  "text-sm font-semibold",
+                  memoryEnabled ? "text-cal-success" : "text-cal-muted",
+                )}
+              >
+                {settings.isLoading
+                  ? copy.experimental.loadingStatus
+                  : memoryEnabled
+                    ? copy.experimental.enabledStatus
+                    : copy.experimental.disabledStatus}
+              </span>
+              <Switch
+                aria-label={copy.experimental.memoryTitle}
+                checked={memoryEnabled}
+                onCheckedChange={handleToggle}
+                disabled={isBusy || Boolean(settings.error)}
+              />
+            </div>
+          </div>
         </div>
 
         {settings.error ? (
-          <div className="mt-5">
-            <ErrorState
-              title={copy.experimental.loadErrorTitle}
-              error={settings.error}
-            />
-          </div>
+          <ErrorState
+            title={copy.experimental.loadErrorTitle}
+            error={settings.error}
+          />
         ) : null}
         {updateSettings.error ? (
-          <div className="mt-5">
-            <ErrorState
-              title={copy.experimental.updateErrorTitle}
-              error={updateSettings.error}
-            />
-          </div>
+          <ErrorState
+            title={copy.experimental.updateErrorTitle}
+            error={updateSettings.error}
+          />
         ) : null}
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <Button
-            type="button"
-            onClick={handleToggle}
-            disabled={isBusy || Boolean(settings.error)}
-          >
-            {isBusy
-              ? localization.auth.working
-              : memoryEnabled
-                ? copy.experimental.disableSubmit
-                : copy.experimental.enableSubmit}
-          </Button>
+        {isBusy ? (
           <p className="text-sm leading-6 text-cal-muted">
-            {copy.experimental.toggleHint}
+            {localization.auth.working}
           </p>
-        </div>
+        ) : null}
       </div>
     </SettingsPageShell>
   );
