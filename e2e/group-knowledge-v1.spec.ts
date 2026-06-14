@@ -421,7 +421,7 @@ test("Groups route selection deep-links and browser links select the active grou
   ).toBeVisible();
 });
 
-test("Groups dashboard caps previews and opens full management drawers", async ({
+test("Groups dashboard caps previews and opens dedicated management pages", async ({
   page,
 }) => {
   await mockGroupKnowledgeApi(page);
@@ -437,72 +437,65 @@ test("Groups dashboard caps previews and opens full management drawers", async (
     .getByRole("button", { name: ko.admin.groups.manageMembersAction })
     .first()
     .click();
-  let drawer = page
-    .getByRole("dialog")
-    .filter({ hasText: ko.admin.groups.manageMembersAction });
-  await expect(drawer.getByText("Viewer Display")).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`/groups/${ownerGroup.id}/members$`));
   await expect(
-    drawer.getByText(`${ko.admin.groups.memberUserIdLabel}: u-viewer`),
-  ).toBeHidden();
-  await drawer.getByText(ko.admin.groups.advancedGroupDetails).last().click();
-  await expect(
-    drawer.getByText(`${ko.admin.groups.memberUserIdLabel}: u-viewer`),
+    page.getByRole("heading", { name: ko.admin.groups.manageMembersAction }),
   ).toBeVisible();
-  await page.keyboard.press("Escape");
+  await expect(page.getByText("Viewer Display")).toBeVisible();
+  await expect(
+    page.getByText(`${ko.admin.groups.memberUserIdLabel}: u-viewer`),
+  ).toBeHidden();
+  await page.getByText(ko.admin.groups.advancedGroupDetails).last().click();
+  await expect(
+    page.getByText(`${ko.admin.groups.memberUserIdLabel}: u-viewer`),
+  ).toBeVisible();
 
+  await page.goto(`/groups/${ownerGroup.id}/invitations`);
+  await expect(
+    page.getByRole("heading", { name: ko.admin.groups.viewInvitationsAction }),
+  ).toBeVisible();
+  await expect(page.getByText("expired@example.com")).toHaveCount(0);
   await page
-    .getByRole("button", { name: ko.admin.groups.viewInvitationsAction })
-    .first()
-    .click();
-  drawer = page
-    .getByRole("dialog")
-    .filter({ hasText: ko.admin.groups.viewInvitationsAction });
-  await expect(drawer.getByText("expired@example.com")).toHaveCount(0);
-  await drawer
     .getByRole("button", { name: ko.admin.groups.allStatusFilter })
     .click();
-  await expect(drawer.getByText("expired@example.com")).toBeVisible();
-  await drawer
+  await expect(page.getByText("expired@example.com")).toBeVisible();
+  await page
     .getByRole("textbox", { name: ko.admin.groups.invitationSearchLabel })
     .fill("cancelled");
-  await expect(drawer.getByText("cancelled@example.com")).toBeVisible();
-  await expect(drawer.getByText("teammate@example.com")).toHaveCount(0);
-  await page.keyboard.press("Escape");
+  await expect(page.getByText("cancelled@example.com")).toBeVisible();
+  await expect(page.getByText("teammate@example.com")).toHaveCount(0);
 
-  await page
-    .getByRole("button", { name: ko.admin.groups.manageSourceSpacesAction })
-    .first()
-    .click();
-  drawer = page
-    .getByRole("dialog")
-    .filter({ hasText: ko.admin.groups.manageSourceSpacesAction });
-  await expect(drawer.getByText("Alpha Archive")).toBeVisible();
-  await page.keyboard.press("Escape");
+  await page.goto(`/groups/${ownerGroup.id}/source-spaces`);
+  await expect(
+    page.getByRole("heading", {
+      name: ko.admin.groups.manageSourceSpacesAction,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("Alpha Archive")).toBeVisible();
 
+  await page.goto(`/groups/${ownerGroup.id}/publish-requests`);
+  await expect(
+    page.getByRole("heading", {
+      name: ko.admin.groups.viewPublishRequestsAction,
+    }),
+  ).toBeVisible();
+  await expect(page.getByText("Personal strategy memo")).toBeVisible();
+  await expect(page.getByText("Private Notes")).toHaveCount(0);
   await page
-    .getByRole("button", { name: ko.admin.groups.viewPublishRequestsAction })
-    .first()
-    .click();
-  drawer = page
-    .getByRole("dialog")
-    .filter({ hasText: ko.admin.groups.viewPublishRequestsAction });
-  await expect(drawer.getByText("Personal strategy memo")).toBeVisible();
-  await expect(drawer.getByText("Private Notes")).toHaveCount(0);
-  await drawer
     .getByRole("button", {
       name: ko.admin.groups.publishRequestStatuses.approved,
     })
     .click();
-  await expect(drawer.getByText("Private Notes")).toBeVisible();
-  await expect(drawer.getByText("Rejected field memo")).toHaveCount(0);
-  await drawer
+  await expect(page.getByText("Private Notes")).toBeVisible();
+  await expect(page.getByText("Rejected field memo")).toHaveCount(0);
+  await page
     .getByRole("button", { name: ko.admin.groups.allStatusFilter })
     .click();
-  await drawer
+  await page
     .getByRole("textbox", { name: ko.admin.groups.publishRequestSearchLabel })
     .fill("Rejected");
-  await expect(drawer.getByText("Rejected field memo")).toBeVisible();
-  await expect(drawer.getByText("Personal strategy memo")).toHaveCount(0);
+  await expect(page.getByText("Rejected field memo")).toBeVisible();
+  await expect(page.getByText("Personal strategy memo")).toHaveCount(0);
 });
 
 test("Publish review controls are owner-only in Group admin UI", async ({

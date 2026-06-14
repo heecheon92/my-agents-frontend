@@ -483,3 +483,11 @@ Verification passed for this log entry: `pnpm lint`, `pnpm exec vitest run tests
 - Group uploads now show the target group KB document list after auto-approval, while staged private source IDs remain backend-only plumbing.
 
 Verification pending for this change: frontend lint/typecheck/unit/build after backend staging contract lands.
+
+## 2026-06-14 — route-addressable Group management pages
+
+- Replaced the full-list Group management drawer with dedicated section routes under `/groups/[groupId]/[section]` for members, invitations, source spaces, and publish requests.
+- Kept the Group overview as a capped preview surface and moved growing lists into shareable pages with filters/search preserved.
+- Preserved the per-item publish-review drawer because document preview/review remains a focused item-level flow rather than a list-management surface.
+
+Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run tests/localization.test.ts`, and `pnpm exec playwright test e2e/group-knowledge-v1.spec.ts`.

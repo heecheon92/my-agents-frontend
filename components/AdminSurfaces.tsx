@@ -113,6 +113,7 @@ type SourcesSurfaceProps = {
 
 type GroupsSurfaceProps = {
   initialGroupId?: string;
+  initialSection?: GroupManagementSection;
 };
 
 type SourceActionsDialogState = {
@@ -223,6 +224,10 @@ function knowledgeSourceHref(sourceId: string) {
 
 function groupHref(groupId: string) {
   return `/groups/${encodeURIComponent(groupId)}`;
+}
+
+function groupManagementHref(groupId: string, section: GroupManagementSection) {
+  return `${groupHref(groupId)}/${section}`;
 }
 
 function decodeRouteSegment(segment?: string) {
@@ -2184,7 +2189,7 @@ function uploadFileTypeLabel(
   return localization.fileTypeText;
 }
 
-type GroupManagementDrawer =
+export type GroupManagementSection =
   | "members"
   | "invitations"
   | "source-spaces"
@@ -2220,7 +2225,10 @@ function sortPublishRequestsForReview(
   });
 }
 
-export function GroupsSurface({ initialGroupId }: GroupsSurfaceProps = {}) {
+export function GroupsSurface({
+  initialGroupId,
+  initialSection,
+}: GroupsSurfaceProps = {}) {
   const groups = useGroups();
   const knowledgeBases = useKnowledgeBases();
   const currentUser = useCurrentUser();
@@ -2233,8 +2241,6 @@ export function GroupsSurface({ initialGroupId }: GroupsSurfaceProps = {}) {
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
-  const [groupManagementDrawer, setGroupManagementDrawer] =
-    useState<GroupManagementDrawer>();
   const [publishRequestStatusFilter, setPublishRequestStatusFilter] =
     useState<PublishRequestStatusFilter>("pending");
   const [publishRequestSearch, setPublishRequestSearch] = useState("");
@@ -2342,7 +2348,6 @@ export function GroupsSurface({ initialGroupId }: GroupsSurfaceProps = {}) {
       setMemberAction(undefined);
       setUpdateUserId("");
       setPublishReviewRequest(undefined);
-      setGroupManagementDrawer(undefined);
       setPublishRequestSearch("");
       setPublishRequestStatusFilter("pending");
       setInvitationSearch("");
@@ -3167,9 +3172,9 @@ export function GroupsSurface({ initialGroupId }: GroupsSurfaceProps = {}) {
     );
   }
 
-  function renderManagementDrawerContent() {
-    if (!groupManagementDrawer) return null;
-    if (groupManagementDrawer === "members") {
+  function renderManagementPageContent() {
+    if (!initialSection) return null;
+    if (initialSection === "members") {
       return {
         title: localization.groups.manageMembersAction,
         description: localization.groups.membersDrawerDescription.replace(
@@ -3194,7 +3199,7 @@ export function GroupsSurface({ initialGroupId }: GroupsSurfaceProps = {}) {
         ) : null,
       };
     }
-    if (groupManagementDrawer === "invitations") {
+    if (initialSection === "invitations") {
       const filteredRows = filterInvitations(
         invitations.data ?? [],
         invitationStatusFilter,
@@ -3254,7 +3259,7 @@ export function GroupsSurface({ initialGroupId }: GroupsSurfaceProps = {}) {
         ) : null,
       };
     }
-    if (groupManagementDrawer === "source-spaces") {
+    if (initialSection === "source-spaces") {
       return {
         title: localization.groups.manageSourceSpacesAction,
         description: localization.groups.sourceSpacesDrawerDescription.replace(
@@ -3426,171 +3431,227 @@ export function GroupsSurface({ initialGroupId }: GroupsSurfaceProps = {}) {
           ) : null}
         </div>
 
-        <div className="min-h-0 flex-1 overflow-auto bg-cal-canvas/40 p-4 xl:p-6">
-          <div className="grid gap-4 xl:grid-cols-4">
-            {renderSummaryCard({
-              title: localization.groups.membersTitle,
-              value: String(memberCount),
-              description: localization.groups.membersSummary,
-            })}
-            {renderSummaryCard({
-              title: localization.groups.invitationsTitle,
-              value: String(invitationCount),
-              description: localization.groups.invitationsSummary,
-            })}
-            {renderSummaryCard({
-              title: localization.groups.sourceSpacesTitle,
-              value: String(activeGroupKnowledgeBases.length),
-              description: localization.groups.sourceSpacesDescription,
-            })}
-            {renderSummaryCard({
-              title: localization.groups.publishRequestsTitle,
-              value: String(publishRequestCount),
-              description: localization.groups.publishRequestsSummary,
-            })}
-          </div>
-
-          <div className="mt-4 grid gap-4 xl:grid-cols-2">
-            <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-cal-ink">
-                    {localization.groups.membersTitle}
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-cal-muted">
-                    {localization.groups.membersSummary}
-                  </p>
-                </div>
-                {canManageMembers ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setGroupManagementDrawer("members")}
-                  >
-                    {localization.groups.manageMembersAction}
-                  </Button>
-                ) : null}
-              </div>
-              {renderMemberRows({ rows: memberPreviewRows, mode: "preview" })}
-              {hiddenRowsHint(memberCount - memberPreviewRows.length)}
-            </section>
-
-            <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-cal-ink">
-                    {localization.groups.invitationsTitle}
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-cal-muted">
-                    {localization.groups.invitationsSummary}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {canManageMembers ? (
-                    <>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setGroupManagementDrawer("invitations")}
-                      >
-                        {localization.groups.viewInvitationsAction}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIsInviteDialogOpen(true)}
-                      >
-                        {localization.groups.inviteMemberAction}
-                      </Button>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-              {renderInvitationRows({
-                rows: invitationPreviewRows,
-                mode: "preview",
-              })}
-              {hiddenRowsHint(invitationCount - invitationPreviewRows.length)}
-            </section>
-
-            <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-cal-ink">
-                    {localization.groups.sourceSpacesTitle}
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-cal-muted">
-                    {localization.groups.sourceSpacesDescription}
-                  </p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setGroupManagementDrawer("source-spaces")}
-                  >
-                    {localization.groups.manageSourceSpacesAction}
-                  </Button>
+        {managementPageContent ? (
+          <div className="min-h-0 flex-1 overflow-auto bg-cal-canvas/40 p-4 xl:p-6">
+            <section className="mx-auto grid max-w-5xl gap-4 rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)] sm:p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
                   <Button
                     nativeButton={false}
-                    render={<Link href="/knowledge" />}
-                    size="sm"
+                    render={<Link href={groupHref(activeGroupId)} />}
                     variant="outline"
+                    size="sm"
                   >
-                    {localization.documents.addSourceSpaceAction}
+                    {localization.groups.backToGroupOverviewAction}
                   </Button>
-                </div>
-              </div>
-              {renderSourceSpaceRows({ rows: sourceSpacePreviewRows })}
-              {hiddenRowsHint(
-                activeGroupKnowledgeBases.length -
-                  sourceSpacePreviewRows.length,
-              )}
-            </section>
-
-            <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
-              <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-cal-ink">
-                    {localization.groups.publishRequestsTitle}
+                  <h3 className="mt-4 text-xl font-semibold tracking-[-0.02em] text-cal-ink">
+                    {managementPageContent.title}
                   </h3>
-                  <p className="mt-1 text-sm leading-6 text-cal-muted">
-                    {localization.groups.publishOpenApiNote}
+                  <p className="mt-2 text-sm leading-6 text-cal-muted">
+                    {managementPageContent.description}
                   </p>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setGroupManagementDrawer("publish-requests")}
-                  >
-                    {localization.groups.viewPublishRequestsAction}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsPublishDialogOpen(true)}
-                  >
-                    {localization.groups.requestShareAction}
-                  </Button>
-                </div>
+                {managementPageContent.footer ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {managementPageContent.footer}
+                  </div>
+                ) : null}
               </div>
-              {renderPublishRequestRows({
-                rows: publishRequestPreviewRows,
-                mode: "preview",
-              })}
-              {hiddenRowsHint(
-                publishRequestCount - publishRequestPreviewRows.length,
-              )}
+              <div className="grid gap-3">{managementPageContent.body}</div>
             </section>
           </div>
-        </div>
+        ) : (
+          <div className="min-h-0 flex-1 overflow-auto bg-cal-canvas/40 p-4 xl:p-6">
+            <div className="grid gap-4 xl:grid-cols-4">
+              {renderSummaryCard({
+                title: localization.groups.membersTitle,
+                value: String(memberCount),
+                description: localization.groups.membersSummary,
+              })}
+              {renderSummaryCard({
+                title: localization.groups.invitationsTitle,
+                value: String(invitationCount),
+                description: localization.groups.invitationsSummary,
+              })}
+              {renderSummaryCard({
+                title: localization.groups.sourceSpacesTitle,
+                value: String(activeGroupKnowledgeBases.length),
+                description: localization.groups.sourceSpacesDescription,
+              })}
+              {renderSummaryCard({
+                title: localization.groups.publishRequestsTitle,
+                value: String(publishRequestCount),
+                description: localization.groups.publishRequestsSummary,
+              })}
+            </div>
+
+            <div className="mt-4 grid gap-4 xl:grid-cols-2">
+              <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-cal-ink">
+                      {localization.groups.membersTitle}
+                    </h3>
+                    <p className="mt-1 text-sm leading-6 text-cal-muted">
+                      {localization.groups.membersSummary}
+                    </p>
+                  </div>
+                  {canManageMembers ? (
+                    <Button
+                      nativeButton={false}
+                      render={
+                        <Link
+                          href={groupManagementHref(activeGroupId, "members")}
+                        />
+                      }
+                      variant="outline"
+                      size="sm"
+                    >
+                      {localization.groups.manageMembersAction}
+                    </Button>
+                  ) : null}
+                </div>
+                {renderMemberRows({ rows: memberPreviewRows, mode: "preview" })}
+                {hiddenRowsHint(memberCount - memberPreviewRows.length)}
+              </section>
+
+              <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-cal-ink">
+                      {localization.groups.invitationsTitle}
+                    </h3>
+                    <p className="mt-1 text-sm leading-6 text-cal-muted">
+                      {localization.groups.invitationsSummary}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {canManageMembers ? (
+                      <>
+                        <Button
+                          nativeButton={false}
+                          render={
+                            <Link
+                              href={groupManagementHref(
+                                activeGroupId,
+                                "invitations",
+                              )}
+                            />
+                          }
+                          variant="outline"
+                          size="sm"
+                        >
+                          {localization.groups.viewInvitationsAction}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setIsInviteDialogOpen(true)}
+                        >
+                          {localization.groups.inviteMemberAction}
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+                {renderInvitationRows({
+                  rows: invitationPreviewRows,
+                  mode: "preview",
+                })}
+                {hiddenRowsHint(invitationCount - invitationPreviewRows.length)}
+              </section>
+
+              <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-cal-ink">
+                      {localization.groups.sourceSpacesTitle}
+                    </h3>
+                    <p className="mt-1 text-sm leading-6 text-cal-muted">
+                      {localization.groups.sourceSpacesDescription}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      nativeButton={false}
+                      render={
+                        <Link
+                          href={groupManagementHref(
+                            activeGroupId,
+                            "source-spaces",
+                          )}
+                        />
+                      }
+                      variant="outline"
+                      size="sm"
+                    >
+                      {localization.groups.manageSourceSpacesAction}
+                    </Button>
+                    <Button
+                      nativeButton={false}
+                      render={<Link href="/knowledge" />}
+                      size="sm"
+                      variant="outline"
+                    >
+                      {localization.documents.addSourceSpaceAction}
+                    </Button>
+                  </div>
+                </div>
+                {renderSourceSpaceRows({ rows: sourceSpacePreviewRows })}
+                {hiddenRowsHint(
+                  activeGroupKnowledgeBases.length -
+                    sourceSpacePreviewRows.length,
+                )}
+              </section>
+
+              <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
+                <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-cal-ink">
+                      {localization.groups.publishRequestsTitle}
+                    </h3>
+                    <p className="mt-1 text-sm leading-6 text-cal-muted">
+                      {localization.groups.publishOpenApiNote}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      nativeButton={false}
+                      render={
+                        <Link
+                          href={groupManagementHref(
+                            activeGroupId,
+                            "publish-requests",
+                          )}
+                        />
+                      }
+                      variant="outline"
+                      size="sm"
+                    >
+                      {localization.groups.viewPublishRequestsAction}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsPublishDialogOpen(true)}
+                    >
+                      {localization.groups.requestShareAction}
+                    </Button>
+                  </div>
+                </div>
+                {renderPublishRequestRows({
+                  rows: publishRequestPreviewRows,
+                  mode: "preview",
+                })}
+                {hiddenRowsHint(
+                  publishRequestCount - publishRequestPreviewRows.length,
+                )}
+              </section>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -3607,7 +3668,7 @@ export function GroupsSurface({ initialGroupId }: GroupsSurfaceProps = {}) {
     setUpdateUserId("");
   }
 
-  const managementDrawerContent = renderManagementDrawerContent();
+  const managementPageContent = renderManagementPageContent();
 
   return (
     <>
@@ -4013,47 +4074,6 @@ export function GroupsSurface({ initialGroupId }: GroupsSurfaceProps = {}) {
           </form>
         </DialogContent>
       </Dialog>
-
-      <Drawer
-        direction="bottom"
-        open={Boolean(groupManagementDrawer)}
-        onOpenChange={(open) => {
-          if (!open) setGroupManagementDrawer(undefined);
-        }}
-      >
-        <DrawerContent className="max-h-[92dvh] bg-white">
-          <DrawerHeader className="items-stretch border-b border-cal-hairline text-left group-data-[vaul-drawer-direction=bottom]/drawer-content:text-left">
-            <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 text-left lg:flex-row lg:items-start lg:justify-between">
-              <div className="min-w-0">
-                <DrawerTitle>{managementDrawerContent?.title}</DrawerTitle>
-                <DrawerDescription>
-                  {managementDrawerContent?.description}
-                </DrawerDescription>
-              </div>
-              {managementDrawerContent?.footer ? (
-                <div className="hidden flex-wrap items-center gap-2 lg:flex">
-                  {managementDrawerContent.footer}
-                </div>
-              ) : null}
-            </div>
-          </DrawerHeader>
-          <div className="min-h-0 flex-1 overflow-y-auto bg-cal-canvas/40 p-4">
-            <div className="mx-auto grid max-w-5xl gap-3">
-              {managementDrawerContent?.body}
-            </div>
-          </div>
-          <DrawerFooter className="border-t border-cal-hairline bg-white lg:hidden">
-            <div className="grid gap-2">
-              {managementDrawerContent?.footer}
-              <DrawerClose asChild>
-                <Button type="button" variant="outline">
-                  {localization.common.cancel}
-                </Button>
-              </DrawerClose>
-            </div>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
 
       <Drawer
         direction="bottom"

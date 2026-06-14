@@ -627,6 +627,7 @@
       "publishRequestsDrawerDescription": "Full share-request history for {groupName}. Only pending requests can be approved or rejected.",
       "drawerCountLabel": "{count} total",
       "hiddenRowsHint": "+{count} more. Open the management view for the full list.",
+      "backToGroupOverviewAction": "Back to group overview",
       "allStatusFilter": "All",
       "publishRequestStatuses": {
         "pending": "pending",
