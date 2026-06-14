@@ -35,9 +35,29 @@ describe("API_PATH", () => {
     ).toBe("/conversations/conversation-1/messages/msg-1/replay/stream");
   });
 
+  it("builds group invitation paths", () => {
+    expect(API_PATH.groups.members("group-1")).toBe("/groups/group-1/members");
+    expect(API_PATH.groups.member("group-1", "user-1")).toBe(
+      "/groups/group-1/members/user-1",
+    );
+    expect(API_PATH.groups.invitations("group-1")).toBe(
+      "/groups/group-1/invitations",
+    );
+    expect(API_PATH.groups.invitation("group-1", "invite-1")).toBe(
+      "/groups/group-1/invitations/invite-1",
+    );
+    expect(API_PATH.groups.invitationResend("group-1", "invite-1")).toBe(
+      "/groups/group-1/invitations/invite-1/resend",
+    );
+    expect(API_PATH.groupInvitations.accept).toBe("/group-invitations/accept");
+  });
+
   it("builds group publish request paths", () => {
     expect(API_PATH.groups.publishRequests("group-1")).toBe(
       "/groups/group-1/publish-requests",
+    );
+    expect(API_PATH.groups.publishRequestSource("group-1", "request-1")).toBe(
+      "/groups/group-1/publish-requests/request-1/source",
     );
     expect(API_PATH.groups.publishRequestApprove("group-1", "request-1")).toBe(
       "/groups/group-1/publish-requests/request-1/approve",
@@ -88,6 +108,12 @@ describe("API_PATH", () => {
     expect(toFrontendAPIPath(API_PATH.auth.me)).toBe("/api/my-agents/auth/me");
   });
 
+  it("builds account settings and memory settings paths", () => {
+    expect(API_PATH.auth.updateNickname).toBe("/auth/me/nickname");
+    expect(API_PATH.auth.updatePassword).toBe("/auth/me/password");
+    expect(API_PATH.memories.settings).toBe("/memories/settings");
+  });
+
   it("builds new auth lifecycle paths", () => {
     expect(API_PATH.auth.verifyEmail).toBe("/auth/verify-email");
     expect(API_PATH.auth.guestRequest).toBe("/auth/guest/request");
@@ -115,6 +141,23 @@ describe("MyAgentsQueryKeys", () => {
       "run",
       conversationId,
       runId,
+    ]);
+    expect(MyAgentsQueryKeys.groups.invitations("group-1")).toEqual([
+      "my-agents",
+      "groups",
+      "invitations",
+      "group-1",
+    ]);
+    expect(MyAgentsQueryKeys.groups.members("group-1")).toEqual([
+      "my-agents",
+      "groups",
+      "members",
+      "group-1",
+    ]);
+    expect(MyAgentsQueryKeys.memories.settings()).toEqual([
+      "my-agents",
+      "memories",
+      "settings",
     ]);
     expect(MyAgentsQueryKeys.documents.extractionRun("doc-1", runId)).toEqual([
       "my-agents",

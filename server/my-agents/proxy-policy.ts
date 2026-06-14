@@ -46,6 +46,16 @@ export const BFF_ALLOWLIST: Rule[] = [
   { method: "POST", pattern: /^\/auth\/logout$/, name: "auth.logout" },
   { method: "GET", pattern: /^\/auth\/me$/, name: "auth.me" },
   {
+    method: "PATCH",
+    pattern: /^\/auth\/me\/nickname$/,
+    name: "auth.me.nickname",
+  },
+  {
+    method: "PATCH",
+    pattern: /^\/auth\/me\/password$/,
+    name: "auth.me.password",
+  },
+  {
     method: "POST",
     pattern: /^\/conversations$/,
     name: "conversations.create",
@@ -123,9 +133,39 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "groups.detail",
   },
   {
+    method: "GET",
+    pattern: new RegExp(`^/groups/${uuidLike}/invitations$`),
+    name: "groups.invitations.list",
+  },
+  {
     method: "POST",
+    pattern: new RegExp(`^/groups/${uuidLike}/invitations$`),
+    name: "groups.invitations.create",
+  },
+  {
+    method: "PATCH",
+    pattern: new RegExp(`^/groups/${uuidLike}/invitations/${uuidLike}$`),
+    name: "groups.invitations.update",
+  },
+  {
+    method: "POST",
+    pattern: new RegExp(`^/groups/${uuidLike}/invitations/${uuidLike}/resend$`),
+    name: "groups.invitations.resend",
+  },
+  {
+    method: "DELETE",
+    pattern: new RegExp(`^/groups/${uuidLike}/invitations/${uuidLike}$`),
+    name: "groups.invitations.cancel",
+  },
+  {
+    method: "POST",
+    pattern: /^\/group-invitations\/accept$/,
+    name: "group-invitations.accept",
+  },
+  {
+    method: "GET",
     pattern: new RegExp(`^/groups/${uuidLike}/members$`),
-    name: "members.create",
+    name: "members.list",
   },
   {
     method: "PATCH",
@@ -141,6 +181,13 @@ export const BFF_ALLOWLIST: Rule[] = [
     method: "POST",
     pattern: new RegExp(`^/groups/${uuidLike}/publish-requests$`),
     name: "groups.publish-requests.create",
+  },
+  {
+    method: "GET",
+    pattern: new RegExp(
+      `^/groups/${uuidLike}/publish-requests/${uuidLike}/source$`,
+    ),
+    name: "groups.publish-requests.source",
   },
   {
     method: "POST",
@@ -224,6 +271,16 @@ export const BFF_ALLOWLIST: Rule[] = [
     method: "POST",
     pattern: /^\/documents\/upload$/,
     name: "documents.upload",
+  },
+  {
+    method: "GET",
+    pattern: /^\/memories\/settings$/,
+    name: "memories.settings",
+  },
+  {
+    method: "PATCH",
+    pattern: /^\/memories\/settings$/,
+    name: "memories.settings.update",
   },
   { method: "GET", pattern: /^\/documents$/, name: "documents.list" },
   {

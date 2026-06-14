@@ -63,7 +63,7 @@ describe("document writable knowledge bases", () => {
     ).toEqual([ownPersonal]);
   });
 
-  it("finds team knowledge spaces for the selected team destination", () => {
+  it("finds group knowledge spaces for the selected group destination", () => {
     const teamA = knowledgeBase({
       id: "kb-team-a",
       scope: "group",

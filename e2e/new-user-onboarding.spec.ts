@@ -5,6 +5,7 @@ const now = "2026-06-07T00:00:00.000Z";
 const user = {
   id: "new-user-tour",
   email: "new-user@example.com",
+  nickname: "New User",
   email_verified_at: now,
   is_guest: false,
 };
@@ -133,7 +134,6 @@ test("authenticated users can complete the normal workflow tour", async ({
 
   for (const title of [
     ko.onboarding.steps.newKnowledgeSpaceTitle,
-    ko.onboarding.steps.newSourceDestinationTitle,
     ko.onboarding.steps.newUploadSourceTitle,
     ko.onboarding.steps.newChatThreadTitle,
     ko.onboarding.steps.newSelectKnowledgeTitle,

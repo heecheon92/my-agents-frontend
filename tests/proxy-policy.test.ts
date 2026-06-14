@@ -102,9 +102,41 @@ describe("proxy policy", () => {
         "/conversations/abc/messages/message-1/replay/stream",
       ).allowed,
     ).toBe(true);
+    expect(isAllowedBackendPath("GET", "/groups/group-1/members").allowed).toBe(
+      true,
+    );
+    expect(isAllowedBackendPath("PATCH", "/auth/me/nickname").allowed).toBe(
+      true,
+    );
+    expect(isAllowedBackendPath("PATCH", "/auth/me/password").allowed).toBe(
+      true,
+    );
+    expect(isAllowedBackendPath("GET", "/memories/settings").allowed).toBe(
+      true,
+    );
+    expect(isAllowedBackendPath("PATCH", "/memories/settings").allowed).toBe(
+      true,
+    );
+    expect(
+      isAllowedBackendPath("PATCH", "/groups/group-1/members/user-1").allowed,
+    ).toBe(true);
   });
 
-  it("blocks legacy assistant chat and unknown paths before forwarding", () => {
+  it("blocks direct member creation, legacy assistant chat, and unknown paths before forwarding", () => {
+    expect(
+      isAllowedBackendPath("POST", "/groups/group-1/members"),
+    ).toMatchObject({
+      allowed: false,
+      code: "path_not_allowed",
+    });
+    expect(isAllowedBackendPath("GET", "/auth/me/nickname")).toMatchObject({
+      allowed: false,
+      code: "path_not_allowed",
+    });
+    expect(isAllowedBackendPath("POST", "/memories/settings")).toMatchObject({
+      allowed: false,
+      code: "path_not_allowed",
+    });
     expect(isAllowedBackendPath("POST", "/assistant/chat")).toMatchObject({
       allowed: false,
       code: "legacy_chat_blocked",
@@ -123,6 +155,9 @@ describe("proxy policy", () => {
     expect(isCsrfExemptPath("/auth/password-reset/request")).toBe(true);
     expect(isCsrfExemptPath("/auth/password-reset/confirm")).toBe(true);
     expect(isCsrfExemptPath("/auth/logout")).toBe(false);
+    expect(isCsrfExemptPath("/auth/me/nickname")).toBe(false);
+    expect(isCsrfExemptPath("/auth/me/password")).toBe(false);
+    expect(isCsrfExemptPath("/memories/settings")).toBe(false);
   });
 
   it("rejects cross-site mutations", () => {
@@ -192,6 +227,21 @@ describe("proxy policy", () => {
         configuredOrigin: "http://localhost:3000",
         headers: headers({
           "content-type": "application/json",
+          origin: "http://localhost:3000",
+          "sec-fetch-site": "same-origin",
+        }),
+      }),
+    ).toMatchObject({ allowed: true });
+  });
+
+  it("accepts same-origin publish request source reads", () => {
+    expect(
+      validateSameOriginProof({
+        method: "GET",
+        requestUrl:
+          "http://localhost:3000/api/my-agents/groups/00000000-0000-4000-8000-000000000001/publish-requests/00000000-0000-4000-8000-000000000002/source",
+        configuredOrigin: "http://localhost:3000",
+        headers: headers({
           origin: "http://localhost:3000",
           "sec-fetch-site": "same-origin",
         }),

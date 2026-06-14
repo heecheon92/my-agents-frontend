@@ -5,6 +5,7 @@ const now = "2026-06-01T00:00:00.000Z";
 const user = {
   id: "u-citation-reader",
   email: "reader@example.com",
+  nickname: "Citation Reader",
   email_verified_at: now,
   is_guest: false,
 };

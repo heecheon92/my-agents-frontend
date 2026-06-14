@@ -16,6 +16,15 @@ describe("localization dictionaries", () => {
     expect(collectShape(en).sort()).toEqual(collectShape(ko).sort());
   });
 
+  it("includes settings navigation and route tab copy", () => {
+    expect(en.service.nav.settings).toBeTruthy();
+    expect(ko.service.nav.settings).toBeTruthy();
+    expect(en.settings.tabs.account).toBeTruthy();
+    expect(en.settings.tabs.experimental).toBeTruthy();
+    expect(ko.settings.tabs.account).toBeTruthy();
+    expect(ko.settings.tabs.experimental).toBeTruthy();
+  });
+
   it("includes required onboarding shell copy", () => {
     const requiredKeys = [
       "eyebrow",

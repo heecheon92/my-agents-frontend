@@ -3,6 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import type {
+  AccountNicknameUpdateRequest,
+  AccountPasswordUpdateRequest,
   GuestAccessRequest,
   LoginRequest,
   PasswordResetConfirmRequest,
@@ -76,6 +78,31 @@ export function useConfirmPasswordReset() {
   return useMutation({
     mutationFn: (payload: PasswordResetConfirmRequest) =>
       myAgentsAPI.auth.confirmPasswordReset(payload),
+    onSettled: () => {
+      queryClient.clear();
+    },
+  });
+}
+
+export function useUpdateNickname() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: AccountNicknameUpdateRequest) =>
+      myAgentsAPI.auth.updateNickname(payload),
+    onSuccess: (user) => {
+      queryClient.setQueryData(MyAgentsQueryKeys.auth.me(), user);
+      return queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.auth.me(),
+      });
+    },
+  });
+}
+
+export function useUpdatePassword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: AccountPasswordUpdateRequest) =>
+      myAgentsAPI.auth.updatePassword(payload),
     onSettled: () => {
       queryClient.clear();
     },

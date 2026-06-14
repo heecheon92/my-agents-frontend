@@ -22,6 +22,7 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
   const guestCodeLogin = useGuestCodeLogin();
   const [activeMode, setActiveMode] = useState(mode);
   const [email, setEmail] = useState("");
+  const [nickname, setNickname] = useState("");
   const [password, setPassword] = useState("");
   const [guestEmail, setGuestEmail] = useState("");
   const [guestCode, setGuestCode] = useState("");
@@ -65,11 +66,16 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
     event.preventDefault();
     if (isSignup) {
       try {
-        const result = await signup.mutateAsync({ email, password });
+        const result = await signup.mutateAsync({
+          email,
+          password,
+          nickname: nickname.trim(),
+        });
         const createdEmail = result.user.email ?? email;
         setEmail(createdEmail);
         setSignupEmail(createdEmail);
         setSignupApprovalRequired(result.approval_required);
+        setNickname("");
         setPassword("");
         setActiveMode("login");
       } catch {
@@ -118,6 +124,24 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
                 required
               />
             </Field>
+            {isSignup ? (
+              <Field
+                label={localization.auth.nickname}
+                hint={localization.auth.nicknameHint}
+              >
+                <input
+                  className={inputClassName}
+                  type="text"
+                  autoComplete="nickname"
+                  value={nickname}
+                  onChange={(event) => {
+                    setNickname(event.target.value);
+                  }}
+                  required
+                  maxLength={40}
+                />
+              </Field>
+            ) : null}
             <Field
               label={localization.auth.password}
               hint={isSignup ? localization.auth.passwordHint : undefined}

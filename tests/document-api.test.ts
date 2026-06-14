@@ -302,6 +302,50 @@ describe("MyAgentsDocumentAPI", () => {
       source_filename: "notes.txt",
       parser_name: "text",
     });
+
+    expect(
+      documentSchema.parse({
+        id: "doc-4",
+        title: "Uploaded Spreadsheet",
+        owner_user_id: "user-1",
+        group_id: null,
+        knowledge_base_id: null,
+        source_type: "spreadsheet",
+        source_filename: "metrics.xlsx",
+        source_content_type:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        source_byte_size: 4096,
+        source_sha256: "c".repeat(64),
+        source_page_count: null,
+        parser_name: "openpyxl_markdown_v1",
+      }),
+    ).toMatchObject({
+      source_type: "spreadsheet",
+      source_filename: "metrics.xlsx",
+      parser_name: "openpyxl_markdown_v1",
+    });
+
+    expect(
+      documentSchema.parse({
+        id: "doc-5",
+        title: "Uploaded Presentation",
+        owner_user_id: "user-1",
+        group_id: null,
+        knowledge_base_id: null,
+        source_type: "presentation",
+        source_filename: "roadmap.pptx",
+        source_content_type:
+          "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        source_byte_size: 8192,
+        source_sha256: "d".repeat(64),
+        source_page_count: null,
+        parser_name: "python_pptx_markdown_v1",
+      }),
+    ).toMatchObject({
+      source_type: "presentation",
+      source_filename: "roadmap.pptx",
+      parser_name: "python_pptx_markdown_v1",
+    });
   });
 
   it("accepts async extraction run progress metadata", () => {

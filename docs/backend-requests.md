@@ -19,12 +19,30 @@ Frontend workaround, if any:
 
 ## Current requests
 
+## 2026-06-14 — nickname signup and member roster display contract
+
+Status: approved / backend implementation in progress
+Frontend need: Signup must collect a duplicate-allowed display name, and the manager-only active-member roster needs a human-readable label without introducing public user search or member emails.
+Current backend behavior: Backend implementation now requires `nickname` on signup, returns `user.nickname`, and includes display-only `nickname` in manager-only member rows; hosted OpenAPI should be refreshed from that accepted contract before deployment handoff.
+Requested backend contract: Require `nickname` on `POST /auth/signup`; return `user.nickname` consistently from signup/login/verify/me responses; backfill existing users and guests with non-empty nicknames; return `nickname` from manager-only `GET /groups/{group_id}/members`; keep duplicate nicknames allowed; keep invitation flows email-based and non-enumerating; keep role updates keyed by `user_id`; do not add nickname lookup, public user discovery, direct member creation, member emails, account-existence flags, or profile data.
+Why it matters: Nickname improves manager recognition in active rosters, but it is display-only. Email remains the invitation/login identifier and user ID remains the exact advanced role-maintenance identifier.
+Frontend workaround, if any: Frontend schemas/UI now match the accepted nickname contract. If a deployed backend still lacks the new OpenAPI shape, treat that as backend/frontend drift and do not add fallback user search, nickname lookup, member-email display, or direct member creation.
+
+## 2026-06-10 — invite-only group membership contract
+
+Status: approved / backend implementation in progress
+Frontend need: Groups UI and copy need a hosted OpenAPI contract for privacy-preserving invitations before adding or changing runtime API models.
+Current backend behavior: The approved backend product boundary makes group membership invitation-only. Direct product activation by known `user_id` is being removed from public API/OpenAPI. Group KB and publish workflows remain shared after acceptance; conversations and opt-in memory remain private.
+Requested backend contract: Expose `POST /groups/{group_id}/invitations`, `GET /groups/{group_id}/invitations`, `PATCH /groups/{group_id}/invitations/{invitation_id}`, `DELETE /groups/{group_id}/invitations/{invitation_id}` for cancel, `POST /groups/{group_id}/invitations/{invitation_id}/resend`, `GET /groups/{group_id}/members` for owner/admin role maintenance, non-creating `PATCH /groups/{group_id}/members/{user_id}`, and `POST /group-invitations/accept` with response shapes that never include `account_exists`, matched `user_id`, profile data, raw tokens, or discoverability status. Keep active-member role updates non-creating and manager-only.
+Why it matters: The frontend must not ship user search, account-existence branching, or direct `user_id` member activation. Pending invitations must not look like active members or grant group KB access.
+Frontend workaround, if any: Documentation, product copy, and runtime invitation/member role-maintenance models are aligned to the backend-owned OpenAPI shape; keep using hosted OpenAPI as the source of truth for future contract expansion.
+
 ## 2026-05-20 — v1 product endpoint contract freeze
 
 Status: proposed
 Frontend need: A hosted OpenAPI URL, or equivalent backend-owned contract document, for the v1 public demo endpoints used by the frontend.
 Current backend behavior: The frontend currently targets the product endpoint family only: auth, groups, documents, knowledge bases, ingest/extraction runs, conversations, conversation runs, streamed runs, and run events. It does not call legacy `/assistant/chat` from product code.
-Requested backend contract: Confirm exact request/response shapes for `POST /auth/signup`, `POST /auth/verify-email`, `POST /auth/login`, `POST /auth/password-reset/request`, `POST /auth/password-reset/confirm`, `POST /auth/logout`, `GET /auth/me`, `POST /groups`, `GET /groups`, `GET /groups/{group_id}`, group member upsert/patch, `POST /knowledge-bases`, `GET /knowledge-bases`, `GET /knowledge-bases/{knowledge_base_id}`, `POST/GET /knowledge-bases/{knowledge_base_id}/documents`, `POST /knowledge-bases/{knowledge_base_id}/documents/upload`, KB-scoped ingest/extraction-run routes, legacy document compatibility routes including delete/permission`, `POST /conversations`, `GET /conversations`, `GET /conversations/{conversation_id}`, `GET /conversations/{conversation_id}/messages`, `POST /conversations/{conversation_id}/runs`, `GET /conversations/{conversation_id}/runs`, `POST /conversations/{conversation_id}/runs/stream`, `GET /conversations/{conversation_id}/runs/{run_id}`, and `GET /conversations/{conversation_id}/runs/{run_id}/events`.
+Requested backend contract: Confirm exact request/response shapes for `POST /auth/signup`, `POST /auth/verify-email`, `POST /auth/login`, `POST /auth/password-reset/request`, `POST /auth/password-reset/confirm`, `POST /auth/logout`, `GET /auth/me`, `POST /groups`, `GET /groups`, `GET /groups/{group_id}`, group invitation create/list/update/resend/cancel/accept, `GET /groups/{group_id}/members`, `PATCH /groups/{group_id}/members/{user_id}`, `POST /knowledge-bases`, `GET /knowledge-bases`, `GET /knowledge-bases/{knowledge_base_id}`, `POST/GET /knowledge-bases/{knowledge_base_id}/documents`, `POST /knowledge-bases/{knowledge_base_id}/documents/upload`, KB-scoped ingest/extraction-run routes, legacy document compatibility routes including delete/permission`, `POST /conversations`, `GET /conversations`, `GET /conversations/{conversation_id}`, `GET /conversations/{conversation_id}/messages`, `POST /conversations/{conversation_id}/runs`, `GET /conversations/{conversation_id}/runs`, `POST /conversations/{conversation_id}/runs/stream`, `GET /conversations/{conversation_id}/runs/{run_id}`, and `GET /conversations/{conversation_id}/runs/{run_id}/events`.
 Why it matters: Repo rules require hosted OpenAPI as the source of truth before changing frontend API models. The frontend schemas currently assume signup returns `{ user, verification_email_sent }`, login returns `{ user, csrf_token }` before BFF redaction, users include `email_verified_at`, and run completion includes `reply`, `route`, `handled_by`, and `citations`.
 Frontend workaround, if any: No model changes made in this audit without a fresh backend-owned OpenAPI/contract.
 
@@ -68,10 +86,10 @@ Frontend workaround, if any: Backend commit `24b3ff8` adds `MY_AGENTS_AUTH_DEV_O
 
 Status: implemented
 Frontend need: A realistic uploaded-file contract for the strict V1 document flow, preferably PDF-first as defined in the backend V1 PRD.
-Current backend behavior: The KB-first backend contract adds multipart `POST /knowledge-bases/{knowledge_base_id}/documents/upload` with `title`, `file`, and optional `group_id`; accepted PDF/Markdown/plain-text behavior remains backend-owned. Legacy `/documents/upload` compatibility can remain for developer clients that supply a KB, but public-demo evidence should use the KB-nested route.
+Current backend behavior: The KB-first backend contract adds multipart `POST /knowledge-bases/{knowledge_base_id}/documents/upload` with `title`, `file`, and optional `group_id`; accepted PDF/Markdown/plain-text/`.xlsx`/`.pptx` behavior remains backend-owned. Legacy `/documents/upload` compatibility can remain for developer clients that supply a KB, but public-demo evidence should use the KB-nested route.
 Requested backend contract: Provide the upload route, accepted content types, request encoding, max-size/error behavior, returned document/file metadata, and how upload links to ingestion lifecycle and provenance.
-Why it matters: The frontend can now render the PDF upload UI, but public-demo evidence cannot honestly claim uploaded-file ingestion unless the active hosted backend exposes this contract and the browser smoke proves it. If not, the release must document the text-document fallback.
-Frontend workaround, if any: Implemented direct PDF/Markdown/plain-text upload UI/API/BFF support from the backend-owned OpenAPI generated at commit `ef88553`; final public-demo evidence still needs browser uploaded-file smoke against the active hosted/local backend. If the launch gate uses a text-document fallback, record the reason explicitly in the release evidence bundle.
+Why it matters: The frontend can now render the file upload UI, but public-demo evidence cannot honestly claim uploaded-file ingestion unless the active hosted backend exposes this contract and the browser smoke proves it. If not, the release must document the text-document fallback.
+Frontend workaround, if any: Implemented direct PDF/Markdown/plain-text upload UI/API/BFF support from the backend-owned OpenAPI generated at commit `ef88553`; the 2026-06-09 frontend wiring extends the same KB-nested multipart path to `.xlsx`/`.pptx`, subject to active backend OpenAPI/browser smoke evidence. Final public-demo evidence still needs browser uploaded-file smoke against the active hosted/local backend. If the launch gate uses a text-document fallback, record the reason explicitly in the release evidence bundle.
 
 ## 2026-05-20 — strict V1 citation provenance contract
 
@@ -113,8 +131,8 @@ Frontend workaround, if any: No UI change needed if the backend returns a safe `
 ## 2026-05-24 — Group Knowledge V1 OpenAPI gate
 
 Status: superseded by unified source selection on 2026-06-07
-Frontend need: Backend-owned OpenAPI for shared/team knowledge before changing frontend API models, clients, or hooks.
-Current backend behavior: Chat source selection now uses a single `knowledge_base_selection` payload. Personal, shared, and team knowledge spaces are selected by ID through the same contract; deprecated shared-knowledge mandatory-source and optional-private attachment fields are removed.
+Frontend need: Backend-owned OpenAPI for shared/group knowledge before changing frontend API models, clients, or hooks.
+Current backend behavior: Chat source selection now uses a single `knowledge_base_selection` payload. Personal, shared, and group knowledge spaces are selected by ID through the same contract; deprecated shared-knowledge mandatory-source and optional-private attachment fields are removed.
 Requested backend contract: Keep publish request create/list/approve/reject routes with request/response schemas for owner/admin-approved copy semantics, and keep run source-audit fields focused on resolved knowledge-base IDs/counts.
 Why it matters: The UI should not expose separate personal-chat/shared-knowledge behavior. Pending/rejected publish requests must have zero retrieval effect, and approved requests must appear only after backend group-owned copy creation.
 Frontend workaround, if any: Frontend models/services/hooks use the unified backend-owned contract; no shared-knowledge fallback remains.

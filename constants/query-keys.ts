@@ -7,6 +7,11 @@ export const MyAgentsQueryKeys = {
       return ["my-agents", "auth", "me"] as const;
     },
   },
+  memories: {
+    settings() {
+      return ["my-agents", "memories", "settings"] as const;
+    },
+  },
   conversations: {
     list() {
       return ["my-agents", "conversations", "list"] as const;
@@ -53,6 +58,22 @@ export const MyAgentsQueryKeys = {
     },
     publishRequests(groupId: string) {
       return ["my-agents", "groups", "publish-requests", groupId] as const;
+    },
+    publishRequestSource(groupId: string, requestId: string) {
+      return [
+        "my-agents",
+        "groups",
+        "publish-requests",
+        groupId,
+        requestId,
+        "source",
+      ] as const;
+    },
+    invitations(groupId: string) {
+      return ["my-agents", "groups", "invitations", groupId] as const;
+    },
+    members(groupId: string) {
+      return ["my-agents", "groups", "members", groupId] as const;
     },
   },
   knowledgeBases: {

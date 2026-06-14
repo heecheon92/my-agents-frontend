@@ -4,6 +4,7 @@ import { MyAgentsAuthAPI } from "@/services/my-agents/MyAgentsAuthAPI";
 const user = {
   id: "u1",
   email: "user@example.com",
+  nickname: "Test User",
   email_verified_at: null,
 };
 
@@ -17,7 +18,11 @@ describe("MyAgentsAuthAPI", () => {
     });
 
     await expect(
-      api.signup({ email: "user@example.com", password: "password123" }),
+      api.signup({
+        email: "user@example.com",
+        password: "password123",
+        nickname: "Test User",
+      }),
     ).resolves.toEqual({
       user,
       verification_email_sent: true,
@@ -51,6 +56,53 @@ describe("MyAgentsAuthAPI", () => {
       {
         path: "/auth/guest/login",
         init: { method: "POST", body: { code: "guest-code" } },
+      },
+    ]);
+  });
+
+  it("wires account update endpoints with current-password payloads", async () => {
+    const calls: Array<{ path: string; init?: unknown }> = [];
+    const updatedUser = { ...user, nickname: "Updated User" };
+    const api = new MyAgentsAuthAPI({
+      fetch: async (path, init) => {
+        calls.push({ path, init });
+        return path === "/auth/me/nickname" ? updatedUser : null;
+      },
+    });
+
+    await expect(
+      api.updateNickname({
+        current_password: "current-password",
+        nickname: "Updated User",
+      }),
+    ).resolves.toEqual(updatedUser);
+    await expect(
+      api.updatePassword({
+        current_password: "current-password",
+        new_password: "password123",
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(calls).toEqual([
+      {
+        path: "/auth/me/nickname",
+        init: {
+          method: "PATCH",
+          body: {
+            current_password: "current-password",
+            nickname: "Updated User",
+          },
+        },
+      },
+      {
+        path: "/auth/me/password",
+        init: {
+          method: "PATCH",
+          body: {
+            current_password: "current-password",
+            new_password: "password123",
+          },
+        },
       },
     ]);
   });

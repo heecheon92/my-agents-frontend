@@ -2,13 +2,13 @@
 
 ## Source of truth
 - Status: Active
-- Last refreshed: 2026-05-22
+- Last refreshed: 2026-06-14
 - Primary product surfaces:
   - Public entry: `/` marketing/entry page.
   - Auth: `/login`, `/signup` through `components/AuthPanel.tsx`.
   - Protected service shell: `app/(service)/layout.tsx` through `components/ServiceShell.tsx`.
   - Anchor workspace: `/chat` through `components/ChatWorkspace.tsx` and focused Ask components under `components/chat/`.
-  - Operations/admin surfaces: `/documents`, `/knowledge`, `/groups` through `components/AdminSurfaces.tsx`.
+  - Operations/admin surfaces: `/knowledge` (Sources), `/documents` compatibility redirect, and `/groups` through `components/AdminSurfaces.tsx`.
 - Evidence reviewed:
   - `AGENTS.md` product intent, frontend boundary, design/accessibility rules, and verification commands.
   - `app/globals.css` Tailwind v4 theme, semantic variables, inherited `cal-*` aliases, fluid type/spacing helpers, responsive primitives, card helpers.
@@ -17,6 +17,8 @@
   - `components/ui/button.tsx` Base UI button primitive and current variants.
   - `docs/frontend-architecture.md`, `docs/agent-onboarding.md`, `docs/security-and-backend-boundary.md`, `docs/verification-runbook.md`, `docs/implementation-log.md`.
   - `localization/en.json`, `localization/ko.json` bilingual product copy and route labels.
+  - 2026-06-14 groups-page review: `/knowledge` already uses the preferred organization shell in `components/AdminSurfaces.tsx` (desktop source-space tree, compact-screen sheet, table-like main pane, create/upload/manage dialogs), while current `/groups` still exposes group creation, invitation creation, invitation maintenance, member role updates, publish creation/review, and group selection as stacked first-look controls.
+  - Prior invite-only membership boundary memory: group membership starts with email invitation acceptance; no public user search, no account-existence branching, no direct member activation by known `user_id`, and active-member role updates remain an advanced exact-ID operation.
   - Frontend engineering feedback from 2026-05-22: feasible with current Tailwind v4/local components; biggest issues are Cal.com framing, dense chat/admin layouts, thin reusable component layer, and ad hoc Tailwind strings.
 
 ## Brand
@@ -36,11 +38,11 @@
 
 ## Product goals
 - Goals:
-  - Make Ask/chat the obvious primary journey after users add knowledge.
-  - Make the first-time journey legible in five seconds: add documents, ask questions, inspect citations.
+  - Make Ask/chat the obvious primary journey after users add sources.
+  - Make the first-time journey legible in five seconds: add sources, ask questions, inspect citations.
   - Keep citations visually attached to assistant answers while moving run history and activity events into progressive disclosure.
-  - Make Add sources and Knowledge feel like one mental model: documents/notes are sources inside knowledge spaces.
-  - Make team, membership, and permission workflows usable while keeping raw ID-based controls in advanced/admin disclosure.
+  - Keep source setup as one shallow mental model: files/notes live inside source spaces, then Ask uses them with citations.
+  - Make group, invitation, membership, and permission workflows usable without implying user search or direct `user_id` membership activation.
   - Support Korean and English with comfortable typography, wrapping, and no hardcoded user-facing strings.
   - Give frontend engineers a stable theme/component contract that can be implemented with current Next.js, Tailwind v4, Base UI/shadcn-style primitives, and no new component library.
   - Reduce future UI churn by moving repeated panel/list/message patterns out of ad hoc Tailwind strings and into small repo-native primitives.
@@ -55,7 +57,8 @@
   - A new user can answer: “Am I authenticated?”, “Which conversation am I in?”, “What did the agent do?”, “What sources support this answer?”, and “What can I do next?” without reading docs.
   - Narrow, tablet, and desktop layouts remain readable without horizontal page overflow.
   - Chat feels like the product center; admin surfaces feel like supporting control rooms, not afterthought forms.
-  - Component states are consistent across auth, chat, documents, knowledge, and groups.
+  - Component states are consistent across auth, chat, sources, and groups.
+  - A first-time group manager can understand the Groups page before seeing low-level controls: select/create a group, invite by email, review members, and handle sharing requests appear as separate, named tasks instead of one wall of buttons.
 
 ## Personas and jobs
 - Primary personas:
@@ -67,8 +70,8 @@
   - Sign up, log in, log out, restore a session, or continue as a limited guest.
   - Create/select a conversation, send a message, stream the response, queue or steer a next prompt, and understand run outcome.
   - Inspect redacted activity events and citations tied to the latest run.
-  - Create/upload documents, ingest them, monitor extraction progress, and confirm source metadata.
-  - Create knowledge bases, groups, and ID-based membership/permission changes without mistaking rough backend contracts for polished search/list UX.
+  - Create/upload sources, prepare them for Ask as one workflow, monitor advanced processing progress, and confirm source metadata.
+  - Create knowledge bases and groups, manage invitations/roles, and avoid mistaking backend identifiers for a polished user-search UX.
 - Key contexts of use:
   - Local development and review, with backend at `http://127.0.0.1:8000` or `http://localhost:8000` depending on configured CORS.
   - Public/demo review where privacy, redaction, honest guest limits, and no-secret browser storage matter.
@@ -76,21 +79,36 @@
 
 ## Information architecture
 - Primary navigation:
-  - Protected app navigation is task-oriented: Ask, Add sources, Knowledge, Teams.
+  - Protected app navigation is task-oriented: Ask, Sources, Groups.
   - Ask is first and should be visually weighted as the default route from the service index.
   - Mobile navigation remains horizontal-scrollable or transformed into an accessible compact pattern; it must not disappear below desktop.
 - Core routes/screens:
   - `/`: Entry page that promises “내 문서를 기반으로 답하는 AI 워크스페이스,” not a generic marketing site.
   - `/login` and `/signup`: Two-panel trust/auth experience with guest path and account-created handoff.
-  - `/chat`: Ask-first workspace with conversation list, top-of-chat knowledge selector, transcript, dominant composer, compact citation summaries near answers, and progressively disclosed citation details plus response evidence/work history.
-  - `/documents`: Add sources screen for text/file sources inside a selected knowledge space; permissions and processing internals stay in Advanced sections.
-  - `/knowledge`: Create/list knowledge spaces and explain add sources → ask → inspect citations.
-  - `/groups`: Teams screen for shared knowledge and advanced ID-based member role actions.
+  - `/chat`: Ask-first workspace with conversation list, top-of-chat source selector, transcript, dominant composer, compact citation summaries near answers, and progressively disclosed citation details plus response evidence/work history.
+  - `/knowledge`: Sources/Knowledge screen with an organization-tree-style source-space browser, table-style source list, selected-source inspector, and dialog-based add flows for source spaces/text/files; group sharing and processing internals stay in Advanced sections.
+  - `/knowledge/{knowledge-base-id}` and `/knowledge/{group-id}`: selected source-space/group subroutes. Refresh must preserve the current tree selection and main-pane context rather than falling back to the first available space.
+  - `/documents`: Legacy compatibility route that redirects to `/knowledge`.
+  - `/groups`: Groups screen for shared knowledge, invitation lifecycle, accepted-member roles, and publish-request review. It should visually align with `/knowledge`: a group browser on the left, selected-group overview in the main pane, and dialogs/sheets for creation plus secondary actions.
 - Content hierarchy:
   - Level 1: Page purpose and current user/session context.
-  - Level 2: Primary action for the route, e.g. create conversation, send message, upload/ingest document.
+  - Level 2: Primary action for the route, e.g. create conversation, send message, upload and prepare sources.
   - Level 3: Progressive evidence, e.g. citation snippet, response history, event payload, document IDs, permissions; show compact answer-level cues first, then reveal detailed cards and implementation-heavy metadata in panels/tabs/accordions.
   - Level 4: Backend limitation notes and safe recovery paths.
+- Groups page target hierarchy:
+  - Level 1: selected group context, current role, and shared-source status.
+  - Level 2: one primary action at a time. Prefer `Invite member` for owner/admin groups with an active selection; use `Create group` as the empty-state or header action when no useful group exists.
+  - Level 3: overview cards for active members, pending invitations, group source spaces, and publish requests. Each card has one clear action such as `Invite`, `Review`, `Manage`, or `Create source space`.
+  - Level 4: exact IDs, invitation resend/cancel by ID, role patch by `user_id`, and publish request IDs. These belong inside Advanced disclosures or row/dialog action flows, never in the first-look page layout.
+- Groups page interaction model:
+  - Match `/knowledge` structure before creating a new route: desktop persistent group list/tree; compact-screen `Sheet` to browse groups; selected-group main pane with summary cards and tables/lists.
+  - Create group belongs in a `Dialog` opened from the group browser/header, not as a persistent top-of-page form.
+  - Invite member belongs in a focused `Dialog` or side `Sheet` with email + role only. It should be the most prominent manager action, because it matches the approved invitation boundary.
+  - Pending invitations should render as rows/cards with local row actions: resend, change pending role, cancel. Prefer per-row action menus/dialogs over a global “invitation ID” form.
+  - Active members should render as rows/cards using nickname as the primary label and role as a pill. Role changes can open a row-owned dialog; `user_id` is visible only in advanced details for exactness.
+  - Publish/share requests should read as a review queue. Creating a share request and approving/rejecting a request should each live in a dialog/sheet or row-owned action, not a permanent side-by-side form.
+  - Use tabs or segmented sections only if they reduce clutter: recommended sections are `Overview`, `Members`, `Sharing`. Do not hide the selected-group identity or role when switching sections.
+  - A dedicated route is not required for the current surface. Consider `/groups/{groupId}` only after group audit/history, settings, or source-space management outgrows one selected-group workspace.
 
 ## Design principles
 - Principle 1: Evidence stays attached to action.
@@ -108,7 +126,7 @@
 - Tradeoffs:
   - Prioritize transcript-first chat polish over equal visual richness in admin surfaces, but use the same tokens and state language everywhere.
   - Keep the current CSS/token implementation lightweight; rename or migrate legacy `cal-*` aliases only when a UI-code task explicitly includes it.
-  - Accept ID-heavy admin workflows until backend search/member-list contracts exist; design should make the limitation clear without shaming the product.
+  - Accept identifier-heavy advanced permission workflows only where the backend contract requires them; membership UX should use email invitations and must not imply user discovery.
   - Prefer progressive disclosure over always-visible density for inspectors and admin action panels; default view should show the task and the most relevant evidence first.
 
 ## Visual language
@@ -164,8 +182,10 @@
     - `WorkspacePanel`: consistent card shell with title, description, optional action, and scroll containment.
     - `EvidenceCard`: citation/event/source metadata display with type label, provenance, and snippet/body.
     - `TimelineStep`: redacted agent activity row with sequence, event type, timestamp when available, and safe payload preview.
-    - `DocumentQueueItem`: standardized upload/ingest row state; current `UploadQueueRow` already points in this direction.
+    - `DocumentQueueItem`: standardized upload/preparation row state; current `UploadQueueRow` already points in this direction.
     - `ResourceList` / `ResourceRow`: reusable list and selectable-row primitives for conversations, documents, knowledge bases, and groups.
+    - `GroupWorkspace`: `/groups` shell mirroring the Sources workspace with group browser, selected-group header, overview cards, and compact-screen group picker sheet.
+    - `GroupActionDialog`: focused dialogs for create group, invite member, pending-invitation action, active-member role change, share request creation, and publish-request review. These can start as local render helpers inside `AdminSurfaces.tsx` before extraction.
     - `ConversationSidebar`, `ChatTranscript`, `MessageBubble`, `EvidencePanel`, `KnowledgeSourceSelector`, and `ComposerBar`: Ask primitives that keep Markdown-safe assistant rendering, plain-text user messages, queued state, compact source selection, citations, and send/stop affordances consistent.
     - `ShellIdentity`: brand/session block to reduce duplication between desktop sidebar and mobile header.
   - Do not add these until implementation work needs them; this document defines direction, not a required refactor.
@@ -193,6 +213,11 @@
   - Event payloads:
     - Keep raw-looking JSON visually contained and clearly labeled as redacted backend payload; long payloads scroll inside the card.
     - Prefer summary-first rows with an optional expanded payload over raw JSON-first cards.
+  - Groups workspace:
+    - The first look should show at most two primary buttons in the selected-group header area, usually `Invite member` and a secondary `Create group`/`Browse groups` action depending on screen size.
+    - Manager-only actions must explain role requirements in card copy or disabled states; do not show a dense grid of disabled buttons.
+    - Advanced ID-based controls must be reachable but visually secondary. Use details, dialogs, or row-owned actions so normal users are guided by email invitations, nicknames, roles, and request status.
+    - Keep one selected group as the anchor context for all cards. If no group is selected, show an empty state with `Create group`; do not show invitation, member, or publish forms without a selected group.
 - Token/component ownership:
   - `DESIGN.md` owns brand, IA, visual language, component rules, and open questions.
   - `app/globals.css` owns CSS custom properties, Tailwind v4 theme aliases, responsive helpers, and low-level helper classes.
@@ -229,8 +254,8 @@
   - Wide desktop: 1536px+ for multi-pane chat inspection.
 - Layout adaptations:
   - Global/service shell:
-    - Mobile: visible header, logout, horizontally reachable primary nav, route content stacked.
-    - Desktop: persistent sidebar with brand, nav, session card, content region with bounded padding.
+    - Mobile: visible header, logout, route content stacked, and a shadcn/Base UI sidebar trigger that opens primary navigation in a sheet.
+    - Desktop: shadcn/Base UI persistent sidebar with brand, nav, session card, content region with bounded padding, and a persisted icon-collapsed state for repeat users.
   - Auth:
     - Mobile: form should appear before excessive explanation if conversion suffers; current two-panel stack is acceptable but should be tested for scroll length.
     - Desktop: trust/feature panel + form panel side by side.
@@ -240,6 +265,8 @@
     - Wide desktop: detailed run history, activity events, and citation cards may sit side by side only after a disclosure is opened; the transcript remains the dominant surface.
   - Admin surfaces:
     - Use current container-query-ready `responsive-panel-grid[data-layout="form-aside"]`; forms and selected-action panels split only when the container is wide enough.
+    - Sources should prefer a GreetSchool-style organization shell: persistent source-space tree on desktop, sheet/browser on compact screens, table-like source rows in the main pane, route-backed tree selection, shadcn/Base UI dialogs for create/upload forms, and row-owned Manage dialogs for deletion and preparation recovery instead of a persistent selected-item panel.
+    - Groups should use the same organization-shell pattern as Sources: persistent group browser on desktop, group browser sheet on compact screens, selected-group header, overview cards, and row-owned/dialog-owned actions. Avoid stacking create/invite/publish/review forms above or beside the group list.
     - De-emphasize admin-heavy density with grouped sections, collapsible/secondary action areas, and clear selected-resource context.
     - Resource rows must wrap IDs and filenames without page overflow.
 - Touch/hover differences:
@@ -254,16 +281,18 @@
 - Empty:
   - Empty states should name the missing thing and the next action, e.g. create conversation, upload document, select a group.
   - Empty evidence panels should explain that events/citations appear after a run, not imply failure.
+  - Empty Groups should start with one `Create group` action and a short explanation that groups unlock invite-accepted shared source spaces. Do not render invitation/member/publish forms until a group exists and is selected.
 - Error:
   - Use safe backend `{ detail }` when available; never expose stack traces, raw tokens, CSRF/session IDs, or provider secrets.
   - Errors appear close to the failed control or panel.
   - For failed stream/upload, preserve recoverable user input where possible.
 - Success:
-  - Success states should confirm the user-visible result and next step, e.g. account created then log in, upload completed then ingest/inspect.
+  - Success states should confirm the user-visible result and next step, e.g. account created then log in, source ready then inspect processing details if needed.
   - Avoid toast-only success for workflow-critical transitions; persistent inline status is better.
 - Disabled:
   - Disabled actions require visible context through labels, hints, or helper text when the reason is not obvious.
   - Do not hide backend-limited actions; show honest disabled or empty states unless the route is truly unavailable.
+  - On Groups, disabled manager actions should say whether the blocker is missing selected group, insufficient role, missing email/request selection, or backend contract unavailability.
 - Offline/slow network, if applicable:
   - No offline mode is currently promised.
   - Slow streaming/upload should show progress or pending copy and allow safe cancellation/removal only when supported.
@@ -280,7 +309,8 @@
 - Microcopy rules:
   - Avoid “magic”, “brain”, “thinking”, “autonomous reasoning trace”, or claims of hidden intelligence.
   - Say what happened and what to do next: “Run failed. Try again or edit the message.”
-  - For ID-based fields, explicitly ask for “user ID” or “group ID”; do not imply user search exists.
+  - For any remaining ID-based advanced fields, explicitly ask for “user ID” or “group ID”; normal group membership copy should use email invitations and must not imply user search exists.
+  - Groups copy should lead with human concepts: group name, role, display name/nickname, invitation email, pending/accepted status, and source-space sharing. Only advanced details should mention raw `user_id`, invitation ID, publish request ID, or knowledge-base ID.
   - Keep user-visible strings in `localization/ko.json` and `localization/en.json`.
 
 ## Implementation constraints
@@ -307,6 +337,7 @@
 - Test/screenshot expectations:
   - Documentation-only changes: `git diff --check` is sufficient unless docs alter commands/contracts.
   - UI/theme/layout changes: run `pnpm lint`, `pnpm exec tsc --noEmit`, relevant Vitest/Playwright checks, `pnpm build`, and inspect relevant pages in a browser when possible.
+  - Groups redesign checks should include at least one owner/admin mocked or E2E path showing: selected group overview, invite dialog, pending invitation row action, active member row action, publish/share review queue, and compact-screen group browser sheet.
   - Responsive visual work should verify no horizontal overflow at narrow/tablet/desktop widths and record evidence in `docs/implementation-log.md` for substantial changes.
   - Fixed-height desktop shells must degrade safely on mobile; test scroll regions so transcript, composer, and inspectors do not become overflow traps.
 
@@ -316,4 +347,4 @@
 - [ ] Frontend owner / token migration: Should future implementation keep `cal-*` class names as compatibility aliases or migrate them to product-neutral names? Impact: diff size and risk during UI polish.
 - [ ] Frontend owner / primitive extraction: Which primitive should be extracted first after token work: `WorkspacePanel`, `ResourceList`, `MessageBubble`, or `EvidenceCard`? Impact: reduces ad hoc class strings without forcing a large refactor.
 - [ ] Backend/product owner / event display contract: Which event payload keys are guaranteed safe and stable for public display? Impact: activity timeline formatting and redaction confidence.
-- [ ] Backend/product owner / admin UX: Will user search/member listing arrive, or should ID-based group/permission workflows remain first-class? Impact: layout priority and field guidance.
+- [ ] Backend/product owner / admin UX: Will future opt-in user discovery arrive, or should email invitations plus accepted-member lists remain first-class? Impact: layout priority and field guidance.

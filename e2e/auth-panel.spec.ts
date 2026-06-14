@@ -35,6 +35,12 @@ test.describe("auth pages", () => {
     await expect(
       page.getByRole("textbox", { exact: true, name: ko.auth.email }),
     ).toBeVisible();
+    await expect(
+      page.getByRole("textbox", {
+        name: new RegExp(`^${ko.auth.nickname}`),
+      }),
+    ).toHaveCount(0);
+    await expect(page.getByText(ko.auth.nicknameHint)).toHaveCount(0);
     await expect(page.locator('input[type="password"]')).toBeVisible();
     await expect(
       page.getByRole("button", { name: ko.auth.loginSubmit }),
@@ -73,6 +79,11 @@ test.describe("auth pages", () => {
     ).toBeVisible();
     await expect(
       page.getByRole("textbox", { exact: true, name: ko.auth.email }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("textbox", {
+        name: new RegExp(`^${ko.auth.nickname}`),
+      }),
     ).toBeVisible();
     await expect(page.locator('input[type="password"]')).toBeVisible();
     await expect(

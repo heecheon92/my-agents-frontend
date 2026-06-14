@@ -4,6 +4,7 @@ export const userSchema = z
   .object({
     id: z.string().min(1),
     email: z.string().email().nullable(),
+    nickname: z.string().min(1).max(40),
     email_verified_at: z
       .string()
       .datetime({ local: true, offset: true })
@@ -21,6 +22,7 @@ export const userSchema = z
 export const signupRequestSchema = z
   .object({
     email: z.string().email(),
+    nickname: z.string().trim().min(1).max(40),
     password: z.string().min(8).max(128),
   })
   .strict();
@@ -74,6 +76,20 @@ export const passwordResetConfirmRequestSchema = z
   })
   .strict();
 
+export const accountNicknameUpdateRequestSchema = z
+  .object({
+    current_password: z.string().min(1).max(128),
+    nickname: z.string().trim().min(1).max(40),
+  })
+  .strict();
+
+export const accountPasswordUpdateRequestSchema = z
+  .object({
+    current_password: z.string().min(1).max(128),
+    new_password: z.string().min(8).max(128),
+  })
+  .strict();
+
 export const backendLoginResponseSchema = z
   .object({
     user: userSchema,
@@ -108,5 +124,11 @@ export type LoginResponse = z.infer<typeof loginResponseSchema>;
 export type PasswordResetRequest = z.infer<typeof passwordResetRequestSchema>;
 export type PasswordResetConfirmRequest = z.infer<
   typeof passwordResetConfirmRequestSchema
+>;
+export type AccountNicknameUpdateRequest = z.infer<
+  typeof accountNicknameUpdateRequestSchema
+>;
+export type AccountPasswordUpdateRequest = z.infer<
+  typeof accountPasswordUpdateRequestSchema
 >;
 export type AcceptedResponse = z.infer<typeof acceptedResponseSchema>;

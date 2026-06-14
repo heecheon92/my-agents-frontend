@@ -1,0 +1,44 @@
+"use client";
+
+import { SettingsTabs } from "./SettingsTabs";
+
+type SettingsPageShellProps = {
+  eyebrow: string;
+  title: string;
+  description: string;
+  accountTab: string;
+  experimentalTab: string;
+  children: React.ReactNode;
+};
+
+export function SettingsPageShell({
+  eyebrow,
+  title,
+  description,
+  accountTab,
+  experimentalTab,
+  children,
+}: SettingsPageShellProps) {
+  return (
+    <section className="mx-auto grid w-full max-w-5xl gap-6">
+      <div className="grid gap-4">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cal-muted">
+            {eyebrow}
+          </p>
+          <h1 className="mt-2 font-heading text-3xl font-semibold tracking-[-0.04em] text-cal-ink sm:text-4xl">
+            {title}
+          </h1>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-cal-muted sm:text-base">
+            {description}
+          </p>
+        </div>
+        <SettingsTabs
+          accountLabel={accountTab}
+          experimentalLabel={experimentalTab}
+        />
+      </div>
+      {children}
+    </section>
+  );
+}

@@ -10,10 +10,10 @@ This app is a user-facing AI workspace built with Next.js 16, React 19, TypeScri
 
 - Auth: signup, email verification, login, password reset request/confirm, logout, current user restore.
 - Ask: conversations, server-owned messages, streamed assistant-answer conversation runs, citations near answers, a top-of-chat knowledge selector, collapsed response evidence/work history, and guest demo orientation.
-- Knowledge/source workflows: knowledge-space create/list, text source creation, PDF/Markdown/plain-text drag-and-drop or file-picker upload into a selected knowledge space, source preparation, and processing history.
-- Teams: create/list, shared-knowledge requests, and advanced ID-based member/permission controls.
+- Knowledge/source workflows: knowledge-space create/list, text source creation, PDF/Markdown/plain-text plus `.xlsx`/`.pptx` drag-and-drop or file-picker upload into a selected knowledge space, source preparation, and processing history.
+- Teams: create/list, invite-accepted membership, shared-knowledge publish requests, and advanced permission controls without user discovery.
 
-Ask uses `/conversations/{id}/runs`; `/assistant/chat` is legacy/dev-only and is blocked from product BFF proxy use. Signup follows the hosted OpenAPI contract: account creation returns `{ user, verification_email_sent }`, then the user can log in with the same credentials after any required verification flow.
+Ask uses `/conversations/{id}/runs`; `/assistant/chat` is legacy/dev-only and is blocked from product BFF proxy use. Team membership is invitation-only: the UI must not imply user search, account-existence checks, or direct `user_id` activation, and conversations/memory stay private even when group knowledge is selected. Signup follows the hosted OpenAPI contract: account creation returns `{ user, verification_email_sent }`, then the user can log in with the same credentials after any required verification flow.
 
 ## Local setup
 
