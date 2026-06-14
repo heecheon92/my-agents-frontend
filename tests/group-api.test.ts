@@ -59,11 +59,25 @@ describe("MyAgentsGroupAPI invitations", () => {
     ]);
   });
 
-  it("updates, resends, cancels, and accepts invitations", async () => {
+  it("updates, resends, cancels, accepts, and signs up invitations", async () => {
     const calls: Array<{ path: string; init?: unknown }> = [];
     const api = new MyAgentsGroupAPI({
       fetch: async (path, init) => {
         calls.push({ path, init });
+        if (path === "/group-invitations/signup") {
+          return {
+            user: {
+              id: "user-2",
+              email: "invitee@example.com",
+              nickname: "Invitee",
+              email_verified_at: "2026-06-10T07:01:00Z",
+              approval_status: "approved",
+              is_guest: false,
+              guest_expires_at: null,
+            },
+            member: { ...member, user_id: "user-2", nickname: "Invitee" },
+          };
+        }
         return invitation;
       },
     });
@@ -80,6 +94,16 @@ describe("MyAgentsGroupAPI invitations", () => {
     await expect(
       api.acceptInvitation({ token: "opaque-token" }),
     ).resolves.toBeUndefined();
+    await expect(
+      api.signupFromInvitation({
+        token: "opaque-token",
+        nickname: "Invitee",
+        password: "correct horse battery staple",
+      }),
+    ).resolves.toMatchObject({
+      user: { email: "invitee@example.com", nickname: "Invitee" },
+      member: { nickname: "Invitee" },
+    });
 
     expect(calls).toEqual([
       {
@@ -97,6 +121,17 @@ describe("MyAgentsGroupAPI invitations", () => {
       {
         path: "/group-invitations/accept",
         init: { method: "POST", body: { token: "opaque-token" } },
+      },
+      {
+        path: "/group-invitations/signup",
+        init: {
+          method: "POST",
+          body: {
+            token: "opaque-token",
+            nickname: "Invitee",
+            password: "correct horse battery staple",
+          },
+        },
       },
     ]);
   });

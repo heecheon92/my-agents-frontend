@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useCurrentUser } from "@/hooks/use-auth";
 import { useAcceptGroupInvitation } from "@/hooks/use-groups";
 import { useLocalization } from "@/hooks/useLocalization";
 import { ErrorState } from "../Status";
@@ -11,12 +12,15 @@ import { ErrorState } from "../Status";
 type InvitationAcceptState =
   | "missing-token"
   | "accepting"
+  | "redirecting"
   | "accepted"
   | "failed";
 
 export function GroupInvitationAcceptPanel() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get("token")?.trim() ?? "";
+  const currentUser = useCurrentUser();
   const acceptInvitation = useAcceptGroupInvitation();
   const requestedToken = useRef<string | null>(null);
   const [state, setState] = useState<InvitationAcceptState>(
@@ -30,6 +34,15 @@ export function GroupInvitationAcceptPanel() {
     if (!token) {
       setState("missing-token");
       requestedToken.current = null;
+      return;
+    }
+    if (currentUser.isLoading) {
+      setState("accepting");
+      return;
+    }
+    if (!currentUser.data) {
+      setState("redirecting");
+      router.replace(`/signup?invite_token=${encodeURIComponent(token)}`);
       return;
     }
     if (requestedToken.current === token) return;
@@ -46,7 +59,13 @@ export function GroupInvitationAcceptPanel() {
         },
       },
     );
-  }, [token, acceptInvitation]);
+  }, [
+    token,
+    currentUser.isLoading,
+    currentUser.data,
+    router,
+    acceptInvitation,
+  ]);
 
   const title =
     state === "accepted"
@@ -55,7 +74,9 @@ export function GroupInvitationAcceptPanel() {
         ? localization.auth.groupInvitationFailedTitle
         : state === "missing-token"
           ? localization.auth.groupInvitationMissingTitle
-          : localization.auth.groupInvitationWorkingTitle;
+          : state === "redirecting"
+            ? localization.auth.groupInvitationRedirectingTitle
+            : localization.auth.groupInvitationWorkingTitle;
   const description =
     state === "accepted"
       ? localization.auth.groupInvitationSuccessDescription
@@ -63,7 +84,9 @@ export function GroupInvitationAcceptPanel() {
         ? localization.auth.groupInvitationFailedDescription
         : state === "missing-token"
           ? localization.auth.groupInvitationMissingDescription
-          : localization.auth.groupInvitationWorkingDescription;
+          : state === "redirecting"
+            ? localization.auth.groupInvitationRedirectingDescription
+            : localization.auth.groupInvitationWorkingDescription;
 
   return (
     <main className="min-h-dvh bg-cal-canvas py-6 sm:py-8">
@@ -94,7 +117,15 @@ export function GroupInvitationAcceptPanel() {
             </Button>
             <Button
               nativeButton={false}
-              render={<Link href="/login" />}
+              render={
+                <Link
+                  href={
+                    token
+                      ? `/login?invite_token=${encodeURIComponent(token)}`
+                      : "/login"
+                  }
+                />
+              }
               size="lg"
               variant="outline"
             >

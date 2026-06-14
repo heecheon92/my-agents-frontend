@@ -6,6 +6,7 @@ import type {
   GroupCreateRequest,
   GroupInvitationAcceptRequest,
   GroupInvitationCreateRequest,
+  GroupInvitationSignupRequest,
   GroupInvitationUpdateRequest,
   KnowledgePublishRequestCreateRequest,
   MemberPatchRequest,
@@ -114,6 +115,20 @@ export function useAcceptGroupInvitation() {
     mutationFn: (payload: GroupInvitationAcceptRequest) =>
       myAgentsAPI.groups.acceptInvitation(payload),
     onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.groups.list(),
+      });
+    },
+  });
+}
+
+export function useSignupFromGroupInvitation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: GroupInvitationSignupRequest) =>
+      myAgentsAPI.groups.signupFromInvitation(payload),
+    onSuccess: (data) => {
+      queryClient.setQueryData(MyAgentsQueryKeys.auth.me(), data.user);
       queryClient.invalidateQueries({
         queryKey: MyAgentsQueryKeys.groups.list(),
       });

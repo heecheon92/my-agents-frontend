@@ -103,6 +103,7 @@ The BFF allowlist currently covers:
 - `POST /groups/{group_id}/invitations/{invitation_id}/resend`
 - `DELETE /groups/{group_id}/invitations/{invitation_id}`
 - `POST /group-invitations/accept`
+- `POST /group-invitations/signup` for no-account invitees; request body is token + nickname + password, never email
 - `GET /groups/{group_id}/members` for owner/admin member role maintenance only (accepted members include display-only `nickname`, never member email)
 - `PATCH /groups/{group_id}/members/{user_id}` for already-active member role updates only; duplicate nicknames mean role updates stay user-id based
 - `POST /knowledge-bases`
@@ -122,6 +123,29 @@ The BFF allowlist currently covers:
 - `DELETE /documents/{document_id}`
 - `POST /documents/{document_id}/ingest`
 - `GET /documents/{document_id}/extraction-runs`
+
+## Invitation signup flow
+
+Signed-out recipients who open `/group-invitations/accept?token=...` are routed to `/signup?invite_token=...`. That signup variant hides the email field because the invitation token proves the invited email identity, collects only display nickname and password, then posts `POST /group-invitations/signup` through the BFF. The BFF treats this response like login: it copies the session/CSRF cookies from the backend and redacts `csrf_token` from browser-visible JSON. Existing-account recipients should sign in with the invited email and return to `POST /group-invitations/accept`.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant UI as Next UI
+    participant BFF as Next BFF
+    participant API as FastAPI
+
+    User->>UI: Open /group-invitations/accept?token=...
+    UI->>BFF: GET /api/my-agents/auth/me
+    BFF-->>UI: 401 when signed out
+    UI-->>User: Redirect /signup?invite_token=...
+    User->>UI: Enter nickname + password
+    UI->>BFF: POST /api/my-agents/group-invitations/signup
+    BFF->>API: POST /group-invitations/signup
+    API-->>BFF: session cookie + { user, member, csrf_token }
+    BFF-->>UI: session/CSRF cookies + { user, member }
+    UI-->>User: /groups
+```
 
 `POST /assistant/chat` is intentionally excluded from product BFF use. The current product UI prefers the KB-nested document routes above; legacy document routes remain allowlisted for existing detail/delete compatibility and older clients, not as the primary upload/create/ingest journey.
 

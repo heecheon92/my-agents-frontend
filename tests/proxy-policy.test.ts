@@ -120,6 +120,9 @@ describe("proxy policy", () => {
     expect(
       isAllowedBackendPath("PATCH", "/groups/group-1/members/user-1").allowed,
     ).toBe(true);
+    expect(
+      isAllowedBackendPath("POST", "/group-invitations/signup").allowed,
+    ).toBe(true);
   });
 
   it("blocks direct member creation, legacy assistant chat, and unknown paths before forwarding", () => {
@@ -154,6 +157,8 @@ describe("proxy policy", () => {
     expect(isCsrfExemptPath("/auth/guest/login")).toBe(true);
     expect(isCsrfExemptPath("/auth/password-reset/request")).toBe(true);
     expect(isCsrfExemptPath("/auth/password-reset/confirm")).toBe(true);
+    expect(isCsrfExemptPath("/group-invitations/signup")).toBe(true);
+    expect(isCsrfExemptPath("/group-invitations/accept")).toBe(false);
     expect(isCsrfExemptPath("/auth/logout")).toBe(false);
     expect(isCsrfExemptPath("/auth/me/nickname")).toBe(false);
     expect(isCsrfExemptPath("/auth/me/password")).toBe(false);

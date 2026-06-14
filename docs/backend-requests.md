@@ -21,12 +21,12 @@ Frontend workaround, if any:
 
 ## 2026-06-14 — nickname signup and member roster display contract
 
-Status: approved / backend implementation in progress
-Frontend need: Signup must collect a duplicate-allowed display name, and the manager-only active-member roster needs a human-readable label without introducing public user search or member emails.
+Status: implemented / hosted OpenAPI refresh required before production verification
+Frontend need: Signup must collect a duplicate-allowed display name, the manager-only active-member roster needs a human-readable label without introducing public user search or member emails, and no-account invitees need a token-proved signup path that asks for nickname/password only.
 Current backend behavior: Backend implementation now requires `nickname` on signup, returns `user.nickname`, and includes display-only `nickname` in manager-only member rows; hosted OpenAPI should be refreshed from that accepted contract before deployment handoff.
-Requested backend contract: Require `nickname` on `POST /auth/signup`; return `user.nickname` consistently from signup/login/verify/me responses; backfill existing users and guests with non-empty nicknames; return `nickname` from manager-only `GET /groups/{group_id}/members`; keep duplicate nicknames allowed; keep invitation flows email-based and non-enumerating; keep role updates keyed by `user_id`; do not add nickname lookup, public user discovery, direct member creation, member emails, account-existence flags, or profile data.
-Why it matters: Nickname improves manager recognition in active rosters, but it is display-only. Email remains the invitation/login identifier and user ID remains the exact advanced role-maintenance identifier.
-Frontend workaround, if any: Frontend schemas/UI now match the accepted nickname contract. If a deployed backend still lacks the new OpenAPI shape, treat that as backend/frontend drift and do not add fallback user search, nickname lookup, member-email display, or direct member creation.
+Requested backend contract: Require `nickname` on `POST /auth/signup`; return `user.nickname` consistently from signup/login/verify/me responses; backfill existing users and guests with non-empty nicknames; expose `POST /group-invitations/signup` for no-account invitees with `{ token, nickname, password }` only; return a session envelope with user/member while the BFF redacts `csrf_token`; return `nickname` from manager-only `GET /groups/{group_id}/members`; keep duplicate nicknames allowed; keep invitation flows email-based and non-enumerating; keep role updates keyed by `user_id`; do not add nickname lookup, public user discovery, direct member creation, member emails, account-existence flags, or profile data.
+Why it matters: Nickname improves manager recognition in active rosters, but it is display-only. Email remains the invitation/login identifier and user ID remains the exact advanced role-maintenance identifier. Invitation-token signup lets a recipient without an account finish onboarding without typing or changing the proven email identity.
+Frontend workaround, if any: Frontend schemas/UI now match the accepted nickname and invitation-token signup contract. If a deployed backend still lacks the new OpenAPI shape, treat that as backend/frontend drift and do not add fallback user search, nickname lookup, member-email display, email-entry invite signup, or direct member creation.
 
 ## 2026-06-10 — invite-only group membership contract
 

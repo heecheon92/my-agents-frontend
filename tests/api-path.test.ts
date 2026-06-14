@@ -50,6 +50,7 @@ describe("API_PATH", () => {
       "/groups/group-1/invitations/invite-1/resend",
     );
     expect(API_PATH.groupInvitations.accept).toBe("/group-invitations/accept");
+    expect(API_PATH.groupInvitations.signup).toBe("/group-invitations/signup");
   });
 
   it("builds group publish request paths", () => {

@@ -159,4 +159,117 @@ test.describe("auth pages", () => {
     expect(guestRequestBody).toEqual({ email: "reviewer@example.com" });
     expect(guestLoginCalls).toBe(0);
   });
+
+  test("group invitation accept sends signed-out recipients to nickname/password signup", async ({
+    page,
+  }) => {
+    let acceptCalls = 0;
+    await page.route("**/api/my-agents/auth/me", async (route) => {
+      await route.fulfill({
+        body: JSON.stringify({ detail: "not authenticated" }),
+        contentType: "application/json",
+        status: 401,
+      });
+    });
+    await page.route(
+      "**/api/my-agents/group-invitations/accept",
+      async (route) => {
+        acceptCalls += 1;
+        await route.fulfill({
+          body: JSON.stringify({
+            detail: "signed-out user should not accept yet",
+          }),
+          contentType: "application/json",
+          status: 500,
+        });
+      },
+    );
+
+    await page.goto("/group-invitations/accept?token=opaque-token");
+
+    await page.waitForURL("**/signup?invite_token=opaque-token");
+    await expect(
+      page.getByRole("heading", { name: ko.auth.createAccount }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(ko.auth.groupInvitationSignupTitle),
+    ).toBeVisible();
+    await expect(
+      page.getByText(ko.auth.groupInvitationSignupDescription),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("textbox", { exact: true, name: ko.auth.email }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("textbox", {
+        name: new RegExp(`^${ko.auth.nickname}`),
+      }),
+    ).toBeVisible();
+    await expect(page.locator('input[type="password"]')).toBeVisible();
+    await expect(
+      page.getByRole("textbox", {
+        name: new RegExp(`^${ko.auth.guestEmailLabel}`),
+      }),
+    ).toHaveCount(0);
+    expect(acceptCalls).toBe(0);
+  });
+
+  test("group invitation signup posts token nickname and password, not email", async ({
+    page,
+  }) => {
+    let signupBody: unknown;
+    await page.route(
+      "**/api/my-agents/group-invitations/signup",
+      async (route) => {
+        signupBody = route.request().postDataJSON();
+        await route.fulfill({
+          body: JSON.stringify({
+            user: {
+              id: "user-2",
+              email: "invitee@example.com",
+              nickname: "Mom Display",
+              email_verified_at: "2026-06-14T12:00:00+00:00",
+              approval_status: "approved",
+              is_guest: false,
+              guest_expires_at: null,
+            },
+            member: {
+              member_id: "member-2",
+              user_id: "user-2",
+              nickname: "Mom Display",
+              role: "editor",
+              created_at: "2026-06-14T12:00:00+00:00",
+            },
+          }),
+          contentType: "application/json",
+          status: 201,
+        });
+      },
+    );
+    await page.route("**/api/my-agents/groups", async (route) => {
+      await route.fulfill({
+        body: JSON.stringify([]),
+        contentType: "application/json",
+        status: 200,
+      });
+    });
+
+    await page.goto("/signup?invite_token=opaque-token");
+    await page
+      .getByRole("textbox", {
+        name: new RegExp(`^${ko.auth.nickname}`),
+      })
+      .fill("  Mom Display  ");
+    await page
+      .locator('input[type="password"]')
+      .fill("correct horse battery staple");
+    await page.getByRole("button", { name: ko.auth.signupSubmit }).click();
+
+    await page.waitForURL("**/groups");
+    expect(signupBody).toEqual({
+      token: "opaque-token",
+      nickname: "Mom Display",
+      password: "correct horse battery staple",
+    });
+  });
 });

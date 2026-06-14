@@ -106,7 +106,13 @@
     "groupInvitationFailedDescription": "초대받은 이메일 주소로 로그인한 뒤 초대 링크를 다시 여세요. 만료되었거나 취소된 초대는 사용할 수 없습니다.",
     "groupInvitationMissingTitle": "초대 토큰이 없습니다",
     "groupInvitationMissingDescription": "이메일에서 token 쿼리 파라미터가 포함된 전체 초대 링크를 열어 주세요.",
-    "groupsLink": "그룹 열기"
+    "groupsLink": "그룹 열기",
+    "groupInvitationRedirectingTitle": "초대받은 계정 만들기",
+    "groupInvitationRedirectingDescription": "이 초대 링크로 초대받은 이메일을 확인했습니다. 표시 이름과 비밀번호를 정해 계속 진행하세요.",
+    "groupInvitationSignupTitle": "초대 수락을 완료하세요",
+    "groupInvitationSignupDescription": "초대 링크가 이메일 신원을 이미 증명했습니다. 표시 이름과 비밀번호만 정하세요. 이후 로그인은 표시 이름이 아니라 초대받은 이메일과 비밀번호로 합니다.",
+    "groupInvitationLoginTitle": "로그인 후 초대를 수락합니다",
+    "groupInvitationLoginDescription": "초대받은 이메일 주소로 로그인하세요. 로그인 후 이 초대로 돌아와 계정을 그룹에 추가합니다."
   },
   "service": {
     "nav": {

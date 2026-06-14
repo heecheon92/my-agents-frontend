@@ -484,6 +484,16 @@ Verification passed for this log entry: `pnpm lint`, `pnpm exec vitest run tests
 
 Verification pending for this change: frontend lint/typecheck/unit/build after backend staging contract lands.
 
+
+## 2026-06-14 — no-account group invitation signup
+
+- Updated the signed-out invitation flow so `/group-invitations/accept?token=...` routes no-account recipients to `/signup?invite_token=...` instead of trying authenticated token acceptance.
+- Added frontend schema/service/hook/BFF support for `POST /group-invitations/signup`, which submits token + nickname + password only and treats the response as a session-creating login envelope with browser-visible `csrf_token` redacted.
+- Adjusted auth copy so invitees understand the link proves email identity, nickname is display-only, and future login uses invited email + password rather than nickname.
+- Added Playwright coverage for redirecting signed-out invitees, hiding the email field, suppressing guest access on invite signup, and posting the trimmed nickname/password payload.
+
+Verification passed for this log entry: `pnpm exec vitest run tests/api-path.test.ts tests/group-api.test.ts tests/proxy-policy.test.ts` and `pnpm exec playwright test e2e/auth-panel.spec.ts`. Browser plugin was listed but the in-app `iab` browser was unavailable, so rendered verification used the repo Playwright workflow.
+
 ## 2026-06-14 — route-addressable Group management pages
 
 - Replaced the full-list Group management drawer with dedicated section routes under `/groups/[groupId]/[section]` for members, invitations, source spaces, and publish requests.

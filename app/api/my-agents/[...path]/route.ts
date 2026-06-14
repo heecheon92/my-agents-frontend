@@ -40,7 +40,11 @@ export function isStreamPath(path: string) {
 }
 
 function isSessionLoginPath(path: string) {
-  return path === "/auth/login" || path === "/auth/guest/login";
+  return (
+    path === "/auth/login" ||
+    path === "/auth/guest/login" ||
+    path === "/group-invitations/signup"
+  );
 }
 
 async function proxy(request: NextRequest, context: RouteContext) {

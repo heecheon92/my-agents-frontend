@@ -78,6 +78,7 @@ export const API_PATH = {
   },
   groupInvitations: {
     accept: "/group-invitations/accept",
+    signup: "/group-invitations/signup",
   },
   memories: {
     settings: "/memories/settings",
