@@ -36,6 +36,10 @@ describe("API_PATH", () => {
   });
 
   it("builds group invitation paths", () => {
+    expect(API_PATH.groups.members("group-1")).toBe("/groups/group-1/members");
+    expect(API_PATH.groups.member("group-1", "user-1")).toBe(
+      "/groups/group-1/members/user-1",
+    );
     expect(API_PATH.groups.invitations("group-1")).toBe(
       "/groups/group-1/invitations",
     );
@@ -133,6 +137,12 @@ describe("MyAgentsQueryKeys", () => {
       "my-agents",
       "groups",
       "invitations",
+      "group-1",
+    ]);
+    expect(MyAgentsQueryKeys.groups.members("group-1")).toEqual([
+      "my-agents",
+      "groups",
+      "members",
       "group-1",
     ]);
     expect(MyAgentsQueryKeys.documents.extractionRun("doc-1", runId)).toEqual([

@@ -55,7 +55,7 @@ const personalConversation = {
 const invitation = {
   id: "invite-1",
   group_id: ownerGroup.id,
-  invited_email_normalized: "teammate@example.com",
+  invited_email: "teammate@example.com",
   role: "viewer",
   status: "pending",
   created_at: now,
@@ -63,6 +63,12 @@ const invitation = {
   accepted_at: null,
   cancelled_at: null,
   resent_at: null,
+};
+const member = {
+  member_id: "member-1",
+  user_id: user.id,
+  role: "owner",
+  created_at: now,
 };
 
 const publishRequest = {
@@ -134,6 +140,12 @@ async function mockGroupKnowledgeApi(
     if (method === "GET" && path === `/groups/${group.id}/invitations`) {
       return json(
         role === "owner" ? [invitation] : [],
+        role === "owner" ? 200 : 403,
+      );
+    }
+    if (method === "GET" && path === `/groups/${group.id}/members`) {
+      return json(
+        role === "owner" ? [member] : [],
         role === "owner" ? 200 : 403,
       );
     }
@@ -268,6 +280,10 @@ test("Admin creation controls stay compact and aligned", async ({ page }) => {
   expect(groupCreateFormBox?.height).toBeLessThanOrEqual(120);
 
   await page.goto("/knowledge");
+  await page
+    .getByRole("button", { name: ko.admin.documents.addSourceSpaceAction })
+    .first()
+    .click();
   const scopeSelect = page.getByRole("combobox", {
     name: ko.admin.knowledge.scopeLabel,
   });

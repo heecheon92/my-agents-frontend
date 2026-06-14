@@ -46,7 +46,7 @@ export const groupInvitationAcceptRequestSchema = z
 export const groupInvitationSchema = z.object({
   id: z.string().min(1),
   group_id: z.string().min(1),
-  invited_email_normalized: z.string().min(1),
+  invited_email: z.string().min(1),
   role: membershipRoleSchema,
   status: groupInvitationStatusSchema,
   created_at: z.string(),
@@ -54,6 +54,13 @@ export const groupInvitationSchema = z.object({
   accepted_at: z.string().nullable().optional(),
   cancelled_at: z.string().nullable().optional(),
   resent_at: z.string().nullable().optional(),
+});
+
+export const groupMemberSchema = z.object({
+  member_id: z.string().min(1),
+  user_id: z.string().min(1),
+  role: membershipRoleSchema,
+  created_at: z.string(),
 });
 
 export const memberPatchRequestSchema = z.object({
@@ -101,6 +108,7 @@ export type GroupInvitationAcceptRequest = z.infer<
   typeof groupInvitationAcceptRequestSchema
 >;
 export type GroupInvitation = z.infer<typeof groupInvitationSchema>;
+export type GroupMember = z.infer<typeof groupMemberSchema>;
 export type MemberPatchRequest = z.infer<typeof memberPatchRequestSchema>;
 export type KnowledgePublishRequestStatus = z.infer<
   typeof knowledgePublishRequestStatusSchema

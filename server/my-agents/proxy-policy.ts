@@ -153,6 +153,11 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "group-invitations.accept",
   },
   {
+    method: "GET",
+    pattern: new RegExp(`^/groups/${uuidLike}/members$`),
+    name: "members.list",
+  },
+  {
     method: "PATCH",
     pattern: new RegExp(`^/groups/${uuidLike}/members/${uuidLike}$`),
     name: "members.update",

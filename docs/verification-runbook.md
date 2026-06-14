@@ -104,13 +104,15 @@ The backend local demo seed helper currently provides the verified account
 `test@test.com`, password `correct horse battery staple`, and seeded text document
 `V1 Product Chat Service Demo`.
 
-Expected seeded text flow: login -> create or choose a knowledge space -> add a text
-source under that space -> bodyless KB-scoped ingest through the BFF ->
-streamed Ask answer with `All` or selected knowledge scope -> citations beside the
+Expected seeded text flow: login -> create or choose a knowledge/source space on
+Knowledge/Sources -> confirm the URL may use `/knowledge/{knowledge-base-id}` or
+`/knowledge/{group-id}` for the selected context -> add a text source under that
+space -> prepare it through the upload/preparation flow or a seeded backend fixture ->
+streamed Ask answer with `All` or selected source scope -> citations beside the
 answer -> response evidence disclosure with completed run/work history -> persisted
 run-detail citations after reload.
 
-Upload smoke should use an active backend with the KB-nested upload contract: login -> Documents -> select a knowledge base -> upload a supported PDF, Markdown (`.md`/`.markdown`), plain text (`.txt`), Excel workbook (`.xlsx`), or PowerPoint deck (`.pptx`) through `POST /knowledge-bases/{knowledge_base_id}/documents/upload` -> verify document source metadata -> run KB-scoped ingest -> confirm citations can render backend-provided filename/page/KB provenance.
+Upload smoke should use an active backend with the KB-nested upload contract: login -> Sources -> create or select a source space -> upload a supported PDF, Markdown (`.md`/`.markdown`), plain text (`.txt`), Excel workbook (`.xlsx`), or PowerPoint deck (`.pptx`) through `POST /knowledge-bases/{knowledge_base_id}/documents/upload` -> verify document source metadata -> refresh the selected `/knowledge/{id}` route -> confirm the uploaded file is prepared by the unified upload flow -> confirm citations can render backend-provided filename/page/space provenance.
 
 
 ## V1 public visitor smoke (preview/public final proof)
@@ -123,7 +125,7 @@ Required final-proof behavior:
 2. The generated account email must be unique via `{nonce}`.
 3. Email/account activation must use the configured public provider path, or a documented preview-safe provider command.
 4. Browser `localStorage` and `sessionStorage` must not contain session, CSRF, provider tokens, raw passwords, API keys, or OpenAI-style keys.
-5. The flow creates a text document, ingests it, streams a chat run, verifies citations/events, reloads, and verifies persisted evidence.
+5. The flow creates or uploads a document, verifies it is prepared for Ask, streams a chat run, verifies citations/events, reloads, and verifies persisted evidence.
 6. If hosted proof uses the default local Playwright config, record the local-to-hosted topology explicitly; otherwise record the alternate hosted command/config used for the run.
 7. If `login-after-signup` mode is used, record why immediate login is valid for that preview/provider setup; otherwise use `provider-command` and keep command output limited to the activation URL.
 8. Record whether `/assistant/chat` exclusion was proven by `tests/proxy-policy.test.ts` only or by an additional browser assertion.

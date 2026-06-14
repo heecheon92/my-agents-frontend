@@ -6,7 +6,9 @@ import {
   type GroupInvitationAcceptRequest,
   type GroupInvitationCreateRequest,
   type GroupInvitationUpdateRequest,
+  type GroupMember,
   groupInvitationSchema,
+  groupMemberSchema,
   groupSchema,
   type KnowledgePublishRequest,
   type KnowledgePublishRequestCreateRequest,
@@ -109,6 +111,13 @@ export class MyAgentsGroupAPI {
       method: "POST",
       body: payload,
     });
+  }
+
+  async members(groupId: string): Promise<GroupMember[]> {
+    return parseArrayWithSchema(
+      groupMemberSchema,
+      await this.client.fetch(API_PATH.groups.members(groupId)),
+    );
   }
 
   async updateMember(

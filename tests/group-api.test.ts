@@ -5,7 +5,7 @@ describe("MyAgentsGroupAPI invitations", () => {
   const invitation = {
     id: "invite-1",
     group_id: "group-1",
-    invited_email_normalized: "teammate@example.com",
+    invited_email: "teammate@example.com",
     role: "viewer",
     status: "pending",
     created_at: "2026-06-10T07:00:00Z",
@@ -14,12 +14,19 @@ describe("MyAgentsGroupAPI invitations", () => {
     cancelled_at: null,
     resent_at: null,
   };
+  const member = {
+    member_id: "member-1",
+    user_id: "user-1",
+    role: "viewer",
+    created_at: "2026-06-10T07:00:00Z",
+  };
 
-  it("creates and lists email invitations without user-id activation", async () => {
+  it("creates invitations and lists manager-only member basics without user-id activation", async () => {
     const calls: Array<{ path: string; init?: unknown }> = [];
     const api = new MyAgentsGroupAPI({
       fetch: async (path, init) => {
         calls.push({ path, init });
+        if (path.endsWith("/members") && !init) return [member];
         return path.endsWith("/invitations") && !init
           ? [invitation]
           : invitation;
@@ -32,10 +39,11 @@ describe("MyAgentsGroupAPI invitations", () => {
         role: "viewer",
       }),
     ).resolves.toMatchObject({
-      invited_email_normalized: "teammate@example.com",
+      invited_email: "teammate@example.com",
       status: "pending",
     });
     await expect(api.invitations("group-1")).resolves.toHaveLength(1);
+    await expect(api.members("group-1")).resolves.toEqual([member]);
 
     expect(calls).toEqual([
       {
@@ -46,6 +54,7 @@ describe("MyAgentsGroupAPI invitations", () => {
         },
       },
       { path: "/groups/group-1/invitations", init: undefined },
+      { path: "/groups/group-1/members", init: undefined },
     ]);
   });
 

@@ -10,7 +10,7 @@ Use this file first when a fresh Codex session starts in `my-agents-frontend`.
 - add/manage knowledge sources;
 - ask questions through product run endpoints;
 - inspect citations beside answers and open work history only when needed;
-- manage knowledge spaces, teams, memberships, and document permissions through available backend contracts.
+- manage source spaces, teams, memberships, and document permissions through available backend contracts.
 
 The frontend should remain understandable for manual maintenance. Its structure uses project-local conventions: top-level `constants/`, `model/`, `services/`, `server/`, `providers/`, `hooks/`, and app-specific `components/`.
 
@@ -22,7 +22,7 @@ The first full frontend queue has been implemented and verified:
 - Next BFF route handler at `app/api/my-agents/[...path]/route.ts`.
 - Auth shell and protected service layout.
 - Ask anchor journey using `/conversations/{id}/runs`, split into smaller chat UI components under `components/chat/`.
-- Add sources, Knowledge, and Teams surfaces with raw ID/processing controls moved into Advanced disclosure where possible.
+- Sources and Teams surfaces with raw ID/processing controls moved into Advanced disclosure where possible.
 - Unit tests for path builders, query keys, BFF proxy policy, browser-safe auth response shape, and no-body mutation headers.
 
 For chronological details, read `docs/implementation-log.md`.

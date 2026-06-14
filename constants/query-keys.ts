@@ -57,6 +57,9 @@ export const MyAgentsQueryKeys = {
     invitations(groupId: string) {
       return ["my-agents", "groups", "invitations", groupId] as const;
     },
+    members(groupId: string) {
+      return ["my-agents", "groups", "members", groupId] as const;
+    },
   },
   knowledgeBases: {
     list() {

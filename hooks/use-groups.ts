@@ -121,10 +121,23 @@ export function useAcceptGroupInvitation() {
   });
 }
 
+export function useGroupMembers(groupId?: string, enabled = true) {
+  return useQuery({
+    queryKey: MyAgentsQueryKeys.groups.members(groupId ?? ""),
+    queryFn: () => myAgentsAPI.groups.members(groupId ?? ""),
+    enabled: Boolean(groupId) && enabled,
+  });
+}
+
 export function useUpdateMember(groupId?: string, userId?: string) {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (payload: MemberPatchRequest) =>
       myAgentsAPI.groups.updateMember(groupId ?? "", userId ?? "", payload),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.groups.members(groupId ?? ""),
+      }),
   });
 }
 
