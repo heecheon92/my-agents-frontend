@@ -2512,15 +2512,18 @@ export function GroupsSurface() {
                           key={member.member_id}
                           className="rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-sm"
                         >
-                          <div className="flex flex-wrap items-center gap-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <p className="text-base font-semibold text-cal-ink">
+                              {member.nickname}
+                            </p>
                             <Pill tone="info">
                               {localization.groups.roles[member.role]}
                             </Pill>
-                            <span className="break-all font-mono text-xs text-cal-ink">
-                              {localization.groups.memberUserIdLabel}:{" "}
-                              {member.user_id}
-                            </span>
                           </div>
+                          <p className="mt-2 break-all font-mono text-xs text-cal-muted">
+                            {localization.groups.memberUserIdLabel}:{" "}
+                            {member.user_id}
+                          </p>
                           <p className="mt-2 text-xs leading-5 text-cal-muted">
                             {localization.groups.memberJoinedLabel}:{" "}
                             {member.created_at}

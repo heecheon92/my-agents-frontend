@@ -23,10 +23,10 @@ Frontend workaround, if any:
 
 Status: approved / backend implementation in progress
 Frontend need: Signup must collect a duplicate-allowed display name, and the manager-only active-member roster needs a human-readable label without introducing public user search or member emails.
-Current backend behavior: The current frontend contract still accepts email/password signup and member rows without nickname until the backend migration, response schemas, and hosted OpenAPI refresh land.
+Current backend behavior: Backend implementation now requires `nickname` on signup, returns `user.nickname`, and includes display-only `nickname` in manager-only member rows; hosted OpenAPI should be refreshed from that accepted contract before deployment handoff.
 Requested backend contract: Require `nickname` on `POST /auth/signup`; return `user.nickname` consistently from signup/login/verify/me responses; backfill existing users and guests with non-empty nicknames; return `nickname` from manager-only `GET /groups/{group_id}/members`; keep duplicate nicknames allowed; keep invitation flows email-based and non-enumerating; keep role updates keyed by `user_id`; do not add nickname lookup, public user discovery, direct member creation, member emails, account-existence flags, or profile data.
 Why it matters: Nickname improves manager recognition in active rosters, but it is display-only. Email remains the invitation/login identifier and user ID remains the exact advanced role-maintenance identifier.
-Frontend workaround, if any: Do not update strict runtime schemas from backend source inspection alone. Update frontend schemas/UI after the backend-owned OpenAPI or equivalent contract includes the nickname fields; until then, keep existing email/password signup and user-id role-update controls.
+Frontend workaround, if any: Frontend schemas/UI now match the accepted nickname contract. If a deployed backend still lacks the new OpenAPI shape, treat that as backend/frontend drift and do not add fallback user search, nickname lookup, member-email display, or direct member creation.
 
 ## 2026-06-10 — invite-only group/team membership contract
 

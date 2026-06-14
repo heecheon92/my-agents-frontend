@@ -42,7 +42,7 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | --- | --- | --- |
 | `/` | `app/page.tsx` | Marketing/landing entry point. |
 | `/login` | `components/AuthPanel.tsx` | Login through BFF `/auth/login`. |
-| `/signup` | `components/AuthPanel.tsx` | Signup parses the backend `SignupResponse` envelope and shows an account-created handoff before login. The approved nickname contract should add a required display-only nickname once hosted OpenAPI exposes it. |
+| `/signup` | `components/AuthPanel.tsx` | Signup parses the backend `SignupResponse` envelope, requires a display-only nickname, and shows an account-created handoff before login. |
 | `/chat` | `components/ChatWorkspace.tsx` + `components/chat/*` | Anchor Ask journey. Uses conversations, messages, streamed answers, citations near assistant replies, a compact top-of-chat source selector, and collapsed response evidence/work history. |
 | `/knowledge` | `components/AdminSurfaces.tsx` | Knowledge journey root. Uses a source-space tree + source table shell, shadcn/Base UI dialogs for add flows, and keeps row-level permission/deletion controls in per-source Manage dialogs. |
 | `/knowledge/[sourceId]` | `components/AdminSurfaces.tsx` | Addressable selected knowledge route. The segment may be a knowledge-base ID or group ID; refresh preserves the selected space/group instead of resetting to the first available item. |
@@ -77,7 +77,7 @@ When adding or changing a backend-backed feature:
 The BFF allowlist currently covers:
 
 - `GET /health`
-- `POST /auth/signup` (planned nickname contract: require duplicate-allowed display-only `nickname` once backend OpenAPI is refreshed)
+- `POST /auth/signup` (requires duplicate-allowed display-only `nickname`)
 - `POST /auth/verify-email`
 - `POST /auth/login`
 - `POST /auth/password-reset/request`
@@ -103,7 +103,7 @@ The BFF allowlist currently covers:
 - `POST /groups/{group_id}/invitations/{invitation_id}/resend`
 - `DELETE /groups/{group_id}/invitations/{invitation_id}`
 - `POST /group-invitations/accept`
-- `GET /groups/{group_id}/members` for owner/admin member role maintenance only (planned nickname contract: accepted members include display-only `nickname`, never member email)
+- `GET /groups/{group_id}/members` for owner/admin member role maintenance only (accepted members include display-only `nickname`, never member email)
 - `PATCH /groups/{group_id}/members/{user_id}` for already-active member role updates only; duplicate nicknames mean role updates stay user-id based
 - `POST /knowledge-bases`
 - `GET /knowledge-bases`

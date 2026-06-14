@@ -4,6 +4,7 @@ import { MyAgentsAuthAPI } from "@/services/my-agents/MyAgentsAuthAPI";
 const user = {
   id: "u1",
   email: "user@example.com",
+  nickname: "Test User",
   email_verified_at: null,
 };
 
@@ -17,7 +18,11 @@ describe("MyAgentsAuthAPI", () => {
     });
 
     await expect(
-      api.signup({ email: "user@example.com", password: "password123" }),
+      api.signup({
+        email: "user@example.com",
+        password: "password123",
+        nickname: "Test User",
+      }),
     ).resolves.toEqual({
       user,
       verification_email_sent: true,

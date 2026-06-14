@@ -59,6 +59,7 @@ export const groupInvitationSchema = z.object({
 export const groupMemberSchema = z.object({
   member_id: z.string().min(1),
   user_id: z.string().min(1),
+  nickname: z.string().min(1),
   role: membershipRoleSchema,
   created_at: z.string(),
 });

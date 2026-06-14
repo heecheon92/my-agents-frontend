@@ -4,6 +4,7 @@ import ko from "@/localization/ko.json";
 const user = {
   id: "u-docs",
   email: "docs@example.com",
+  nickname: "Docs User",
   email_verified_at: null,
   is_guest: false,
 };

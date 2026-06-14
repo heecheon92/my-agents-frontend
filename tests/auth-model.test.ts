@@ -7,6 +7,7 @@ import {
   guestLoginRequestSchema,
   loginResponseSchema,
   passwordResetConfirmRequestSchema,
+  signupRequestSchema,
   signupResponseSchema,
   userSchema,
   verifyEmailRequestSchema,
@@ -15,6 +16,7 @@ import {
 const user = {
   id: "u1",
   email: "user@example.com",
+  nickname: "Test User",
   email_verified_at: null,
 };
 
@@ -29,6 +31,33 @@ describe("auth response schemas", () => {
       email_verified_at: "2026-05-20T04:49:38.581993",
     };
     expect(userSchema.parse(verified)).toEqual(verified);
+  });
+
+  it("validates signup requests with a trimmed required display name", () => {
+    expect(
+      signupRequestSchema.parse({
+        email: "user@example.com",
+        nickname: "  Shared Name  ",
+        password: "password123",
+      }),
+    ).toEqual({
+      email: "user@example.com",
+      nickname: "Shared Name",
+      password: "password123",
+    });
+    expect(() =>
+      signupRequestSchema.parse({
+        email: "user@example.com",
+        password: "password123",
+      }),
+    ).toThrow();
+    expect(() =>
+      signupRequestSchema.parse({
+        email: "user@example.com",
+        nickname: "   ",
+        password: "password123",
+      }),
+    ).toThrow();
   });
 
   it("parses signup responses as backend user envelopes", () => {
@@ -81,6 +110,7 @@ describe("auth response schemas", () => {
     const guest = {
       id: "guest-1",
       email: null,
+      nickname: "Guest",
       email_verified_at: null,
       is_guest: true,
       guest_expires_at: "2026-05-22T00:00:00Z",

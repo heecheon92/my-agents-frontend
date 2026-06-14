@@ -5,6 +5,7 @@ const now = "2026-06-07T00:00:00.000Z";
 const user = {
   id: "new-user-tour",
   email: "new-user@example.com",
+  nickname: "New User",
   email_verified_at: now,
   is_guest: false,
 };

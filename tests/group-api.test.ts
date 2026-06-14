@@ -17,6 +17,7 @@ describe("MyAgentsGroupAPI invitations", () => {
   const member = {
     member_id: "member-1",
     user_id: "user-1",
+    nickname: "Test User",
     role: "viewer",
     created_at: "2026-06-10T07:00:00Z",
   };

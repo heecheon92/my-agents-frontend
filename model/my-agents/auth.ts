@@ -4,6 +4,7 @@ export const userSchema = z
   .object({
     id: z.string().min(1),
     email: z.string().email().nullable(),
+    nickname: z.string().min(1).max(40),
     email_verified_at: z
       .string()
       .datetime({ local: true, offset: true })
@@ -21,6 +22,7 @@ export const userSchema = z
 export const signupRequestSchema = z
   .object({
     email: z.string().email(),
+    nickname: z.string().trim().min(1).max(40),
     password: z.string().min(8).max(128),
   })
   .strict();

@@ -5,6 +5,7 @@ const now = "2026-05-24T07:55:00.000Z";
 const user = {
   id: "u-owner",
   email: "owner@example.com",
+  nickname: "Owner Display",
   email_verified_at: null,
   is_guest: false,
 };
@@ -67,6 +68,7 @@ const invitation = {
 const member = {
   member_id: "member-1",
   user_id: user.id,
+  nickname: user.nickname,
   role: "owner",
   created_at: now,
 };
@@ -249,6 +251,18 @@ test("Publish review controls are owner-only in Group admin UI", async ({
   ).toBeDisabled();
   await expect(
     page.getByText(ko.admin.groups.membershipManagerOnlyHint),
+  ).toBeVisible();
+});
+
+test("Member roster shows nickname while keeping user ID secondary", async ({
+  page,
+}) => {
+  await mockGroupKnowledgeApi(page);
+  await page.goto("/groups");
+
+  await expect(page.getByText(user.nickname)).toBeVisible();
+  await expect(
+    page.getByText(`${ko.admin.groups.memberUserIdLabel}: ${user.id}`),
   ).toBeVisible();
 });
 

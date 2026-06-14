@@ -108,6 +108,7 @@ function requirePublicVisitorConfig() {
   const nonce = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   return {
     email: emailTemplate.replaceAll("{nonce}", nonce),
+    nickname: `Visitor ${nonce}`,
     password,
     verificationMode,
     verificationCommand,
@@ -298,6 +299,7 @@ test.describe("V1 public visitor smoke", () => {
 
     await page.goto("/signup");
     await page.getByLabel(ko.auth.email).fill(config.email);
+    await page.getByLabel(ko.auth.nickname).fill(config.nickname);
     await page.getByLabel(ko.auth.password).fill(config.password);
     await page.getByRole("button", { name: ko.auth.signupSubmit }).click();
     await expect(page.getByText(ko.auth.signupSuccessTitle)).toBeVisible();
