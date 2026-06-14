@@ -1,21 +1,50 @@
 "use client";
 
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_ONBOARDING_WAIT_TIMEOUT_MS,
   getStepByIndex,
+  type OnboardingStep,
   stepsForFlow,
 } from "./onboarding-steps";
 import { useOnboardingStore } from "./onboarding-store";
 
-export function useOnboardingRouteStep() {
+type OnboardingRouteAction =
+  | { type: "none" }
+  | { type: "navigate"; path: string }
+  | { type: "cancel" };
+
+export function resolveOnboardingRouteAction({
+  isActive,
+  pathname,
+  previousStepKey,
+  step,
+  stepKey,
+}: {
+  isActive: boolean;
+  pathname: string;
+  previousStepKey: string | null;
+  step?: OnboardingStep;
+  stepKey: string | null;
+}): OnboardingRouteAction {
+  if (!isActive || !step || !stepKey) return { type: "none" };
+  if (pathname === step.path) return { type: "none" };
+  if (previousStepKey !== stepKey) {
+    return { type: "navigate", path: step.path };
+  }
+  return { type: "cancel" };
+}
+
+export function useOnboardingRouteStep(identityBucket?: string) {
   const pathname = usePathname();
   const router = useRouter();
   const activeFlow = useOnboardingStore((state) => state.activeFlow);
   const activeStepIndex = useOnboardingStore((state) => state.activeStepIndex);
   const status = useOnboardingStore((state) => state.status);
   const targets = useOnboardingStore((state) => state.targets);
+  const skip = useOnboardingStore((state) => state.skip);
+  const previousStepKeyRef = useRef<string | null>(null);
   const [timedOutStepKey, setTimedOutStepKey] = useState<string | null>(null);
   const [usesMobileTargets, setUsesMobileTargets] = useState(false);
 
@@ -55,11 +84,27 @@ export function useOnboardingRouteStep() {
   }, [isActive, step]);
 
   useEffect(() => {
-    if (!isActive || !step) return;
-    if (pathname !== step.path) {
-      router.push(step.path);
+    if (!isActive || !step || !stepKey) {
+      previousStepKeyRef.current = null;
+      return;
     }
-  }, [isActive, pathname, router, step]);
+    const action = resolveOnboardingRouteAction({
+      isActive,
+      pathname,
+      previousStepKey: previousStepKeyRef.current,
+      step,
+      stepKey,
+    });
+    previousStepKeyRef.current = stepKey;
+
+    if (action.type === "navigate") {
+      router.push(action.path);
+      return;
+    }
+    if (action.type === "cancel") {
+      skip(identityBucket);
+    }
+  }, [identityBucket, isActive, pathname, router, skip, step, stepKey]);
 
   useEffect(() => {
     if (!isActive || !step || !stepKey) return;

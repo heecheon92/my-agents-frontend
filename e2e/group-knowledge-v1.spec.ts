@@ -430,7 +430,9 @@ test("Groups dashboard caps previews and opens dedicated management pages", asyn
   await expect(page.getByText("Viewer Display")).toHaveCount(0);
   await expect(page.getByText("expired@example.com")).toHaveCount(0);
   await expect(page.getByText("Alpha Archive")).toHaveCount(0);
-  await expect(page.getByText("Archived context memo")).toHaveCount(0);
+  await expect(page.getByText("Personal strategy memo")).toBeVisible();
+  await expect(page.getByText("Archived context memo")).toBeVisible();
+  await expect(page.getByText("Rejected field memo")).toHaveCount(0);
   await expect(page.getByText(/^\+1/)).toHaveCount(4);
 
   await page

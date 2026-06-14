@@ -156,3 +156,44 @@ test("authenticated users can complete the normal workflow tour", async ({
   expect(persisted).not.toContain("new-user@example.com");
   expect(persisted).not.toContain("new-user-tour");
 });
+
+test("authenticated tour respects user navigation away before completion", async ({
+  page,
+}) => {
+  await mockNewUserWorkspace(page);
+  await page.goto("/chat");
+
+  await expect(page.getByText(ko.onboarding.newUserPromptTitle)).toBeVisible();
+  await page.getByRole("button", { name: ko.onboarding.start }).click();
+
+  await expect(page).toHaveURL(/\/knowledge$/);
+  await expect(
+    page.getByRole("heading", {
+      name: ko.onboarding.steps.newKnowledgeSpaceTitle,
+    }),
+  ).toBeVisible();
+
+  await page.locator('a[href="/settings"]').evaluate((link) => {
+    if (!(link instanceof HTMLAnchorElement)) {
+      throw new Error("settings link is not an anchor");
+    }
+    link.click();
+  });
+
+  await expect(page).toHaveURL(/\/settings\/account$/);
+  await expect(
+    page.getByRole("heading", { name: ko.settings.account.title }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", {
+      name: ko.onboarding.steps.newKnowledgeSpaceTitle,
+    }),
+  ).toHaveCount(0);
+
+  const persisted = await page.evaluate(() =>
+    window.localStorage.getItem("my-agents:onboarding:v1"),
+  );
+  expect(persisted).toContain('"dismissed":true');
+  expect(persisted).not.toContain("new-user@example.com");
+  expect(persisted).not.toContain("new-user-tour");
+});
