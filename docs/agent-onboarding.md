@@ -10,7 +10,7 @@ Use this file first when a fresh Codex session starts in `my-agents-frontend`.
 - add/manage knowledge sources;
 - ask questions through product run endpoints;
 - inspect citations beside answers and open work history only when needed;
-- manage source spaces, teams, memberships, and document permissions through available backend contracts.
+- manage source spaces, teams, memberships, and source preparation/deletion through available backend contracts.
 
 The frontend should remain understandable for manual maintenance. Its structure uses project-local conventions: top-level `constants/`, `model/`, `services/`, `server/`, `providers/`, `hooks/`, and app-specific `components/`.
 

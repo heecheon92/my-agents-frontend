@@ -119,11 +119,10 @@ The BFF allowlist currently covers:
 - `GET /documents`
 - `GET /documents/{document_id}`
 - `DELETE /documents/{document_id}`
-- `PATCH /documents/{document_id}/permissions`
 - `POST /documents/{document_id}/ingest`
 - `GET /documents/{document_id}/extraction-runs`
 
-`POST /assistant/chat` is intentionally excluded from product BFF use. The current product UI prefers the KB-nested document routes above; legacy document routes remain allowlisted for existing detail/delete/permission compatibility and older clients, not as the primary upload/create/ingest journey.
+`POST /assistant/chat` is intentionally excluded from product BFF use. The current product UI prefers the KB-nested document routes above; legacy document routes remain allowlisted for existing detail/delete compatibility and older clients, not as the primary upload/create/ingest journey.
 
 ## Design approach
 

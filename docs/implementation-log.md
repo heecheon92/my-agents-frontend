@@ -1,7 +1,7 @@
 ## 2026-06-11 — Row-owned Knowledge actions
 
 - Removed the separate “selected knowledge/source” action panel from the Knowledge workspace so the main pane stays focused on the table.
-- Added per-row Manage dialogs for direct user access grants, source deletion, source metadata, and advanced processing history.
+- Added per-row Manage dialogs for source deletion, source metadata, and advanced processing history; direct user access grants were later removed from the product UI.
 - Kept upload/preparation as the primary path, while adding a row-level async prepare/retry action in the Manage dialog for recovery when upload-time preparation fails.
 
 Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (18 files / 105 tests), `pnpm build`, targeted `pnpm exec playwright test e2e/document-upload-dropzone.spec.ts --reporter=line` (5 passed), full `pnpm exec playwright test --reporter=line` (16 passed / 2 skipped), browser navigation smoke of `/knowledge/kb-personal` (expected unauthenticated 401 only), and `git diff --check`.
@@ -20,7 +20,7 @@ Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm
 - Merged the former Knowledge/Add sources mental model into one visible Sources entry: `/knowledge` now hosts source-space selection, source readiness, and selected-source advanced controls; `/documents` redirects to the merged page for compatibility.
 - Re-laid out Sources around a GreetSchool-inspired organization shell: a persistent source-space tree on desktop, a mobile source-space sheet, and a table-style source list with a selected-source inspector.
 - Moved source-space creation, text-source creation, and file upload/preparation into shadcn/Base UI dialogs so the default page reads as “choose a space, review its sources, add when needed” instead of stacked setup forms.
-- Updated onboarding, localized copy, route tests, and active docs to minimize cross-page depth while keeping team sharing, raw IDs, permissions, and processing history behind secondary/Advanced controls.
+- Updated onboarding, localized copy, route tests, and active docs to minimize cross-page depth while keeping team sharing, raw IDs, and processing history behind secondary/Advanced controls.
 
 Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (18 files / 105 tests), `pnpm build`, full `pnpm exec playwright test --reporter=line` (14 passed / 2 skipped), mocked desktop browser smoke of `/knowledge` with zero console errors and readable source-space tree/table layout, and `git diff --check`.
 

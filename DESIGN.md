@@ -68,7 +68,7 @@
   - Create/select a conversation, send a message, stream the response, queue or steer a next prompt, and understand run outcome.
   - Inspect redacted activity events and citations tied to the latest run.
   - Create/upload sources, prepare them for Ask as one workflow, monitor advanced processing progress, and confirm source metadata.
-  - Create knowledge bases and groups, manage invitations/permissions, and avoid mistaking backend identifiers for a polished user-search UX.
+  - Create knowledge bases and groups, manage invitations/roles, and avoid mistaking backend identifiers for a polished user-search UX.
 - Key contexts of use:
   - Local development and review, with backend at `http://127.0.0.1:8000` or `http://localhost:8000` depending on configured CORS.
   - Public/demo review where privacy, redaction, honest guest limits, and no-secret browser storage matter.
@@ -83,7 +83,7 @@
   - `/`: Entry page that promises “내 문서를 기반으로 답하는 AI 워크스페이스,” not a generic marketing site.
   - `/login` and `/signup`: Two-panel trust/auth experience with guest path and account-created handoff.
   - `/chat`: Ask-first workspace with conversation list, top-of-chat source selector, transcript, dominant composer, compact citation summaries near answers, and progressively disclosed citation details plus response evidence/work history.
-  - `/knowledge`: Sources/Knowledge screen with an organization-tree-style source-space browser, table-style source list, selected-source inspector, and dialog-based add flows for source spaces/text/files; permissions, team sharing, and processing internals stay in Advanced sections.
+  - `/knowledge`: Sources/Knowledge screen with an organization-tree-style source-space browser, table-style source list, selected-source inspector, and dialog-based add flows for source spaces/text/files; team sharing and processing internals stay in Advanced sections.
   - `/knowledge/{knowledge-base-id}` and `/knowledge/{group-id}`: selected source-space/group subroutes. Refresh must preserve the current tree selection and main-pane context rather than falling back to the first available space.
   - `/documents`: Legacy compatibility route that redirects to `/knowledge`.
   - `/groups`: Teams screen for shared knowledge, invitation lifecycle, accepted-member roles, and publish-request review.
@@ -241,7 +241,7 @@
     - Wide desktop: detailed run history, activity events, and citation cards may sit side by side only after a disclosure is opened; the transcript remains the dominant surface.
   - Admin surfaces:
     - Use current container-query-ready `responsive-panel-grid[data-layout="form-aside"]`; forms and selected-action panels split only when the container is wide enough.
-    - Sources should prefer a GreetSchool-style organization shell: persistent source-space tree on desktop, sheet/browser on compact screens, table-like source rows in the main pane, route-backed tree selection, shadcn/Base UI dialogs for create/upload forms, and row-owned Manage dialogs for direct access/deletion and preparation recovery instead of a persistent selected-item panel.
+    - Sources should prefer a GreetSchool-style organization shell: persistent source-space tree on desktop, sheet/browser on compact screens, table-like source rows in the main pane, route-backed tree selection, shadcn/Base UI dialogs for create/upload forms, and row-owned Manage dialogs for deletion and preparation recovery instead of a persistent selected-item panel.
     - De-emphasize admin-heavy density with grouped sections, collapsible/secondary action areas, and clear selected-resource context.
     - Resource rows must wrap IDs and filenames without page overflow.
 - Touch/hover differences:

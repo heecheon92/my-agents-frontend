@@ -394,11 +394,10 @@ test("Sources page creates the first source space from the dialog", async ({
   await expect(page.getByTestId("document-upload-dropzone")).toBeVisible();
 });
 
-test("Sources table row actions grant access and delete one source", async ({
+test("Sources table row actions prepare and delete one source", async ({
   page,
 }) => {
   let documents = [firstDocument, secondDocument];
-  let grantedUserId: string | undefined;
   let preparedDocumentId: string | undefined;
 
   await page.route("**/api/my-agents/**", async (route) => {
@@ -464,28 +463,6 @@ test("Sources table row actions grant access and delete one source", async ({
         error: null,
       });
     }
-    if (
-      method === "PATCH" &&
-      path === `/documents/${firstDocument.id}/permissions`
-    ) {
-      const payload = await request.postDataJSON();
-      expect(payload).toMatchObject({
-        user_id: "u-row-access",
-        can_read: true,
-        can_write: false,
-        can_manage: false,
-        can_ingest: false,
-      });
-      grantedUserId = payload.user_id;
-      return json({
-        document_id: firstDocument.id,
-        user_id: payload.user_id,
-        can_read: true,
-        can_write: false,
-        can_manage: false,
-        can_ingest: false,
-      });
-    }
     if (method === "DELETE" && path === `/documents/${firstDocument.id}`) {
       documents = documents.filter(
         (document) => document.id !== firstDocument.id,
@@ -514,17 +491,8 @@ test("Sources table row actions grant access and delete one source", async ({
     .getByRole("button", { name: ko.admin.documents.runIngest })
     .click();
   await expect.poll(() => preparedDocumentId).toBe(firstDocument.id);
-
-  await page
-    .getByLabel(ko.admin.documents.permissionLabel)
-    .fill("u-row-access");
-  await page
-    .getByRole("button", { name: ko.admin.documents.patchPermission })
-    .click();
-  await expect.poll(() => grantedUserId).toBe("u-row-access");
-  await expect(page.getByLabel(ko.admin.documents.permissionLabel)).toHaveValue(
-    "",
-  );
+  await expect(page.getByText("직접 읽기 권한")).toHaveCount(0);
+  await expect(page.getByText("고급 공유 제어")).toHaveCount(0);
 
   page.once("dialog", (dialog) => dialog.accept());
   await page

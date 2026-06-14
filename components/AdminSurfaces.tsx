@@ -65,7 +65,6 @@ import {
   useKnowledgeBaseDocuments,
   useKnowledgeBaseExtractionRuns,
   useKnowledgeBases,
-  usePatchDocumentPermission,
 } from "@/hooks/use-knowledge";
 import { useLocalization } from "@/hooks/useLocalization";
 import { cn } from "@/lib/utils";
@@ -358,8 +357,6 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     displayKnowledgeBaseId,
     activeDocumentId,
   );
-  const patchPermission = usePatchDocumentPermission(activeDocumentId);
-  const [permissionUserId, setPermissionUserId] = useState("");
   const { localization } = useLocalization((state) => state.localization.admin);
   const canAutoApproveTeamUpload =
     canAutoApproveTeamDocumentUpload(activeTeamGroup);
@@ -1001,28 +998,8 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     }
   }
 
-  async function handlePatchPermission(
-    event: React.FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
-    try {
-      await patchPermission.mutateAsync({
-        user_id: permissionUserId,
-        can_read: true,
-        can_write: false,
-        can_manage: false,
-        can_ingest: false,
-      });
-      setPermissionUserId("");
-    } catch {
-      // React Query stores the API error on the mutation; render it below.
-    }
-  }
-
   function openSourceActionsDialog(documentId: string) {
     setSelectedDocumentId(documentId);
-    setPermissionUserId("");
-    patchPermission.reset();
     deleteDocument.reset();
     setSourceActionsDialog({ documentId });
   }
@@ -1030,8 +1007,6 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   function handleSourceActionsDialogOpenChange(open: boolean) {
     if (open) return;
     setSourceActionsDialog(undefined);
-    setPermissionUserId("");
-    patchPermission.reset();
     deleteDocument.reset();
   }
 
@@ -1553,38 +1528,6 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
             </Button>
             {ingest.error ? <ErrorState error={ingest.error} /> : null}
           </div>
-
-          <form onSubmit={handlePatchPermission} className="grid gap-3">
-            <div>
-              <h3 className="font-semibold text-cal-ink">
-                {localization.documents.permissionAdvancedTitle}
-              </h3>
-              <p className="mt-1 text-sm leading-6 text-cal-muted">
-                {localization.documents.permissionHint}
-              </p>
-            </div>
-            <Field label={localization.documents.permissionLabel}>
-              <input
-                className={inputClassName}
-                value={permissionUserId}
-                onChange={(event) => setPermissionUserId(event.target.value)}
-              />
-            </Field>
-            <Button
-              type="submit"
-              variant="outline"
-              disabled={
-                !activeDocumentId ||
-                !permissionUserId.trim() ||
-                patchPermission.isPending
-              }
-            >
-              {localization.documents.patchPermission}
-            </Button>
-          </form>
-          {patchPermission.error ? (
-            <ErrorState error={patchPermission.error} />
-          ) : null}
 
           <div className="grid gap-3 rounded-xl border border-cal-error/20 bg-cal-error/5 p-3">
             <div>
