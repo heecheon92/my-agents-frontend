@@ -41,7 +41,7 @@ export function OnboardingOverlay({
   const skip = useOnboardingStore((state) => state.skip);
   const complete = useOnboardingStore((state) => state.complete);
   const { steps, step, targetElement, shouldFallback, isTargetPending } =
-    useOnboardingRouteStep();
+    useOnboardingRouteStep(identityBucket);
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
   const [mounted, setMounted] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
