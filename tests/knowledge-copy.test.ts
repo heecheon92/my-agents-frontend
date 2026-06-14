@@ -71,7 +71,7 @@ describe("source-space creation copy", () => {
     expect(copy.description).toContain("add sources");
     expect(copy.nameLabel).toBe("Source space name");
     expect(copy.scopeHint).toContain("Personal source spaces stay private");
-    expect(copy.scopeHint).toContain("Team source spaces");
+    expect(copy.scopeHint).toContain("Group source spaces");
     expect(copy.scopeBoundaryNote).toContain(
       "Add sources to personal spaces first",
     );
@@ -80,7 +80,7 @@ describe("source-space creation copy", () => {
       "does not share member conversations",
     );
     expect(copy.listPersonalSubtitle).toContain("private to your account");
-    expect(copy.listGroupSubtitle).toContain("team members");
+    expect(copy.listGroupSubtitle).toContain("group members");
   });
 
   it("states the same ownership boundary in Korean", () => {
@@ -90,12 +90,12 @@ describe("source-space creation copy", () => {
     expect(copy.description).toContain("Ask에서");
     expect(copy.nameLabel).toBe("지식 공간 이름");
     expect(copy.scopeHint).toContain("개인 지식 공간");
-    expect(copy.scopeHint).toContain("팀 지식 공간");
+    expect(copy.scopeHint).toContain("그룹 지식 공간");
     expect(copy.scopeBoundaryNote).toContain("먼저 개인 공간에 추가");
     expect(copy.scopeBoundaryNote).toContain("승인이 필요");
     expect(copy.scopeBoundaryNote).toContain("멤버 대화");
     expect(copy.listPersonalSubtitle).toContain("내 계정 전용");
-    expect(copy.listGroupSubtitle).toContain("선택한 팀 멤버");
+    expect(copy.listGroupSubtitle).toContain("선택한 그룹 멤버");
   });
 });
 
@@ -104,7 +104,7 @@ describe("group publish copy", () => {
     const copy = en.admin.groups;
 
     expect(copy.description).toContain("invite-accepted spaces");
-    expect(copy.membershipActions).toBe("Team access");
+    expect(copy.membershipActions).toBe("Group access");
     expect(copy.memberIdNote).toContain("email invitation acceptance");
     expect(copy.inviteEmailHint).toContain("does not reveal");
     expect(copy.publishBoundaryTitle).toBe("Shared sources");
@@ -121,7 +121,7 @@ describe("group publish copy", () => {
     const copy = ko.admin.groups;
 
     expect(copy.description).toContain("초대를 수락한 뒤");
-    expect(copy.membershipActions).toBe("팀 접근");
+    expect(copy.membershipActions).toBe("그룹 접근");
     expect(copy.memberIdNote).toContain("이메일 초대 수락");
     expect(copy.inviteEmailHint).toContain("계정 존재 여부");
     expect(copy.publishBoundaryTitle).toBe("공유 지식");

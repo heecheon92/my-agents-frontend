@@ -8,7 +8,7 @@ Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm
 
 ## 2026-06-11 — Addressable Knowledge workspace polish
 
-- Added `/knowledge/[sourceId]` so a selected personal knowledge space, team knowledge space, or team group can be opened directly and survives refresh.
+- Added `/knowledge/[sourceId]` so a selected personal knowledge space, group knowledge space, or group group can be opened directly and survives refresh.
 - Kept the GreetSchool-style organization-tree behavior: tree rows navigate with links, group rows select the group context, and child knowledge-space rows select that exact space.
 - Widened and left-aligned the Knowledge workspace so the table/inspector use the available service-shell width instead of sitting in a centered narrow column.
 - Updated Korean copy to prefer “지식” / “지식 공간” over the less intuitive “소스” wording while keeping the English “Sources” mental model unchanged.
@@ -20,7 +20,7 @@ Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm
 - Merged the former Knowledge/Add sources mental model into one visible Sources entry: `/knowledge` now hosts source-space selection, source readiness, and selected-source advanced controls; `/documents` redirects to the merged page for compatibility.
 - Re-laid out Sources around a GreetSchool-inspired organization shell: a persistent source-space tree on desktop, a mobile source-space sheet, and a table-style source list with a selected-source inspector.
 - Moved source-space creation, text-source creation, and file upload/preparation into shadcn/Base UI dialogs so the default page reads as “choose a space, review its sources, add when needed” instead of stacked setup forms.
-- Updated onboarding, localized copy, route tests, and active docs to minimize cross-page depth while keeping team sharing, raw IDs, and processing history behind secondary/Advanced controls.
+- Updated onboarding, localized copy, route tests, and active docs to minimize cross-page depth while keeping group sharing, raw IDs, and processing history behind secondary/Advanced controls.
 
 Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (18 files / 105 tests), `pnpm build`, full `pnpm exec playwright test --reporter=line` (14 passed / 2 skipped), mocked desktop browser smoke of `/knowledge` with zero console errors and readable source-space tree/table layout, and `git diff --check`.
 
@@ -42,16 +42,16 @@ Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm
 
 ## 2026-06-11 — Persisted shadcn service sidebar
 
-- Replaced the protected service shell's custom desktop aside/mobile scroll nav with the shadcn/Base UI `Sidebar` stack while preserving the existing Ask, Add sources, Knowledge, and Teams routes.
+- Replaced the protected service shell's custom desktop aside/mobile scroll nav with the shadcn/Base UI `Sidebar` stack while preserving the existing Ask, Add sources, Knowledge, and Groups routes.
 - Added the missing shadcn sidebar support primitives (`Sidebar`, `Sheet`, `Tooltip`, `Input`, `Separator`, `Skeleton`, and mobile breakpoint hook) without overwriting the repo's customized `Button`.
 - Persisted the desktop icon-collapsed state through the non-sensitive `sidebar_state` cookie: the client sidebar writes the preference and the service layout reads it as `defaultOpen` on reload.
 - Kept session restore copy visible in the expanded sidebar for existing smoke checks, exposed a mobile header trigger/logout path, and added localized accessible toggle labels.
 
 Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (17 files / 102 tests), `pnpm build`, targeted `pnpm exec playwright test e2e/sidebar-persistence.spec.ts --reporter=line` (1 passed), full `pnpm exec playwright test --reporter=line` (12 passed / 2 skipped), and `git diff --check`.
 
-## 2026-06-10 — Invite-only team membership docs sync
+## 2026-06-10 — Invite-only group membership docs sync
 
-- Aligned frontend README/backend-request copy with the approved invite-only group/team boundary: no user search, no account-existence leak, and no direct `user_id` member activation.
+- Aligned frontend README/backend-request copy with the approved invite-only group boundary: no user search, no account-existence leak, and no direct `user_id` member activation.
 - Recorded the expected invitation lifecycle contract for hosted OpenAPI follow-up before runtime model/client changes.
 - Preserved the existing shared-knowledge mental model: group KBs and publish requests are shared after acceptance, while conversations and opt-in memory stay private to the authenticated user.
 
@@ -101,9 +101,9 @@ Verification passed for the final gate: `git diff --check`, `pnpm lint`, `pnpm e
 
 ## 2026-06-07 — Unified chat source selection cleanup
 
-- Removed the deprecated frontend separate shared-source/private-source split from Ask. The composer now keeps every conversation private and sends only one `knowledge_base_selection` payload for personal, shared, and team knowledge spaces.
-- Deleted stale chat source variables and UI copy such as include-team toggle, implicit team sources, separate private attachments, and group-mode placeholders.
-- Updated the source selector copy so users see one authorized knowledge-source model instead of separate personal/team chat modes.
+- Removed the deprecated frontend separate shared-source/private-source split from Ask. The composer now keeps every conversation private and sends only one `knowledge_base_selection` payload for personal, shared, and group knowledge spaces.
+- Deleted stale chat source variables and UI copy such as include-group toggle, implicit group sources, separate private attachments, and group-mode placeholders.
+- Updated the source selector copy so users see one authorized knowledge-source model instead of separate personal/group chat modes.
 
 Verification for this entry is part of the current cleanup pass.
 
@@ -116,13 +116,13 @@ Verification for this entry is part of the current cleanup pass.
 - Made regeneration render in place at the refreshed assistant message and temporarily hide the later transcript suffix while preserving backend rollback safety; failed replay restores the old transcript and shows the safe error notice.
 - Kept the collapsed evidence/work-history panel intact while making the in-flight state more specific for users, compacted noisy `answer_delta` rows into one `answer_streamed` work-history summary, and replaced raw backend IDs in answer context with user-facing knowledge/source/privacy summaries.
 - Sorted conversations newest-first from the backend contract and optimistically placed newly created conversations at the top of the sidebar cache.
-- Added a Team destination to Add sources: files/text are staged in a private knowledge space, then copied into the selected team knowledge space through publish approval; owners/admins auto-approve from the same flow.
+- Added a Group destination to Add sources: files/text are staged in a private knowledge space, then copied into the selected group knowledge space through publish approval; owners/admins auto-approve from the same flow.
 
 Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (16 files / 93 tests), `pnpm build`, and targeted replay-stream/conversation-order contract tests passed during implementation.
 
 ## 2026-06-01 — User-facing AI workspace UI polish
 
-- Reframed the protected shell around Ask, Add sources, Knowledge, and Teams; the sidebar session card now stays concise instead of listing internal proof bullets.
+- Reframed the protected shell around Ask, Add sources, Knowledge, and Groups; the sidebar session card now stays concise instead of listing internal proof bullets.
 - Split the Ask workspace into focused chat UI components under `components/chat/`: conversation sidebar, transcript, message bubble, response evidence panel, knowledge-source selector, and composer bar.
 - Kept citations attached to assistant answers as a compact count/label disclosure, with full source cards, answer history, and activity details opt-in; raw run/source IDs are only shown from advanced details.
 - Reframed Documents/Knowledge as one journey: knowledge spaces contain sources, Add sources prepares files/text for Ask, and permission/processing internals are behind Advanced sections.
@@ -163,7 +163,7 @@ Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `
 
 ## 2026-05-24 — Group Knowledge V1 frontend OpenAPI gate
 
-- Repaired worker-4 team allocation through the supported OMX `create-task`, `write-worker-identity`, and `claim-task` APIs after original task-4 was pre-assigned to worker-1 and claim attempts returned `claim_conflict`.
+- Repaired worker-4 group allocation through the supported OMX `create-task`, `write-worker-identity`, and `claim-task` APIs after original task-4 was pre-assigned to worker-1 and claim attempts returned `claim_conflict`.
 - Per frontend repo rules and the Group Knowledge V1 test spec, checked the backend contract before API/client edits. Generated OpenAPI from `main.app.openapi()` in the backend with deterministic mode because no hosted OpenAPI evidence was available in the worker handoff.
 - Confirmed the then-current backend OpenAPI was not ready for Group Knowledge V1; this note is historical and was superseded by the later unified source-selection contract.
 - Logged the exact backend contract gap in `docs/backend-requests.md`; frontend model/client/hook/shared-knowledge request-body changes remain blocked until the backend OpenAPI exposes the required contract.
@@ -442,7 +442,7 @@ Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `
 
 ## 2026-05-24 — Group Knowledge V1 source-boundary UX preview
 
-- Added a shared-knowledge chat preview mode in `components/ChatWorkspace.tsx` that distinguishes personal conversations from shared-source conversations, labels transcripts as private, shows implicit team KBs as fixed sources, and presents separate private KB attachments without sending them.
+- Added a shared-knowledge chat preview mode in `components/ChatWorkspace.tsx` that distinguishes personal conversations from shared-source conversations, labels transcripts as private, shows implicit group KBs as fixed sources, and presents separate private KB attachments without sending them.
 - Kept backend-first constraints: no API model/client changes were made, and shared-knowledge create/send is disabled until a hosted backend OpenAPI proves the V1 source contract.
 - Added disabled publish request and owner/admin review controls in `components/AdminSurfaces.tsx` so the intended workflow is visible without inventing backend routes.
 - Recorded the missing backend OpenAPI contract in `docs/backend-requests.md`.
@@ -452,7 +452,7 @@ Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `
 - Added scoped KB creation in the Knowledge surface: users can create private Personal KBs or extra Group KBs only for groups where they are owner/admin. The backend already creates a default Group KB when a group is created, so extra Group KB creation is an admin expansion path rather than a prerequisite.
 - Tightened the Documents surface to list only the current user's own Personal KBs for direct text/file create and ingestion. Group KBs and other members' approved published Personal KBs are intentionally excluded from direct upload/create UI because personal material should enter group retrieval through publish requests and owner/admin approval.
 - Extended publish request UI to support both whole-Personal-KB publication and one-document copy publication. Whole Personal KB approval makes that KB a fixed group source; document approval still copies one document into a selected Group KB.
-- Updated shared-knowledge chat source display so approved member Personal KBs appear alongside Group KBs as implicit team sources, while separate private attachments remain limited to the current user's unpublished Personal KBs.
+- Updated shared-knowledge chat source display so approved member Personal KBs appear alongside Group KBs as implicit group sources, while separate private attachments remain limited to the current user's unpublished Personal KBs.
 - Kept the Group creation form compact by placing the group name field and submit action inline on desktop, and fixed Knowledge creation selector alignment with equal-width scope/group controls plus shorter group option labels.
 - Updated bilingual copy and focused tests to make the boundary explicit: Personal KBs stay private and may be attached privately in shared-knowledge chat; publishing into Group KB retrieval is an approval workflow, not direct document wiring.
 
@@ -466,12 +466,12 @@ Verification passed for this log entry: `pnpm lint`, `pnpm typecheck`, `pnpm tes
 
 Verification passed for this log entry: `pnpm lint`, `pnpm exec vitest run tests/auth-model.test.ts tests/auth-api.test.ts`, `pnpm exec vitest run`, `pnpm exec playwright test e2e/auth-panel.spec.ts`, `pnpm exec tsc --noEmit`, `pnpm build`, and `git diff --check`.
 
-## 2026-06-07 — Hidden team-upload staging integration
+## 2026-06-07 — Hidden group-upload staging integration
 
-- Switched team document upload/create from a user-selected personal staging KB to the backend-owned `POST /knowledge-bases/team-upload-staging` contract.
-- The UI no longer asks users to pick a private staging space for team uploads; it explains that sources are privately staged outside Ask retrieval and become retrievable only after approval copies them into the target team KB.
+- Switched group document upload/create from a user-selected personal staging KB to the backend-owned `POST /knowledge-bases/team-upload-staging` contract.
+- The UI no longer asks users to pick a private staging space for group uploads; it explains that sources are privately staged outside Ask retrieval and become retrievable only after approval copies them into the target group KB.
 - Added frontend API path, proxy allowlist, schema support for `knowledgeBase.purpose`, and `ensureTeamUploadStaging()` client method.
-- Document KB helpers exclude non-standard/staging KBs from visible writable/team selectors so hidden staging does not appear in normal Knowledge UI lists.
-- Team uploads now show the target team KB document list after auto-approval, while staged private source IDs remain backend-only plumbing.
+- Document KB helpers exclude non-standard/staging KBs from visible writable/group selectors so hidden staging does not appear in normal Knowledge UI lists.
+- Group uploads now show the target group KB document list after auto-approval, while staged private source IDs remain backend-only plumbing.
 
 Verification pending for this change: frontend lint/typecheck/unit/build after backend staging contract lands.

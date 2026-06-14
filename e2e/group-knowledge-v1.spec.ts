@@ -176,7 +176,7 @@ async function mockGroupKnowledgeApi(
   return requests;
 }
 
-test("unified knowledge selection sends personal and team sources through one contract", async ({
+test("unified knowledge selection sends personal and group sources through one contract", async ({
   page,
 }) => {
   const requests = await mockGroupKnowledgeApi(page);

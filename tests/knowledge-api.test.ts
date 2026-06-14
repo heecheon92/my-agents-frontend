@@ -15,7 +15,7 @@ describe("knowledge base creation payloads", () => {
   it("requires an existing group id for group knowledge-base payloads", () => {
     expect(
       buildKnowledgeBaseCreateRequest({
-        name: "Team research",
+        name: "Group research",
         scope: "group",
       }),
     ).toBeNull();
@@ -23,10 +23,10 @@ describe("knowledge base creation payloads", () => {
     expect(
       buildKnowledgeBaseCreateRequest({
         groupId: "group-1",
-        name: "Team research",
+        name: "Group research",
         scope: "group",
       }),
-    ).toEqual({ name: "Team research", scope: "group", group_id: "group-1" });
+    ).toEqual({ name: "Group research", scope: "group", group_id: "group-1" });
   });
 });
 
@@ -38,7 +38,7 @@ describe("MyAgentsKnowledgeBaseAPI", () => {
         calls.push({ path, init });
         return {
           id: "kb-staging-1",
-          name: "Team upload staging",
+          name: "Group upload staging",
           scope: "personal",
           purpose: "team_upload_staging",
           owner_user_id: "user-1",
@@ -111,7 +111,7 @@ describe("MyAgentsKnowledgeBaseAPI", () => {
         calls.push({ path, init });
         return {
           id: "kb-group-1",
-          name: "Team research",
+          name: "Group research",
           scope: "group",
           owner_user_id: "user-1",
           group_id: "group-1",
@@ -122,7 +122,7 @@ describe("MyAgentsKnowledgeBaseAPI", () => {
 
     await expect(
       api.create({
-        name: "Team research",
+        name: "Group research",
         scope: "group",
         group_id: "group-1",
       }),
@@ -138,7 +138,7 @@ describe("MyAgentsKnowledgeBaseAPI", () => {
         init: {
           method: "POST",
           body: {
-            name: "Team research",
+            name: "Group research",
             scope: "group",
             group_id: "group-1",
           },

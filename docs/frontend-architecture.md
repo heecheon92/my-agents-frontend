@@ -47,7 +47,7 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | `/knowledge` | `components/AdminSurfaces.tsx` | Knowledge journey root. Uses a source-space tree + source table shell, shadcn/Base UI dialogs for add flows, and keeps row-level permission/deletion controls in per-source Manage dialogs. |
 | `/knowledge/[sourceId]` | `components/AdminSurfaces.tsx` | Addressable selected knowledge route. The segment may be a knowledge-base ID or group ID; refresh preserves the selected space/group instead of resetting to the first available item. |
 | `/documents` | `next/navigation` redirect | Legacy compatibility path that redirects to `/knowledge` so old links land on the merged Sources workflow. |
-| `/groups` | `components/AdminSurfaces.tsx` | “Teams” journey. Manages shared knowledge requests, shows accepted-member display names when the backend contract provides them, and keeps raw ID-based member controls in Advanced disclosure. |
+| `/groups` | `components/AdminSurfaces.tsx` | “Groups” journey. Manages shared knowledge requests, shows accepted-member display names when the backend contract provides them, and keeps raw ID-based member controls in Advanced disclosure. |
 
 All service routes live under `app/(service)/layout.tsx`, which renders `ServiceShell` and restores auth through `/auth/me`.
 

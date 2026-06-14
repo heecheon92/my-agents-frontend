@@ -28,11 +28,11 @@ Requested backend contract: Require `nickname` on `POST /auth/signup`; return `u
 Why it matters: Nickname improves manager recognition in active rosters, but it is display-only. Email remains the invitation/login identifier and user ID remains the exact advanced role-maintenance identifier.
 Frontend workaround, if any: Frontend schemas/UI now match the accepted nickname contract. If a deployed backend still lacks the new OpenAPI shape, treat that as backend/frontend drift and do not add fallback user search, nickname lookup, member-email display, or direct member creation.
 
-## 2026-06-10 — invite-only group/team membership contract
+## 2026-06-10 — invite-only group membership contract
 
 Status: approved / backend implementation in progress
-Frontend need: Teams UI and copy need a hosted OpenAPI contract for privacy-preserving invitations before adding or changing runtime API models.
-Current backend behavior: The approved backend product boundary makes group/team membership invitation-only. Direct product activation by known `user_id` is being removed from public API/OpenAPI. Group KB and publish workflows remain shared after acceptance; conversations and opt-in memory remain private.
+Frontend need: Groups UI and copy need a hosted OpenAPI contract for privacy-preserving invitations before adding or changing runtime API models.
+Current backend behavior: The approved backend product boundary makes group membership invitation-only. Direct product activation by known `user_id` is being removed from public API/OpenAPI. Group KB and publish workflows remain shared after acceptance; conversations and opt-in memory remain private.
 Requested backend contract: Expose `POST /groups/{group_id}/invitations`, `GET /groups/{group_id}/invitations`, `PATCH /groups/{group_id}/invitations/{invitation_id}`, `DELETE /groups/{group_id}/invitations/{invitation_id}` for cancel, `POST /groups/{group_id}/invitations/{invitation_id}/resend`, `GET /groups/{group_id}/members` for owner/admin role maintenance, non-creating `PATCH /groups/{group_id}/members/{user_id}`, and `POST /group-invitations/accept` with response shapes that never include `account_exists`, matched `user_id`, profile data, raw tokens, or discoverability status. Keep active-member role updates non-creating and manager-only.
 Why it matters: The frontend must not ship user search, account-existence branching, or direct `user_id` member activation. Pending invitations must not look like active members or grant group KB access.
 Frontend workaround, if any: Documentation, product copy, and runtime invitation/member role-maintenance models are aligned to the backend-owned OpenAPI shape; keep using hosted OpenAPI as the source of truth for future contract expansion.
@@ -131,8 +131,8 @@ Frontend workaround, if any: No UI change needed if the backend returns a safe `
 ## 2026-05-24 — Group Knowledge V1 OpenAPI gate
 
 Status: superseded by unified source selection on 2026-06-07
-Frontend need: Backend-owned OpenAPI for shared/team knowledge before changing frontend API models, clients, or hooks.
-Current backend behavior: Chat source selection now uses a single `knowledge_base_selection` payload. Personal, shared, and team knowledge spaces are selected by ID through the same contract; deprecated shared-knowledge mandatory-source and optional-private attachment fields are removed.
+Frontend need: Backend-owned OpenAPI for shared/group knowledge before changing frontend API models, clients, or hooks.
+Current backend behavior: Chat source selection now uses a single `knowledge_base_selection` payload. Personal, shared, and group knowledge spaces are selected by ID through the same contract; deprecated shared-knowledge mandatory-source and optional-private attachment fields are removed.
 Requested backend contract: Keep publish request create/list/approve/reject routes with request/response schemas for owner/admin-approved copy semantics, and keep run source-audit fields focused on resolved knowledge-base IDs/counts.
 Why it matters: The UI should not expose separate personal-chat/shared-knowledge behavior. Pending/rejected publish requests must have zero retrieval effect, and approved requests must appear only after backend group-owned copy creation.
 Frontend workaround, if any: Frontend models/services/hooks use the unified backend-owned contract; no shared-knowledge fallback remains.

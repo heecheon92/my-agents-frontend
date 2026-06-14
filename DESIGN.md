@@ -40,7 +40,7 @@
   - Make the first-time journey legible in five seconds: add sources, ask questions, inspect citations.
   - Keep citations visually attached to assistant answers while moving run history and activity events into progressive disclosure.
   - Keep source setup as one shallow mental model: files/notes live inside source spaces, then Ask uses them with citations.
-  - Make team, invitation, membership, and permission workflows usable without implying user search or direct `user_id` membership activation.
+  - Make group, invitation, membership, and permission workflows usable without implying user search or direct `user_id` membership activation.
   - Support Korean and English with comfortable typography, wrapping, and no hardcoded user-facing strings.
   - Give frontend engineers a stable theme/component contract that can be implemented with current Next.js, Tailwind v4, Base UI/shadcn-style primitives, and no new component library.
   - Reduce future UI churn by moving repeated panel/list/message patterns out of ad hoc Tailwind strings and into small repo-native primitives.
@@ -76,17 +76,17 @@
 
 ## Information architecture
 - Primary navigation:
-  - Protected app navigation is task-oriented: Ask, Sources, Teams.
+  - Protected app navigation is task-oriented: Ask, Sources, Groups.
   - Ask is first and should be visually weighted as the default route from the service index.
   - Mobile navigation remains horizontal-scrollable or transformed into an accessible compact pattern; it must not disappear below desktop.
 - Core routes/screens:
   - `/`: Entry page that promises “내 문서를 기반으로 답하는 AI 워크스페이스,” not a generic marketing site.
   - `/login` and `/signup`: Two-panel trust/auth experience with guest path and account-created handoff.
   - `/chat`: Ask-first workspace with conversation list, top-of-chat source selector, transcript, dominant composer, compact citation summaries near answers, and progressively disclosed citation details plus response evidence/work history.
-  - `/knowledge`: Sources/Knowledge screen with an organization-tree-style source-space browser, table-style source list, selected-source inspector, and dialog-based add flows for source spaces/text/files; team sharing and processing internals stay in Advanced sections.
+  - `/knowledge`: Sources/Knowledge screen with an organization-tree-style source-space browser, table-style source list, selected-source inspector, and dialog-based add flows for source spaces/text/files; group sharing and processing internals stay in Advanced sections.
   - `/knowledge/{knowledge-base-id}` and `/knowledge/{group-id}`: selected source-space/group subroutes. Refresh must preserve the current tree selection and main-pane context rather than falling back to the first available space.
   - `/documents`: Legacy compatibility route that redirects to `/knowledge`.
-  - `/groups`: Teams screen for shared knowledge, invitation lifecycle, accepted-member roles, and publish-request review.
+  - `/groups`: Groups screen for shared knowledge, invitation lifecycle, accepted-member roles, and publish-request review.
 - Content hierarchy:
   - Level 1: Page purpose and current user/session context.
   - Level 2: Primary action for the route, e.g. create conversation, send message, upload and prepare sources.
@@ -282,7 +282,7 @@
 - Microcopy rules:
   - Avoid “magic”, “brain”, “thinking”, “autonomous reasoning trace”, or claims of hidden intelligence.
   - Say what happened and what to do next: “Run failed. Try again or edit the message.”
-  - For any remaining ID-based advanced fields, explicitly ask for “user ID” or “group ID”; normal team membership copy should use email invitations and must not imply user search exists.
+  - For any remaining ID-based advanced fields, explicitly ask for “user ID” or “group ID”; normal group membership copy should use email invitations and must not imply user search exists.
   - Keep user-visible strings in `localization/ko.json` and `localization/en.json`.
 
 ## Implementation constraints

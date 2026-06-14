@@ -21,14 +21,14 @@ const personalKnowledgeBase = {
 
 const teamGroup = {
   id: "g-research",
-  name: "Research Team",
+  name: "Research Group",
   role: "admin",
   created_at: "2026-05-25T00:00:00.000Z",
 };
 
 const teamKnowledgeBase = {
   id: "kb-team-research",
-  name: "Team Research Library",
+  name: "Group Research Library",
   scope: "group",
   owner_user_id: user.id,
   group_id: teamGroup.id,
