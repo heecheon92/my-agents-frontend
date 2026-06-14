@@ -398,6 +398,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     useState(false);
   const [isTextSourceDialogOpen, setIsTextSourceDialogOpen] = useState(false);
   const [isFileUploadDialogOpen, setIsFileUploadDialogOpen] = useState(false);
+  const [isPreparingTextSource, setIsPreparingTextSource] = useState(false);
   const [sourceActionsDialog, setSourceActionsDialog] =
     useState<SourceActionsDialogState>();
   const uploadDragDepthRef = useRef(0);
@@ -725,27 +726,27 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   }
 
   async function pollExtractionRun(
+    knowledgeBaseId: string,
     documentId: string,
     runId: string,
-    localId: string,
+    localId?: string,
   ) {
     let latestRun: ExtractionRun | null = null;
     while (true) {
-      if (!directWriteKnowledgeBaseId) {
-        throw new Error(localization.documents.knowledgeBaseRequired);
-      }
       const run = await myAgentsAPI.documents.extractionRunInKnowledgeBase(
-        directWriteKnowledgeBaseId,
+        knowledgeBaseId,
         documentId,
         runId,
       );
       latestRun = run;
-      updateQueueItem(localId, {
-        extractionRunId: run.id,
-        status: run.status === "failed" ? "failed" : "ingesting",
-        progressPercent: 0,
-        error: run.error ?? undefined,
-      });
+      if (localId) {
+        updateQueueItem(localId, {
+          extractionRunId: run.id,
+          status: run.status === "failed" ? "failed" : "ingesting",
+          progressPercent: 0,
+          error: run.error ?? undefined,
+        });
+      }
       if (TERMINAL_EXTRACTION_STATUSES.has(run.status)) break;
       await wait(EXTRACTION_POLL_INTERVAL_MS);
     }
@@ -906,7 +907,12 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
 
       const completedRun = TERMINAL_EXTRACTION_STATUSES.has(run.status)
         ? run
-        : await pollExtractionRun(documentId, run.id, item.localId);
+        : await pollExtractionRun(
+            ingestionKnowledgeBaseId,
+            documentId,
+            run.id,
+            item.localId,
+          );
 
       if (completedRun?.status === "completed") {
         updateQueueItem(item.localId, {
@@ -1029,8 +1035,11 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
 
   async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!hasActiveKnowledgeBase || isPreparingTextSource) return;
+
+    const sourceTitle = title.trim();
+    setIsPreparingTextSource(true);
     try {
-      if (!hasActiveKnowledgeBase) return;
       const created =
         effectiveDocumentDestination === "team"
           ? await myAgentsAPI.documents.createInKnowledgeBase(
@@ -1051,13 +1060,54 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
           activeTeamKnowledgeBaseId,
         );
       } else {
+        if (!directWriteKnowledgeBaseId) {
+          throw new Error(localization.documents.knowledgeBaseRequired);
+        }
         setSelectedDocumentId(created.id);
+        setUploadAnnouncement(localization.documents.uploadStartedAnnouncement);
+        const run = await myAgentsAPI.documents.ingestAsyncInKnowledgeBase(
+          directWriteKnowledgeBaseId,
+          created.id,
+        );
+        const completedRun = TERMINAL_EXTRACTION_STATUSES.has(run.status)
+          ? run
+          : await pollExtractionRun(
+              directWriteKnowledgeBaseId,
+              created.id,
+              run.id,
+            );
+        if (completedRun?.status === "completed") {
+          setUploadAnnouncement(
+            localization.documents.uploadCompletedAnnouncement.replace(
+              "{file}",
+              sourceTitle,
+            ),
+          );
+        } else {
+          setUploadAnnouncement(
+            localization.documents.uploadFailedAnnouncement.replace(
+              "{file}",
+              sourceTitle,
+            ),
+          );
+        }
+        await refreshDocumentQueries(created.id, directWriteKnowledgeBaseId);
       }
       setTitle("");
       setContent("");
       setIsTextSourceDialogOpen(false);
     } catch {
+      if (sourceTitle) {
+        setUploadAnnouncement(
+          localization.documents.uploadFailedAnnouncement.replace(
+            "{file}",
+            sourceTitle,
+          ),
+        );
+      }
       // React Query stores the API error on the mutation; render it below.
+    } finally {
+      setIsPreparingTextSource(false);
     }
   }
 
@@ -1941,8 +1991,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
                 onChange={(event) => setContent(event.target.value)}
               />
             </Field>
-            {effectiveDocumentDestination === "personal" &&
-            createDocument.error ? (
+            {effectiveDocumentDestination !== "team" && createDocument.error ? (
               <ErrorState error={createDocument.error} />
             ) : null}
             <DialogFooter>
@@ -1956,13 +2005,16 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
               <Button
                 type="submit"
                 disabled={
-                  (effectiveDocumentDestination === "personal" &&
+                  isPreparingTextSource ||
+                  (effectiveDocumentDestination !== "team" &&
                     createDocument.isPending) ||
                   !title.trim() ||
                   !hasActiveKnowledgeBase
                 }
               >
-                {localization.documents.createButton}
+                {isPreparingTextSource
+                  ? localization.documents.ingestionLoading
+                  : localization.documents.createButton}
               </Button>
             </DialogFooter>
           </form>
