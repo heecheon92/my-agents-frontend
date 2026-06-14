@@ -211,6 +211,21 @@ describe("proxy policy", () => {
     ).toMatchObject({ allowed: true });
   });
 
+  it("accepts same-origin publish request source reads", () => {
+    expect(
+      validateSameOriginProof({
+        method: "GET",
+        requestUrl:
+          "http://localhost:3000/api/my-agents/groups/00000000-0000-4000-8000-000000000001/publish-requests/00000000-0000-4000-8000-000000000002/source",
+        configuredOrigin: "http://localhost:3000",
+        headers: headers({
+          origin: "http://localhost:3000",
+          "sec-fetch-site": "same-origin",
+        }),
+      }),
+    ).toMatchObject({ allowed: true });
+  });
+
   it("accepts same-origin JSON mutations", () => {
     expect(
       validateSameOriginProof({

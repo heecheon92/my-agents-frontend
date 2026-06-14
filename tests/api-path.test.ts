@@ -56,6 +56,9 @@ describe("API_PATH", () => {
     expect(API_PATH.groups.publishRequests("group-1")).toBe(
       "/groups/group-1/publish-requests",
     );
+    expect(API_PATH.groups.publishRequestSource("group-1", "request-1")).toBe(
+      "/groups/group-1/publish-requests/request-1/source",
+    );
     expect(API_PATH.groups.publishRequestApprove("group-1", "request-1")).toBe(
       "/groups/group-1/publish-requests/request-1/approve",
     );

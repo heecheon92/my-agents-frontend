@@ -173,6 +173,13 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "groups.publish-requests.create",
   },
   {
+    method: "GET",
+    pattern: new RegExp(
+      `^/groups/${uuidLike}/publish-requests/${uuidLike}/source$`,
+    ),
+    name: "groups.publish-requests.source",
+  },
+  {
     method: "POST",
     pattern: new RegExp(
       `^/groups/${uuidLike}/publish-requests/${uuidLike}/approve$`,

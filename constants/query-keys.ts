@@ -54,6 +54,16 @@ export const MyAgentsQueryKeys = {
     publishRequests(groupId: string) {
       return ["my-agents", "groups", "publish-requests", groupId] as const;
     },
+    publishRequestSource(groupId: string, requestId: string) {
+      return [
+        "my-agents",
+        "groups",
+        "publish-requests",
+        groupId,
+        requestId,
+        "source",
+      ] as const;
+    },
     invitations(groupId: string) {
       return ["my-agents", "groups", "invitations", groupId] as const;
     },

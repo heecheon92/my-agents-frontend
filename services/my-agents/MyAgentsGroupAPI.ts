@@ -12,7 +12,9 @@ import {
   groupSchema,
   type KnowledgePublishRequest,
   type KnowledgePublishRequestCreateRequest,
+  type KnowledgePublishRequestSource,
   knowledgePublishRequestSchema,
+  knowledgePublishRequestSourceSchema,
   type MemberPatchRequest,
 } from "@/model/my-agents";
 import { type MyAgentsFetchClient, myAgentsFetchClient } from "./fetch-client";
@@ -148,6 +150,18 @@ export class MyAgentsGroupAPI {
     return parseArrayWithSchema(
       knowledgePublishRequestSchema,
       await this.client.fetch(API_PATH.groups.publishRequests(groupId)),
+    );
+  }
+
+  async publishRequestSource(
+    groupId: string,
+    requestId: string,
+  ): Promise<KnowledgePublishRequestSource> {
+    return parseWithSchema(
+      knowledgePublishRequestSourceSchema,
+      await this.client.fetch(
+        API_PATH.groups.publishRequestSource(groupId, requestId),
+      ),
     );
   }
 

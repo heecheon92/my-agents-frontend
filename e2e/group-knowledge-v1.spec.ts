@@ -80,6 +80,11 @@ const publishRequest = {
   target_knowledge_base_id: groupKb.id,
   source_document_id: "doc-personal",
   source_knowledge_base_id: null,
+  source_document_title: "Personal strategy memo",
+  source_document_excerpt: "A short preview for owner review.",
+  source_document_filename: "strategy.md",
+  source_knowledge_base_name: null,
+  target_knowledge_base_name: groupKb.name,
   status: "pending",
   reviewer_user_id: null,
   published_document_id: null,
@@ -153,6 +158,38 @@ async function mockGroupKnowledgeApi(
     }
     if (method === "GET" && path === `/groups/${group.id}/publish-requests`) {
       return json([publishRequest]);
+    }
+    if (
+      method === "GET" &&
+      path ===
+        `/groups/${group.id}/publish-requests/${publishRequest.id}/source`
+    ) {
+      return json(
+        role === "owner"
+          ? {
+              request_id: publishRequest.id,
+              source_kind: "document",
+              source_knowledge_base_id: null,
+              source_knowledge_base_name: null,
+              documents: [
+                {
+                  id: publishRequest.source_document_id,
+                  title: publishRequest.source_document_title,
+                  content:
+                    "## Review section\n\nFull extracted source content that the owner can inspect before approval.",
+                  source_type: "markdown",
+                  source_filename: publishRequest.source_document_filename,
+                  source_content_type: "text/markdown",
+                  source_byte_size: 128,
+                  source_page_count: null,
+                  parser_name: "markdown_upload",
+                  created_at: now,
+                },
+              ],
+            }
+          : {},
+        role === "owner" ? 200 : 403,
+      );
     }
     if (method === "POST" && path === `/groups/${group.id}/publish-requests`) {
       return json(publishRequest, 201);
@@ -228,6 +265,34 @@ test("unified knowledge selection sends personal and group sources through one c
 test("Publish review controls are owner-only in Group admin UI", async ({
   page,
 }) => {
+  await mockGroupKnowledgeApi(page);
+  await page.goto("/groups");
+
+  await expect(
+    page.getByRole("button", { name: ko.admin.groups.publishApproveNowButton }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: ko.admin.groups.publishRejectNowButton }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: ko.admin.groups.reviewRequestAction })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: ko.admin.groups.reviewRequestAction }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Personal strategy memo" }),
+  ).toBeVisible();
+  await expect(page.getByText(groupKb.name).first()).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Review section" }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Full extracted source content that the owner can inspect before approval.",
+    ),
+  ).toBeVisible();
+
   await mockGroupKnowledgeApi(page, { role: "viewer" });
   await page.goto("/groups");
 
@@ -240,10 +305,10 @@ test("Publish review controls are owner-only in Group admin UI", async ({
       .first(),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: ko.admin.groups.publishApproveButton }),
+    page.getByRole("button", { name: ko.admin.groups.publishApproveNowButton }),
   ).toHaveCount(0);
   await expect(
-    page.getByRole("button", { name: ko.admin.groups.publishRejectButton }),
+    page.getByRole("button", { name: ko.admin.groups.publishRejectNowButton }),
   ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: ko.admin.groups.inviteMemberAction }),

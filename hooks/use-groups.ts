@@ -149,6 +149,22 @@ export function usePublishRequests(groupId?: string) {
   });
 }
 
+export function usePublishRequestSource(
+  groupId?: string,
+  requestId?: string,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: MyAgentsQueryKeys.groups.publishRequestSource(
+      groupId ?? "",
+      requestId ?? "",
+    ),
+    queryFn: () =>
+      myAgentsAPI.groups.publishRequestSource(groupId ?? "", requestId ?? ""),
+    enabled: Boolean(groupId) && Boolean(requestId) && enabled,
+  });
+}
+
 export function useCreatePublishRequest(groupId?: string) {
   const queryClient = useQueryClient();
   return useMutation({

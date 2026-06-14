@@ -80,6 +80,27 @@ export const knowledgePublishRequestCreateRequestSchema = z.object({
   source_knowledge_base_id: z.string().min(1).optional(),
 });
 
+export const knowledgePublishRequestSourceDocumentSchema = z.object({
+  id: z.string().min(1),
+  title: z.string(),
+  content: z.string(),
+  source_type: z.string().default("text"),
+  source_filename: z.string().nullable().optional(),
+  source_content_type: z.string().nullable().optional(),
+  source_byte_size: z.number().nullable().optional(),
+  source_page_count: z.number().nullable().optional(),
+  parser_name: z.string().nullable().optional(),
+  created_at: z.string(),
+});
+
+export const knowledgePublishRequestSourceSchema = z.object({
+  request_id: z.string().min(1),
+  source_kind: z.enum(["document", "knowledge_base"]),
+  source_knowledge_base_id: z.string().min(1).nullable().optional(),
+  source_knowledge_base_name: z.string().nullable().optional(),
+  documents: z.array(knowledgePublishRequestSourceDocumentSchema),
+});
+
 export const knowledgePublishRequestSchema = z.object({
   id: z.string().min(1),
   requester_user_id: z.string().min(1),
@@ -87,6 +108,11 @@ export const knowledgePublishRequestSchema = z.object({
   target_knowledge_base_id: z.string().min(1).nullable(),
   source_document_id: z.string().min(1).nullable(),
   source_knowledge_base_id: z.string().min(1).nullable(),
+  source_document_title: z.string().nullable().optional(),
+  source_document_excerpt: z.string().nullable().optional(),
+  source_document_filename: z.string().nullable().optional(),
+  source_knowledge_base_name: z.string().nullable().optional(),
+  target_knowledge_base_name: z.string().nullable().optional(),
   status: knowledgePublishRequestStatusSchema,
   reviewer_user_id: z.string().nullable(),
   published_document_id: z.string().nullable(),
@@ -116,6 +142,12 @@ export type KnowledgePublishRequestStatus = z.infer<
 >;
 export type KnowledgePublishRequestCreateRequest = z.infer<
   typeof knowledgePublishRequestCreateRequestSchema
+>;
+export type KnowledgePublishRequestSourceDocument = z.infer<
+  typeof knowledgePublishRequestSourceDocumentSchema
+>;
+export type KnowledgePublishRequestSource = z.infer<
+  typeof knowledgePublishRequestSourceSchema
 >;
 export type KnowledgePublishRequest = z.infer<
   typeof knowledgePublishRequestSchema

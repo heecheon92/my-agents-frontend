@@ -64,6 +64,9 @@ export const API_PATH = {
     publishRequests(groupId: string) {
       return `${this.detail(groupId)}/publish-requests`;
     },
+    publishRequestSource(groupId: string, requestId: string) {
+      return `${this.publishRequests(groupId)}/${requestId}/source`;
+    },
     publishRequestApprove(groupId: string, requestId: string) {
       return `${this.publishRequests(groupId)}/${requestId}/approve`;
     },

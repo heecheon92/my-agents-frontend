@@ -14,6 +14,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { AgentMarkdown } from "@/components/AgentMarkdown";
 import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,6 +26,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerDescription,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+} from "@/components/ui/drawer";
 import {
   Sheet,
   SheetContent,
@@ -51,6 +61,7 @@ import {
   useGroupInvitations,
   useGroupMembers,
   useGroups,
+  usePublishRequestSource,
   usePublishRequests,
   useRejectPublishRequest,
   useResendGroupInvitation,
@@ -75,6 +86,7 @@ import {
   type GroupMember,
   type KnowledgeBase,
   type KnowledgePublishRequest,
+  type KnowledgePublishRequestSourceDocument,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 import {
@@ -1633,7 +1645,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
           <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
             <div className="shrink-0 border-b border-cal-hairline bg-cal-canvas/60 px-4 py-4 sm:px-6">
               <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-                <div className="min-w-0">
+                <div className="min-w-0 text-left">
                   <div className="flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
                     <DatabaseIcon className="size-3.5" />
                     <span>
@@ -2178,9 +2190,8 @@ export function GroupsSurface() {
     | undefined
   >();
   const [memberAction, setMemberAction] = useState<GroupMember>();
-  const [publishReviewAction, setPublishReviewAction] = useState<
-    { request: KnowledgePublishRequest; type: "approve" | "reject" } | undefined
-  >();
+  const [publishReviewRequest, setPublishReviewRequest] =
+    useState<KnowledgePublishRequest>();
   const activeGroupId = selectedGroupId ?? groups.data?.[0]?.id;
   const activeGroup = groups.data?.find((group) => group.id === activeGroupId);
   const canManageMembers =
@@ -2197,6 +2208,11 @@ export function GroupsSurface() {
     currentUser.data?.id,
   );
   const publishRequests = usePublishRequests(activeGroupId);
+  const publishReviewSource = usePublishRequestSource(
+    activeGroupId,
+    publishReviewRequest?.id,
+    Boolean(publishReviewRequest) && canReviewPublishRequests,
+  );
   const createPublishRequest = useCreatePublishRequest(activeGroupId);
   const approvePublishRequest = useApprovePublishRequest(activeGroupId);
   const rejectPublishRequest = useRejectPublishRequest(activeGroupId);
@@ -2336,7 +2352,7 @@ export function GroupsSurface() {
   async function handleApprovePublishRequest(requestId: string) {
     try {
       await approvePublishRequest.mutateAsync(requestId);
-      setPublishReviewAction(undefined);
+      setPublishReviewRequest(undefined);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -2345,7 +2361,7 @@ export function GroupsSurface() {
   async function handleRejectPublishRequest(requestId: string) {
     try {
       await rejectPublishRequest.mutateAsync(requestId);
-      setPublishReviewAction(undefined);
+      setPublishReviewRequest(undefined);
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -2369,6 +2385,141 @@ export function GroupsSurface() {
     setUpdateUserId(member.user_id);
     setUpdateRole(member.role);
     setMemberAction(member);
+  }
+
+  function publishRequestSourceLabel(request: KnowledgePublishRequest) {
+    return (
+      request.source_document_title ??
+      request.source_document_filename ??
+      request.source_knowledge_base_name ??
+      request.source_document_id ??
+      request.source_knowledge_base_id ??
+      localization.groups.publishReviewFallbackSource
+    );
+  }
+
+  function publishRequestTargetLabel(request: KnowledgePublishRequest) {
+    return (
+      request.target_knowledge_base_name ??
+      request.target_knowledge_base_id ??
+      request.target_group_id
+    );
+  }
+
+  function renderPublishReviewSummary() {
+    const request = publishReviewRequest;
+    if (!request) return null;
+    return (
+      <section className="grid gap-3 rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-sm">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-cal-muted">
+            {localization.groups.publishReviewSourceLabel}
+          </p>
+          <p className="mt-1 break-words font-medium text-cal-ink">
+            {publishRequestSourceLabel(request)}
+          </p>
+          {request.source_document_filename &&
+          request.source_document_filename !== request.source_document_title ? (
+            <p className="mt-1 break-words text-xs text-cal-muted">
+              {request.source_document_filename}
+            </p>
+          ) : null}
+        </div>
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-cal-muted">
+            {localization.groups.publishReviewTargetLabel}
+          </p>
+          <p className="mt-1 break-words text-cal-ink">
+            {publishRequestTargetLabel(request)}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-cal-muted">
+            {localization.groups.publishReviewPreviewLabel}
+          </p>
+          <p className="mt-1 whitespace-pre-wrap break-words rounded-md bg-cal-canvas p-2 text-cal-ink">
+            {request.source_document_excerpt ||
+              localization.groups.publishReviewNoPreview}
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  function renderPublishSourceDocument(
+    document: KnowledgePublishRequestSourceDocument,
+  ) {
+    return (
+      <article
+        key={document.id}
+        className="rounded-lg border border-cal-hairline bg-cal-canvas p-3"
+      >
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <h4 className="break-words text-sm font-semibold text-cal-ink">
+              {document.title}
+            </h4>
+            <p className="mt-1 break-words text-xs text-cal-muted">
+              {document.source_filename ?? document.source_type}
+              {document.source_page_count
+                ? ` · ${document.source_page_count} pages`
+                : ""}
+            </p>
+          </div>
+          <Pill tone="slate">{document.source_type}</Pill>
+        </div>
+        <div className="mt-3 max-h-96 overflow-auto rounded-md border border-cal-hairline bg-white p-3 text-sm leading-6 text-cal-ink">
+          <AgentMarkdown
+            content={
+              document.content || localization.groups.publishReviewNoPreview
+            }
+          />
+        </div>
+      </article>
+    );
+  }
+
+  function renderPublishSourceViewer() {
+    if (publishReviewSource.isLoading) {
+      return (
+        <p className="rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-sm text-cal-muted">
+          {localization.groups.publishReviewSourceLoading}
+        </p>
+      );
+    }
+    if (publishReviewSource.error) {
+      return <ErrorState error={publishReviewSource.error} />;
+    }
+    const source = publishReviewSource.data;
+    if (!source) return null;
+    return (
+      <section className="grid gap-3 rounded-lg border border-cal-hairline bg-cal-surface-soft p-3">
+        <div>
+          <h3 className="text-sm font-semibold text-cal-ink">
+            {localization.groups.publishReviewFullContentTitle}
+          </h3>
+          <p className="mt-1 text-xs leading-5 text-cal-muted">
+            {localization.groups.publishReviewExtractedContentHint}
+          </p>
+          {source.source_knowledge_base_name ? (
+            <p className="mt-2 break-words text-sm font-medium text-cal-ink">
+              {source.source_knowledge_base_name}
+            </p>
+          ) : null}
+        </div>
+        {source.documents.length > 0 ? (
+          <div className="grid gap-3">
+            {source.documents.map((document) =>
+              renderPublishSourceDocument(document),
+            )}
+          </div>
+        ) : (
+          <p className="rounded-md bg-cal-canvas p-3 text-sm text-cal-muted">
+            {localization.groups.publishReviewNoDocuments}
+          </p>
+        )}
+      </section>
+    );
   }
 
   function renderGroupBrowser() {
@@ -2644,7 +2795,14 @@ export function GroupsSurface() {
                       : localization.groups.publishSourceDocumentOption}
                   </span>
                 </div>
-                <p className="mt-2 text-xs leading-5 text-cal-muted">
+                <p className="mt-2 break-words font-medium text-cal-ink">
+                  {publishRequestSourceLabel(request)}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-cal-muted">
+                  {localization.groups.publishReviewTargetLabel}:{" "}
+                  {publishRequestTargetLabel(request)}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-cal-muted">
                   {request.created_at}
                 </p>
                 <details className="mt-2 rounded-lg bg-cal-canvas p-2 text-xs text-cal-muted">
@@ -2664,16 +2822,39 @@ export function GroupsSurface() {
                 </details>
               </div>
               {canReviewPublishRequests && request.status === "pending" ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() =>
-                    setPublishReviewAction({ request, type: "approve" })
-                  }
-                >
-                  {localization.groups.reviewRequestAction}
-                </Button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setPublishReviewRequest(request)}
+                  >
+                    {localization.groups.reviewRequestAction}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={
+                      approvePublishRequest.isPending ||
+                      rejectPublishRequest.isPending
+                    }
+                    onClick={() => void handleApprovePublishRequest(request.id)}
+                  >
+                    {localization.groups.publishApproveNowButton}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={
+                      approvePublishRequest.isPending ||
+                      rejectPublishRequest.isPending
+                    }
+                    onClick={() => void handleRejectPublishRequest(request.id)}
+                  >
+                    {localization.groups.publishRejectNowButton}
+                  </Button>
+                </div>
               ) : null}
             </div>
           </article>
@@ -3312,76 +3493,106 @@ export function GroupsSurface() {
         </DialogContent>
       </Dialog>
 
-      <Dialog
-        open={Boolean(publishReviewAction)}
+      <Drawer
+        direction="bottom"
+        open={Boolean(publishReviewRequest)}
         onOpenChange={(open) => {
-          if (!open) setPublishReviewAction(undefined);
+          if (!open) setPublishReviewRequest(undefined);
         }}
       >
-        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>{localization.groups.reviewRequestAction}</DialogTitle>
-            <DialogDescription>
-              {localization.groups.publishReviewHint}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3">
-            <details
-              className="rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-xs text-cal-muted"
-              open
-            >
-              <summary className="cursor-pointer font-medium text-cal-ink">
-                {localization.groups.advancedGroupDetails}
-              </summary>
-              <p className="mt-2 break-all font-mono">
-                {publishReviewAction?.request.id}
-              </p>
-            </details>
-            {approvePublishRequest.error || rejectPublishRequest.error ? (
-              <ErrorState
-                error={
-                  approvePublishRequest.error ?? rejectPublishRequest.error
-                }
-              />
-            ) : null}
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setPublishReviewAction(undefined)}
-              >
-                {localization.common.cancel}
-              </Button>
-              <Button
-                type="button"
-                variant={
-                  publishReviewAction?.type === "reject"
-                    ? "secondary"
-                    : "default"
-                }
-                disabled={
-                  publishReviewAction?.type === "approve"
-                    ? approvePublishRequest.isPending
-                    : rejectPublishRequest.isPending
-                }
-                onClick={() => {
-                  const requestId = publishReviewAction?.request.id;
-                  if (!requestId) return;
-                  if (publishReviewAction?.type === "approve") {
-                    void handleApprovePublishRequest(requestId);
-                  } else {
-                    void handleRejectPublishRequest(requestId);
+        <DrawerContent className="max-h-[92dvh] bg-white">
+          <DrawerHeader className="items-stretch border-b border-cal-hairline text-left group-data-[vaul-drawer-direction=bottom]/drawer-content:text-left">
+            <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 text-left lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <DrawerTitle>
+                  {localization.groups.reviewRequestAction}
+                </DrawerTitle>
+                <DrawerDescription>
+                  {localization.groups.publishReviewHint}
+                </DrawerDescription>
+              </div>
+              {publishReviewRequest ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={rejectPublishRequest.isPending}
+                    onClick={() =>
+                      void handleRejectPublishRequest(publishReviewRequest.id)
+                    }
+                  >
+                    {localization.groups.publishRejectButton}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={approvePublishRequest.isPending}
+                    onClick={() =>
+                      void handleApprovePublishRequest(publishReviewRequest.id)
+                    }
+                  >
+                    {localization.groups.publishApproveButton}
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          </DrawerHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="mx-auto grid max-w-5xl gap-3">
+              {renderPublishReviewSummary()}
+              {renderPublishSourceViewer()}
+              <details className="rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-xs text-cal-muted">
+                <summary className="cursor-pointer font-medium text-cal-ink">
+                  {localization.groups.advancedGroupDetails}
+                </summary>
+                <p className="mt-2 break-all font-mono">
+                  {publishReviewRequest?.id}
+                </p>
+              </details>
+              {approvePublishRequest.error || rejectPublishRequest.error ? (
+                <ErrorState
+                  error={
+                    approvePublishRequest.error ?? rejectPublishRequest.error
                   }
-                }}
-              >
-                {publishReviewAction?.type === "approve"
-                  ? localization.groups.publishApproveButton
-                  : localization.groups.publishRejectButton}
-              </Button>
-            </DialogFooter>
+                />
+              ) : null}
+            </div>
           </div>
-        </DialogContent>
-      </Dialog>
+          <DrawerFooter className="border-t border-cal-hairline bg-white lg:hidden">
+            <div className="grid grid-cols-3 gap-2">
+              <DrawerClose asChild>
+                <Button type="button" variant="outline">
+                  {localization.common.cancel}
+                </Button>
+              </DrawerClose>
+              {publishReviewRequest ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={rejectPublishRequest.isPending}
+                    onClick={() =>
+                      void handleRejectPublishRequest(publishReviewRequest.id)
+                    }
+                  >
+                    {localization.groups.publishRejectNowButton}
+                  </Button>
+                  <Button
+                    type="button"
+                    disabled={approvePublishRequest.isPending}
+                    onClick={() =>
+                      void handleApprovePublishRequest(publishReviewRequest.id)
+                    }
+                  >
+                    {localization.groups.publishApproveButton}
+                  </Button>
+                </>
+              ) : null}
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
     </>
   );
 }

@@ -115,6 +115,11 @@ describe("MyAgentsGroupAPI publish requests", () => {
           target_knowledge_base_id: "kb-group-1",
           source_document_id: "doc-personal-1",
           source_knowledge_base_id: null,
+          source_document_title: "Private draft",
+          source_document_excerpt: "Preview text for review.",
+          source_document_filename: null,
+          source_knowledge_base_name: null,
+          target_knowledge_base_name: "Group KB",
           status: "pending",
           reviewer_user_id: null,
           published_document_id: null,
@@ -157,6 +162,11 @@ describe("MyAgentsGroupAPI publish requests", () => {
           target_knowledge_base_id: "kb-group-1",
           source_document_id: "doc-personal-1",
           source_knowledge_base_id: null,
+          source_document_title: "Private draft",
+          source_document_excerpt: "Preview text for review.",
+          source_document_filename: "draft.md",
+          source_knowledge_base_name: null,
+          target_knowledge_base_name: "Group KB",
           status: path.endsWith("approve") ? "approved" : "rejected",
           reviewer_user_id: "admin-1",
           published_document_id: path.endsWith("approve")
@@ -166,13 +176,51 @@ describe("MyAgentsGroupAPI publish requests", () => {
           created_at: "2026-05-24T07:00:00Z",
           reviewed_at: "2026-05-24T07:05:00Z",
         };
-        return path === "/groups/group-1/publish-requests"
-          ? [response]
-          : response;
+        if (path === "/groups/group-1/publish-requests") return [response];
+        if (path === "/groups/group-1/publish-requests/request-1/source") {
+          return {
+            request_id: "request-1",
+            source_kind: "document",
+            source_knowledge_base_id: null,
+            source_knowledge_base_name: null,
+            documents: [
+              {
+                id: "doc-personal-1",
+                title: "Private draft",
+                content: "Full extracted content for owner review.",
+                source_type: "text",
+                source_filename: "draft.md",
+                source_content_type: "text/markdown",
+                source_byte_size: 42,
+                source_page_count: null,
+                parser_name: "markdown_upload",
+                created_at: "2026-05-24T07:00:00Z",
+              },
+            ],
+          };
+        }
+        return response;
       },
     });
 
-    await expect(api.publishRequests("group-1")).resolves.toHaveLength(1);
+    await expect(api.publishRequests("group-1")).resolves.toMatchObject([
+      {
+        source_document_title: "Private draft",
+        source_document_excerpt: "Preview text for review.",
+        target_knowledge_base_name: "Group KB",
+      },
+    ]);
+    await expect(
+      api.publishRequestSource("group-1", "request-1"),
+    ).resolves.toMatchObject({
+      source_kind: "document",
+      documents: [
+        {
+          title: "Private draft",
+          content: "Full extracted content for owner review.",
+        },
+      ],
+    });
     await expect(
       api.approvePublishRequest("group-1", "request-1"),
     ).resolves.toMatchObject({
@@ -187,6 +235,10 @@ describe("MyAgentsGroupAPI publish requests", () => {
     });
     expect(calls).toEqual([
       { path: "/groups/group-1/publish-requests", init: undefined },
+      {
+        path: "/groups/group-1/publish-requests/request-1/source",
+        init: undefined,
+      },
       {
         path: "/groups/group-1/publish-requests/request-1/approve",
         init: { method: "POST" },
