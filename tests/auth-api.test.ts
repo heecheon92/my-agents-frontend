@@ -60,6 +60,53 @@ describe("MyAgentsAuthAPI", () => {
     ]);
   });
 
+  it("wires account update endpoints with current-password payloads", async () => {
+    const calls: Array<{ path: string; init?: unknown }> = [];
+    const updatedUser = { ...user, nickname: "Updated User" };
+    const api = new MyAgentsAuthAPI({
+      fetch: async (path, init) => {
+        calls.push({ path, init });
+        return path === "/auth/me/nickname" ? updatedUser : null;
+      },
+    });
+
+    await expect(
+      api.updateNickname({
+        current_password: "current-password",
+        nickname: "Updated User",
+      }),
+    ).resolves.toEqual(updatedUser);
+    await expect(
+      api.updatePassword({
+        current_password: "current-password",
+        new_password: "password123",
+      }),
+    ).resolves.toBeUndefined();
+
+    expect(calls).toEqual([
+      {
+        path: "/auth/me/nickname",
+        init: {
+          method: "PATCH",
+          body: {
+            current_password: "current-password",
+            nickname: "Updated User",
+          },
+        },
+      },
+      {
+        path: "/auth/me/password",
+        init: {
+          method: "PATCH",
+          body: {
+            current_password: "current-password",
+            new_password: "password123",
+          },
+        },
+      },
+    ]);
+  });
+
   it("wires verification and password-reset auth endpoints", async () => {
     const calls: Array<{ path: string; init?: unknown }> = [];
     const api = new MyAgentsAuthAPI({

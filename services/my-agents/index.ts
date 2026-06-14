@@ -5,3 +5,4 @@ export * from "./MyAgentsConversationAPI";
 export * from "./MyAgentsDocumentAPI";
 export * from "./MyAgentsGroupAPI";
 export * from "./MyAgentsKnowledgeBaseAPI";
+export * from "./MyAgentsMemoryAPI";

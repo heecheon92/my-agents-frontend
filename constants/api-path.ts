@@ -10,6 +10,8 @@ export const API_PATH = {
     passwordResetConfirm: "/auth/password-reset/confirm",
     logout: "/auth/logout",
     me: "/auth/me",
+    updateNickname: "/auth/me/nickname",
+    updatePassword: "/auth/me/password",
   },
   conversations: {
     root: "/conversations",
@@ -76,6 +78,9 @@ export const API_PATH = {
   },
   groupInvitations: {
     accept: "/group-invitations/accept",
+  },
+  memories: {
+    settings: "/memories/settings",
   },
   knowledgeBases: {
     root: "/knowledge-bases",

@@ -4,6 +4,7 @@ import {
   FilePlus2Icon,
   LogOutIcon,
   MessageSquareTextIcon,
+  SettingsIcon,
   SparklesIcon,
   UsersRoundIcon,
 } from "lucide-react";
@@ -35,6 +36,7 @@ const navRoutes = [
   { href: "/chat", key: "chat", icon: MessageSquareTextIcon },
   { href: "/knowledge", key: "knowledge", icon: FilePlus2Icon },
   { href: "/groups", key: "groups", icon: UsersRoundIcon },
+  { href: "/settings", key: "settings", icon: SettingsIcon },
 ] as const;
 
 type ServiceShellProps = {

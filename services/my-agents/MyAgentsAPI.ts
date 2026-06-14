@@ -6,6 +6,7 @@ import { MyAgentsConversationAPI } from "./MyAgentsConversationAPI";
 import { MyAgentsDocumentAPI } from "./MyAgentsDocumentAPI";
 import { MyAgentsGroupAPI } from "./MyAgentsGroupAPI";
 import { MyAgentsKnowledgeBaseAPI } from "./MyAgentsKnowledgeBaseAPI";
+import { MyAgentsMemoryAPI } from "./MyAgentsMemoryAPI";
 import { parseWithSchema } from "./parser";
 
 export class MyAgentsAPI {
@@ -14,6 +15,7 @@ export class MyAgentsAPI {
   readonly groups = new MyAgentsGroupAPI();
   readonly knowledgeBases = new MyAgentsKnowledgeBaseAPI();
   readonly documents = new MyAgentsDocumentAPI();
+  readonly memories = new MyAgentsMemoryAPI();
 
   async health(): Promise<HealthResponse> {
     return parseWithSchema(

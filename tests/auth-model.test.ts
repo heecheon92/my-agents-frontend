@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   acceptedResponseSchema,
+  accountNicknameUpdateRequestSchema,
+  accountPasswordUpdateRequestSchema,
   backendLoginResponseSchema,
   guestAccessRequestSchema,
   guestAccessResponseSchema,
@@ -137,6 +139,46 @@ describe("auth response schemas", () => {
       loginResponseSchema.parse({
         user,
         csrf_token: "csrf-secret",
+      }),
+    ).toThrow();
+  });
+
+  it("validates account nickname and password update request contracts", () => {
+    expect(
+      accountNicknameUpdateRequestSchema.parse({
+        current_password: "current-password",
+        nickname: "  Shared Name  ",
+      }),
+    ).toEqual({
+      current_password: "current-password",
+      nickname: "Shared Name",
+    });
+    expect(() =>
+      accountNicknameUpdateRequestSchema.parse({
+        current_password: "current-password",
+        nickname: "   ",
+      }),
+    ).toThrow();
+    expect(() =>
+      accountNicknameUpdateRequestSchema.parse({
+        current_password: "current-password",
+        nickname: "x".repeat(41),
+      }),
+    ).toThrow();
+
+    expect(
+      accountPasswordUpdateRequestSchema.parse({
+        current_password: "current-password",
+        new_password: "password123",
+      }),
+    ).toEqual({
+      current_password: "current-password",
+      new_password: "password123",
+    });
+    expect(() =>
+      accountPasswordUpdateRequestSchema.parse({
+        current_password: "current-password",
+        new_password: "short",
       }),
     ).toThrow();
   });

@@ -7,6 +7,11 @@ export const MyAgentsQueryKeys = {
       return ["my-agents", "auth", "me"] as const;
     },
   },
+  memories: {
+    settings() {
+      return ["my-agents", "memories", "settings"] as const;
+    },
+  },
   conversations: {
     list() {
       return ["my-agents", "conversations", "list"] as const;

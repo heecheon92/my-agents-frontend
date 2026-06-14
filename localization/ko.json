@@ -113,7 +113,8 @@
       "chat": "Ask",
       "documents": "지식",
       "knowledge": "지식",
-      "groups": "그룹"
+      "groups": "그룹",
+      "settings": "설정"
     },
     "restoringSession": "세션을 복원하는 중...",
     "pleaseLogin": "로그인이 필요합니다",
@@ -654,5 +655,59 @@
     "originRejected": "허용되지 않은 Origin입니다",
     "refererInvalid": "Referer가 유효하지 않습니다",
     "refererRejected": "허용되지 않은 Referer입니다"
+  },
+  "settings": {
+    "eyebrow": "설정",
+    "tabs": {
+      "account": "계정",
+      "experimental": "실험실"
+    },
+    "account": {
+      "title": "계정 설정",
+      "description": "표시 정보와 비밀번호 기반 계정 자격 증명을 변경합니다. 모든 계정 변경에는 현재 비밀번호가 필요합니다.",
+      "summaryEyebrow": "로그인 계정",
+      "loadingAccount": "계정을 불러오는 중...",
+      "emailLabel": "이메일",
+      "guestEmailFallback": "게스트 세션",
+      "accountTypeLabel": "계정 유형",
+      "registeredAccountLabel": "등록 계정",
+      "guestAccountLabel": "게스트 데모",
+      "guestDisabledTitle": "게스트 계정은 변경할 수 없습니다",
+      "guestDisabledDescription": "게스트 세션에는 비밀번호 기반 계정 신원이 없습니다. 표시 이름이나 비밀번호를 변경하려면 등록 계정을 만드세요.",
+      "nicknameTitle": "표시 이름",
+      "nicknameDescription": "표시 이름은 화면에 보이는 메타데이터일 뿐입니다. 로그인 신원으로 사용하지 않으며 중복도 허용됩니다.",
+      "nicknameLabel": "표시 이름",
+      "nicknameHint": "저장 전 앞뒤 공백을 제거합니다. 최대 40자입니다.",
+      "currentPasswordLabel": "현재 비밀번호",
+      "currentPasswordHint": "이 계정 변경을 확인하려면 필요합니다.",
+      "nicknameSubmit": "표시 이름 저장",
+      "nicknameSuccess": "표시 이름을 업데이트했습니다.",
+      "nicknameErrorTitle": "표시 이름을 업데이트할 수 없습니다",
+      "passwordTitle": "비밀번호",
+      "passwordDescription": "비밀번호를 변경하면 모든 세션에서 로그아웃됩니다. 변경이 완료되면 새 비밀번호로 다시 로그인하세요.",
+      "newPasswordLabel": "새 비밀번호",
+      "newPasswordHint": "8자 이상 128자 이하로 입력하세요.",
+      "confirmPasswordLabel": "새 비밀번호 확인",
+      "passwordSubmit": "비밀번호 변경",
+      "passwordMismatch": "새 비밀번호와 확인 값이 일치해야 합니다.",
+      "passwordErrorTitle": "비밀번호를 변경할 수 없습니다"
+    },
+    "experimental": {
+      "title": "실험실 설정",
+      "description": "아직 안정화되지 않았지만 나중에 안전하게 끌 수 있는 제품 동작을 제어합니다.",
+      "warningEyebrow": "실험 기능",
+      "memoryTitle": "장기 메모리",
+      "memoryDescription": "활성화하면 향후 어시스턴트 경험에서 사용자의 옵트인 메모리 설정을 사용할 수 있습니다. 원본 메모리, 출처 ID, 임의 값, TTL 제어는 노출하지 않습니다.",
+      "privacyTitle": "개인정보 경계",
+      "privacyDescription": "이 토글은 기존 메모리 설정 엔드포인트를 통해 사용자별 옵트인 상태만 바꿉니다. 언제든 다시 비활성화할 수 있습니다.",
+      "loadingStatus": "불러오는 중...",
+      "enabledStatus": "활성화됨",
+      "disabledStatus": "비활성화됨",
+      "enableSubmit": "메모리 활성화",
+      "disableSubmit": "메모리 비활성화",
+      "toggleHint": "기존 설정이 없는 사용자의 메모리는 비활성화 상태로 시작합니다.",
+      "loadErrorTitle": "메모리 설정을 불러올 수 없습니다",
+      "updateErrorTitle": "메모리 설정을 업데이트할 수 없습니다"
+    }
   }
 }

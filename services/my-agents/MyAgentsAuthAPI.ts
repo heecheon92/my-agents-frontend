@@ -1,6 +1,8 @@
 import { API_PATH } from "@/constants/api-path";
 import {
   type AcceptedResponse,
+  type AccountNicknameUpdateRequest,
+  type AccountPasswordUpdateRequest,
   acceptedResponseSchema,
   type GuestAccessRequest,
   guestAccessResponseSchema,
@@ -90,6 +92,21 @@ export class MyAgentsAuthAPI {
 
   async logout(): Promise<void> {
     await this.client.fetch(API_PATH.auth.logout, { method: "POST" });
+  }
+
+  async updateNickname(payload: AccountNicknameUpdateRequest): Promise<User> {
+    const value = await this.client.fetch(API_PATH.auth.updateNickname, {
+      method: "PATCH",
+      body: payload,
+    });
+    return parseWithSchema(userSchema, value);
+  }
+
+  async updatePassword(payload: AccountPasswordUpdateRequest): Promise<void> {
+    await this.client.fetch(API_PATH.auth.updatePassword, {
+      method: "PATCH",
+      body: payload,
+    });
   }
 
   async me(): Promise<User> {

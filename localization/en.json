@@ -113,7 +113,8 @@
       "chat": "Ask",
       "documents": "Sources",
       "knowledge": "Sources",
-      "groups": "Groups"
+      "groups": "Groups",
+      "settings": "Settings"
     },
     "restoringSession": "Restoring session...",
     "pleaseLogin": "Please log in",
@@ -654,5 +655,59 @@
     "originRejected": "Origin is not allowed",
     "refererInvalid": "Referer is invalid",
     "refererRejected": "Referer is not allowed"
+  },
+  "settings": {
+    "eyebrow": "Settings",
+    "tabs": {
+      "account": "Account",
+      "experimental": "Experimental"
+    },
+    "account": {
+      "title": "Account settings",
+      "description": "Update display metadata and password-backed account credentials. Current password is required for every account change.",
+      "summaryEyebrow": "Signed in as",
+      "loadingAccount": "Loading account...",
+      "emailLabel": "Email",
+      "guestEmailFallback": "Guest session",
+      "accountTypeLabel": "Account type",
+      "registeredAccountLabel": "Registered account",
+      "guestAccountLabel": "Guest demo",
+      "guestDisabledTitle": "Guest account changes are disabled",
+      "guestDisabledDescription": "Guest sessions do not have password-backed account identity. Create a registered account to change nickname or password.",
+      "nicknameTitle": "Display name",
+      "nicknameDescription": "Your nickname is display metadata only. It is not used as a login identity and duplicates are allowed.",
+      "nicknameLabel": "Display name",
+      "nicknameHint": "Trimmed before saving. Maximum 40 characters.",
+      "currentPasswordLabel": "Current password",
+      "currentPasswordHint": "Required to confirm this account change.",
+      "nicknameSubmit": "Save display name",
+      "nicknameSuccess": "Display name updated.",
+      "nicknameErrorTitle": "Could not update display name",
+      "passwordTitle": "Password",
+      "passwordDescription": "Changing your password signs out all sessions. Log in again with the new password after the update succeeds.",
+      "newPasswordLabel": "New password",
+      "newPasswordHint": "Use 8 to 128 characters.",
+      "confirmPasswordLabel": "Confirm new password",
+      "passwordSubmit": "Change password",
+      "passwordMismatch": "New password and confirmation must match.",
+      "passwordErrorTitle": "Could not change password"
+    },
+    "experimental": {
+      "title": "Experimental settings",
+      "description": "Control not-yet-stable product behavior that is safe to turn off later.",
+      "warningEyebrow": "Experimental",
+      "memoryTitle": "Long-term memory",
+      "memoryDescription": "When enabled, future assistant experiences may use your opt-in memory setting. This does not expose raw memory records, provenance IDs, custom values, or TTL controls.",
+      "privacyTitle": "Privacy boundary",
+      "privacyDescription": "This toggle only changes your per-user opt-in state through the existing memory settings endpoint. You can disable it again at any time.",
+      "loadingStatus": "Loading...",
+      "enabledStatus": "Enabled",
+      "disabledStatus": "Disabled",
+      "enableSubmit": "Enable memory",
+      "disableSubmit": "Disable memory",
+      "toggleHint": "Memory starts disabled for users without an existing setting.",
+      "loadErrorTitle": "Could not load memory setting",
+      "updateErrorTitle": "Could not update memory setting"
+    }
   }
 }

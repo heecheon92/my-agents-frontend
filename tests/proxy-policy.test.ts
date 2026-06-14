@@ -105,6 +105,18 @@ describe("proxy policy", () => {
     expect(isAllowedBackendPath("GET", "/groups/group-1/members").allowed).toBe(
       true,
     );
+    expect(isAllowedBackendPath("PATCH", "/auth/me/nickname").allowed).toBe(
+      true,
+    );
+    expect(isAllowedBackendPath("PATCH", "/auth/me/password").allowed).toBe(
+      true,
+    );
+    expect(isAllowedBackendPath("GET", "/memories/settings").allowed).toBe(
+      true,
+    );
+    expect(isAllowedBackendPath("PATCH", "/memories/settings").allowed).toBe(
+      true,
+    );
     expect(
       isAllowedBackendPath("PATCH", "/groups/group-1/members/user-1").allowed,
     ).toBe(true);
@@ -114,6 +126,14 @@ describe("proxy policy", () => {
     expect(
       isAllowedBackendPath("POST", "/groups/group-1/members"),
     ).toMatchObject({
+      allowed: false,
+      code: "path_not_allowed",
+    });
+    expect(isAllowedBackendPath("GET", "/auth/me/nickname")).toMatchObject({
+      allowed: false,
+      code: "path_not_allowed",
+    });
+    expect(isAllowedBackendPath("POST", "/memories/settings")).toMatchObject({
       allowed: false,
       code: "path_not_allowed",
     });
@@ -135,6 +155,9 @@ describe("proxy policy", () => {
     expect(isCsrfExemptPath("/auth/password-reset/request")).toBe(true);
     expect(isCsrfExemptPath("/auth/password-reset/confirm")).toBe(true);
     expect(isCsrfExemptPath("/auth/logout")).toBe(false);
+    expect(isCsrfExemptPath("/auth/me/nickname")).toBe(false);
+    expect(isCsrfExemptPath("/auth/me/password")).toBe(false);
+    expect(isCsrfExemptPath("/memories/settings")).toBe(false);
   });
 
   it("rejects cross-site mutations", () => {

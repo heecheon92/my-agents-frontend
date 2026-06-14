@@ -108,6 +108,12 @@ describe("API_PATH", () => {
     expect(toFrontendAPIPath(API_PATH.auth.me)).toBe("/api/my-agents/auth/me");
   });
 
+  it("builds account settings and memory settings paths", () => {
+    expect(API_PATH.auth.updateNickname).toBe("/auth/me/nickname");
+    expect(API_PATH.auth.updatePassword).toBe("/auth/me/password");
+    expect(API_PATH.memories.settings).toBe("/memories/settings");
+  });
+
   it("builds new auth lifecycle paths", () => {
     expect(API_PATH.auth.verifyEmail).toBe("/auth/verify-email");
     expect(API_PATH.auth.guestRequest).toBe("/auth/guest/request");
@@ -147,6 +153,11 @@ describe("MyAgentsQueryKeys", () => {
       "groups",
       "members",
       "group-1",
+    ]);
+    expect(MyAgentsQueryKeys.memories.settings()).toEqual([
+      "my-agents",
+      "memories",
+      "settings",
     ]);
     expect(MyAgentsQueryKeys.documents.extractionRun("doc-1", runId)).toEqual([
       "my-agents",
