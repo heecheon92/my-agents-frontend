@@ -616,7 +616,30 @@
       "requestShareAction": "Request share",
       "updateMemberRoleAction": "Change role",
       "manageInvitationAction": "Manage invitation",
-      "reviewRequestAction": "Review request"
+      "reviewRequestAction": "Review request",
+      "manageMembersAction": "Manage members",
+      "viewInvitationsAction": "View invitation history",
+      "manageSourceSpacesAction": "Manage source spaces",
+      "viewPublishRequestsAction": "View all requests",
+      "membersDrawerDescription": "Full invite-accepted member roster for {groupName}. User IDs stay inside advanced details.",
+      "invitationsDrawerDescription": "Email invitation history for {groupName}, managed by status without revealing account existence.",
+      "sourceSpacesDrawerDescription": "All group source spaces connected to {groupName}.",
+      "publishRequestsDrawerDescription": "Full share-request history for {groupName}. Only pending requests can be approved or rejected.",
+      "drawerCountLabel": "{count} total",
+      "hiddenRowsHint": "+{count} more. Open the management view for the full list.",
+      "allStatusFilter": "All",
+      "publishRequestStatuses": {
+        "pending": "pending",
+        "approved": "approved",
+        "rejected": "rejected"
+      },
+      "publishRequestSearchLabel": "Search share requests",
+      "publishRequestSearchPlaceholder": "Search source, target, filename, request ID, or date",
+      "invitationSearchLabel": "Search invitations",
+      "invitationSearchPlaceholder": "Search email, invitation ID, role, or date",
+      "noFilteredResultsTitle": "No matching results",
+      "noFilteredResultsDescription": "Adjust the search or filter and try again.",
+      "sourceSpacesLoading": "Loading group source spaces..."
     }
   },
   "errors": {

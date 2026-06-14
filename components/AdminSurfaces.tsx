@@ -83,10 +83,12 @@ import {
   documentUploadConcurrencyFromHealth,
   type ExtractionRun,
   type GroupInvitation,
+  type GroupInvitationStatus,
   type GroupMember,
   type KnowledgeBase,
   type KnowledgePublishRequest,
   type KnowledgePublishRequestSourceDocument,
+  type KnowledgePublishRequestStatus,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 import {
@@ -107,6 +109,10 @@ type DocumentDestination = "personal" | "team";
 
 type SourcesSurfaceProps = {
   initialSourceId?: string;
+};
+
+type GroupsSurfaceProps = {
+  initialGroupId?: string;
 };
 
 type SourceActionsDialogState = {
@@ -213,6 +219,10 @@ function wait(ms: number) {
 
 function knowledgeSourceHref(sourceId: string) {
   return `/knowledge/${encodeURIComponent(sourceId)}`;
+}
+
+function groupHref(groupId: string) {
+  return `/groups/${encodeURIComponent(groupId)}`;
 }
 
 function decodeRouteSegment(segment?: string) {
@@ -2174,17 +2184,63 @@ function uploadFileTypeLabel(
   return localization.fileTypeText;
 }
 
-export function GroupsSurface() {
+type GroupManagementDrawer =
+  | "members"
+  | "invitations"
+  | "source-spaces"
+  | "publish-requests";
+type PublishRequestStatusFilter = KnowledgePublishRequestStatus | "all";
+type InvitationStatusFilter = GroupInvitationStatus | "all";
+
+const GROUP_PREVIEW_LIMIT = 3;
+const PUBLISH_REQUEST_STATUS_ORDER: Record<
+  KnowledgePublishRequestStatus,
+  number
+> = {
+  pending: 0,
+  approved: 1,
+  rejected: 2,
+};
+
+function previewRows<T>(rows: T[], limit = GROUP_PREVIEW_LIMIT) {
+  return rows.slice(0, limit);
+}
+
+function sortPublishRequestsForReview(
+  requests: KnowledgePublishRequest[],
+): KnowledgePublishRequest[] {
+  return [...requests].sort((left, right) => {
+    const statusDelta =
+      PUBLISH_REQUEST_STATUS_ORDER[left.status] -
+      PUBLISH_REQUEST_STATUS_ORDER[right.status];
+    if (statusDelta !== 0) return statusDelta;
+    return (
+      new Date(right.created_at).getTime() - new Date(left.created_at).getTime()
+    );
+  });
+}
+
+export function GroupsSurface({ initialGroupId }: GroupsSurfaceProps = {}) {
   const groups = useGroups();
   const knowledgeBases = useKnowledgeBases();
   const currentUser = useCurrentUser();
   const createGroup = useCreateGroup();
+  const router = useRouter();
   const [name, setName] = useState("");
   const [selectedGroupId, setSelectedGroupId] = useState<string>();
+  const [optimisticGroupId, setOptimisticGroupId] = useState<string>();
   const [isGroupBrowserOpen, setIsGroupBrowserOpen] = useState(false);
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
+  const [groupManagementDrawer, setGroupManagementDrawer] =
+    useState<GroupManagementDrawer>();
+  const [publishRequestStatusFilter, setPublishRequestStatusFilter] =
+    useState<PublishRequestStatusFilter>("pending");
+  const [publishRequestSearch, setPublishRequestSearch] = useState("");
+  const [invitationStatusFilter, setInvitationStatusFilter] =
+    useState<InvitationStatusFilter>("pending");
+  const [invitationSearch, setInvitationSearch] = useState("");
   const [invitationAction, setInvitationAction] = useState<
     | { invitation: GroupInvitation; type: "update" | "resend" | "cancel" }
     | undefined
@@ -2192,7 +2248,21 @@ export function GroupsSurface() {
   const [memberAction, setMemberAction] = useState<GroupMember>();
   const [publishReviewRequest, setPublishReviewRequest] =
     useState<KnowledgePublishRequest>();
-  const activeGroupId = selectedGroupId ?? groups.data?.[0]?.id;
+  const lastActiveGroupIdRef = useRef<string | undefined>(undefined);
+  const routeGroupId = decodeRouteSegment(initialGroupId);
+  // Keep a clicked group active while Next remounts /groups/[groupId] and the
+  // route segment catches up, mirroring the Knowledge page route-selection UX.
+  const effectiveRouteGroupId = optimisticGroupId ?? routeGroupId;
+  const routeGroup = groups.data?.find(
+    (group) => group.id === effectiveRouteGroupId,
+  );
+  const selectedGroupStillExists = Boolean(
+    selectedGroupId &&
+      groups.data?.some((group) => group.id === selectedGroupId),
+  );
+  const activeGroupId =
+    routeGroup?.id ??
+    (selectedGroupStillExists ? selectedGroupId : groups.data?.[0]?.id);
   const activeGroup = groups.data?.find((group) => group.id === activeGroupId);
   const canManageMembers =
     activeGroup?.role === "owner" || activeGroup?.role === "admin";
@@ -2249,6 +2319,37 @@ export function GroupsSurface() {
   const invitationCount = invitations.data?.length ?? 0;
   const memberCount = members.data?.length ?? 0;
   const publishRequestCount = publishRequests.data?.length ?? 0;
+  const sortedPublishRequests = sortPublishRequestsForReview(
+    publishRequests.data ?? [],
+  );
+  const memberPreviewRows = previewRows(members.data ?? []);
+  const invitationPreviewRows = previewRows(invitations.data ?? []);
+  const sourceSpacePreviewRows = previewRows(activeGroupKnowledgeBases);
+  const publishRequestPreviewRows = previewRows(sortedPublishRequests);
+
+  useEffect(() => {
+    if (!optimisticGroupId) return;
+    if (!routeGroupId || routeGroupId === optimisticGroupId) {
+      setOptimisticGroupId(undefined);
+    }
+  }, [optimisticGroupId, routeGroupId]);
+
+  useEffect(() => {
+    if (lastActiveGroupIdRef.current === activeGroupId) return;
+    if (lastActiveGroupIdRef.current !== undefined) {
+      setInvitationAction(undefined);
+      setInvitationActionId("");
+      setMemberAction(undefined);
+      setUpdateUserId("");
+      setPublishReviewRequest(undefined);
+      setGroupManagementDrawer(undefined);
+      setPublishRequestSearch("");
+      setPublishRequestStatusFilter("pending");
+      setInvitationSearch("");
+      setInvitationStatusFilter("pending");
+    }
+    lastActiveGroupIdRef.current = activeGroupId;
+  }, [activeGroupId]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2256,7 +2357,9 @@ export function GroupsSurface() {
       const created = await createGroup.mutateAsync({ name });
       setName("");
       setSelectedGroupId(created.id);
+      setOptimisticGroupId(created.id);
       setIsCreateGroupDialogOpen(false);
+      router.push(groupHref(created.id));
     } catch {
       // React Query stores the API error on the mutation; render it below.
     }
@@ -2369,6 +2472,7 @@ export function GroupsSurface() {
 
   function selectGroup(groupId: string) {
     setSelectedGroupId(groupId);
+    setOptimisticGroupId(groupId);
     setIsGroupBrowserOpen(false);
   }
 
@@ -2403,6 +2507,81 @@ export function GroupsSurface() {
       request.target_knowledge_base_name ??
       request.target_knowledge_base_id ??
       request.target_group_id
+    );
+  }
+
+  function publishRequestStatusLabel(status: KnowledgePublishRequestStatus) {
+    return localization.groups.publishRequestStatuses[status];
+  }
+
+  function publishRequestMatchesSearch(
+    request: KnowledgePublishRequest,
+    search: string,
+  ) {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return true;
+    return [
+      request.id,
+      request.created_at,
+      publishRequestSourceLabel(request),
+      publishRequestTargetLabel(request),
+      request.source_document_filename,
+      request.source_document_title,
+      request.source_knowledge_base_name,
+    ]
+      .filter(Boolean)
+      .some((value) => String(value).toLowerCase().includes(needle));
+  }
+
+  function invitationMatchesSearch(
+    invitation: GroupInvitation,
+    search: string,
+  ) {
+    const needle = search.trim().toLowerCase();
+    if (!needle) return true;
+    return [
+      invitation.id,
+      invitation.invited_email,
+      invitation.role,
+      invitation.status,
+      invitation.created_at,
+      invitation.expires_at,
+    ].some((value) => String(value).toLowerCase().includes(needle));
+  }
+
+  function filterPublishRequests(
+    requests: KnowledgePublishRequest[],
+    status: PublishRequestStatusFilter,
+    search: string,
+  ) {
+    return requests.filter(
+      (request) =>
+        (status === "all" || request.status === status) &&
+        publishRequestMatchesSearch(request, search),
+    );
+  }
+
+  function filterInvitations(
+    rows: GroupInvitation[],
+    status: InvitationStatusFilter,
+    search: string,
+  ) {
+    return rows.filter(
+      (invitation) =>
+        (status === "all" || invitation.status === status) &&
+        invitationMatchesSearch(invitation, search),
+    );
+  }
+
+  function hiddenRowsHint(hiddenCount: number) {
+    if (hiddenCount <= 0) return null;
+    return (
+      <p className="mt-3 rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-xs text-cal-muted">
+        {localization.groups.hiddenRowsHint.replace(
+          "{count}",
+          String(hiddenCount),
+        )}
+      </p>
     );
   }
 
@@ -2573,9 +2752,9 @@ export function GroupsSurface() {
           ) : null}
           <div className="grid gap-1">
             {groups.data?.map((group) => (
-              <button
+              <Link
                 key={group.id}
-                type="button"
+                href={groupHref(group.id)}
                 onClick={() => selectGroup(group.id)}
                 aria-current={activeGroupId === group.id ? "page" : undefined}
                 className={cn(
@@ -2592,7 +2771,7 @@ export function GroupsSurface() {
                 <span className="shrink-0 text-xs opacity-80">
                   {localization.groups.roles[group.role]}
                 </span>
-              </button>
+              </Link>
             ))}
           </div>
         </div>
@@ -2629,7 +2808,15 @@ export function GroupsSurface() {
     );
   }
 
-  function renderInvitationRows() {
+  function renderInvitationRows({
+    rows,
+    mode = "management",
+    emptyFiltered = false,
+  }: {
+    rows?: GroupInvitation[];
+    mode?: "preview" | "management";
+    emptyFiltered?: boolean;
+  } = {}) {
     if (invitations.isLoading) {
       return (
         <InlineLoadingIndicator
@@ -2638,17 +2825,26 @@ export function GroupsSurface() {
       );
     }
     if (invitations.error) return <ErrorState error={invitations.error} />;
-    if ((invitations.data ?? []).length === 0) {
+    const invitationRows = rows ?? invitations.data ?? [];
+    if (invitationRows.length === 0) {
       return (
         <EmptyState
-          title={localization.groups.noInvitationsTitle}
-          description={localization.groups.noInvitationsDescription}
+          title={
+            emptyFiltered
+              ? localization.groups.noFilteredResultsTitle
+              : localization.groups.noInvitationsTitle
+          }
+          description={
+            emptyFiltered
+              ? localization.groups.noFilteredResultsDescription
+              : localization.groups.noInvitationsDescription
+          }
         />
       );
     }
     return (
       <div className="grid gap-2">
-        {invitations.data?.map((invitation) => (
+        {invitationRows.map((invitation) => (
           <article
             key={invitation.id}
             className="rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm"
@@ -2670,14 +2866,16 @@ export function GroupsSurface() {
                   {localization.groups.invitationExpiryLabel}:{" "}
                   {invitation.expires_at}
                 </p>
-                <details className="mt-2 text-xs text-cal-muted">
-                  <summary className="cursor-pointer font-medium text-cal-ink">
-                    {localization.groups.advancedGroupDetails}
-                  </summary>
-                  <p className="mt-1 break-all font-mono">
-                    {localization.groups.invitationIdLabel}: {invitation.id}
-                  </p>
-                </details>
+                {mode === "management" ? (
+                  <details className="mt-2 text-xs text-cal-muted">
+                    <summary className="cursor-pointer font-medium text-cal-ink">
+                      {localization.groups.advancedGroupDetails}
+                    </summary>
+                    <p className="mt-1 break-all font-mono">
+                      {localization.groups.invitationIdLabel}: {invitation.id}
+                    </p>
+                  </details>
+                ) : null}
               </div>
               {canManageMembers ? (
                 <Button
@@ -2696,24 +2894,40 @@ export function GroupsSurface() {
     );
   }
 
-  function renderMemberRows() {
+  function renderMemberRows({
+    rows,
+    emptyFiltered = false,
+  }: {
+    rows?: GroupMember[];
+    mode?: "preview" | "management";
+    emptyFiltered?: boolean;
+  } = {}) {
     if (members.isLoading) {
       return (
         <InlineLoadingIndicator label={localization.groups.membersLoading} />
       );
     }
     if (members.error) return <ErrorState error={members.error} />;
-    if ((members.data ?? []).length === 0) {
+    const memberRows = rows ?? members.data ?? [];
+    if (memberRows.length === 0) {
       return (
         <EmptyState
-          title={localization.groups.noMembersTitle}
-          description={localization.groups.noMembersDescription}
+          title={
+            emptyFiltered
+              ? localization.groups.noFilteredResultsTitle
+              : localization.groups.noMembersTitle
+          }
+          description={
+            emptyFiltered
+              ? localization.groups.noFilteredResultsDescription
+              : localization.groups.noMembersDescription
+          }
         />
       );
     }
     return (
       <div className="grid gap-2">
-        {members.data?.map((member) => (
+        {memberRows.map((member) => (
           <article
             key={member.member_id}
             className="rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm"
@@ -2757,20 +2971,36 @@ export function GroupsSurface() {
     );
   }
 
-  function renderPublishRequestRows() {
+  function renderPublishRequestRows({
+    rows,
+    emptyFiltered = false,
+  }: {
+    rows?: KnowledgePublishRequest[];
+    mode?: "preview" | "management";
+    emptyFiltered?: boolean;
+  } = {}) {
     if (publishRequests.error)
       return <ErrorState error={publishRequests.error} />;
-    if ((publishRequests.data ?? []).length === 0) {
+    const requestRows = rows ?? sortedPublishRequests;
+    if (requestRows.length === 0) {
       return (
         <EmptyState
-          title={localization.groups.noPublishRequestsTitle}
-          description={localization.groups.noPublishRequestsDescription}
+          title={
+            emptyFiltered
+              ? localization.groups.noFilteredResultsTitle
+              : localization.groups.noPublishRequestsTitle
+          }
+          description={
+            emptyFiltered
+              ? localization.groups.noFilteredResultsDescription
+              : localization.groups.noPublishRequestsDescription
+          }
         />
       );
     }
     return (
       <div className="grid gap-2">
-        {publishRequests.data?.map((request) => (
+        {requestRows.map((request) => (
           <article
             key={request.id}
             className="rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm"
@@ -2787,7 +3017,7 @@ export function GroupsSurface() {
                           : "amber"
                     }
                   >
-                    {request.status}
+                    {publishRequestStatusLabel(request.status)}
                   </Pill>
                   <span className="font-medium text-cal-ink">
                     {request.source_knowledge_base_id
@@ -2861,6 +3091,258 @@ export function GroupsSurface() {
         ))}
       </div>
     );
+  }
+
+  function renderSourceSpaceRows({
+    rows = activeGroupKnowledgeBases,
+    emptyFiltered = false,
+  }: {
+    rows?: KnowledgeBase[];
+    emptyFiltered?: boolean;
+  } = {}) {
+    if (knowledgeBases.isLoading) {
+      return (
+        <InlineLoadingIndicator
+          label={localization.groups.sourceSpacesLoading}
+        />
+      );
+    }
+    if (knowledgeBases.error)
+      return <ErrorState error={knowledgeBases.error} />;
+    if (rows.length === 0) {
+      return (
+        <EmptyState
+          title={
+            emptyFiltered
+              ? localization.groups.noFilteredResultsTitle
+              : localization.groups.noSourceSpacesTitle
+          }
+          description={
+            emptyFiltered
+              ? localization.groups.noFilteredResultsDescription
+              : localization.groups.noSourceSpacesDescription
+          }
+        />
+      );
+    }
+    return (
+      <div className="grid gap-2">
+        {rows.map((knowledgeBase) => (
+          <Link
+            key={knowledgeBase.id}
+            href={knowledgeSourceHref(knowledgeBase.id)}
+            className="flex min-w-0 items-center gap-2 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm text-cal-ink transition-colors hover:bg-cal-canvas"
+          >
+            <FolderIcon className="size-4 shrink-0" />
+            <span className="truncate font-medium">{knowledgeBase.name}</span>
+          </Link>
+        ))}
+      </div>
+    );
+  }
+
+  function renderStatusFilterButton<T extends string>({
+    value,
+    activeValue,
+    label,
+    onSelect,
+  }: {
+    value: T;
+    activeValue: T;
+    label: string;
+    onSelect: (value: T) => void;
+  }) {
+    const isActive = value === activeValue;
+    return (
+      <Button
+        key={value}
+        type="button"
+        size="sm"
+        variant={isActive ? "default" : "outline"}
+        aria-pressed={isActive}
+        onClick={() => onSelect(value)}
+      >
+        {label}
+      </Button>
+    );
+  }
+
+  function renderManagementDrawerContent() {
+    if (!groupManagementDrawer) return null;
+    if (groupManagementDrawer === "members") {
+      return {
+        title: localization.groups.manageMembersAction,
+        description: localization.groups.membersDrawerDescription.replace(
+          "{groupName}",
+          activeGroup?.name ?? localization.groups.noSelectedDescription,
+        ),
+        body: (
+          <div className="grid gap-4">
+            <p className="text-sm text-cal-muted">
+              {localization.groups.drawerCountLabel.replace(
+                "{count}",
+                String(memberCount),
+              )}
+            </p>
+            {renderMemberRows({ rows: members.data ?? [] })}
+          </div>
+        ),
+        footer: canManageMembers ? (
+          <Button type="button" onClick={() => setIsInviteDialogOpen(true)}>
+            {localization.groups.inviteMemberAction}
+          </Button>
+        ) : null,
+      };
+    }
+    if (groupManagementDrawer === "invitations") {
+      const filteredRows = filterInvitations(
+        invitations.data ?? [],
+        invitationStatusFilter,
+        invitationSearch,
+      );
+      return {
+        title: localization.groups.viewInvitationsAction,
+        description: localization.groups.invitationsDrawerDescription.replace(
+          "{groupName}",
+          activeGroup?.name ?? localization.groups.noSelectedDescription,
+        ),
+        body: (
+          <div className="grid gap-4">
+            <div className="grid gap-3 rounded-xl border border-cal-hairline bg-white p-3">
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    "pending",
+                    "accepted",
+                    "cancelled",
+                    "expired",
+                    "all",
+                  ] as InvitationStatusFilter[]
+                ).map((status) =>
+                  renderStatusFilterButton({
+                    value: status,
+                    activeValue: invitationStatusFilter,
+                    label:
+                      status === "all"
+                        ? localization.groups.allStatusFilter
+                        : localization.groups.invitationStatuses[status],
+                    onSelect: setInvitationStatusFilter,
+                  }),
+                )}
+              </div>
+              <Field label={localization.groups.invitationSearchLabel}>
+                <input
+                  className={inputClassName}
+                  placeholder={localization.groups.invitationSearchPlaceholder}
+                  value={invitationSearch}
+                  onChange={(event) => setInvitationSearch(event.target.value)}
+                />
+              </Field>
+            </div>
+            {renderInvitationRows({
+              rows: filteredRows,
+              emptyFiltered:
+                (invitations.data ?? []).length > 0 &&
+                filteredRows.length === 0,
+            })}
+          </div>
+        ),
+        footer: canManageMembers ? (
+          <Button type="button" onClick={() => setIsInviteDialogOpen(true)}>
+            {localization.groups.inviteMemberAction}
+          </Button>
+        ) : null,
+      };
+    }
+    if (groupManagementDrawer === "source-spaces") {
+      return {
+        title: localization.groups.manageSourceSpacesAction,
+        description: localization.groups.sourceSpacesDrawerDescription.replace(
+          "{groupName}",
+          activeGroup?.name ?? localization.groups.noSelectedDescription,
+        ),
+        body: (
+          <div className="grid gap-4">
+            <p className="text-sm text-cal-muted">
+              {localization.groups.drawerCountLabel.replace(
+                "{count}",
+                String(activeGroupKnowledgeBases.length),
+              )}
+            </p>
+            {renderSourceSpaceRows({ rows: activeGroupKnowledgeBases })}
+          </div>
+        ),
+        footer: (
+          <Button
+            nativeButton={false}
+            render={<Link href="/knowledge" />}
+            type="button"
+          >
+            {localization.documents.addSourceSpaceAction}
+          </Button>
+        ),
+      };
+    }
+    const filteredRows = filterPublishRequests(
+      sortedPublishRequests,
+      publishRequestStatusFilter,
+      publishRequestSearch,
+    );
+    return {
+      title: localization.groups.viewPublishRequestsAction,
+      description: localization.groups.publishRequestsDrawerDescription.replace(
+        "{groupName}",
+        activeGroup?.name ?? localization.groups.noSelectedDescription,
+      ),
+      body: (
+        <div className="grid gap-4">
+          <div className="grid gap-3 rounded-xl border border-cal-hairline bg-white p-3">
+            <div className="flex flex-wrap gap-2">
+              {(
+                [
+                  "pending",
+                  "approved",
+                  "rejected",
+                  "all",
+                ] as PublishRequestStatusFilter[]
+              ).map((status) =>
+                renderStatusFilterButton({
+                  value: status,
+                  activeValue: publishRequestStatusFilter,
+                  label:
+                    status === "all"
+                      ? localization.groups.allStatusFilter
+                      : localization.groups.publishRequestStatuses[status],
+                  onSelect: setPublishRequestStatusFilter,
+                }),
+              )}
+            </div>
+            <Field label={localization.groups.publishRequestSearchLabel}>
+              <input
+                className={inputClassName}
+                placeholder={
+                  localization.groups.publishRequestSearchPlaceholder
+                }
+                value={publishRequestSearch}
+                onChange={(event) =>
+                  setPublishRequestSearch(event.target.value)
+                }
+              />
+            </Field>
+          </div>
+          {renderPublishRequestRows({
+            rows: filteredRows,
+            emptyFiltered:
+              sortedPublishRequests.length > 0 && filteredRows.length === 0,
+          })}
+        </div>
+      ),
+      footer: (
+        <Button type="button" onClick={() => setIsPublishDialogOpen(true)}>
+          {localization.groups.requestShareAction}
+        </Button>
+      ),
+    };
   }
 
   function renderGroupWorkspace() {
@@ -2979,8 +3461,19 @@ export function GroupsSurface() {
                     {localization.groups.membersSummary}
                   </p>
                 </div>
+                {canManageMembers ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setGroupManagementDrawer("members")}
+                  >
+                    {localization.groups.manageMembersAction}
+                  </Button>
+                ) : null}
               </div>
-              {renderMemberRows()}
+              {renderMemberRows({ rows: memberPreviewRows, mode: "preview" })}
+              {hiddenRowsHint(memberCount - memberPreviewRows.length)}
             </section>
 
             <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
@@ -2993,18 +3486,34 @@ export function GroupsSurface() {
                     {localization.groups.invitationsSummary}
                   </p>
                 </div>
-                {canManageMembers ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsInviteDialogOpen(true)}
-                  >
-                    {localization.groups.inviteMemberAction}
-                  </Button>
-                ) : null}
+                <div className="flex flex-wrap gap-2">
+                  {canManageMembers ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setGroupManagementDrawer("invitations")}
+                      >
+                        {localization.groups.viewInvitationsAction}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsInviteDialogOpen(true)}
+                      >
+                        {localization.groups.inviteMemberAction}
+                      </Button>
+                    </>
+                  ) : null}
+                </div>
               </div>
-              {renderInvitationRows()}
+              {renderInvitationRows({
+                rows: invitationPreviewRows,
+                mode: "preview",
+              })}
+              {hiddenRowsHint(invitationCount - invitationPreviewRows.length)}
             </section>
 
             <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
@@ -3017,35 +3526,29 @@ export function GroupsSurface() {
                     {localization.groups.sourceSpacesDescription}
                   </p>
                 </div>
-                <Button
-                  nativeButton={false}
-                  render={<Link href="/knowledge" />}
-                  size="sm"
-                  variant="outline"
-                >
-                  {localization.documents.addSourceSpaceAction}
-                </Button>
-              </div>
-              {activeGroupKnowledgeBases.length > 0 ? (
-                <div className="grid gap-2">
-                  {activeGroupKnowledgeBases.map((knowledgeBase) => (
-                    <Link
-                      key={knowledgeBase.id}
-                      href={knowledgeSourceHref(knowledgeBase.id)}
-                      className="flex min-w-0 items-center gap-2 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm text-cal-ink transition-colors hover:bg-cal-canvas"
-                    >
-                      <FolderIcon className="size-4 shrink-0" />
-                      <span className="truncate font-medium">
-                        {knowledgeBase.name}
-                      </span>
-                    </Link>
-                  ))}
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setGroupManagementDrawer("source-spaces")}
+                  >
+                    {localization.groups.manageSourceSpacesAction}
+                  </Button>
+                  <Button
+                    nativeButton={false}
+                    render={<Link href="/knowledge" />}
+                    size="sm"
+                    variant="outline"
+                  >
+                    {localization.documents.addSourceSpaceAction}
+                  </Button>
                 </div>
-              ) : (
-                <EmptyState
-                  title={localization.groups.noSourceSpacesTitle}
-                  description={localization.groups.noSourceSpacesDescription}
-                />
+              </div>
+              {renderSourceSpaceRows({ rows: sourceSpacePreviewRows })}
+              {hiddenRowsHint(
+                activeGroupKnowledgeBases.length -
+                  sourceSpacePreviewRows.length,
               )}
             </section>
 
@@ -3059,16 +3562,32 @@ export function GroupsSurface() {
                     {localization.groups.publishOpenApiNote}
                   </p>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsPublishDialogOpen(true)}
-                >
-                  {localization.groups.requestShareAction}
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setGroupManagementDrawer("publish-requests")}
+                  >
+                    {localization.groups.viewPublishRequestsAction}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsPublishDialogOpen(true)}
+                  >
+                    {localization.groups.requestShareAction}
+                  </Button>
+                </div>
               </div>
-              {renderPublishRequestRows()}
+              {renderPublishRequestRows({
+                rows: publishRequestPreviewRows,
+                mode: "preview",
+              })}
+              {hiddenRowsHint(
+                publishRequestCount - publishRequestPreviewRows.length,
+              )}
             </section>
           </div>
         </div>
@@ -3087,6 +3606,8 @@ export function GroupsSurface() {
     setMemberAction(undefined);
     setUpdateUserId("");
   }
+
+  const managementDrawerContent = renderManagementDrawerContent();
 
   return (
     <>
@@ -3492,6 +4013,47 @@ export function GroupsSurface() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <Drawer
+        direction="bottom"
+        open={Boolean(groupManagementDrawer)}
+        onOpenChange={(open) => {
+          if (!open) setGroupManagementDrawer(undefined);
+        }}
+      >
+        <DrawerContent className="max-h-[92dvh] bg-white">
+          <DrawerHeader className="items-stretch border-b border-cal-hairline text-left group-data-[vaul-drawer-direction=bottom]/drawer-content:text-left">
+            <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 text-left lg:flex-row lg:items-start lg:justify-between">
+              <div className="min-w-0">
+                <DrawerTitle>{managementDrawerContent?.title}</DrawerTitle>
+                <DrawerDescription>
+                  {managementDrawerContent?.description}
+                </DrawerDescription>
+              </div>
+              {managementDrawerContent?.footer ? (
+                <div className="hidden flex-wrap items-center gap-2 lg:flex">
+                  {managementDrawerContent.footer}
+                </div>
+              ) : null}
+            </div>
+          </DrawerHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto bg-cal-canvas/40 p-4">
+            <div className="mx-auto grid max-w-5xl gap-3">
+              {managementDrawerContent?.body}
+            </div>
+          </div>
+          <DrawerFooter className="border-t border-cal-hairline bg-white lg:hidden">
+            <div className="grid gap-2">
+              {managementDrawerContent?.footer}
+              <DrawerClose asChild>
+                <Button type="button" variant="outline">
+                  {localization.common.cancel}
+                </Button>
+              </DrawerClose>
+            </div>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
 
       <Drawer
         direction="bottom"

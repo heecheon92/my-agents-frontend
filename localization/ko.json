@@ -616,7 +616,30 @@
       "requestShareAction": "공유 요청",
       "updateMemberRoleAction": "역할 변경",
       "manageInvitationAction": "초대 관리",
-      "reviewRequestAction": "요청 검토"
+      "reviewRequestAction": "요청 검토",
+      "manageMembersAction": "멤버 관리",
+      "viewInvitationsAction": "초대 기록 보기",
+      "manageSourceSpacesAction": "지식 공간 관리",
+      "viewPublishRequestsAction": "전체 요청 보기",
+      "membersDrawerDescription": "{groupName}의 초대 수락 멤버 전체 목록입니다. 사용자 ID는 고급 정보에만 표시됩니다.",
+      "invitationsDrawerDescription": "{groupName}의 이메일 초대 기록입니다. 계정 존재 여부를 드러내지 않고 상태별로 관리합니다.",
+      "sourceSpacesDrawerDescription": "{groupName}에 연결된 그룹 지식 공간 전체 목록입니다.",
+      "publishRequestsDrawerDescription": "{groupName}의 공유 요청 전체 기록입니다. 대기 요청만 승인/거절할 수 있습니다.",
+      "drawerCountLabel": "총 {count}개",
+      "hiddenRowsHint": "+{count}개 더 있습니다. 전체 목록은 관리 화면에서 확인하세요.",
+      "allStatusFilter": "전체",
+      "publishRequestStatuses": {
+        "pending": "대기 중",
+        "approved": "승인됨",
+        "rejected": "거절됨"
+      },
+      "publishRequestSearchLabel": "공유 요청 검색",
+      "publishRequestSearchPlaceholder": "지식 이름, 대상, 파일명, 요청 ID, 날짜 검색",
+      "invitationSearchLabel": "초대 검색",
+      "invitationSearchPlaceholder": "이메일, 초대 ID, 역할, 날짜 검색",
+      "noFilteredResultsTitle": "조건에 맞는 결과가 없습니다",
+      "noFilteredResultsDescription": "검색어나 필터를 바꿔 다시 확인하세요.",
+      "sourceSpacesLoading": "그룹 지식 공간을 불러오는 중..."
     }
   },
   "errors": {
