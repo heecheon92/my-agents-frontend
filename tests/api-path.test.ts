@@ -66,6 +66,9 @@ describe("API_PATH", () => {
     expect(API_PATH.groups.publishRequestReject("group-1", "request-1")).toBe(
       "/groups/group-1/publish-requests/request-1/reject",
     );
+    expect(API_PATH.groups.publishRequestCancel("group-1", "request-1")).toBe(
+      "/groups/group-1/publish-requests/request-1/cancel",
+    );
   });
 
   it("builds document operation paths", () => {

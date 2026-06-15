@@ -17,6 +17,8 @@ const PUBLISH_REQUEST_STATUS_ORDER: Record<
   pending: 0,
   approved: 1,
   rejected: 2,
+  cancelled: 3,
+  withdrawn: 4,
 };
 
 export function previewRows<T>(rows: T[], limit = GROUP_PREVIEW_LIMIT) {

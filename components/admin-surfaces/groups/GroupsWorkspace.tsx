@@ -47,6 +47,7 @@ type GroupsWorkspaceProps = {
   membersError: unknown;
   membersLoading: boolean;
   onApprovePublishRequest: (requestId: string) => void;
+  onCancelPublishRequest: (requestId: string) => void;
   onCreateGroup: () => void;
   onInviteMember: () => void;
   onOpenGroupBrowser: () => void;
@@ -55,6 +56,7 @@ type GroupsWorkspaceProps = {
   onRequestShare: () => void;
   onReviewPublishRequest: (request: KnowledgePublishRequest) => void;
   onUpdateMemberRole: (member: GroupMember) => void;
+  canCancelPublishRequest: (request: KnowledgePublishRequest) => boolean;
   publishRequestCount: number;
   publishRequestPreviewRows: KnowledgePublishRequest[];
   publishRequestsError: unknown;
@@ -62,6 +64,7 @@ type GroupsWorkspaceProps = {
   publishRequestSourceLabel: (request: KnowledgePublishRequest) => string;
   publishRequestTargetLabel: (request: KnowledgePublishRequest) => string;
   approvePending: boolean;
+  cancelPending: boolean;
   rejectPending: boolean;
   sourceSpacePreviewRows: KnowledgeBase[];
   knowledgeBasesError: unknown;
@@ -103,6 +106,7 @@ export function GroupsWorkspace({
   membersError,
   membersLoading,
   onApprovePublishRequest,
+  onCancelPublishRequest,
   onCreateGroup,
   onInviteMember,
   onOpenGroupBrowser,
@@ -111,6 +115,7 @@ export function GroupsWorkspace({
   onRequestShare,
   onReviewPublishRequest,
   onUpdateMemberRole,
+  canCancelPublishRequest,
   publishRequestCount,
   publishRequestPreviewRows,
   publishRequestsError,
@@ -118,6 +123,7 @@ export function GroupsWorkspace({
   publishRequestSourceLabel,
   publishRequestTargetLabel,
   approvePending,
+  cancelPending,
   rejectPending,
   sourceSpacePreviewRows,
   knowledgeBasesError,
@@ -436,7 +442,9 @@ export function GroupsWorkspace({
                 rows={publishRequestPreviewRows}
                 error={publishRequestsError}
                 canReviewPublishRequests={canReviewPublishRequests}
+                canCancelPublishRequest={canCancelPublishRequest}
                 approvePending={approvePending}
+                cancelPending={cancelPending}
                 rejectPending={rejectPending}
                 localization={localization}
                 publishRequestStatusLabel={publishRequestStatusLabel}
@@ -444,6 +452,7 @@ export function GroupsWorkspace({
                 publishRequestTargetLabel={publishRequestTargetLabel}
                 onReviewRequest={onReviewPublishRequest}
                 onApproveRequest={onApprovePublishRequest}
+                onCancelRequest={onCancelPublishRequest}
                 onRejectRequest={onRejectPublishRequest}
               />
               <HiddenRowsHint

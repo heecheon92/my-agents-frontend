@@ -7,6 +7,7 @@ import { useCurrentUser } from "@/hooks/use-auth";
 import {
   useApprovePublishRequest,
   useCancelGroupInvitation,
+  useCancelPublishRequest,
   useCreateGroup,
   useCreateGroupInvitation,
   useCreatePublishRequest,
@@ -119,6 +120,7 @@ export function GroupsSurface({
   );
   const createPublishRequest = useCreatePublishRequest(activeGroupId);
   const approvePublishRequest = useApprovePublishRequest(activeGroupId);
+  const cancelPublishRequest = useCancelPublishRequest(activeGroupId);
   const rejectPublishRequest = useRejectPublishRequest(activeGroupId);
   const invitations = useGroupInvitations(activeGroupId, canManageMembers);
   const members = useGroupMembers(activeGroupId, canManageMembers);
@@ -281,6 +283,13 @@ export function GroupsSurface({
     } catch {}
   }
 
+  async function handleCancelPublishRequest(requestId: string) {
+    try {
+      await cancelPublishRequest.mutateAsync(requestId);
+      setPublishReviewRequest(undefined);
+    } catch {}
+  }
+
   function selectGroup(groupId: string) {
     setSelectedGroupId(groupId);
     setOptimisticGroupId(groupId);
@@ -325,6 +334,10 @@ export function GroupsSurface({
   const publishRequestTargetLabel = getPublishRequestTargetLabel;
   const publishRequestStatusLabel = (status: KnowledgePublishRequestStatus) =>
     localization.groups.publishRequestStatuses[status];
+  const canCancelPublishRequest = (request: KnowledgePublishRequest) =>
+    request.status === "pending" &&
+    Boolean(currentUser.data?.id) &&
+    request.requester_user_id === currentUser.data?.id;
   const managementPageContent = buildGroupManagementContent({
     activeGroupKnowledgeBases,
     activeGroupName:
@@ -345,12 +358,15 @@ export function GroupsSurface({
     section: initialSection,
     sortedPublishRequests,
     approvePending: approvePublishRequest.isPending,
+    cancelPending: cancelPublishRequest.isPending,
     rejectPending: rejectPublishRequest.isPending,
     setInvitationSearch,
     setInvitationStatusFilter,
     setPublishRequestSearch,
     setPublishRequestStatusFilter,
     onApprovePublishRequest: handleApprovePublishRequest,
+    onCancelPublishRequest: handleCancelPublishRequest,
+    canCancelPublishRequest,
     onInviteMember: () => setIsInviteDialogOpen(true),
     onManageInvitation: (invitation) =>
       openInvitationAction(invitation, "update"),
@@ -409,6 +425,7 @@ export function GroupsSurface({
           membersError={members.error}
           membersLoading={members.isLoading}
           onApprovePublishRequest={handleApprovePublishRequest}
+          onCancelPublishRequest={handleCancelPublishRequest}
           onCreateGroup={() => setIsCreateGroupDialogOpen(true)}
           onInviteMember={() => setIsInviteDialogOpen(true)}
           onManageInvitation={(invitation) =>
@@ -419,6 +436,7 @@ export function GroupsSurface({
           onRequestShare={() => setIsPublishDialogOpen(true)}
           onReviewPublishRequest={setPublishReviewRequest}
           onUpdateMemberRole={openMemberAction}
+          canCancelPublishRequest={canCancelPublishRequest}
           publishRequestCount={publishRequestCount}
           publishRequestPreviewRows={publishRequestPreviewRows}
           publishRequestsError={publishRequests.error}
@@ -426,6 +444,7 @@ export function GroupsSurface({
           publishRequestSourceLabel={publishRequestSourceLabel}
           publishRequestTargetLabel={publishRequestTargetLabel}
           approvePending={approvePublishRequest.isPending}
+          cancelPending={cancelPublishRequest.isPending}
           rejectPending={rejectPublishRequest.isPending}
           sourceSpacePreviewRows={sourceSpacePreviewRows}
           knowledgeBasesError={knowledgeBases.error}

@@ -121,6 +121,12 @@ describe("proxy policy", () => {
       isAllowedBackendPath("PATCH", "/groups/group-1/members/user-1").allowed,
     ).toBe(true);
     expect(
+      isAllowedBackendPath(
+        "POST",
+        "/groups/group-1/publish-requests/request-1/cancel",
+      ).allowed,
+    ).toBe(true);
+    expect(
       isAllowedBackendPath("POST", "/group-invitations/signup").allowed,
     ).toBe(true);
   });

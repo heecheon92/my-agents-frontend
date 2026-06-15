@@ -44,12 +44,15 @@ export function buildGroupManagementContent({
   section,
   sortedPublishRequests,
   approvePending,
+  cancelPending,
   rejectPending,
   setInvitationSearch,
   setInvitationStatusFilter,
   setPublishRequestSearch,
   setPublishRequestStatusFilter,
   onApprovePublishRequest,
+  onCancelPublishRequest,
+  canCancelPublishRequest,
   onInviteMember,
   onManageInvitation,
   onRejectPublishRequest,
@@ -80,12 +83,15 @@ export function buildGroupManagementContent({
   section?: GroupManagementSection;
   sortedPublishRequests: KnowledgePublishRequest[];
   approvePending: boolean;
+  cancelPending: boolean;
   rejectPending: boolean;
   setInvitationSearch: (search: string) => void;
   setInvitationStatusFilter: (status: InvitationStatusFilter) => void;
   setPublishRequestSearch: (search: string) => void;
   setPublishRequestStatusFilter: (status: PublishRequestStatusFilter) => void;
   onApprovePublishRequest: (requestId: string) => void;
+  onCancelPublishRequest: (requestId: string) => void;
+  canCancelPublishRequest: (request: KnowledgePublishRequest) => boolean;
   onInviteMember: () => void;
   onManageInvitation: (invitation: GroupInvitation) => void;
   onRejectPublishRequest: (requestId: string) => void;
@@ -258,6 +264,8 @@ export function buildGroupManagementContent({
                 "pending",
                 "approved",
                 "rejected",
+                "cancelled",
+                "withdrawn",
                 "all",
               ] as PublishRequestStatusFilter[]
             ).map((status) =>
@@ -288,7 +296,9 @@ export function buildGroupManagementContent({
             sortedPublishRequests.length > 0 && filteredRows.length === 0
           }
           canReviewPublishRequests={canReviewPublishRequests}
+          canCancelPublishRequest={canCancelPublishRequest}
           approvePending={approvePending}
+          cancelPending={cancelPending}
           rejectPending={rejectPending}
           localization={localization}
           publishRequestStatusLabel={publishRequestStatusLabel}
@@ -296,6 +306,7 @@ export function buildGroupManagementContent({
           publishRequestTargetLabel={publishRequestTargetLabel}
           onReviewRequest={onReviewRequest}
           onApproveRequest={onApprovePublishRequest}
+          onCancelRequest={onCancelPublishRequest}
           onRejectRequest={onRejectPublishRequest}
         />
       </div>
