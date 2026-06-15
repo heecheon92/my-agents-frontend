@@ -210,6 +210,13 @@ export const BFF_ALLOWLIST: Rule[] = [
   },
   {
     method: "POST",
+    pattern: new RegExp(
+      `^/groups/${uuidLike}/publish-requests/${uuidLike}/cancel$`,
+    ),
+    name: "groups.publish-requests.cancel",
+  },
+  {
+    method: "POST",
     pattern: /^\/knowledge-bases$/,
     name: "knowledge-bases.create",
   },

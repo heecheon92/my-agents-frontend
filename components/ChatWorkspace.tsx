@@ -1,16 +1,13 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
-import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
-import { MyAgentsQueryKeys } from "@/constants/query-keys";
+import { useMemo, useRef, useState } from "react";
 import {
   useConversation,
   useConversations,
   useCreateConversation,
   useDeleteConversation,
   useMessages,
-  useReplayAssistantMessage,
   useRunDetail,
   useRunEvents,
   useRuns,
@@ -18,145 +15,52 @@ import {
 import { useKnowledgeBases } from "@/hooks/use-knowledge";
 import { useLocalization } from "@/hooks/useLocalization";
 import type {
-  AnswerDeltaEventData,
   Citation,
   Conversation,
-  ConversationRunResponse,
-  KnowledgeBaseSelection,
   KnowledgeBaseSelectionMode,
   Message,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
-import { isMyAgentsAPIError } from "@/services/my-agents/MyAgentsAPIError";
 import {
   CHAT_SCROLL_REGION_CLASS_NAME,
-  ChatTranscript,
   REPLAY_ICON_PENDING_CLASS_NAME,
 } from "./chat/ChatTranscript";
-import { ComposerBar } from "./chat/ComposerBar";
-import {
-  ConversationSidebar,
-  getConversationCardClassName,
-} from "./chat/ConversationSidebar";
+import { ChatWorkspaceLayout } from "./chat/ChatWorkspaceLayout";
+import { getConversationCardClassName } from "./chat/ConversationSidebar";
 import {
   getAgentTraceStageKeys,
   sanitizeActivityEventPayload,
 } from "./chat/EvidencePanel";
-import { KnowledgeSourceSelector } from "./chat/KnowledgeSourceSelector";
 import type { LiveActivityEvent, QueuedMessage } from "./chat/types";
-
-type RunOutcome = "completed" | "cancelled" | "failed" | "active_conflict";
-
-const CHAT_BOTTOM_THRESHOLD_PX = 96;
-export const ACTIVE_RUN_STALE_NOTICE_AFTER_MS = 30_000;
+import { useChatRunLoop } from "./chat/useChatRunLoop";
+import { useChatWorkspaceEffects } from "./chat/useChatWorkspaceEffects";
+import { useReplayAssistantMessageHandler } from "./chat/useReplayAssistantMessageHandler";
+import {
+  buildActiveKnowledgeBaseSelection,
+  getLatestAssistantMessageId,
+  getNextConversationIdAfterDelete,
+  isActiveAgentRunStatus,
+  isNearScrollBottom,
+  isObservedActiveRunStale,
+} from "./chat/workspace-helpers";
 
 export { CHAT_SCROLL_REGION_CLASS_NAME };
 export { REPLAY_ICON_PENDING_CLASS_NAME };
+export { CHAT_WORKSPACE_PANEL_CLASS_NAME } from "./chat/ChatWorkspaceLayout";
+export {
+  ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
+  buildActiveKnowledgeBaseSelection,
+  getLatestAssistantMessageId,
+  getNextConversationIdAfterDelete,
+  isActiveAgentRunStatus,
+  isConversationRunAlreadyActiveError,
+  isObservedActiveRunStale,
+} from "./chat/workspace-helpers";
 export {
   getAgentTraceStageKeys,
   getConversationCardClassName,
   sanitizeActivityEventPayload,
 };
-
-export const CHAT_WORKSPACE_PANEL_CLASS_NAME =
-  "cal-card flex h-[calc(100dvh-8rem)] min-h-0 min-w-0 flex-col overflow-hidden rounded-xl xl:h-full";
-
-export function getLatestAssistantMessageId(messages: Message[]) {
-  return [...messages].reverse().find((message) => message.role === "assistant")
-    ?.id;
-}
-
-export function getNextConversationIdAfterDelete(
-  conversations: Array<Pick<Conversation, "id">>,
-  deletedConversationId: string,
-  activeConversationId?: string,
-) {
-  if (activeConversationId !== deletedConversationId)
-    return activeConversationId;
-
-  const deletedIndex = conversations.findIndex(
-    (item) => item.id === deletedConversationId,
-  );
-  const remainingConversations = conversations.filter(
-    (item) => item.id !== deletedConversationId,
-  );
-  if (remainingConversations.length === 0) return undefined;
-  if (deletedIndex < 0) return remainingConversations[0]?.id;
-  return (
-    remainingConversations[deletedIndex]?.id ??
-    remainingConversations[deletedIndex - 1]?.id
-  );
-}
-
-export function isActiveAgentRunStatus(status: string) {
-  return status === "running" || status === "cancelling";
-}
-
-export function isObservedActiveRunStale({
-  activeRunId,
-  observedRunId,
-  observedAt,
-  now,
-  thresholdMs = ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
-}: {
-  activeRunId: string | null;
-  observedRunId: string | null;
-  observedAt: number | null;
-  now: number;
-  thresholdMs?: number;
-}) {
-  return Boolean(
-    activeRunId &&
-      activeRunId === observedRunId &&
-      observedAt !== null &&
-      now - observedAt >= thresholdMs,
-  );
-}
-
-export function isConversationRunAlreadyActiveError(error: unknown) {
-  if (!isMyAgentsAPIError(error) || error.status !== 409) return false;
-  const details = [error.detail, error.message];
-  if (typeof error.body === "string") {
-    details.push(error.body);
-  }
-  if (error.body && typeof error.body === "object") {
-    const body = error.body as { detail?: unknown; message?: unknown };
-    if (typeof body.detail === "string") details.push(body.detail);
-    if (typeof body.message === "string") details.push(body.message);
-  }
-  return details.some((detail) =>
-    detail?.toLowerCase().includes("conversation run already active"),
-  );
-}
-
-function safeBackendDetail(value: unknown) {
-  if (value && typeof value === "object" && "detail" in value) {
-    const detail = (value as { detail?: unknown }).detail;
-    if (typeof detail === "string") return detail;
-  }
-  return undefined;
-}
-
-function isNearScrollBottom(element: HTMLElement) {
-  return (
-    element.scrollHeight - element.scrollTop - element.clientHeight <=
-    CHAT_BOTTOM_THRESHOLD_PX
-  );
-}
-
-export function buildActiveKnowledgeBaseSelection({
-  knowledgeBaseMode,
-  selectedKnowledgeBaseIds,
-}: {
-  knowledgeBaseMode: KnowledgeBaseSelectionMode;
-  selectedKnowledgeBaseIds: string[];
-}): KnowledgeBaseSelection {
-  return {
-    mode: knowledgeBaseMode,
-    knowledge_base_ids:
-      knowledgeBaseMode === "selected" ? selectedKnowledgeBaseIds : [],
-  };
-}
 
 export function ChatWorkspace() {
   const queryClient = useQueryClient();
@@ -168,7 +72,6 @@ export function ChatWorkspace() {
   const activeId = selectedId ?? conversations.data?.[0]?.id;
   const conversation = useConversation(activeId);
   const messages = useMessages(activeId);
-  const replayAssistantMessage = useReplayAssistantMessage(activeId);
   const runs = useRuns(activeId);
   const sortedRuns = useMemo(() => {
     return [...(runs.data ?? [])].sort(
@@ -199,14 +102,6 @@ export function ChatWorkspace() {
     runId: string;
     observedAt: number;
   } | null>(null);
-  const [replayingMessageId, setReplayingMessageId] = useState<string | null>(
-    null,
-  );
-  const [replayNotice, setReplayNotice] = useState<{
-    messageId: string;
-    message: string;
-    tone: "error" | "success" | "warning";
-  } | null>(null);
   const [liveActivityEvents, setLiveActivityEvents] = useState<
     LiveActivityEvent[]
   >([]);
@@ -229,17 +124,9 @@ export function ChatWorkspace() {
   const cancelAcceptedRef = useRef(false);
   const previousServerActiveRunIdRef = useRef<string | null>(null);
   const autoReplayAttemptedRunIdsRef = useRef<Set<string>>(new Set());
-  const runMessageAndContinueRef = useRef<
-    (
-      conversationId: string,
-      message: string,
-      knowledgeBaseSelection: KnowledgeBaseSelection,
-    ) => Promise<void>
-  >(async () => undefined);
   const { lang, localization } = useLocalization(
     (state) => state.localization.chat,
   );
-
   const visibleQueuedMessage =
     queuedMessage?.conversationId === activeId ? queuedMessage : null;
   const draftMessage = draft.trim();
@@ -261,22 +148,40 @@ export function ChatWorkspace() {
     observedAt: observedServerActiveRun?.observedAt ?? null,
     now: activeRunClock,
   });
-
-  function setQueuedMessage(nextQueuedMessage: QueuedMessage | null) {
-    queuedMessageRef.current = nextQueuedMessage;
-    setQueuedMessageState(nextQueuedMessage);
-  }
-
-  function setCurrentRunId(runId: string | null) {
-    activeRunIdRef.current = runId;
-    setActiveRunId(runId);
-  }
-
-  function resetImmediateState() {
-    pendingImmediateMessageRef.current = null;
-    cancelAcceptedRef.current = false;
-    setIsCancelling(false);
-  }
+  const { resetImmediateState, runMessageAndContinue, setQueuedMessage } =
+    useChatRunLoop({
+      activeRunIdRef,
+      cancelAcceptedRef,
+      isStreamingRef,
+      localization,
+      pendingImmediateMessageRef,
+      queryClient,
+      queuedMessageRef,
+      setActiveRunId,
+      setDraft,
+      setIsCancelling,
+      setIsStreaming,
+      setLatestCitations,
+      setLiveActivityEvents,
+      setOptimisticMessage,
+      setQueuedMessageState,
+      setStatusAnnouncement,
+      setStreamError,
+      setStreamedReply,
+    });
+  const {
+    handleReplayAssistantMessage,
+    replayAssistantMessage,
+    replayNotice,
+    replayingMessageId,
+    setReplayNotice,
+  } = useReplayAssistantMessageHandler({
+    activeId,
+    conversationIsBusy,
+    isCancelling,
+    localization,
+    setStatusAnnouncement,
+  });
 
   function toggleSelectedKnowledgeBase(knowledgeBaseId: string) {
     setSelectedKnowledgeBaseIds((current) =>
@@ -292,9 +197,7 @@ export function ChatWorkspace() {
         title: `${localization.newConversationTitle} ${new Date().toLocaleString(lang)}`,
       });
       setSelectedId(created.id);
-    } catch {
-      // React Query stores the API error on the mutation; render it below.
-    }
+    } catch {}
   }
 
   async function handleDeleteConversation(item: Conversation) {
@@ -307,7 +210,6 @@ export function ChatWorkspace() {
       localization.deleteConversationConfirm.replace("{title}", item.title),
     );
     if (!confirmed) return;
-
     try {
       await deleteConversation.mutateAsync(item.id);
       if (activeId === item.id) {
@@ -325,180 +227,6 @@ export function ChatWorkspace() {
     }
   }
 
-  async function runMessage(
-    conversationId: string,
-    message: string,
-    knowledgeBaseSelection: KnowledgeBaseSelection,
-  ): Promise<RunOutcome> {
-    if (isStreamingRef.current) return "failed";
-
-    isStreamingRef.current = true;
-    setIsStreaming(true);
-    setStreamError(null);
-    setStreamedReply("");
-    setCurrentRunId(null);
-    setLiveActivityEvents([]);
-    setLatestCitations([]);
-    setOptimisticMessage({
-      id: `optimistic-${Date.now()}`,
-      conversation_id: conversationId,
-      role: "user",
-      content: message,
-    });
-
-    let completed = false;
-    let cancelled = false;
-    let liveSequence = 0;
-    try {
-      for await (const streamEvent of myAgentsAPI.conversations.streamRunEvents(
-        conversationId,
-        {
-          message,
-          knowledge_base_selection: knowledgeBaseSelection,
-        },
-      )) {
-        liveSequence += 1;
-        const sequence = liveSequence;
-        setLiveActivityEvents((current) => [
-          ...current,
-          {
-            id: `live-${sequence}`,
-            sequence,
-            event_type: streamEvent.event,
-            payload: streamEvent.data,
-          },
-        ]);
-
-        if (streamEvent.event === "run_started") {
-          const data = streamEvent.data as { run_id: string };
-          setCurrentRunId(data.run_id);
-        }
-        if (streamEvent.event === "answer_delta") {
-          const data = streamEvent.data as AnswerDeltaEventData;
-          setStreamedReply((current) => current + data.delta);
-        }
-        if (streamEvent.event === "run_cancelled") {
-          cancelled = true;
-        }
-        if (streamEvent.event === "run_completed") {
-          const data = streamEvent.data as ConversationRunResponse;
-          completed = true;
-          setStreamedReply(data.reply);
-          setLatestCitations(data.citations ?? []);
-        }
-        if (streamEvent.event === "run_failed") {
-          throw new Error(
-            safeBackendDetail(streamEvent.data) ?? localization.runFailed,
-          );
-        }
-      }
-
-      if (!completed && !cancelled) {
-        if (cancelAcceptedRef.current && pendingImmediateMessageRef.current) {
-          cancelled = true;
-        } else {
-          throw new Error(localization.runFailed);
-        }
-      }
-
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: MyAgentsQueryKeys.conversations.messages(conversationId),
-        }),
-        queryClient.invalidateQueries({
-          queryKey: MyAgentsQueryKeys.conversations.runs(conversationId),
-        }),
-      ]);
-      setOptimisticMessage(null);
-      setStreamedReply("");
-      return cancelled ? "cancelled" : "completed";
-    } catch (error) {
-      if (isConversationRunAlreadyActiveError(error)) {
-        setOptimisticMessage(null);
-        setStreamError(null);
-        return "active_conflict";
-      }
-      setStreamError(error);
-      return "failed";
-    } finally {
-      isStreamingRef.current = false;
-      setIsStreaming(false);
-      setCurrentRunId(null);
-    }
-  }
-
-  async function runMessageAndContinue(
-    conversationId: string,
-    message: string,
-    knowledgeBaseSelection: KnowledgeBaseSelection,
-  ): Promise<void> {
-    const outcome = await runMessage(
-      conversationId,
-      message,
-      knowledgeBaseSelection,
-    );
-
-    if (outcome === "active_conflict") {
-      if (queuedMessageRef.current?.conversationId === conversationId) {
-        setDraft(message);
-        setStatusAnnouncement(localization.queueAlreadyExistsAnnouncement);
-      } else {
-        setQueuedMessage({
-          conversationId,
-          content: message,
-          knowledgeBaseSelection,
-        });
-        setStatusAnnouncement(localization.queuedAnnouncement);
-      }
-      await queryClient.invalidateQueries({
-        queryKey: MyAgentsQueryKeys.conversations.runs(conversationId),
-      });
-      resetImmediateState();
-      return;
-    }
-
-    if (outcome === "failed") {
-      const pendingImmediateMessage = pendingImmediateMessageRef.current;
-      if (pendingImmediateMessage?.conversationId === conversationId) {
-        setDraft(pendingImmediateMessage.content);
-        setStatusAnnouncement(localization.immediateFailedAnnouncement);
-        resetImmediateState();
-      }
-      return;
-    }
-
-    const pendingImmediateMessage = pendingImmediateMessageRef.current;
-    if (pendingImmediateMessage?.conversationId === conversationId) {
-      resetImmediateState();
-      setStatusAnnouncement(localization.immediateStartedAnnouncement);
-      await runMessageAndContinue(
-        pendingImmediateMessage.conversationId,
-        pendingImmediateMessage.content,
-        pendingImmediateMessage.knowledgeBaseSelection,
-      );
-      return;
-    }
-
-    if (outcome !== "completed") {
-      resetImmediateState();
-      setStatusAnnouncement(localization.currentAnswerStoppedAnnouncement);
-      return;
-    }
-
-    const nextQueuedMessage = queuedMessageRef.current;
-    if (nextQueuedMessage?.conversationId === conversationId) {
-      setQueuedMessage(null);
-      setStatusAnnouncement(localization.queuedSentAnnouncement);
-      await runMessageAndContinue(
-        nextQueuedMessage.conversationId,
-        nextQueuedMessage.content,
-        nextQueuedMessage.knowledgeBaseSelection,
-      );
-    }
-  }
-
-  runMessageAndContinueRef.current = runMessageAndContinue;
-
   async function handleSend(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (
@@ -506,26 +234,22 @@ export function ChatWorkspace() {
       !activeId ||
       isCancelling ||
       requiresKnowledgeBaseSelection
-    ) {
+    )
       return;
-    }
-
     if (conversationIsBusy) {
       if (visibleQueuedMessage) {
         setStatusAnnouncement(localization.queueAlreadyExistsAnnouncement);
         return;
       }
-      const nextQueuedMessage = {
+      setQueuedMessage({
         conversationId: activeId,
         content: draftMessage,
         knowledgeBaseSelection: activeKnowledgeBaseSelection,
-      };
-      setQueuedMessage(nextQueuedMessage);
+      });
       setDraft("");
       setStatusAnnouncement(localization.queuedAnnouncement);
       return;
     }
-
     setDraft("");
     await runMessageAndContinue(
       activeId,
@@ -543,10 +267,8 @@ export function ChatWorkspace() {
       !activeRunId ||
       visibleQueuedMessage ||
       requiresKnowledgeBaseSelection
-    ) {
+    )
       return;
-    }
-
     const immediateMessage = {
       conversationId: activeId,
       content: draftMessage,
@@ -557,7 +279,6 @@ export function ChatWorkspace() {
     setDraft("");
     setIsCancelling(true);
     setStatusAnnouncement(localization.stoppingCurrentAnswerAnnouncement);
-
     try {
       await myAgentsAPI.conversations.cancelRun(activeId, activeRunId);
       if (pendingImmediateMessageRef.current === immediateMessage) {
@@ -603,65 +324,10 @@ export function ChatWorkspace() {
     );
   }
 
-  async function handleReplayAssistantMessage(messageId: string) {
-    if (
-      !activeId ||
-      conversationIsBusy ||
-      isCancelling ||
-      replayAssistantMessage.isPending
-    ) {
-      return;
-    }
-
-    setReplayingMessageId(messageId);
-    setReplayNotice(null);
-    setStatusAnnouncement(localization.replayStartedAnnouncement);
-
-    try {
-      const replayResult = await replayAssistantMessage.mutateAsync(messageId);
-      const hasUnavailableSources = replayResult.warnings.some(
-        (warning) => warning.code === "regeneration_sources_unavailable",
-      );
-      setReplayNotice({
-        messageId,
-        message: hasUnavailableSources
-          ? localization.replaySourcesUnavailable
-          : localization.replaySuccess,
-        tone: hasUnavailableSources ? "warning" : "success",
-      });
-      setStatusAnnouncement(
-        hasUnavailableSources
-          ? localization.replaySourcesUnavailableAnnouncement
-          : localization.replaySuccessAnnouncement,
-      );
-    } catch (error) {
-      const isConflict = isMyAgentsAPIError(error) && error.status === 409;
-      const message =
-        error instanceof Error
-          ? error.message
-          : isConflict
-            ? localization.replayConflict
-            : localization.replayFailed;
-      setReplayNotice({
-        messageId,
-        message: isConflict ? message || localization.replayConflict : message,
-        tone: "error",
-      });
-      setStatusAnnouncement(
-        isConflict
-          ? localization.replayConflictAnnouncement
-          : localization.replayFailedAnnouncement,
-      );
-    } finally {
-      setReplayingMessageId(null);
-    }
-  }
-
   const sortedMessages = useMemo(() => {
     const persistedMessages = messages.data ?? [];
-    if (!optimisticMessage || optimisticMessage.conversation_id !== activeId) {
+    if (!optimisticMessage || optimisticMessage.conversation_id !== activeId)
       return persistedMessages;
-    }
     return [...persistedMessages, optimisticMessage];
   }, [activeId, messages.data, optimisticMessage]);
   const visibleActivityEvents =
@@ -714,212 +380,84 @@ export function ChatWorkspace() {
     shouldAutoScrollRef.current = isNearScrollBottom(scrollElement);
   }
 
-  useEffect(() => {
-    if (!activeId || !serverActiveRunId) return;
-    previousServerActiveRunIdRef.current = serverActiveRunId;
-    const intervalId = window.setInterval(() => {
-      void queryClient.invalidateQueries({
-        queryKey: MyAgentsQueryKeys.conversations.runs(activeId),
-      });
-    }, 2000);
-    return () => window.clearInterval(intervalId);
-  }, [activeId, queryClient, serverActiveRunId]);
-
-  useEffect(() => {
-    if (!serverActiveRunId) {
-      setObservedServerActiveRun(null);
-      return;
-    }
-    setActiveRunClock(Date.now());
-    setObservedServerActiveRun((current) =>
-      current?.runId === serverActiveRunId
-        ? current
-        : { runId: serverActiveRunId, observedAt: Date.now() },
-    );
-  }, [serverActiveRunId]);
-
-  useEffect(() => {
-    if (!serverActiveRunId) return;
-    const intervalId = window.setInterval(() => {
-      setActiveRunClock(Date.now());
-    }, 2000);
-    return () => window.clearInterval(intervalId);
-  }, [serverActiveRunId]);
-
-  useEffect(() => {
-    if (!activeId || serverActiveRunId || isStreaming || isCancelling) return;
-    const previousServerActiveRunId = previousServerActiveRunIdRef.current;
-    if (!previousServerActiveRunId) return;
-    previousServerActiveRunIdRef.current = null;
-    void queryClient.invalidateQueries({
-      queryKey: MyAgentsQueryKeys.conversations.messages(activeId),
-    });
-    const nextQueuedMessage = queuedMessageRef.current;
-    if (nextQueuedMessage?.conversationId !== activeId) return;
-    if (autoReplayAttemptedRunIdsRef.current.has(previousServerActiveRunId))
-      return;
-    autoReplayAttemptedRunIdsRef.current.add(previousServerActiveRunId);
-    queuedMessageRef.current = null;
-    setQueuedMessageState(null);
-    setStatusAnnouncement(localization.queuedSentAnnouncement);
-    void runMessageAndContinueRef.current(
-      nextQueuedMessage.conversationId,
-      nextQueuedMessage.content,
-      nextQueuedMessage.knowledgeBaseSelection,
-    );
-  }, [
+  useChatWorkspaceEffects({
     activeId,
+    autoReplayAttemptedRunIdsRef,
+    autoScrollTrigger,
+    chatScrollRef,
     isCancelling,
     isStreaming,
     localization,
+    previousServerActiveRunIdRef,
     queryClient,
+    queuedMessageRef,
+    runMessageAndContinue,
+    selectableKnowledgeBases,
     serverActiveRunId,
-  ]);
-
-  useEffect(() => {
-    setShowGuestNotice(
-      new URLSearchParams(window.location.search).get("guest") === "1",
-    );
-  }, []);
-
-  useEffect(() => {
-    const availableIds = new Set(selectableKnowledgeBases.map((kb) => kb.id));
-    setSelectedKnowledgeBaseIds((current) =>
-      current.filter((id) => availableIds.has(id)),
-    );
-  }, [selectableKnowledgeBases]);
-
-  useEffect(() => {
-    if (!activeId) return;
-    shouldAutoScrollRef.current = true;
-    requestAnimationFrame(() => {
-      const scrollElement = chatScrollRef.current;
-      if (!scrollElement) return;
-      scrollElement.scrollTop = scrollElement.scrollHeight;
-    });
-  }, [activeId]);
-
-  useEffect(() => {
-    if (!autoScrollTrigger || !shouldAutoScrollRef.current) return;
-
-    requestAnimationFrame(() => {
-      const scrollElement = chatScrollRef.current;
-      if (!scrollElement || !shouldAutoScrollRef.current) return;
-      scrollElement.scrollTop = scrollElement.scrollHeight;
-    });
-  }, [autoScrollTrigger]);
+    setActiveRunClock,
+    setObservedServerActiveRun,
+    setQueuedMessageState,
+    setSelectedKnowledgeBaseIds,
+    setShowGuestNotice,
+    setStatusAnnouncement,
+    shouldAutoScrollRef,
+  });
 
   return (
-    <div className="grid gap-4 xl:h-[calc(100dvh-8rem)] xl:grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)]">
-      {showGuestNotice ? (
-        <div className="rounded-xl border border-cal-warning/25 bg-cal-warning/10 px-3 py-2.5 text-sm text-cal-body xl:col-span-2">
-          <p className="font-semibold leading-5 text-cal-ink">
-            {localization.guestNoticeTitle}
-          </p>
-          <p className="mt-0.5 leading-5">
-            {localization.guestNoticeDescription}
-          </p>
-        </div>
-      ) : null}
-      <ConversationSidebar
-        localization={localization}
-        conversations={conversations.data}
-        activeId={activeId}
-        isLoading={conversations.isLoading}
-        error={conversations.error}
-        createError={createConversation.error}
-        deleteError={deleteConversation.error}
-        isCreatePending={createConversation.isPending}
-        isDeletePending={deleteConversation.isPending}
-        conversationIsBusy={conversationIsBusy}
-        isCancelling={isCancelling}
-        onCreate={handleCreate}
-        onSelect={setSelectedId}
-        onDelete={handleDeleteConversation}
-      />
-
-      <div className="min-h-0 min-w-0 xl:h-full">
-        <section
-          data-testid="chat-workspace-panel"
-          className={CHAT_WORKSPACE_PANEL_CLASS_NAME}
-        >
-          <header className="grid gap-3 border-b border-cal-hairline p-4 sm:p-5">
-            <div>
-              <p className="cal-label">
-                {localization.activeConversationLabel}
-              </p>
-              <h2 className="mt-2 break-words text-lg font-medium text-cal-ink">
-                {conversation.data?.title ??
-                  localization.selectOrCreateConversation}
-              </h2>
-            </div>
-            <OnboardingTarget id="chat.source-selector">
-              <KnowledgeSourceSelector
-                localization={localization}
-                knowledgeBaseMode={knowledgeBaseMode}
-                onKnowledgeBaseModeChange={setKnowledgeBaseMode}
-                knowledgeBases={selectableKnowledgeBases}
-                selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}
-                knowledgeBasesLoading={knowledgeBases.isLoading}
-                knowledgeBasesError={knowledgeBases.error}
-                requiresKnowledgeBaseSelection={requiresKnowledgeBaseSelection}
-                onToggleKnowledgeBase={toggleSelectedKnowledgeBase}
-              />
-            </OnboardingTarget>
-          </header>
-          <ChatTranscript
-            localization={localization}
-            lang={lang}
-            activeId={activeId}
-            messagesError={messages.error}
-            messages={sortedMessages}
-            conversationIsBusy={conversationIsBusy}
-            streamedReply={streamedReply}
-            serverActiveRunIsStale={serverActiveRunIsStale}
-            sortedRuns={sortedRuns}
-            visibleActivityEvents={visibleActivityEvents}
-            visibleCitations={visibleCitations}
-            latestAssistantMessageId={latestAssistantMessageId}
-            replayingMessageId={replayingMessageId}
-            replayDisabled={
-              conversationIsBusy ||
-              isCancelling ||
-              replayAssistantMessage.isPending
-            }
-            replayNotice={replayNotice}
-            chatScrollRef={chatScrollRef}
-            onChatScroll={handleChatScroll}
-            onReplayAssistantMessage={handleReplayAssistantMessage}
-          />
-          <OnboardingTarget id="chat.composer">
-            <ComposerBar
-              localization={localization}
-              draft={draft}
-              onDraftChange={setDraft}
-              onSubmit={handleSend}
-              visibleQueuedMessage={visibleQueuedMessage}
-              queuedHelper={queuedHelper}
-              knowledgeBases={knowledgeBases.data ?? []}
-              conversationIsBusy={conversationIsBusy}
-              activeId={activeId}
-              isCancelling={isCancelling}
-              isPrimaryActionDisabled={isPrimaryActionDisabled}
-              primaryActionLabel={primaryActionLabel}
-              isStreaming={isStreaming}
-              isSendNowDisabled={isSendNowDisabled}
-              onSendNow={handleSendNow}
-              sendNowHelper={sendNowHelper}
-              showGuestNotice={showGuestNotice}
-              streamError={streamError}
-              statusAnnouncement={statusAnnouncement}
-              onSendQueuedMessage={handleSendQueuedMessage}
-              onEditQueuedMessage={handleEditQueuedMessage}
-              onCancelQueuedMessage={handleCancelQueuedMessage}
-              composerPlaceholder={composerPlaceholder}
-            />
-          </OnboardingTarget>
-        </section>
-      </div>
-    </div>
+    <ChatWorkspaceLayout
+      activeId={activeId}
+      activeRunId={activeRunId}
+      chatScrollRef={chatScrollRef}
+      composerPlaceholder={composerPlaceholder}
+      conversation={conversation}
+      conversationIsBusy={conversationIsBusy}
+      conversations={conversations}
+      createConversation={createConversation}
+      deleteConversation={deleteConversation}
+      draft={draft}
+      events={visibleActivityEvents}
+      hasActiveDraft={hasActiveDraft}
+      isCancelling={isCancelling}
+      isPrimaryActionDisabled={isPrimaryActionDisabled}
+      isSendNowDisabled={isSendNowDisabled}
+      isStreaming={isStreaming}
+      knowledgeBaseMode={knowledgeBaseMode}
+      knowledgeBases={knowledgeBases}
+      lang={lang}
+      latestAssistantMessageId={latestAssistantMessageId}
+      localization={localization}
+      messages={sortedMessages}
+      messagesError={messages.error}
+      onCancelQueuedMessage={handleCancelQueuedMessage}
+      onChatScroll={handleChatScroll}
+      onCreate={handleCreate}
+      onDeleteConversation={handleDeleteConversation}
+      onDraftChange={setDraft}
+      onEditQueuedMessage={handleEditQueuedMessage}
+      onKnowledgeBaseModeChange={setKnowledgeBaseMode}
+      onReplayAssistantMessage={handleReplayAssistantMessage}
+      onSelectConversation={setSelectedId}
+      onSendNow={handleSendNow}
+      onSendQueuedMessage={handleSendQueuedMessage}
+      onSubmit={handleSend}
+      onToggleKnowledgeBase={toggleSelectedKnowledgeBase}
+      primaryActionLabel={primaryActionLabel}
+      queuedHelper={queuedHelper}
+      replayAssistantMessage={replayAssistantMessage}
+      replayNotice={replayNotice}
+      replayingMessageId={replayingMessageId}
+      requiresKnowledgeBaseSelection={requiresKnowledgeBaseSelection}
+      selectableKnowledgeBases={selectableKnowledgeBases}
+      selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}
+      sendNowHelper={sendNowHelper}
+      serverActiveRunIsStale={serverActiveRunIsStale}
+      showGuestNotice={showGuestNotice}
+      sortedRuns={sortedRuns}
+      statusAnnouncement={statusAnnouncement}
+      streamError={streamError}
+      streamedReply={streamedReply}
+      visibleCitations={visibleCitations}
+      visibleQueuedMessage={visibleQueuedMessage}
+    />
   );
 }

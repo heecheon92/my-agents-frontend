@@ -75,6 +75,9 @@ export const API_PATH = {
     publishRequestReject(groupId: string, requestId: string) {
       return `${this.publishRequests(groupId)}/${requestId}/reject`;
     },
+    publishRequestCancel(groupId: string, requestId: string) {
+      return `${this.publishRequests(groupId)}/${requestId}/cancel`;
+    },
   },
   groupInvitations: {
     accept: "/group-invitations/accept",

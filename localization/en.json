@@ -643,7 +643,7 @@
       "membersDrawerDescription": "Full invite-accepted member roster for {groupName}. User IDs stay inside advanced details.",
       "invitationsDrawerDescription": "Email invitation history for {groupName}, managed by status without revealing account existence.",
       "sourceSpacesDrawerDescription": "All group source spaces connected to {groupName}.",
-      "publishRequestsDrawerDescription": "Full share-request history for {groupName}. Only pending requests can be approved or rejected.",
+      "publishRequestsDrawerDescription": "Full share-request history for {groupName}. Only pending requests can be approved, rejected, or cancelled by the requester.",
       "drawerCountLabel": "{count} total",
       "hiddenRowsHint": "+{count} more. Open the management view for the full list.",
       "backToGroupOverviewAction": "Back to group overview",
@@ -651,8 +651,11 @@
       "publishRequestStatuses": {
         "pending": "pending",
         "approved": "approved",
-        "rejected": "rejected"
+        "rejected": "rejected",
+        "cancelled": "cancelled",
+        "withdrawn": "withdrawn"
       },
+      "publishCancelNowButton": "Cancel request",
       "publishRequestSearchLabel": "Search share requests",
       "publishRequestSearchPlaceholder": "Search source, target, filename, request ID, or date",
       "invitationSearchLabel": "Search invitations",

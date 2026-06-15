@@ -88,6 +88,8 @@ export const knowledgePublishRequestStatusSchema = z.enum([
   "pending",
   "approved",
   "rejected",
+  "cancelled",
+  "withdrawn",
 ]);
 
 export const knowledgePublishRequestCreateRequestSchema = z.object({

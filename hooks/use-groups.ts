@@ -219,3 +219,15 @@ export function useRejectPublishRequest(groupId?: string) {
       }),
   });
 }
+
+export function useCancelPublishRequest(groupId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (requestId: string) =>
+      myAgentsAPI.groups.cancelPublishRequest(groupId ?? "", requestId),
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.groups.publishRequests(groupId ?? ""),
+      }),
+  });
+}

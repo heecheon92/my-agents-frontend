@@ -41,6 +41,7 @@ type GroupRowsLocalization = {
     noSourceSpacesDescription: string;
     noSourceSpacesTitle: string;
     publishApproveNowButton: string;
+    publishCancelNowButton: string;
     publishRejectNowButton: string;
     publishRequestStatuses: Record<KnowledgePublishRequestStatus, string>;
     publishReviewTargetLabel: string;
@@ -243,7 +244,9 @@ export function PublishRequestRows({
   error,
   emptyFiltered = false,
   canReviewPublishRequests,
+  canCancelPublishRequest,
   approvePending,
+  cancelPending,
   rejectPending,
   localization,
   publishRequestStatusLabel,
@@ -251,13 +254,16 @@ export function PublishRequestRows({
   publishRequestTargetLabel,
   onReviewRequest,
   onApproveRequest,
+  onCancelRequest,
   onRejectRequest,
 }: {
   rows?: KnowledgePublishRequest[];
   error: unknown;
   emptyFiltered?: boolean;
   canReviewPublishRequests: boolean;
+  canCancelPublishRequest: (request: KnowledgePublishRequest) => boolean;
   approvePending: boolean;
+  cancelPending: boolean;
   rejectPending: boolean;
   localization: GroupRowsLocalization;
   publishRequestStatusLabel: (status: KnowledgePublishRequestStatus) => string;
@@ -265,6 +271,7 @@ export function PublishRequestRows({
   publishRequestTargetLabel: (request: KnowledgePublishRequest) => string;
   onReviewRequest: (request: KnowledgePublishRequest) => void;
   onApproveRequest: (requestId: string) => void;
+  onCancelRequest: (requestId: string) => void;
   onRejectRequest: (requestId: string) => void;
 }) {
   if (error) return <ErrorState error={error} />;
@@ -279,89 +286,115 @@ export function PublishRequestRows({
   }
   return (
     <div className="grid gap-2">
-      {rows.map((request) => (
-        <article
-          key={request.id}
-          className="rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm"
-        >
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <Pill
-                  tone={
-                    request.status === "approved"
-                      ? "green"
-                      : request.status === "rejected"
-                        ? "rose"
-                        : "amber"
-                  }
-                >
-                  {publishRequestStatusLabel(request.status)}
-                </Pill>
-                <span className="font-medium text-cal-ink">
-                  {request.source_knowledge_base_id
-                    ? localization.groups.publishSourceKnowledgeBaseOption
-                    : localization.groups.publishSourceDocumentOption}
-                </span>
-              </div>
-              <p className="mt-2 break-words font-medium text-cal-ink">
-                {publishRequestSourceLabel(request)}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-cal-muted">
-                {localization.groups.publishReviewTargetLabel}:{" "}
-                {publishRequestTargetLabel(request)}
-              </p>
-              <p className="mt-1 text-xs leading-5 text-cal-muted">
-                {request.created_at}
-              </p>
-              <details className="mt-2 rounded-lg bg-cal-canvas p-2 text-xs text-cal-muted">
-                <summary className="cursor-pointer font-medium text-cal-ink">
-                  {localization.groups.advancedGroupDetails}
-                </summary>
-                <div className="mt-2 grid gap-1 font-mono">
-                  <span className="break-all">{request.id}</span>
-                  <span className="break-all">
-                    {request.source_document_id ??
-                      request.source_knowledge_base_id}{" "}
-                    →{" "}
-                    {request.target_knowledge_base_id ??
-                      request.target_group_id}
+      {rows.map((request) => {
+        const isPending = request.status === "pending";
+        const showReviewActions = canReviewPublishRequests && isPending;
+        const showCancelAction = isPending && canCancelPublishRequest(request);
+        const mutationPending =
+          approvePending || rejectPending || cancelPending;
+
+        return (
+          <article
+            key={request.id}
+            className="rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm"
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Pill
+                    tone={
+                      request.status === "approved"
+                        ? "green"
+                        : request.status === "rejected"
+                          ? "rose"
+                          : request.status === "cancelled" ||
+                              request.status === "withdrawn"
+                            ? "slate"
+                            : "amber"
+                    }
+                  >
+                    {publishRequestStatusLabel(request.status)}
+                  </Pill>
+                  <span className="font-medium text-cal-ink">
+                    {request.source_knowledge_base_id
+                      ? localization.groups.publishSourceKnowledgeBaseOption
+                      : localization.groups.publishSourceDocumentOption}
                   </span>
                 </div>
-              </details>
-            </div>
-            {canReviewPublishRequests && request.status === "pending" ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onReviewRequest(request)}
-                >
-                  {localization.groups.reviewRequestAction}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  disabled={approvePending || rejectPending}
-                  onClick={() => onApproveRequest(request.id)}
-                >
-                  {localization.groups.publishApproveNowButton}
-                </Button>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={approvePending || rejectPending}
-                  onClick={() => onRejectRequest(request.id)}
-                >
-                  {localization.groups.publishRejectNowButton}
-                </Button>
+                <p className="mt-2 break-words font-medium text-cal-ink">
+                  {publishRequestSourceLabel(request)}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-cal-muted">
+                  {localization.groups.publishReviewTargetLabel}:{" "}
+                  {publishRequestTargetLabel(request)}
+                </p>
+                <p className="mt-1 text-xs leading-5 text-cal-muted">
+                  {request.created_at}
+                </p>
+                <details className="mt-2 rounded-lg bg-cal-canvas p-2 text-xs text-cal-muted">
+                  <summary className="cursor-pointer font-medium text-cal-ink">
+                    {localization.groups.advancedGroupDetails}
+                  </summary>
+                  <div className="mt-2 grid gap-1 font-mono">
+                    <span className="break-all">{request.id}</span>
+                    <span className="break-all">
+                      {request.source_document_id ??
+                        request.source_knowledge_base_id}{" "}
+                      →{" "}
+                      {request.target_knowledge_base_id ??
+                        request.target_group_id}
+                    </span>
+                  </div>
+                </details>
               </div>
-            ) : null}
-          </div>
-        </article>
-      ))}
+              {showReviewActions || showCancelAction ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  {showReviewActions ? (
+                    <>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onReviewRequest(request)}
+                      >
+                        {localization.groups.reviewRequestAction}
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        disabled={mutationPending}
+                        onClick={() => onApproveRequest(request.id)}
+                      >
+                        {localization.groups.publishApproveNowButton}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        disabled={mutationPending}
+                        onClick={() => onRejectRequest(request.id)}
+                      >
+                        {localization.groups.publishRejectNowButton}
+                      </Button>
+                    </>
+                  ) : null}
+                  {showCancelAction ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={mutationPending}
+                      onClick={() => onCancelRequest(request.id)}
+                    >
+                      {localization.groups.publishCancelNowButton}
+                    </Button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
 }

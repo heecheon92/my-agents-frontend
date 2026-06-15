@@ -205,4 +205,17 @@ export class MyAgentsGroupAPI {
       ),
     );
   }
+
+  async cancelPublishRequest(
+    groupId: string,
+    requestId: string,
+  ): Promise<KnowledgePublishRequest> {
+    return parseWithSchema(
+      knowledgePublishRequestSchema,
+      await this.client.fetch(
+        API_PATH.groups.publishRequestCancel(groupId, requestId),
+        { method: "POST" },
+      ),
+    );
+  }
 }

@@ -202,7 +202,11 @@ describe("MyAgentsGroupAPI publish requests", () => {
           source_document_filename: "draft.md",
           source_knowledge_base_name: null,
           target_knowledge_base_name: "Group KB",
-          status: path.endsWith("approve") ? "approved" : "rejected",
+          status: path.endsWith("approve")
+            ? "approved"
+            : path.endsWith("cancel")
+              ? "cancelled"
+              : "rejected",
           reviewer_user_id: "admin-1",
           published_document_id: path.endsWith("approve")
             ? "doc-group-1"
@@ -268,6 +272,12 @@ describe("MyAgentsGroupAPI publish requests", () => {
       status: "rejected",
       published_document_id: null,
     });
+    await expect(
+      api.cancelPublishRequest("group-1", "request-1"),
+    ).resolves.toMatchObject({
+      status: "cancelled",
+      published_document_id: null,
+    });
     expect(calls).toEqual([
       { path: "/groups/group-1/publish-requests", init: undefined },
       {
@@ -281,6 +291,78 @@ describe("MyAgentsGroupAPI publish requests", () => {
       {
         path: "/groups/group-1/publish-requests/request-1/reject",
         init: { method: "POST" },
+      },
+      {
+        path: "/groups/group-1/publish-requests/request-1/cancel",
+        init: { method: "POST" },
+      },
+    ]);
+  });
+
+  it("parses withdrawn publish requests with source snapshots", async () => {
+    const api = new MyAgentsGroupAPI({
+      fetch: async () => [
+        {
+          id: "request-withdrawn-1",
+          requester_user_id: "user-1",
+          target_group_id: "group-1",
+          target_knowledge_base_id: "kb-group-1",
+          source_document_id: null,
+          source_knowledge_base_id: null,
+          source_document_title: "Deleted source draft",
+          source_document_excerpt: "Snapshot preserved after source deletion.",
+          source_document_filename: "deleted.md",
+          source_knowledge_base_name: null,
+          target_knowledge_base_name: "Group KB",
+          status: "withdrawn",
+          reviewer_user_id: null,
+          published_document_id: null,
+          published_knowledge_base_id: null,
+          created_at: "2026-06-15T07:00:00Z",
+          reviewed_at: "2026-06-15T07:05:00Z",
+        },
+      ],
+    });
+
+    await expect(api.publishRequests("group-1")).resolves.toMatchObject([
+      {
+        status: "withdrawn",
+        source_document_id: null,
+        source_document_title: "Deleted source draft",
+      },
+    ]);
+  });
+
+  it("parses cancelled publish requests so requesters can request again", async () => {
+    const api = new MyAgentsGroupAPI({
+      fetch: async () => [
+        {
+          id: "request-cancelled-1",
+          requester_user_id: "user-1",
+          target_group_id: "group-1",
+          target_knowledge_base_id: "kb-group-1",
+          source_document_id: "doc-1",
+          source_knowledge_base_id: null,
+          source_document_title: "Cancelled draft",
+          source_document_excerpt: "Requester cancelled before review.",
+          source_document_filename: "cancelled.md",
+          source_knowledge_base_name: null,
+          target_knowledge_base_name: "Group KB",
+          status: "cancelled",
+          reviewer_user_id: null,
+          published_document_id: null,
+          published_knowledge_base_id: null,
+          created_at: "2026-06-15T08:00:00Z",
+          reviewed_at: "2026-06-15T08:05:00Z",
+        },
+      ],
+    });
+
+    await expect(api.publishRequests("group-1")).resolves.toMatchObject([
+      {
+        status: "cancelled",
+        source_document_id: "doc-1",
+        source_document_title: "Cancelled draft",
       },
     ]);
   });
