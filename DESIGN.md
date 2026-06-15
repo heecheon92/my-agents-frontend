@@ -265,7 +265,7 @@
     - Wide desktop: detailed run history, activity events, and citation cards may sit side by side only after a disclosure is opened; the transcript remains the dominant surface.
   - Admin surfaces:
     - Use current container-query-ready `responsive-panel-grid[data-layout="form-aside"]`; forms and selected-action panels split only when the container is wide enough.
-    - Sources should prefer a GreetSchool-style organization shell: persistent source-space tree on desktop, sheet/browser on compact screens, table-like source rows in the main pane, route-backed tree selection, shadcn/Base UI dialogs for create/upload forms, and row-owned Manage dialogs for deletion and preparation recovery instead of a persistent selected-item panel.
+    - Sources should prefer an organization shell: persistent source-space tree on desktop, sheet/browser on compact screens, table-like source rows in the main pane, route-backed tree selection, shadcn/Base UI dialogs for create/upload forms, and row-owned Manage dialogs for deletion and preparation recovery instead of a persistent selected-item panel.
     - Groups should use the same organization-shell pattern as Sources: persistent group browser on desktop, group browser sheet on compact screens, selected-group header, overview cards, and row-owned/dialog-owned actions. Avoid stacking create/invite/publish/review forms above or beside the group list.
     - De-emphasize admin-heavy density with grouped sections, collapsible/secondary action areas, and clear selected-resource context.
     - Resource rows must wrap IDs and filenames without page overflow.

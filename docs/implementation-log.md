@@ -1,3 +1,12 @@
+## 2026-06-15 — Admin surfaces cleanup and agent guidance
+
+- Split the former 4,486-line `components/AdminSurfaces.tsx` into a compatibility barrel plus focused `components/admin-surfaces/` modules for Sources, Groups, shared helper UI, upload queue rows, group chrome, source-space forms/tree/table/dialog pieces, group rows, and publish-review panels.
+- Preserved the existing public import path (`@/components/AdminSurfaces`) so route files and tests do not need behavior changes.
+- Kept data fetching, mutation orchestration, and backend contracts in `SourcesSurface` / `GroupsSurface` while extracting only leaf/presentational helpers; no new dependencies or API/model changes were introduced.
+- Added repo-local agent guidance for Server Component preference, server fetch freshness/caching, and mobile responsiveness, then linked those docs from `AGENTS.md` and `docs/frontend-architecture.md`.
+
+Verification planned/passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build`, `pnpm exec playwright test e2e/group-knowledge-v1.spec.ts`, and `git diff --check`.
+
 ## 2026-06-14 — Groups workspace action redesign
 
 - Re-laid out `/groups` around the same organization-shell pattern as `/knowledge`: a persistent group browser on desktop, compact-screen group browser sheet, selected-group header, overview cards, and focused action dialogs.
@@ -17,7 +26,7 @@ Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm
 ## 2026-06-11 — Addressable Knowledge workspace polish
 
 - Added `/knowledge/[sourceId]` so a selected personal knowledge space, group knowledge space, or group group can be opened directly and survives refresh.
-- Kept the GreetSchool-style organization-tree behavior: tree rows navigate with links, group rows select the group context, and child knowledge-space rows select that exact space.
+- Kept the organization-tree behavior: tree rows navigate with links, group rows select the group context, and child knowledge-space rows select that exact space.
 - Widened and left-aligned the Knowledge workspace so the table/inspector use the available service-shell width instead of sitting in a centered narrow column.
 - Updated Korean copy to prefer “지식” / “지식 공간” over the less intuitive “소스” wording while keeping the English “Sources” mental model unchanged.
 
@@ -26,7 +35,7 @@ Verification passed for this entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm
 ## 2026-06-11 — Merged Sources workflow
 
 - Merged the former Knowledge/Add sources mental model into one visible Sources entry: `/knowledge` now hosts source-space selection, source readiness, and selected-source advanced controls; `/documents` redirects to the merged page for compatibility.
-- Re-laid out Sources around a GreetSchool-inspired organization shell: a persistent source-space tree on desktop, a mobile source-space sheet, and a table-style source list with a selected-source inspector.
+- Re-laid out Sources around an organization shell: a persistent source-space tree on desktop, a mobile source-space sheet, and a table-style source list with a selected-source inspector.
 - Moved source-space creation, text-source creation, and file upload/preparation into shadcn/Base UI dialogs so the default page reads as “choose a space, review its sources, add when needed” instead of stacked setup forms.
 - Updated onboarding, localized copy, route tests, and active docs to minimize cross-page depth while keeping group sharing, raw IDs, and processing history behind secondary/Advanced controls.
 
@@ -71,7 +80,7 @@ Verification for this docs-only entry is part of the current worker-4 backend/fr
 - Kept the existing KB-nested multipart upload path and backend boundary intact; the frontend only updates local accept/validation, per-file type labels, and source metadata labels for backend `spreadsheet` / `presentation` documents.
 - Updated English/Korean UI copy plus README/runbook contract notes so supported upload claims include `.xlsx`/`.pptx` without implying arbitrary file support.
 
-Verification passed for this slice: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (17 files / 99 tests), `pnpm build`, and full Playwright on an isolated temporary port because port 3000 was already occupied by an unrelated GreetSchool Next server: `pnpm exec playwright test --config /tmp/my-agents-frontend-playwright-3107.config.ts --reporter=line` (11 passed / 2 skipped).
+Verification passed for this slice: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (17 files / 99 tests), `pnpm build`, and full Playwright on an isolated temporary port because port 3000 was already occupied by an unrelated Next server: `pnpm exec playwright test --config /tmp/my-agents-frontend-playwright-3107.config.ts --reporter=line` (11 passed / 2 skipped).
 
 ## 2026-06-07 — Guest demo guided onboarding slice
 

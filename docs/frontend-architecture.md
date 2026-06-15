@@ -32,6 +32,9 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | `hooks/` | TanStack Query hooks for each product domain. |
 | `tests/` | Vitest regression tests for contracts and BFF policy. |
 | `docs/` | Handoff, architecture, runbook, backend requests, and implementation log. |
+| `docs/next-component-boundaries.md` | Server Component / Client Component boundary policy for App Router work. |
+| `docs/server-fetch-policy.md` | Server-side fetch freshness, caching, cookie/CSRF, and BFF policy. |
+| `docs/mobile-responsiveness.md` | Responsive route, screen, and overlay guidance. |
 | `DESIGN.md` | Active design/theme contract for UI, layout, component states, and visual decisions. |
 | `.agents/skills/responsive-design/SKILL.md` | Required responsive workflow for UI/layout changes. |
 | `localization/` | Korean and English UI copy dictionaries; no user-visible component strings should be hardcoded. |
@@ -44,12 +47,18 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | `/login` | `components/AuthPanel.tsx` | Login through BFF `/auth/login`. |
 | `/signup` | `components/AuthPanel.tsx` | Signup parses the backend `SignupResponse` envelope, requires a display-only nickname, and shows an account-created handoff before login. |
 | `/chat` | `components/ChatWorkspace.tsx` + `components/chat/*` | Anchor Ask journey. Uses conversations, messages, streamed answers, citations near assistant replies, a compact top-of-chat source selector, and collapsed response evidence/work history. |
-| `/knowledge` | `components/AdminSurfaces.tsx` | Knowledge journey root. Uses a source-space tree + source table shell, shadcn/Base UI dialogs for add flows, and keeps row-level permission/deletion controls in per-source Manage dialogs. |
-| `/knowledge/[sourceId]` | `components/AdminSurfaces.tsx` | Addressable selected knowledge route. The segment may be a knowledge-base ID or group ID; refresh preserves the selected space/group instead of resetting to the first available item. |
+| `/knowledge` | `components/AdminSurfaces.tsx` barrel → `components/admin-surfaces/SourcesSurface.tsx` | Knowledge journey root. Uses a source-space tree + source table shell, shadcn/Base UI dialogs for add flows, and keeps row-level permission/deletion controls in per-source Manage dialogs. |
+| `/knowledge/[sourceId]` | `components/AdminSurfaces.tsx` barrel → `components/admin-surfaces/SourcesSurface.tsx` | Addressable selected knowledge route. The segment may be a knowledge-base ID or group ID; refresh preserves the selected space/group instead of resetting to the first available item. |
 | `/documents` | `next/navigation` redirect | Legacy compatibility path that redirects to `/knowledge` so old links land on the merged Sources workflow. |
-| `/groups` | `components/AdminSurfaces.tsx` | “Groups” journey. Manages shared knowledge requests, shows accepted-member display names when the backend contract provides them, and keeps raw ID-based member controls in Advanced disclosure. |
+| `/groups` and `/groups/[groupId]/[section]` | `components/AdminSurfaces.tsx` barrel → `components/admin-surfaces/GroupsSurface.tsx` | “Groups” journey. Manages shared knowledge requests, shows accepted-member display names when the backend contract provides them, and keeps raw ID-based member controls in Advanced disclosure. Shared group chrome lives in `components/admin-surfaces/GroupChrome.tsx`. |
 
 All service routes live under `app/(service)/layout.tsx`, which renders `ServiceShell` and restores auth through `/auth/me`.
+
+## Component boundaries and freshness
+
+Future App Router work should prefer Server Components by default. Use Client Components only for the deepest subtree that needs browser events, hooks, TanStack Query, `useLocalization()`, auth hooks, Base UI/shadcn interactivity, overlays, or client context. Route pages, layouts, link-only navigation, and mostly static shells should stay server-rendered whenever possible.
+
+Server-side reads that involve session, CSRF/cookies, current user, group membership, document/source permissions, or other authorization-sensitive values should stay fresh per request. Do not add persistent Next fetch caching to those reads by default. See `docs/next-component-boundaries.md` and `docs/server-fetch-policy.md` before changing route handlers, server helpers, layouts, caching, cookies, or data-fetching behavior.
 
 ## Data and typing layers
 

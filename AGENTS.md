@@ -100,6 +100,18 @@ Recommended shape:
 - `tests/` or co-located `*.test.ts(x)` — Vitest tests.
 - `e2e/` — Playwright tests.
 
+## Agent instruction docs
+
+Read the relevant repo-local guide before modifying code in that area:
+
+- `docs/next-component-boundaries.md` for Server Component / Client Component boundary decisions.
+- `docs/server-fetch-policy.md` for server-side fetch freshness, caching, cookies, CSRF, and BFF policy.
+- `docs/mobile-responsiveness.md` for responsive route/screen/overlay changes.
+- `DESIGN.md` for visual language, responsive behavior, component states, accessibility, and content voice.
+- `docs/frontend-architecture.md` for feature folders, routes, endpoint coverage, and integration shape.
+- `docs/security-and-backend-boundary.md` for frontend/backend scope and safe auth/session handling.
+- `docs/verification-runbook.md` for validation commands and evidence expectations.
+
 ## UI behavior priorities
 
 Build in this order unless the user requests otherwise:
@@ -131,10 +143,13 @@ Build in this order unless the user requests otherwise:
 - Keep query keys stable and colocated in feature/api modules.
 - Use optimistic updates sparingly; prefer correctness for auth and chat history.
 - Treat the hosted OpenAPI response models as source of truth. If the UI needs a field that is missing, add an explicit TODO or backend contract note rather than inventing fake data.
+- Follow `docs/server-fetch-policy.md` for server-side reads. Auth/session, CSRF/cookie, group membership, document/source permission, and other authorization-sensitive reads should stay fresh per request unless the task explicitly accepts staleness.
+- Do not add `cache: "force-cache"` or `next: { revalidate: ... }` to authorization-sensitive reads by default. Use broader caching only for stable non-sensitive data with a clear invalidation path.
 
 ## Design and accessibility rules
 
 - Read `DESIGN.md` before UI/theme/layout work; treat it as the active design contract for visual language, component states, accessibility, responsive behavior, and content voice.
+- Read `docs/mobile-responsiveness.md` before route/screen/overlay responsive work. Preserve working desktop layouts and add route-local mobile branches only where needed.
 - Apply the repo-local `responsive-design` skill for UI/layout work: start mobile-first, prefer fluid typography/spacing tokens, use container-query-ready component wrappers for reusable panels, prevent horizontal overflow, and keep touch targets comfortable before adding desktop-only refinements.
 - If requested UI conflicts with `DESIGN.md`, update `DESIGN.md` or add an open question before implementing the exception.
 - Build accessible, keyboard-navigable UI by default.
@@ -150,9 +165,13 @@ Before changing routing, server actions, route handlers, caching, cookies, or da
 
 1. Read the relevant local docs under `node_modules/next/dist/docs/01-app/`.
 2. Prefer App Router conventions.
-3. Be explicit about Server Component vs Client Component boundaries.
-4. Use Client Components only when interactivity, browser APIs, hooks, or TanStack Query require them.
-5. Do not rely on stale Next.js Pages Router patterns unless intentionally adding Pages Router code, which should be avoided here.
+3. Read `docs/next-component-boundaries.md`.
+4. Prefer Server Components by default.
+5. Apply `"use client"` only to the deepest component that actually needs client-only hooks, browser event handlers, Base UI/shadcn interactivity, TanStack Query, `useLocalization()`, auth hooks, or local/client context.
+6. Do not make route pages, route layouts, tab shells, or broad screen wrappers client components just because one child needs interactivity; extract a leaf client component instead.
+7. Prefer URL/route state and server-rendered `Link` navigation over client-state tabs when the tab or selected resource represents navigable content.
+8. Opt into route-global/client-global state only when the coordination benefit clearly outweighs the server-rendering, bundle, hydration, and flicker costs.
+9. Do not rely on stale Next.js Pages Router patterns unless intentionally adding Pages Router code, which should be avoided here.
 
 ## Styling/component rules
 
