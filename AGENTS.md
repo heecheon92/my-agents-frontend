@@ -151,6 +151,7 @@ Build in this order unless the user requests otherwise:
 - Read `DESIGN.md` before UI/theme/layout work; treat it as the active design contract for visual language, component states, accessibility, responsive behavior, and content voice.
 - Read `docs/mobile-responsiveness.md` before route/screen/overlay responsive work. Preserve working desktop layouts and add route-local mobile branches only where needed.
 - Apply the repo-local `responsive-design` skill for UI/layout work: start mobile-first, prefer fluid typography/spacing tokens, use container-query-ready component wrappers for reusable panels, prevent horizontal overflow, and keep touch targets comfortable before adding desktop-only refinements.
+- Apply `.agents/skills/wire-dialog-sheet-ui/SKILL.md` before adding or changing Dialog, Sheet, or Drawer overlays; keep overlays extracted, accessible, and scoped to the smallest Client Component boundary that needs interactivity.
 - If requested UI conflicts with `DESIGN.md`, update `DESIGN.md` or add an open question before implementing the exception.
 - Build accessible, keyboard-navigable UI by default.
 - Prefer simple, readable layouts over decorative AI-dashboard noise.

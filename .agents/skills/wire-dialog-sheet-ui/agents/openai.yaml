@@ -1,0 +1,4 @@
+interface:
+  display_name: "Wire Dialog Sheet UI"
+  short_description: "Build project-style Dialog, Sheet, and Drawer overlays"
+  default_prompt: "Use $wire-dialog-sheet-ui to add or update a Dialog, Sheet, or Drawer that matches the shared overlay patterns."
