@@ -12,6 +12,7 @@ import {
   isObservedActiveRunStale,
   REPLAY_ICON_PENDING_CLASS_NAME,
   sanitizeActivityEventPayload,
+  shouldRecordLiveActivityEvent,
 } from "@/components/ChatWorkspace";
 import en from "@/localization/en.json";
 import ko from "@/localization/ko.json";
@@ -94,6 +95,13 @@ describe("ChatWorkspace assistant message footer", () => {
     });
     expect(en.chat.runEvidenceLabel).toBe("Sources used");
     expect(ko.chat.activityPayloadHidden).toBe("내부 처리 정보는 숨김");
+  });
+
+  it("keeps answer deltas out of visible live activity history", () => {
+    expect(shouldRecordLiveActivityEvent("answer_delta")).toBe(false);
+    expect(shouldRecordLiveActivityEvent("run_started")).toBe(true);
+    expect(shouldRecordLiveActivityEvent("retrieval_completed")).toBe(true);
+    expect(shouldRecordLiveActivityEvent("run_completed")).toBe(true);
   });
 
   it("summarizes agentic run events into localized compact trace stages", () => {

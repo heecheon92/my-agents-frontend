@@ -67,6 +67,10 @@ export function isObservedActiveRunStale({
   );
 }
 
+export function shouldRecordLiveActivityEvent(eventType: string) {
+  return eventType !== "answer_delta";
+}
+
 export function isConversationRunAlreadyActiveError(error: unknown) {
   if (!isMyAgentsAPIError(error) || error.status !== 409) return false;
   const details = [error.detail, error.message];

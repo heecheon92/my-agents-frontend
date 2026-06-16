@@ -55,6 +55,7 @@ export {
   isActiveAgentRunStatus,
   isConversationRunAlreadyActiveError,
   isObservedActiveRunStale,
+  shouldRecordLiveActivityEvent,
 } from "./chat/workspace-helpers";
 export {
   getAgentTraceStageKeys,

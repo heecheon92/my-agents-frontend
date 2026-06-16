@@ -14,6 +14,7 @@ import {
   isConversationRunAlreadyActiveError,
   type RunOutcome,
   safeBackendDetail,
+  shouldRecordLiveActivityEvent,
 } from "./workspace-helpers";
 
 type QueryInvalidator = {
@@ -118,23 +119,26 @@ export function useChatRunLoop({
         conversationId,
         { message, knowledge_base_selection: knowledgeBaseSelection },
       )) {
-        liveSequence += 1;
-        setLiveActivityEvents((current) => [
-          ...current,
-          {
-            id: `live-${liveSequence}`,
-            sequence: liveSequence,
-            event_type: streamEvent.event,
-            payload: streamEvent.data,
-          },
-        ]);
-        if (streamEvent.event === "run_started") {
-          const data = streamEvent.data as { run_id: string };
-          setCurrentRunId(data.run_id);
-        }
         if (streamEvent.event === "answer_delta") {
           const data = streamEvent.data as AnswerDeltaEventData;
           setStreamedReply((current) => current + data.delta);
+          continue;
+        }
+        if (shouldRecordLiveActivityEvent(streamEvent.event)) {
+          liveSequence += 1;
+          setLiveActivityEvents((current) => [
+            ...current,
+            {
+              id: `live-${liveSequence}`,
+              sequence: liveSequence,
+              event_type: streamEvent.event,
+              payload: streamEvent.data,
+            },
+          ]);
+        }
+        if (streamEvent.event === "run_started") {
+          const data = streamEvent.data as { run_id: string };
+          setCurrentRunId(data.run_id);
         }
         if (streamEvent.event === "run_cancelled") cancelled = true;
         if (streamEvent.event === "run_completed") {
