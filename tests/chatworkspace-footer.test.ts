@@ -3,6 +3,7 @@ import {
   ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
   CHAT_SCROLL_REGION_CLASS_NAME,
   CHAT_WORKSPACE_PANEL_CLASS_NAME,
+  createLiveActivityEvent,
   getAgentTraceStageKeys,
   getConversationCardClassName,
   getLatestAssistantMessageId,
@@ -102,6 +103,33 @@ describe("ChatWorkspace assistant message footer", () => {
     expect(shouldRecordLiveActivityEvent("run_started")).toBe(true);
     expect(shouldRecordLiveActivityEvent("retrieval_completed")).toBe(true);
     expect(shouldRecordLiveActivityEvent("run_completed")).toBe(true);
+  });
+
+  it("keeps same-tick queued live activity IDs unique", () => {
+    let liveSequence = 0;
+    const queuedUpdates: Array<
+      (
+        current: ReturnType<typeof createLiveActivityEvent>[],
+      ) => ReturnType<typeof createLiveActivityEvent>[]
+    > = [];
+
+    for (const eventType of ["run_started", "retrieval_completed"]) {
+      const nextLiveSequence = liveSequence + 1;
+      liveSequence = nextLiveSequence;
+      const liveActivityEvent = createLiveActivityEvent({
+        eventType,
+        payload: {},
+        sequence: nextLiveSequence,
+      });
+      queuedUpdates.push((current) => [...current, liveActivityEvent]);
+    }
+
+    const events = queuedUpdates.reduce<
+      ReturnType<typeof createLiveActivityEvent>[]
+    >((current, update) => update(current), []);
+
+    expect(events.map((event) => event.id)).toEqual(["live-1", "live-2"]);
+    expect(new Set(events.map((event) => event.id)).size).toBe(events.length);
   });
 
   it("summarizes agentic run events into localized compact trace stages", () => {

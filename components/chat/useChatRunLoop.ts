@@ -11,6 +11,7 @@ import type {
 import { myAgentsAPI } from "@/services/my-agents";
 import type { LiveActivityEvent, QueuedMessage } from "./types";
 import {
+  createLiveActivityEvent,
   isConversationRunAlreadyActiveError,
   type RunOutcome,
   safeBackendDetail,
@@ -125,16 +126,14 @@ export function useChatRunLoop({
           continue;
         }
         if (shouldRecordLiveActivityEvent(streamEvent.event)) {
-          liveSequence += 1;
-          setLiveActivityEvents((current) => [
-            ...current,
-            {
-              id: `live-${liveSequence}`,
-              sequence: liveSequence,
-              event_type: streamEvent.event,
-              payload: streamEvent.data,
-            },
-          ]);
+          const nextLiveSequence = liveSequence + 1;
+          liveSequence = nextLiveSequence;
+          const liveActivityEvent = createLiveActivityEvent({
+            eventType: streamEvent.event,
+            payload: streamEvent.data,
+            sequence: nextLiveSequence,
+          });
+          setLiveActivityEvents((current) => [...current, liveActivityEvent]);
         }
         if (streamEvent.event === "run_started") {
           const data = streamEvent.data as { run_id: string };

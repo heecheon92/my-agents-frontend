@@ -50,6 +50,7 @@ export { CHAT_WORKSPACE_PANEL_CLASS_NAME } from "./chat/ChatWorkspaceLayout";
 export {
   ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
   buildActiveKnowledgeBaseSelection,
+  createLiveActivityEvent,
   getLatestAssistantMessageId,
   getNextConversationIdAfterDelete,
   isActiveAgentRunStatus,

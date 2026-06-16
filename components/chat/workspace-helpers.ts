@@ -5,6 +5,7 @@ import type {
   Message,
 } from "@/model/my-agents";
 import { isMyAgentsAPIError } from "@/services/my-agents/MyAgentsAPIError";
+import type { LiveActivityEvent } from "./types";
 
 export type RunOutcome =
   | "completed"
@@ -69,6 +70,23 @@ export function isObservedActiveRunStale({
 
 export function shouldRecordLiveActivityEvent(eventType: string) {
   return eventType !== "answer_delta";
+}
+
+export function createLiveActivityEvent({
+  eventType,
+  payload,
+  sequence,
+}: {
+  eventType: string;
+  payload: unknown;
+  sequence: number;
+}): LiveActivityEvent {
+  return {
+    id: `live-${sequence}`,
+    sequence,
+    event_type: eventType,
+    payload,
+  };
 }
 
 export function isConversationRunAlreadyActiveError(error: unknown) {
