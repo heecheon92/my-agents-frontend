@@ -2,6 +2,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   canAutoApproveTeamDocumentUpload,
   groupKnowledgeBasesForGroup,
@@ -314,7 +315,10 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
       setOptimisticSourceId(created.id);
       setIsCreateSourceSpaceDialogOpen(false);
       router.push(knowledgeSourceHref(created.id), { scroll: false });
-    } catch {}
+      toast.success(localization.documents.createSourceSpaceSuccessAnnouncement);
+    } catch {
+      toast.error(localization.documents.createSourceSpaceFailedAnnouncement);
+    }
   }
   async function handleCreate(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -327,7 +331,10 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
         : await createDocument.mutateAsync({ title, content });
       if (effectiveDocumentDestination === "team") {
         const publishResult = await publishDocumentToTeam(created.id);
-        uploadManager.setUploadAnnouncement(publishResult.status === "approved" ? localization.documents.teamTextApprovedAnnouncement : localization.documents.teamTextRequestedAnnouncement);
+        const message = publishResult.status === "approved" ? localization.documents.teamTextApprovedAnnouncement : localization.documents.teamTextRequestedAnnouncement;
+        uploadManager.setUploadAnnouncement(message);
+        if (publishResult.status === "approved") toast.success(message);
+        else toast.info(message);
         setSelectedDocumentId(publishResult.publishedDocumentId);
         await uploadManager.refreshDocumentQueries(publishResult.publishedDocumentId, activeTeamKnowledgeBaseId);
       } else if (directWriteKnowledgeBaseId) {
@@ -337,9 +344,10 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
         const completedRun = TERMINAL_EXTRACTION_STATUSES.has(run.status)
 ? run
 : await uploadManager.pollExtractionRun(directWriteKnowledgeBaseId, created.id, run.id);
-        uploadManager.setUploadAnnouncement(
-          (completedRun?.status === "completed" ? localization.documents.uploadCompletedAnnouncement : localization.documents.uploadFailedAnnouncement).replace("{file}", sourceTitle),
-        );
+        const message = (completedRun?.status === "completed" ? localization.documents.uploadCompletedAnnouncement : localization.documents.uploadFailedAnnouncement).replace("{file}", sourceTitle);
+        uploadManager.setUploadAnnouncement(message);
+        if (completedRun?.status === "completed") toast.success(message);
+        else toast.error(message);
         await uploadManager.refreshDocumentQueries(created.id, directWriteKnowledgeBaseId);
       }
       setTitle("");
@@ -347,7 +355,9 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
       setIsTextSourceDialogOpen(false);
     } catch {
       if (sourceTitle) {
-        uploadManager.setUploadAnnouncement(localization.documents.uploadFailedAnnouncement.replace("{file}", sourceTitle));
+        const message = localization.documents.uploadFailedAnnouncement.replace("{file}", sourceTitle);
+        uploadManager.setUploadAnnouncement(message);
+        toast.error(message);
       }
     } finally {
       setIsPreparingTextSource(false);
@@ -355,16 +365,16 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
   }
   async function handleDeleteDocument() {
     if (!activeDocumentId) return;
-    const selectedDocument = documents.data?.find((document) => document.id === activeDocumentId);
-    const documentTitle = selectedDocument?.title ?? activeDocumentId;
-    if (!window.confirm(localization.documents.deleteConfirm.replace("{title}", documentTitle))) return;
     try {
       const nextDocumentId = documents.data?.find((document) => document.id !== activeDocumentId)?.id;
       await deleteDocument.mutateAsync();
       await uploadManager.refreshDocumentQueries();
       setSelectedDocumentId(nextDocumentId);
       setSourceActionsDialog(undefined);
-    } catch {}
+      toast.success(localization.documents.deleteSuccessAnnouncement);
+    } catch {
+      toast.error(localization.documents.deleteFailedAnnouncement);
+    }
   }
   function openSourceActionsDialog(documentId: string) {
     setSelectedDocumentId(documentId);

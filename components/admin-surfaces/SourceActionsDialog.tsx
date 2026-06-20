@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import type { Document, ExtractionRun } from "@/model/my-agents";
+import { SourceDeleteAlertDialog } from "./SourceDeleteAlertDialog";
 import {
   documentMeta,
   extractionRunTone,
@@ -21,6 +22,7 @@ import {
 
 type SourceActionsDialogLocalization = {
   common: {
+    cancel: string;
     close: string;
     chunks: string;
     entities: string;
@@ -40,6 +42,7 @@ type SourceActionsDialogLocalization = {
     deleteTitle: string;
     deleteDescription: string;
     deleteButton: string;
+    deleteConfirm: string;
     extractionRuns: string;
     noExtractionRunsTitle: string;
     noExtractionRunsDescription: string;
@@ -95,6 +98,8 @@ export function SourceActionsDialog({
   extractionRuns,
   onDeleteDocument,
 }: SourceActionsDialogProps) {
+  const documentTitle = activeDocument?.title ?? activeDocumentId ?? "";
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
@@ -167,14 +172,21 @@ export function SourceActionsDialog({
               {localization.documents.deleteDescription}
             </p>
           </div>
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={onDeleteDocument}
-            disabled={!activeDocumentId || deleteDocument.isPending}
+          <SourceDeleteAlertDialog
+            documentTitle={documentTitle}
+            error={deleteDocument.error}
+            isPending={deleteDocument.isPending}
+            localization={localization}
+            onConfirm={onDeleteDocument}
           >
-            {localization.documents.deleteButton}
-          </Button>
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={!activeDocumentId || deleteDocument.isPending}
+            >
+              {localization.documents.deleteButton}
+            </Button>
+          </SourceDeleteAlertDialog>
           {deleteDocument.error ? (
             <ErrorState error={deleteDocument.error} />
           ) : null}

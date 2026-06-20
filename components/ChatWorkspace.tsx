@@ -2,6 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 import {
   useConversation,
   useConversations,
@@ -27,6 +28,7 @@ import {
 } from "./chat/ChatTranscript";
 import { ChatWorkspaceLayout } from "./chat/ChatWorkspaceLayout";
 import { getConversationCardClassName } from "./chat/ConversationSidebar";
+import { DeleteConversationAlertDialog } from "./chat/DeleteConversationAlertDialog";
 import {
   getAgentTraceStageKeys,
   sanitizeActivityEventPayload,
@@ -112,6 +114,8 @@ export function ChatWorkspace() {
   );
   const [latestCitations, setLatestCitations] = useState<Citation[]>([]);
   const [showGuestNotice, setShowGuestNotice] = useState(false);
+  const [conversationPendingDelete, setConversationPendingDelete] =
+    useState<Conversation>();
   const [knowledgeBaseMode, setKnowledgeBaseMode] =
     useState<KnowledgeBaseSelectionMode>("all");
   const [selectedKnowledgeBaseIds, setSelectedKnowledgeBaseIds] = useState<
@@ -199,7 +203,21 @@ export function ChatWorkspace() {
         title: `${localization.newConversationTitle} ${new Date().toLocaleString(lang)}`,
       });
       setSelectedId(created.id);
-    } catch {}
+      toast.success(localization.createConversationSuccessAnnouncement);
+    } catch {
+      toast.error(localization.createConversationFailedAnnouncement);
+    }
+  }
+
+  function requestDeleteConversation(item: Conversation) {
+    deleteConversation.reset();
+    setConversationPendingDelete(item);
+  }
+
+  function handleDeleteConversationDialogOpenChange(open: boolean) {
+    if (open || deleteConversation.isPending) return;
+    setConversationPendingDelete(undefined);
+    deleteConversation.reset();
   }
 
   async function handleDeleteConversation(item: Conversation) {
@@ -208,10 +226,6 @@ export function ChatWorkspace() {
       item.id,
       activeId,
     );
-    const confirmed = window.confirm(
-      localization.deleteConversationConfirm.replace("{title}", item.title),
-    );
-    if (!confirmed) return;
     try {
       await deleteConversation.mutateAsync(item.id);
       if (activeId === item.id) {
@@ -224,8 +238,11 @@ export function ChatWorkspace() {
         setOptimisticMessage(null);
       }
       setStatusAnnouncement(localization.deleteConversationSuccessAnnouncement);
+      setConversationPendingDelete(undefined);
+      toast.success(localization.deleteConversationSuccessAnnouncement);
     } catch {
       setStatusAnnouncement(localization.deleteConversationFailedAnnouncement);
+      toast.error(localization.deleteConversationFailedAnnouncement);
     }
   }
 
@@ -406,60 +423,71 @@ export function ChatWorkspace() {
   });
 
   return (
-    <ChatWorkspaceLayout
-      activeId={activeId}
-      activeRunId={activeRunId}
-      chatScrollRef={chatScrollRef}
-      composerPlaceholder={composerPlaceholder}
-      conversation={conversation}
-      conversationIsBusy={conversationIsBusy}
-      conversations={conversations}
-      createConversation={createConversation}
-      deleteConversation={deleteConversation}
-      draft={draft}
-      events={visibleActivityEvents}
-      hasActiveDraft={hasActiveDraft}
-      isCancelling={isCancelling}
-      isPrimaryActionDisabled={isPrimaryActionDisabled}
-      isSendNowDisabled={isSendNowDisabled}
-      isStreaming={isStreaming}
-      knowledgeBaseMode={knowledgeBaseMode}
-      knowledgeBases={knowledgeBases}
-      lang={lang}
-      latestAssistantMessageId={latestAssistantMessageId}
-      localization={localization}
-      messages={sortedMessages}
-      messagesError={messages.error}
-      onCancelQueuedMessage={handleCancelQueuedMessage}
-      onChatScroll={handleChatScroll}
-      onCreate={handleCreate}
-      onDeleteConversation={handleDeleteConversation}
-      onDraftChange={setDraft}
-      onEditQueuedMessage={handleEditQueuedMessage}
-      onKnowledgeBaseModeChange={setKnowledgeBaseMode}
-      onReplayAssistantMessage={handleReplayAssistantMessage}
-      onSelectConversation={setSelectedId}
-      onSendNow={handleSendNow}
-      onSendQueuedMessage={handleSendQueuedMessage}
-      onSubmit={handleSend}
-      onToggleKnowledgeBase={toggleSelectedKnowledgeBase}
-      primaryActionLabel={primaryActionLabel}
-      queuedHelper={queuedHelper}
-      replayAssistantMessage={replayAssistantMessage}
-      replayNotice={replayNotice}
-      replayingMessageId={replayingMessageId}
-      requiresKnowledgeBaseSelection={requiresKnowledgeBaseSelection}
-      selectableKnowledgeBases={selectableKnowledgeBases}
-      selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}
-      sendNowHelper={sendNowHelper}
-      serverActiveRunIsStale={serverActiveRunIsStale}
-      showGuestNotice={showGuestNotice}
-      sortedRuns={sortedRuns}
-      statusAnnouncement={statusAnnouncement}
-      streamError={streamError}
-      streamedReply={streamedReply}
-      visibleCitations={visibleCitations}
-      visibleQueuedMessage={visibleQueuedMessage}
-    />
+    <>
+      <ChatWorkspaceLayout
+        activeId={activeId}
+        activeRunId={activeRunId}
+        chatScrollRef={chatScrollRef}
+        composerPlaceholder={composerPlaceholder}
+        conversation={conversation}
+        conversationIsBusy={conversationIsBusy}
+        conversations={conversations}
+        createConversation={createConversation}
+        deleteConversation={deleteConversation}
+        draft={draft}
+        events={visibleActivityEvents}
+        hasActiveDraft={hasActiveDraft}
+        isCancelling={isCancelling}
+        isPrimaryActionDisabled={isPrimaryActionDisabled}
+        isSendNowDisabled={isSendNowDisabled}
+        isStreaming={isStreaming}
+        knowledgeBaseMode={knowledgeBaseMode}
+        knowledgeBases={knowledgeBases}
+        lang={lang}
+        latestAssistantMessageId={latestAssistantMessageId}
+        localization={localization}
+        messages={sortedMessages}
+        messagesError={messages.error}
+        onCancelQueuedMessage={handleCancelQueuedMessage}
+        onChatScroll={handleChatScroll}
+        onCreate={handleCreate}
+        onDeleteConversation={requestDeleteConversation}
+        onDraftChange={setDraft}
+        onEditQueuedMessage={handleEditQueuedMessage}
+        onKnowledgeBaseModeChange={setKnowledgeBaseMode}
+        onReplayAssistantMessage={handleReplayAssistantMessage}
+        onSelectConversation={setSelectedId}
+        onSendNow={handleSendNow}
+        onSendQueuedMessage={handleSendQueuedMessage}
+        onSubmit={handleSend}
+        onToggleKnowledgeBase={toggleSelectedKnowledgeBase}
+        primaryActionLabel={primaryActionLabel}
+        queuedHelper={queuedHelper}
+        replayAssistantMessage={replayAssistantMessage}
+        replayNotice={replayNotice}
+        replayingMessageId={replayingMessageId}
+        requiresKnowledgeBaseSelection={requiresKnowledgeBaseSelection}
+        selectableKnowledgeBases={selectableKnowledgeBases}
+        selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}
+        sendNowHelper={sendNowHelper}
+        serverActiveRunIsStale={serverActiveRunIsStale}
+        showGuestNotice={showGuestNotice}
+        sortedRuns={sortedRuns}
+        statusAnnouncement={statusAnnouncement}
+        streamError={streamError}
+        streamedReply={streamedReply}
+        visibleCitations={visibleCitations}
+        visibleQueuedMessage={visibleQueuedMessage}
+      />
+      <DeleteConversationAlertDialog
+        conversation={conversationPendingDelete}
+        error={deleteConversation.error}
+        isPending={deleteConversation.isPending}
+        localization={localization}
+        onConfirm={(item) => void handleDeleteConversation(item)}
+        onOpenChange={handleDeleteConversationDialogOpenChange}
+        open={Boolean(conversationPendingDelete)}
+      />
+    </>
   );
 }

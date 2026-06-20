@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { toast } from "sonner";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import type { ExtractionRun, HealthResponse } from "@/model/my-agents";
 import { documentUploadConcurrencyFromHealth } from "@/model/my-agents";
@@ -34,6 +35,7 @@ type SourceUploadLocalization = {
     uploadQueueFailedSummary: string;
     uploadQueueReadySummary: string;
     uploadStatusLabels: Record<UploadQueueStatus, string>;
+    undoRemoveUpload: string;
   };
 };
 type QueryInvalidator = {
@@ -119,6 +121,15 @@ export function useSourceUploadQueue({
   );
   if (activeDocumentId && activeDocumentHasIngestion) {
     activeIngestionDocumentIds.add(activeDocumentId);
+  }
+  function announceUploadOutcome(
+    message: string,
+    tone: "success" | "error" | "info",
+  ) {
+    setUploadAnnouncement(message);
+    if (tone === "success") toast.success(message);
+    else if (tone === "error") toast.error(message);
+    else toast.info(message);
   }
   function updateQueueItem(
     localId: string,
@@ -209,10 +220,30 @@ export function useSourceUploadQueue({
     updateQueueItem(localId, { title: nextTitle });
   }
   function handleRemoveQueueItem(localId: string) {
+    const removedIndex = uploadQueue.findIndex(
+      (item) => item.localId === localId,
+    );
+    const removedItem = uploadQueue[removedIndex];
     setUploadQueue((current) =>
       current.filter((item) => item.localId !== localId),
     );
     setUploadAnnouncement(localization.documents.uploadRemovedAnnouncement);
+    if (!removedItem) return;
+    toast(localization.documents.uploadRemovedAnnouncement, {
+      action: {
+        label: localization.documents.undoRemoveUpload,
+        onClick: () => {
+          setUploadQueue((current) => {
+            if (current.some((item) => item.localId === localId)) {
+              return current;
+            }
+            const next = [...current];
+            next.splice(Math.min(removedIndex, next.length), 0, removedItem);
+            return next;
+          });
+        },
+      },
+    });
   }
   function handleRetryQueueItem(localId: string) {
     updateQueueItem(localId, (item) => ({
@@ -335,11 +366,12 @@ export function useSourceUploadQueue({
           progressPercent: 0,
           error: undefined,
         });
-        setUploadAnnouncement(
+        announceUploadOutcome(
           (publishResult.status === "approved"
             ? localization.documents.teamUploadApprovedAnnouncement
             : localization.documents.teamUploadRequestedAnnouncement
           ).replace("{file}", item.file.name),
+          publishResult.status === "approved" ? "success" : "info",
         );
         await refreshDocumentQueries(
           publishResult.publishedDocumentId,
@@ -379,11 +411,12 @@ export function useSourceUploadQueue({
           progressPercent: 0,
           error: undefined,
         });
-        setUploadAnnouncement(
+        announceUploadOutcome(
           localization.documents.uploadCompletedAnnouncement.replace(
             "{file}",
             item.file.name,
           ),
+          "success",
         );
         await refreshDocumentQueries(documentId);
         return;
@@ -393,11 +426,12 @@ export function useSourceUploadQueue({
         error: completedRun?.error ?? localization.documents.uploadFailed,
         progressPercent: 0,
       });
-      setUploadAnnouncement(
+      announceUploadOutcome(
         localization.documents.uploadFailedAnnouncement.replace(
           "{file}",
           item.file.name,
         ),
+        "error",
       );
       await refreshDocumentQueries(documentId);
     } catch (error) {
@@ -405,11 +439,12 @@ export function useSourceUploadQueue({
         status: "failed",
         error: safeErrorMessage(error, localization.documents.uploadFailed),
       });
-      setUploadAnnouncement(
+      announceUploadOutcome(
         localization.documents.uploadFailedAnnouncement.replace(
           "{file}",
           item.file.name,
         ),
+        "error",
       );
     }
   }

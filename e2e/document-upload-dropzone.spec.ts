@@ -495,8 +495,16 @@ test("Sources table row actions prepare and delete one source", async ({
   await expect(page.getByText("직접 읽기 권한")).toHaveCount(0);
   await expect(page.getByText("고급 공유 제어")).toHaveCount(0);
 
-  page.once("dialog", (dialog) => dialog.accept());
   await page
+    .getByRole("button", { name: ko.admin.documents.deleteButton })
+    .click();
+  const deleteDialog = page.getByRole("alertdialog");
+  await expect(
+    deleteDialog.getByText(
+      ko.admin.documents.deleteConfirm.replace("{title}", firstDocument.title),
+    ),
+  ).toBeVisible();
+  await deleteDialog
     .getByRole("button", { name: ko.admin.documents.deleteButton })
     .click();
   await expect(page.getByText(firstDocument.title)).toHaveCount(0);
