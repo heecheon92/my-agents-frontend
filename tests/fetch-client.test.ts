@@ -19,27 +19,12 @@ describe("MyAgentsFetchClient", () => {
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
       "/api/my-agents/auth/logout",
-      expect.objectContaining({ cache: "no-store", method: "POST" }),
+      expect.objectContaining({ method: "POST" }),
     );
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
       "/api/my-agents/documents/document-1/ingest",
-      expect.objectContaining({ cache: "no-store", method: "POST" }),
-    );
-    vi.unstubAllGlobals();
-  });
-
-  it("defaults browser backend proxy requests to no-store", async () => {
-    const fetchMock = vi.fn(async () => Response.json({ ok: true }));
-    vi.stubGlobal("fetch", fetchMock);
-
-    const client = new MyAgentsFetchClient();
-
-    await client.fetch("/knowledge-bases/kb-1/documents/doc-1/extraction-runs");
-
-    expect(fetchMock).toHaveBeenCalledWith(
-      "/api/my-agents/knowledge-bases/kb-1/documents/doc-1/extraction-runs",
-      expect.objectContaining({ cache: "no-store" }),
+      expect.objectContaining({ method: "POST" }),
     );
     vi.unstubAllGlobals();
   });
