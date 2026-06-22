@@ -88,9 +88,14 @@ export function ChatWorkspace() {
     isActiveAgentRunStatus(run.status),
   );
   const serverActiveRunId = serverActiveRun?.run_id ?? null;
-  const latestRunId = serverActiveRun ? undefined : sortedRuns[0]?.run_id;
-  const runDetail = useRunDetail(activeId, latestRunId);
-  const events = useRunEvents(activeId, latestRunId);
+  const latestTerminalRun = serverActiveRun ? undefined : sortedRuns[0];
+  const latestCompletedRunId =
+    latestTerminalRun?.status === "completed"
+      ? latestTerminalRun.run_id
+      : undefined;
+  const latestRunEventId = latestTerminalRun?.run_id;
+  const runDetail = useRunDetail(activeId, latestCompletedRunId);
+  const events = useRunEvents(activeId, latestRunEventId);
   const [draft, setDraft] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
