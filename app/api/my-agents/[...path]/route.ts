@@ -31,6 +31,14 @@ const LANGUAGE_HEADER_NAMES = [
   "x-my-agents-language",
   "x-my-agents-locale",
 ] as const;
+const PROXY_NO_STORE_CACHE_CONTROL = "no-store, no-transform";
+
+export function proxyResponseHeaders(contentType: string | null) {
+  return {
+    "cache-control": PROXY_NO_STORE_CACHE_CONTROL,
+    "content-type": contentType ?? "application/json",
+  };
+}
 
 export function isStreamPath(path: string) {
   return (
@@ -107,7 +115,7 @@ async function proxy(request: NextRequest, context: RouteContext) {
     return new NextResponse(backendResponse.body, {
       status: backendResponse.status,
       headers: {
-        "cache-control": "no-store, no-transform",
+        "cache-control": PROXY_NO_STORE_CACHE_CONTROL,
         "content-type":
           backendResponse.headers.get("content-type") ??
           TEXT_EVENT_STREAM_CONTENT_TYPE,
@@ -138,10 +146,7 @@ async function proxy(request: NextRequest, context: RouteContext) {
 
   const response = new NextResponse(responseBody, {
     status: backendResponse.status,
-    headers: {
-      "content-type":
-        backendResponse.headers.get("content-type") ?? "application/json",
-    },
+    headers: proxyResponseHeaders(backendResponse.headers.get("content-type")),
   });
 
   if (isSessionLoginPath(backendPath) && backendResponse.ok) {

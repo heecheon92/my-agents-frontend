@@ -52,6 +52,7 @@ export class MyAgentsFetchClient {
   async fetchResponse(path: string, init: MyAgentsFetchInit = {}) {
     const response = await fetch(toFrontendAPIPath(path), {
       ...init,
+      cache: init.cache ?? "no-store",
       body: buildBody(init.body),
       credentials: "include",
       headers: buildHeaders(init.headers, init.body, init.method),
