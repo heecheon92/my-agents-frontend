@@ -1,5 +1,9 @@
 import { fileExtension } from "../shared";
-import { PPTX_CONTENT_TYPE, XLSX_CONTENT_TYPE } from "../UploadQueueRow";
+import {
+  DOCX_CONTENT_TYPE,
+  PPTX_CONTENT_TYPE,
+  XLSX_CONTENT_TYPE,
+} from "../UploadQueueRow";
 
 export const UPLOAD_ACCEPT = [
   "application/pdf",
@@ -7,12 +11,14 @@ export const UPLOAD_ACCEPT = [
   "text/plain",
   XLSX_CONTENT_TYPE,
   PPTX_CONTENT_TYPE,
+  DOCX_CONTENT_TYPE,
   ".pdf",
   ".md",
   ".markdown",
   ".txt",
   ".xlsx",
   ".pptx",
+  ".docx",
 ].join(",");
 
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
@@ -26,6 +32,7 @@ const SUPPORTED_UPLOAD_EXTENSIONS = new Set([
   ".txt",
   ".xlsx",
   ".pptx",
+  ".docx",
 ]);
 const SUPPORTED_UPLOAD_TYPES = new Set([
   "application/pdf",
@@ -33,6 +40,7 @@ const SUPPORTED_UPLOAD_TYPES = new Set([
   "text/plain",
   XLSX_CONTENT_TYPE,
   PPTX_CONTENT_TYPE,
+  DOCX_CONTENT_TYPE,
 ]);
 
 export function buildLocalUploadId(file: File) {
@@ -46,8 +54,11 @@ export function titleFromFileName(fileName: string) {
 }
 
 export function isSupportedUploadFile(file: File) {
+  const extension = fileExtension(file.name);
+  if (extension === ".doc") return false;
+
   return (
-    SUPPORTED_UPLOAD_EXTENSIONS.has(fileExtension(file.name)) ||
+    SUPPORTED_UPLOAD_EXTENSIONS.has(extension) ||
     SUPPORTED_UPLOAD_TYPES.has(file.type)
   );
 }

@@ -35,6 +35,8 @@ export const XLSX_CONTENT_TYPE =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 export const PPTX_CONTENT_TYPE =
   "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+export const DOCX_CONTENT_TYPE =
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
 export function UploadQueueRow({
   item,
   localization,
@@ -52,6 +54,7 @@ export function UploadQueueRow({
     fileTypeText: string;
     fileTypeSpreadsheet: string;
     fileTypePresentation: string;
+    fileTypeWord: string;
     fileTitleLabel: string;
     retryUpload: string;
     removeUpload: string;
@@ -173,6 +176,7 @@ function uploadFileTypeLabel(
     fileTypeText: string;
     fileTypeSpreadsheet: string;
     fileTypePresentation: string;
+    fileTypeWord: string;
   },
 ) {
   const extension = fileExtension(file.name);
@@ -191,6 +195,9 @@ function uploadFileTypeLabel(
   }
   if (extension === ".pptx" || file.type === PPTX_CONTENT_TYPE) {
     return localization.fileTypePresentation;
+  }
+  if (extension === ".docx" || file.type === DOCX_CONTENT_TYPE) {
+    return localization.fileTypeWord;
   }
   return localization.fileTypeText;
 }

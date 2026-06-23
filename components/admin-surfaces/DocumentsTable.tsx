@@ -46,6 +46,8 @@ type DocumentsTableLocalization = {
     spreadsheetSource: string;
     presentationSourcePrefix: string;
     presentationSource: string;
+    wordSourcePrefix: string;
+    wordSource: string;
     textSource: string;
     pagesLabel: string;
   };

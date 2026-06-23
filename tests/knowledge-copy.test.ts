@@ -45,6 +45,11 @@ describe("document upload workflow copy", () => {
 
     expect(enDocuments.fileUploadTitle).toBe("Upload and prepare files");
     expect(enDocuments.uploadAndIngestButton).toBe("Upload and prepare files");
+    expect(enDocuments.fileUploadHint).toContain("Word document (.docx)");
+    expect(enDocuments.multiFileUploadHint).toContain(".docx");
+    expect(enDocuments.unsupportedFileError).toContain(".docx");
+    expect(enDocuments.unsupportedFileError).not.toMatch(/\.doc(?!x)/);
+    expect(enDocuments.fileTypeWord).toBe("Word");
     expect(enDocuments.dropDescription).toContain("one workflow");
     expect(enDocuments.uploadStatusLabels.ingesting).toBe("Preparing source");
     expect(enDocuments.runIngest).toBe("Prepare or retry source");
@@ -54,6 +59,11 @@ describe("document upload workflow copy", () => {
     expect(enDocuments.prepareRecoveryHint).toContain("preparation failed");
 
     expect(koDocuments.fileUploadTitle).toBe("파일 업로드 및 준비");
+    expect(koDocuments.fileUploadHint).toContain("Word 문서(.docx)");
+    expect(koDocuments.multiFileUploadHint).toContain(".docx");
+    expect(koDocuments.unsupportedFileError).toContain(".docx");
+    expect(koDocuments.unsupportedFileError).not.toMatch(/\.doc(?!x)/);
+    expect(koDocuments.fileTypeWord).toBe("Word");
     expect(koDocuments.uploadStatusLabels.ingesting).not.toContain("수집");
     expect(koDocuments.runIngest).toBe("지식 준비 또는 재시도");
     expect(koDocuments.sourceActionsTitle).toBe("지식 관리");

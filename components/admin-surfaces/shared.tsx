@@ -168,6 +168,8 @@ export function documentMeta(
       spreadsheetSource: string;
       presentationSourcePrefix: string;
       presentationSource: string;
+      wordSourcePrefix: string;
+      wordSource: string;
       textSource: string;
       pagesLabel: string;
     };
@@ -196,6 +198,8 @@ export function documentSourceLabel(
     spreadsheetSource: string;
     presentationSourcePrefix: string;
     presentationSource: string;
+    wordSourcePrefix: string;
+    wordSource: string;
     textSource: string;
   },
 ) {
@@ -221,6 +225,11 @@ export function documentSourceLabel(
     return doc.source_filename
       ? `${localization.presentationSourcePrefix} ${doc.source_filename}`
       : localization.presentationSource;
+  }
+  if (doc.source_type === "word_document" || extension === ".docx") {
+    return doc.source_filename
+      ? `${localization.wordSourcePrefix} ${doc.source_filename}`
+      : localization.wordSource;
   }
   if (doc.source_filename) {
     return `${localization.uploadedTextSourcePrefix} ${doc.source_filename}`;

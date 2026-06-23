@@ -1,3 +1,11 @@
+## 2026-06-23 — DOCX-only upload affordance
+
+- Extended the Sources upload allowlist and bilingual upload copy to include modern Word documents (`.docx`) alongside PDF, Markdown, text, `.xlsx`, and `.pptx`.
+- Kept legacy binary Word files rejected by local validation and out of visible product copy.
+- Added focused upload-config coverage for `.docx` acceptance plus legacy Word rejection, and copy guardrails for the new localized Word labels.
+
+Verification for this slice is recorded in the worker-2 Task 2 completion evidence.
+
 ## 2026-06-15 — Admin surfaces cleanup and agent guidance
 
 - Split the former 4,486-line `components/AdminSurfaces.tsx` into a compatibility barrel plus focused `components/admin-surfaces/` modules for Sources, Groups, shared helper UI, upload queue rows, group chrome, source-space forms/tree/table/dialog pieces, group rows, and publish-review panels.

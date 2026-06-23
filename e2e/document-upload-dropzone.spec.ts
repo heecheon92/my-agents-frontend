@@ -117,6 +117,11 @@ test("Sources upload drop zone adds dropped files to the queue", async ({
         type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       }),
     );
+    transfer.items.add(
+      new File(["doc"], "brief.docx", {
+        type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      }),
+    );
     return transfer;
   });
 
@@ -124,12 +129,15 @@ test("Sources upload drop zone adds dropped files to the queue", async ({
   await expect(dropZone.getByText(/Drop files|파일을 놓으면/)).toBeVisible();
   await dropZone.dispatchEvent("drop", { dataTransfer });
 
-  await expect(page.getByTestId("upload-queue")).toBeVisible();
+  const uploadQueue = page.getByTestId("upload-queue");
+  await expect(uploadQueue).toBeVisible();
   await expect(page.getByText("drop-note.txt")).toBeVisible();
   await expect(page.getByText("pipeline.xlsx")).toBeVisible();
   await expect(page.getByText("roadmap.pptx")).toBeVisible();
+  await expect(page.getByText("brief.docx")).toBeVisible();
   await expect(page.getByText(/Spreadsheet|스프레드시트/)).toBeVisible();
   await expect(page.getByText(/Presentation|프레젠테이션/)).toBeVisible();
+  await expect(uploadQueue.getByText("Word")).toBeVisible();
 });
 
 test("legacy Documents URL redirects to the Sources workflow", async ({

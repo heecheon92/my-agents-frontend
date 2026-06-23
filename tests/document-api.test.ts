@@ -346,6 +346,28 @@ describe("MyAgentsDocumentAPI", () => {
       source_filename: "roadmap.pptx",
       parser_name: "python_pptx_markdown_v1",
     });
+
+    expect(
+      documentSchema.parse({
+        id: "doc-6",
+        title: "Uploaded Word Document",
+        owner_user_id: "user-1",
+        group_id: null,
+        knowledge_base_id: null,
+        source_type: "word_document",
+        source_filename: "proposal.docx",
+        source_content_type:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        source_byte_size: 12_288,
+        source_sha256: "e".repeat(64),
+        source_page_count: null,
+        parser_name: "docling_docx_markdown_v1",
+      }),
+    ).toMatchObject({
+      source_type: "word_document",
+      source_filename: "proposal.docx",
+      parser_name: "docling_docx_markdown_v1",
+    });
   });
 
   it("accepts async extraction run progress metadata", () => {
