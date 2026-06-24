@@ -170,6 +170,20 @@ const publishRequest = {
   created_at: now,
   reviewed_at: null,
 };
+const personalDocument = {
+  id: "doc-personal",
+  title: "Personal strategy memo",
+  owner_user_id: user.id,
+  group_id: null,
+  knowledge_base_id: personalKb.id,
+  source_type: "markdown",
+  source_filename: "strategy.md",
+  source_content_type: "text/markdown",
+  source_byte_size: 128,
+  source_sha256: null,
+  source_page_count: null,
+  parser_name: "markdown_upload",
+};
 const publishRequests = [
   publishRequest,
   {
@@ -252,6 +266,24 @@ async function mockGroupKnowledgeApi(
         personalKb,
         publishedMemberKb,
       ]);
+    }
+    if (
+      method === "GET" &&
+      path === `/knowledge-bases/${personalKb.id}/documents`
+    ) {
+      return json([personalDocument]);
+    }
+    if (
+      method === "GET" &&
+      path ===
+        `/knowledge-bases/${personalKb.id}/documents/${personalDocument.id}/preview`
+    ) {
+      return json({
+        ...personalDocument,
+        content:
+          "## Preview section\n\nFull extracted source content loaded from the dedicated preview endpoint.",
+        created_at: now,
+      });
     }
     if (method === "GET" && path === "/conversations") {
       return json([personalConversation]);
@@ -647,4 +679,100 @@ test("Admin creation controls stay dialog-scoped and aligned", async ({
   expect(
     Math.abs((scopeBox?.height ?? 0) - (groupBox?.height ?? 0)),
   ).toBeLessThan(2);
+});
+
+test("Knowledge page owns source-space lifecycle controls and document sharing", async ({
+  page,
+}) => {
+  const requests = await mockGroupKnowledgeApi(page);
+  await page.goto("/knowledge");
+
+  await expect(
+    page.getByRole("heading", { name: personalKb.name }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: ko.admin.documents.renameSourceSpaceAction,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: ko.admin.documents.shareSourceSpaceAction,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", {
+      name: ko.admin.documents.deleteSourceSpaceAction,
+    }),
+  ).toBeVisible();
+
+  await page
+    .getByRole("button", {
+      name: ko.admin.documents.shareSourceSpaceAction,
+    })
+    .click();
+  await expect(
+    page.getByRole("heading", {
+      name: ko.admin.documents.shareSourceSpaceTitle,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("combobox", {
+      name: ko.admin.documents.shareTargetGroupLabel,
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /id|아이디/i })).toHaveCount(
+    0,
+  );
+  await page.getByRole("button", { name: ko.admin.common.cancel }).click();
+
+  await page
+    .getByRole("button", {
+      name: ko.admin.documents.sourceRowActionsLabel.replace(
+        "{title}",
+        personalDocument.title,
+      ),
+    })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: ko.admin.documents.sourceActionsTitle }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: ko.admin.documents.sourcePreviewTitle }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Preview section" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: ko.admin.documents.shareSourceTitle }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("combobox", {
+      name: ko.admin.documents.shareTargetSourceSpaceLabel,
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /id|아이디/i })).toHaveCount(
+    0,
+  );
+
+  await page
+    .getByRole("button", { name: ko.admin.documents.shareSourceAction })
+    .click();
+  await expect
+    .poll(
+      () =>
+        requests.find(
+          (item) =>
+            item.method === "POST" &&
+            item.path === `/groups/${ownerGroup.id}/publish-requests` &&
+            Boolean(
+              (item.body as { source_document_id?: string } | null)
+                ?.source_document_id,
+            ),
+        )?.body,
+    )
+    .toMatchObject({
+      source_document_id: personalDocument.id,
+      target_knowledge_base_id: groupKb.id,
+    });
 });

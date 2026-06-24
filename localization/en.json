@@ -540,7 +540,7 @@
       "sourcePreviewTitle": "Source preview",
       "sourcePreviewDescription": "Preview content is loaded only when this sheet opens so source lists stay fast.",
       "sourcePreviewEmptyTitle": "No preview content available",
-      "sourcePreviewEmptyDescription": "The backend did not return Markdown or text for this source yet.",
+      "sourcePreviewEmptyDescription": "The service did not return Markdown or text for this source yet.",
       "sourcePreviewErrorTitle": "Preview could not load",
       "shareSourceTitle": "Share this source",
       "shareSourceDescription": "Create a group review request from this selected source. Pick a group and one of that group's source spaces; no document IDs are required.",
