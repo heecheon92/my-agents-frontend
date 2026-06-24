@@ -268,13 +268,6 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "knowledge-bases.documents.upload",
   },
   {
-    method: "GET",
-    pattern: new RegExp(
-      `^/knowledge-bases/${uuidLike}/documents/${uuidLike}/preview$`,
-    ),
-    name: "knowledge-bases.documents.preview",
-  },
-  {
     method: "POST",
     pattern: new RegExp(
       `^/knowledge-bases/${uuidLike}/documents/${uuidLike}/ingest$`,
