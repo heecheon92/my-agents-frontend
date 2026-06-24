@@ -24,7 +24,7 @@ export const knowledgeBaseCreateRequestSchema = z.object({
 });
 
 export const knowledgeBaseUpdateRequestSchema = z.object({
-  name: z.string().min(1).max(160),
+  name: z.string().trim().min(1).max(160),
 });
 
 export const documentSchema = z.object({

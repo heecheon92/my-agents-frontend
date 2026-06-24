@@ -102,8 +102,8 @@ export const MyAgentsQueryKeys = {
         "knowledge-bases",
         "documents",
         knowledgeBaseId,
-        documentId,
         "preview",
+        documentId,
       ] as const;
     },
     extractionRuns(knowledgeBaseId: string, documentId: string) {

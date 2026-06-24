@@ -73,8 +73,8 @@ describe("knowledge query invalidation helpers", () => {
     expect(isKnowledgeBaseDocumentPreviewEnabled("kb-1", undefined, true)).toBe(
       false,
     );
-    expect(isKnowledgeBaseDocumentPreviewEnabled(undefined, "doc-1", true)).toBe(
-      false,
-    );
+    expect(
+      isKnowledgeBaseDocumentPreviewEnabled(undefined, "doc-1", true),
+    ).toBe(false);
   });
 });

@@ -214,7 +214,6 @@ describe("MyAgentsKnowledgeBaseAPI", () => {
   });
 });
 
-
 describe("knowledge base API contracts", () => {
   it("parses update and document preview backend payloads", () => {
     expect(
@@ -256,7 +255,6 @@ describe("knowledge base API contracts", () => {
     expect(parsed).not.toHaveProperty("content");
   });
 });
-
 
 describe("MyAgentsKnowledgeBaseAPI lifecycle methods", () => {
   it("updates, deletes, and previews through KB-scoped paths", async () => {

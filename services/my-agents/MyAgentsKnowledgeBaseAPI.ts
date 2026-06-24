@@ -5,6 +5,7 @@ import {
   type KnowledgeBase,
   type KnowledgeBaseCreateRequest,
   type KnowledgeBaseDocumentPreview,
+  type KnowledgeBaseUpdateRequest,
   knowledgeBaseDocumentPreviewSchema,
   knowledgeBaseSchema,
   type KnowledgeBaseUpdateRequest,

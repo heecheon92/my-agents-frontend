@@ -39,9 +39,9 @@ describe("proxy policy", () => {
     expect(isAllowedBackendPath("PATCH", "/knowledge-bases/kb-1").allowed).toBe(
       true,
     );
-    expect(isAllowedBackendPath("DELETE", "/knowledge-bases/kb-1").allowed).toBe(
-      true,
-    );
+    expect(
+      isAllowedBackendPath("DELETE", "/knowledge-bases/kb-1").allowed,
+    ).toBe(true);
     expect(
       isAllowedBackendPath("GET", "/knowledge-bases/kb-1/documents").allowed,
     ).toBe(true);
