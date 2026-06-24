@@ -36,8 +36,9 @@ export function ExperimentalSettingsPanel() {
       description={copy.experimental.description}
       accountTab={copy.tabs.account}
       experimentalTab={copy.tabs.experimental}
+      maxWidthClassName="max-w-3xl"
     >
-      <div className="max-w-3xl space-y-4">
+      <div className="space-y-4">
         <div className="cal-card rounded-xl p-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">

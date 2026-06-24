@@ -1,5 +1,6 @@
 "use client";
 
+import { cn } from "@/lib/utils";
 import { SettingsTabs } from "./SettingsTabs";
 
 type SettingsPageShellProps = {
@@ -9,6 +10,7 @@ type SettingsPageShellProps = {
   accountTab: string;
   experimentalTab: string;
   children: React.ReactNode;
+  maxWidthClassName?: string;
 };
 
 export function SettingsPageShell({
@@ -18,9 +20,10 @@ export function SettingsPageShell({
   accountTab,
   experimentalTab,
   children,
+  maxWidthClassName = "max-w-5xl",
 }: SettingsPageShellProps) {
   return (
-    <section className="mx-auto grid w-full max-w-5xl gap-6">
+    <section className={cn("mx-auto grid w-full gap-6", maxWidthClassName)}>
       <div className="grid gap-4">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-cal-muted">
