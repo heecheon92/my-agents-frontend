@@ -53,7 +53,6 @@ type GroupsWorkspaceProps = {
   onOpenGroupBrowser: () => void;
   onManageInvitation: (invitation: GroupInvitation) => void;
   onRejectPublishRequest: (requestId: string) => void;
-  onRequestShare: () => void;
   onReviewPublishRequest: (request: KnowledgePublishRequest) => void;
   onUpdateMemberRole: (member: GroupMember) => void;
   canCancelPublishRequest: (request: KnowledgePublishRequest) => boolean;
@@ -112,7 +111,6 @@ export function GroupsWorkspace({
   onOpenGroupBrowser,
   onManageInvitation,
   onRejectPublishRequest,
-  onRequestShare,
   onReviewPublishRequest,
   onUpdateMemberRole,
   canCancelPublishRequest,
@@ -427,14 +425,6 @@ export function GroupsWorkspace({
                     size="sm"
                   >
                     {localization.groups.viewPublishRequestsAction}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={onRequestShare}
-                  >
-                    {localization.groups.requestShareAction}
                   </Button>
                 </div>
               </div>

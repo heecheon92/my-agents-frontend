@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { writableDocumentKnowledgeBases } from "@/components/document-knowledge-base";
 import { useCurrentUser } from "@/hooks/use-auth";
 import {
   useApprovePublishRequest,
@@ -10,7 +9,6 @@ import {
   useCancelPublishRequest,
   useCreateGroup,
   useCreateGroupInvitation,
-  useCreatePublishRequest,
   useGroupInvitations,
   useGroupMembers,
   useGroups,
@@ -48,7 +46,6 @@ import {
   type GroupManagementSection,
   type GroupRole,
   groupHref,
-  type PublishSourceKind,
 } from "./shared";
 
 export type { GroupManagementSection } from "./shared";
@@ -71,7 +68,6 @@ export function GroupsSurface({
   const [isGroupBrowserOpen, setIsGroupBrowserOpen] = useState(false);
   const [isCreateGroupDialogOpen, setIsCreateGroupDialogOpen] = useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
-  const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
   const [publishRequestStatusFilter, setPublishRequestStatusFilter] =
     useState<PublishRequestStatusFilter>("pending");
   const [publishRequestSearch, setPublishRequestSearch] = useState("");
@@ -108,17 +104,12 @@ export function GroupsSurface({
       knowledgeBase.scope === "group" &&
       (!activeGroupId || knowledgeBase.group_id === activeGroupId),
   );
-  const publishablePersonalKnowledgeBases = writableDocumentKnowledgeBases(
-    knowledgeBases.data ?? [],
-    currentUser.data?.id,
-  );
   const publishRequests = usePublishRequests(activeGroupId);
   const publishReviewSource = usePublishRequestSource(
     activeGroupId,
     publishReviewRequest?.id,
     Boolean(publishReviewRequest) && canReviewPublishRequests,
   );
-  const createPublishRequest = useCreatePublishRequest(activeGroupId);
   const approvePublishRequest = useApprovePublishRequest(activeGroupId);
   const cancelPublishRequest = useCancelPublishRequest(activeGroupId);
   const rejectPublishRequest = useRejectPublishRequest(activeGroupId);
@@ -144,11 +135,6 @@ export function GroupsSurface({
   );
   const [updateUserId, setUpdateUserId] = useState("");
   const [updateRole, setUpdateRole] = useState<GroupRole>("viewer");
-  const [publishSourceKind, setPublishSourceKind] =
-    useState<PublishSourceKind>("knowledge-base");
-  const [sourceDocumentId, setSourceDocumentId] = useState("");
-  const [sourceKnowledgeBaseId, setSourceKnowledgeBaseId] = useState("");
-  const [targetKnowledgeBaseId, setTargetKnowledgeBaseId] = useState("");
   const updateMember = useUpdateMember(activeGroupId, updateUserId);
   const { localization } = useLocalization((state) => state.localization.admin);
   const groupCount = groups.data?.length ?? 0;
@@ -246,26 +232,6 @@ export function GroupsSurface({
       await updateMember.mutateAsync({ role: updateRole });
       setUpdateUserId("");
       setMemberAction(undefined);
-    } catch {}
-  }
-
-  async function handleCreatePublishRequest(
-    event: React.FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
-    try {
-      await (publishSourceKind === "knowledge-base"
-        ? createPublishRequest.mutateAsync({
-            source_knowledge_base_id: sourceKnowledgeBaseId,
-          })
-        : createPublishRequest.mutateAsync({
-            source_document_id: sourceDocumentId,
-            target_knowledge_base_id: targetKnowledgeBaseId,
-          }));
-      setSourceDocumentId("");
-      setSourceKnowledgeBaseId("");
-      setTargetKnowledgeBaseId("");
-      setIsPublishDialogOpen(false);
     } catch {}
   }
 
@@ -371,7 +337,6 @@ export function GroupsSurface({
     onManageInvitation: (invitation) =>
       openInvitationAction(invitation, "update"),
     onRejectPublishRequest: handleRejectPublishRequest,
-    onRequestShare: () => setIsPublishDialogOpen(true),
     onReviewRequest: setPublishReviewRequest,
     onUpdateMemberRole: openMemberAction,
     filterInvitations: (rows, status, search) =>
@@ -433,7 +398,6 @@ export function GroupsSurface({
           }
           onOpenGroupBrowser={() => setIsGroupBrowserOpen(true)}
           onRejectPublishRequest={handleRejectPublishRequest}
-          onRequestShare={() => setIsPublishDialogOpen(true)}
           onReviewPublishRequest={setPublishReviewRequest}
           onUpdateMemberRole={openMemberAction}
           canCancelPublishRequest={canCancelPublishRequest}
@@ -460,11 +424,9 @@ export function GroupsSurface({
         cancelInvitation={cancelInvitation}
         createGroup={createGroup}
         createInvitation={createInvitation}
-        createPublishRequest={createPublishRequest}
         handleCancelInvitation={handleCancelInvitation}
         handleCreateGroup={handleSubmit}
         handleCreateInvitation={handleCreateInvitation}
-        handleCreatePublishRequest={handleCreatePublishRequest}
         handleInvitationActionOpenChange={handleInvitationActionOpenChange}
         handleMemberActionOpenChange={handleMemberActionOpenChange}
         handleResendInvitation={handleResendInvitation}
@@ -476,16 +438,13 @@ export function GroupsSurface({
         invitationRole={invitationRole}
         isCreateGroupDialogOpen={isCreateGroupDialogOpen}
         isInviteDialogOpen={isInviteDialogOpen}
-        isPublishDialogOpen={isPublishDialogOpen}
         localization={localization}
         memberAction={memberAction}
         name={name}
-        publishablePersonalKnowledgeBases={publishablePersonalKnowledgeBases}
         publishReviewRequest={publishReviewRequest}
         publishReviewSource={publishReviewSource}
         publishRequestSourceLabel={publishRequestSourceLabel}
         publishRequestTargetLabel={publishRequestTargetLabel}
-        publishSourceKind={publishSourceKind}
         rejectPublishRequest={rejectPublishRequest}
         resendInvitation={resendInvitation}
         setInvitationActionRole={setInvitationActionRole}
@@ -493,17 +452,9 @@ export function GroupsSurface({
         setInvitationRole={setInvitationRole}
         setIsCreateGroupDialogOpen={setIsCreateGroupDialogOpen}
         setIsInviteDialogOpen={setIsInviteDialogOpen}
-        setIsPublishDialogOpen={setIsPublishDialogOpen}
         setName={setName}
         setPublishReviewRequest={setPublishReviewRequest}
-        setPublishSourceKind={setPublishSourceKind}
-        setSourceDocumentId={setSourceDocumentId}
-        setSourceKnowledgeBaseId={setSourceKnowledgeBaseId}
-        setTargetKnowledgeBaseId={setTargetKnowledgeBaseId}
         setUpdateRole={setUpdateRole}
-        sourceDocumentId={sourceDocumentId}
-        sourceKnowledgeBaseId={sourceKnowledgeBaseId}
-        targetKnowledgeBaseId={targetKnowledgeBaseId}
         updateInvitation={updateInvitation}
         updateMember={updateMember}
         updateRole={updateRole}
