@@ -1,6 +1,6 @@
 "use client";
 
-import type { ExtractionRun, Group, KnowledgeBase } from "@/model/my-agents";
+import type { Group, KnowledgeBase } from "@/model/my-agents";
 import { SourceDeleteDialog } from "./source-actions/SourceDeleteDialog";
 import { SourcePreviewDialog } from "./source-actions/SourcePreviewDialog";
 import { SourceReingestDialog } from "./source-actions/SourceReingestDialog";
@@ -10,6 +10,7 @@ import type {
   SourceActionsLocalization,
   SourceDeleteMutation,
   SourceDocumentContext,
+  SourceExtractionRuns,
   SourceIngestMutation,
 } from "./source-actions/types";
 
@@ -19,7 +20,7 @@ type SourceActionsDialogProps = SourceDocumentContext & {
   allKnowledgeBases: KnowledgeBase[];
   canShareDocument: boolean;
   deleteDocument: SourceDeleteMutation;
-  extractionRuns: { data?: ExtractionRun[] };
+  extractionRuns: SourceExtractionRuns;
   ingest: SourceIngestMutation;
   localization: SourceActionsLocalization;
   onDeleteDocument: () => Promise<boolean>;
@@ -55,6 +56,7 @@ export function SourceActionsDialog({
     <>
       <SourcePreviewDialog
         {...sharedContext}
+        extractionRuns={extractionRuns}
         localization={localization}
         onOpenChange={onOpenChange}
         open={open && action === "preview"}

@@ -1,4 +1,4 @@
-import type { Document } from "@/model/my-agents";
+import type { Document, ExtractionRun } from "@/model/my-agents";
 
 export type SourceActionDialogType = "preview" | "share" | "ingest" | "delete";
 
@@ -15,6 +15,8 @@ export type SourceActionsLocalization = {
   documents: {
     sourcePreviewTitle: string;
     sourcePreviewDescription: string;
+    sourcePreviewTab: string;
+    sourceAdvancedTab: string;
     sourcePreviewEmptyTitle: string;
     sourcePreviewEmptyDescription: string;
     sourcePreviewErrorTitle: string;
@@ -71,6 +73,12 @@ export type SourceIngestMutation = SourceDocumentMutation & {
 };
 
 export type SourceDeleteMutation = SourceDocumentMutation;
+
+export type SourceExtractionRuns = {
+  data?: ExtractionRun[];
+  error?: unknown;
+  isLoading?: boolean;
+};
 
 export type SourceDocumentContext = {
   activeDocument?: Document;

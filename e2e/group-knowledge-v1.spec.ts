@@ -285,6 +285,25 @@ async function mockGroupKnowledgeApi(
         created_at: now,
       });
     }
+    if (
+      method === "GET" &&
+      path ===
+        `/knowledge-bases/${personalKb.id}/documents/${personalDocument.id}/extraction-runs`
+    ) {
+      return json([
+        {
+          id: "run-preview-advanced-1",
+          document_id: personalDocument.id,
+          status: "completed",
+          stage: "chunking",
+          progress_percent: 100,
+          chunk_count: 3,
+          entity_count: 2,
+          relationship_count: 1,
+          error: null,
+        },
+      ]);
+    }
     if (method === "GET" && path === "/conversations") {
       return json([personalConversation]);
     }
@@ -752,8 +771,26 @@ test("Knowledge page owns source-space lifecycle controls and document sharing",
   await expect(
     page.getByRole("heading", { name: ko.admin.documents.sourcePreviewTitle }),
   ).toBeVisible();
+  const previewDialog = page.getByRole("dialog", {
+    name: ko.admin.documents.sourcePreviewTitle,
+  });
   await expect(
-    page.getByRole("heading", { name: "Preview section" }),
+    previewDialog.getByRole("tab", {
+      name: ko.admin.documents.sourcePreviewTab,
+      selected: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    previewDialog.getByRole("heading", { name: "Preview section" }),
+  ).toBeVisible();
+  await previewDialog
+    .getByRole("tab", { name: ko.admin.documents.sourceAdvancedTab })
+    .click();
+  await expect(
+    previewDialog.getByText(ko.admin.documents.extractionRuns),
+  ).toBeVisible();
+  await expect(
+    previewDialog.getByText(new RegExp(`3 ${ko.admin.common.chunks}`)),
   ).toBeVisible();
   await page.getByRole("button", { name: ko.admin.common.close }).click();
 
