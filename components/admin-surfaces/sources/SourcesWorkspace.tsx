@@ -4,8 +4,11 @@ import {
   DatabaseIcon,
   FileTextIcon,
   ListTreeIcon,
+  PencilIcon,
   PlusIcon,
   SearchIcon,
+  Share2Icon,
+  Trash2Icon,
   UploadIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -27,6 +30,8 @@ type SourcesWorkspaceProps = {
   activeTeamKnowledgeBaseId?: string;
   allKnowledgeBases: KnowledgeBase[];
   canManageSystemKnowledge: boolean;
+  canManageActiveSourceSpace: boolean;
+  canShareActiveSourceSpace: boolean;
   documentKnowledgeBases: KnowledgeBase[];
   documents: { data?: Document[]; isLoading: boolean; error: unknown };
   effectiveDocumentDestination: DocumentDestination;
@@ -37,14 +42,17 @@ type SourcesWorkspaceProps = {
   knowledgeBasesIsLoading: boolean;
   localization: Localization["admin"];
   onCreateSourceSpace: () => void;
+  onDeleteSourceSpace: () => void;
   onOpenFileUploadDialog: () => void;
   onOpenSourceActions: (documentId: string) => void;
   onOpenSourceSpaceBrowser: () => void;
   onOpenTextSourceDialog: () => void;
+  onRenameSourceSpace: () => void;
   onSelectPersonalSourceSpace: (knowledgeBaseId: string) => void;
   onSelectSystemSourceSpace: (knowledgeBaseId: string) => void;
   onSelectTeamGroup: (groupId: string) => void;
   onSelectTeamSourceSpace: (groupId: string, knowledgeBaseId: string) => void;
+  onShareSourceSpace: () => void;
   readyDocumentCount: number;
   sourceSpaceCount: number;
   systemKnowledgeBases: KnowledgeBase[];
@@ -61,6 +69,8 @@ export function SourcesWorkspace({
   activeTeamKnowledgeBaseId,
   allKnowledgeBases,
   canManageSystemKnowledge,
+  canManageActiveSourceSpace,
+  canShareActiveSourceSpace,
   documentKnowledgeBases,
   documents,
   effectiveDocumentDestination,
@@ -71,14 +81,17 @@ export function SourcesWorkspace({
   knowledgeBasesIsLoading,
   localization,
   onCreateSourceSpace,
+  onDeleteSourceSpace,
   onOpenFileUploadDialog,
   onOpenSourceActions,
   onOpenSourceSpaceBrowser,
   onOpenTextSourceDialog,
+  onRenameSourceSpace,
   onSelectPersonalSourceSpace,
   onSelectSystemSourceSpace,
   onSelectTeamGroup,
   onSelectTeamSourceSpace,
+  onShareSourceSpace,
   readyDocumentCount,
   sourceSpaceCount,
   systemKnowledgeBases,
@@ -147,6 +160,39 @@ export function SourcesWorkspace({
               ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2">
+              {canManageActiveSourceSpace ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onRenameSourceSpace}
+                  disabled={!activeSourceSpace}
+                >
+                  <PencilIcon />
+                  {localization.documents.renameSourceSpaceAction}
+                </Button>
+              ) : null}
+              {canShareActiveSourceSpace ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onShareSourceSpace}
+                  disabled={!activeSourceSpace}
+                >
+                  <Share2Icon />
+                  {localization.documents.shareSourceSpaceAction}
+                </Button>
+              ) : null}
+              {canManageActiveSourceSpace ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={onDeleteSourceSpace}
+                  disabled={!activeSourceSpace}
+                >
+                  <Trash2Icon />
+                  {localization.documents.deleteSourceSpaceAction}
+                </Button>
+              ) : null}
               <Button
                 type="button"
                 variant="outline"
