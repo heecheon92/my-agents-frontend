@@ -2,7 +2,7 @@
 
 import {
   FolderIcon,
-  MenuIcon,
+  MoreHorizontalIcon,
   NetworkIcon,
   PencilIcon,
   PlusIcon,
@@ -138,7 +138,7 @@ export function SourceSpaceTree({
             />
           }
         >
-          <MenuIcon />
+          <MoreHorizontalIcon />
           <span className="sr-only">
             {localization.documents.sourceSpaceRowActions}
           </span>

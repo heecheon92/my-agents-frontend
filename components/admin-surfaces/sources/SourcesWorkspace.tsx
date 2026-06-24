@@ -16,6 +16,7 @@ import type { Localization } from "@/utils/localization";
 import { DocumentsTable } from "../DocumentsTable";
 import { SourceSpaceTree } from "../SourceSpaceTree";
 import type { DocumentDestination } from "../shared";
+import type { SourceActionDialogType } from "../source-actions/types";
 
 type SourcesWorkspaceProps = {
   activeDocumentId?: string;
@@ -27,6 +28,7 @@ type SourcesWorkspaceProps = {
   activeTeamKnowledgeBaseId?: string;
   allKnowledgeBases: KnowledgeBase[];
   canManageSystemKnowledge: boolean;
+  canShareActiveDocument: boolean;
   documentKnowledgeBases: KnowledgeBase[];
   documents: { data?: Document[]; isLoading: boolean; error: unknown };
   effectiveDocumentDestination: DocumentDestination;
@@ -43,7 +45,10 @@ type SourcesWorkspaceProps = {
   onCreateSourceSpace: () => void;
   onDeleteSourceSpace: (knowledgeBase: KnowledgeBase) => void;
   onOpenFileUploadDialog: () => void;
-  onOpenSourceActions: (documentId: string) => void;
+  onOpenSourceActions: (
+    documentId: string,
+    action: SourceActionDialogType,
+  ) => void;
   onOpenSourceSpaceBrowser: () => void;
   onOpenTextSourceDialog: () => void;
   onRenameSourceSpace: (knowledgeBase: KnowledgeBase) => void;
@@ -68,6 +73,7 @@ export function SourcesWorkspace({
   activeTeamKnowledgeBaseId,
   allKnowledgeBases,
   canManageSystemKnowledge,
+  canShareActiveDocument,
   documentKnowledgeBases,
   documents,
   effectiveDocumentDestination,
@@ -237,6 +243,8 @@ export function SourcesWorkspace({
                 documents={documents}
                 activeDocumentId={activeDocumentId}
                 activeIngestionDocumentIds={activeIngestionDocumentIds}
+                canReingestDocuments={hasActiveKnowledgeBase}
+                canShareDocuments={canShareActiveDocument}
                 localization={localization}
                 onOpenSourceActions={onOpenSourceActions}
               />

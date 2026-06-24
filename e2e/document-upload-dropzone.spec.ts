@@ -493,7 +493,22 @@ test("Sources table row actions prepare and delete one source", async ({
     })
     .click();
   await expect(
-    page.getByRole("heading", { name: ko.admin.documents.sourceActionsTitle }),
+    page.getByRole("menuitem", {
+      name: ko.admin.documents.sourcePreviewAction,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", {
+      name: ko.admin.documents.shareSourceMenuAction,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("menuitem", { name: ko.admin.documents.reingestSourceAction })
+    .click();
+  await expect(
+    page.getByRole("heading", {
+      name: ko.admin.documents.prepareRecoveryTitle,
+    }),
   ).toBeVisible();
 
   await page
@@ -502,11 +517,22 @@ test("Sources table row actions prepare and delete one source", async ({
   await expect.poll(() => preparedDocumentId).toBe(firstDocument.id);
   await expect(page.getByText("직접 읽기 권한")).toHaveCount(0);
   await expect(page.getByText("고급 공유 제어")).toHaveCount(0);
+  await page.getByRole("button", { name: ko.admin.common.close }).click();
 
   await page
-    .getByRole("button", { name: ko.admin.documents.deleteButton })
+    .getByRole("button", {
+      name: ko.admin.documents.sourceRowActionsLabel.replace(
+        "{title}",
+        firstDocument.title,
+      ),
+    })
     .click();
-  const deleteDialog = page.getByRole("alertdialog");
+  await page
+    .getByRole("menuitem", { name: ko.admin.documents.deleteSourceMenuAction })
+    .click();
+  const deleteDialog = page.getByRole("dialog", {
+    name: ko.admin.documents.deleteTitle,
+  });
   await expect(
     deleteDialog.getByText(
       ko.admin.documents.deleteConfirm.replace("{title}", firstDocument.title),

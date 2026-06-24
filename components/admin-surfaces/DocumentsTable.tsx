@@ -1,7 +1,21 @@
 "use client";
 
+import {
+  EyeIcon,
+  MoreHorizontalIcon,
+  RotateCwIcon,
+  Share2Icon,
+  Trash2Icon,
+} from "lucide-react";
 import { EmptyState, ErrorState, Pill } from "@/components/Status";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   Table,
   TableBody,
@@ -17,6 +31,7 @@ import {
   documentSourceLabel,
   InlineLoadingIndicator,
 } from "./shared";
+import type { SourceActionDialogType } from "./source-actions/types";
 
 type DocumentsTableLocalization = {
   common: {
@@ -36,6 +51,10 @@ type DocumentsTableLocalization = {
     sourceReadyStatus: string;
     sourceRowActionsLabel: string;
     sourceRowActions: string;
+    sourcePreviewAction: string;
+    shareSourceMenuAction: string;
+    reingestSourceAction: string;
+    deleteSourceMenuAction: string;
     pdfSourcePrefix: string;
     pdfSource: string;
     markdownSourcePrefix: string;
@@ -61,14 +80,21 @@ type DocumentsTableProps = {
   };
   activeDocumentId?: string;
   activeIngestionDocumentIds: Set<string>;
+  canReingestDocuments: boolean;
+  canShareDocuments: boolean;
   localization: DocumentsTableLocalization;
-  onOpenSourceActions: (documentId: string) => void;
+  onOpenSourceActions: (
+    documentId: string,
+    action: SourceActionDialogType,
+  ) => void;
 };
 
 export function DocumentsTable({
   documents,
   activeDocumentId,
   activeIngestionDocumentIds,
+  canReingestDocuments,
+  canShareDocuments,
   localization,
   onOpenSourceActions,
 }: DocumentsTableProps) {
@@ -141,7 +167,7 @@ export function DocumentsTable({
               <TableCell className="px-4 py-4 whitespace-normal">
                 <button
                   type="button"
-                  onClick={() => onOpenSourceActions(document.id)}
+                  onClick={() => onOpenSourceActions(document.id, "preview")}
                   className="grid min-w-0 gap-1 text-left"
                   aria-label={localization.documents.openSourceDetails.replace(
                     "{title}",
@@ -174,18 +200,59 @@ export function DocumentsTable({
                 {documentMeta(document, localization)}
               </TableCell>
               <TableCell className="px-4 py-4 whitespace-normal">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => onOpenSourceActions(document.id)}
-                  aria-label={localization.documents.sourceRowActionsLabel.replace(
-                    "{title}",
-                    document.title,
-                  )}
-                >
-                  {localization.documents.sourceRowActions}
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-cal-muted hover:text-cal-ink"
+                        aria-label={localization.documents.sourceRowActionsLabel.replace(
+                          "{title}",
+                          document.title,
+                        )}
+                      />
+                    }
+                  >
+                    <MoreHorizontalIcon />
+                    <span className="sr-only">
+                      {localization.documents.sourceRowActions}
+                    </span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-48">
+                    <DropdownMenuItem
+                      onClick={() =>
+                        onOpenSourceActions(document.id, "preview")
+                      }
+                    >
+                      <EyeIcon />
+                      {localization.documents.sourcePreviewAction}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={!canShareDocuments}
+                      onClick={() => onOpenSourceActions(document.id, "share")}
+                    >
+                      <Share2Icon />
+                      {localization.documents.shareSourceMenuAction}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={!canReingestDocuments || isPreparing}
+                      onClick={() => onOpenSourceActions(document.id, "ingest")}
+                    >
+                      <RotateCwIcon />
+                      {localization.documents.reingestSourceAction}
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      variant="destructive"
+                      onClick={() => onOpenSourceActions(document.id, "delete")}
+                    >
+                      <Trash2Icon />
+                      {localization.documents.deleteSourceMenuAction}
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </TableCell>
             </TableRow>
           );

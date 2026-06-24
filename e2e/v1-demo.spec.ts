@@ -218,16 +218,18 @@ test.describe("V1 seeded demo", () => {
       })
       .click();
     await page
-      .getByRole("button", { name: ko.admin.documents.runIngest })
+      .getByRole("menuitem", { name: ko.admin.documents.reingestSourceAction })
       .click();
     await expect(
       page.getByRole("heading", {
-        name: ko.admin.documents.extractionRuns,
-        exact: true,
+        name: ko.admin.documents.prepareRecoveryTitle,
       }),
     ).toBeVisible();
+    await page
+      .getByRole("button", { name: ko.admin.documents.runIngest })
+      .click();
     const extractionRunsSection = page.getByRole("dialog", {
-      name: ko.admin.documents.sourceActionsTitle,
+      name: ko.admin.documents.prepareRecoveryTitle,
     });
     await expect(
       extractionRunsSection
@@ -344,11 +346,19 @@ test.describe("V1 public visitor smoke", () => {
       })
       .click();
     await page
+      .getByRole("menuitem", { name: ko.admin.documents.reingestSourceAction })
+      .click();
+    await expect(
+      page.getByRole("heading", {
+        name: ko.admin.documents.prepareRecoveryTitle,
+      }),
+    ).toBeVisible();
+    await page
       .getByRole("button", { name: ko.admin.documents.runIngest })
       .click();
 
     const extractionRunsSection = page.getByRole("dialog", {
-      name: ko.admin.documents.sourceActionsTitle,
+      name: ko.admin.documents.prepareRecoveryTitle,
     });
     await expect(
       extractionRunsSection

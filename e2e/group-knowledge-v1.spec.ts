@@ -737,14 +737,37 @@ test("Knowledge page owns source-space lifecycle controls and document sharing",
     })
     .click();
   await expect(
-    page.getByRole("heading", { name: ko.admin.documents.sourceActionsTitle }),
+    page.getByRole("menuitem", {
+      name: ko.admin.documents.sourcePreviewAction,
+    }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", {
+      name: ko.admin.documents.shareSourceMenuAction,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("menuitem", { name: ko.admin.documents.sourcePreviewAction })
+    .click();
   await expect(
     page.getByRole("heading", { name: ko.admin.documents.sourcePreviewTitle }),
   ).toBeVisible();
   await expect(
     page.getByRole("heading", { name: "Preview section" }),
   ).toBeVisible();
+  await page.getByRole("button", { name: ko.admin.common.close }).click();
+
+  await page
+    .getByRole("button", {
+      name: ko.admin.documents.sourceRowActionsLabel.replace(
+        "{title}",
+        personalDocument.title,
+      ),
+    })
+    .click();
+  await page
+    .getByRole("menuitem", { name: ko.admin.documents.shareSourceMenuAction })
+    .click();
   await expect(
     page.getByRole("heading", { name: ko.admin.documents.shareSourceTitle }),
   ).toBeVisible();

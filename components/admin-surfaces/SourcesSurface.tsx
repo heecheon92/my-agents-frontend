@@ -39,6 +39,7 @@ import {
   knowledgeSourceHref,
   PageCard,
 } from "./shared";
+import type { SourceActionDialogType } from "./source-actions/types";
 import { SourcesSurfaceOverlays } from "./sources/SourcesSurfaceOverlays";
 import { SourcesWorkspace } from "./sources/SourcesWorkspace";
 import {
@@ -49,7 +50,10 @@ import { TERMINAL_EXTRACTION_STATUSES } from "./sources/upload-config";
 import { useSourceUploadQueue } from "./sources/useSourceUploadQueue";
 
 type SourcesSurfaceProps = { initialSourceId?: string };
-type SourceActionsDialogState = { documentId: string };
+type SourceActionsDialogState = {
+  action: SourceActionDialogType;
+  documentId: string;
+};
 type SourceSpaceDialogType = "rename" | "delete" | "share";
 type SourceSpaceDialogState = {
   sourceSpaceId: string;
@@ -394,7 +398,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     }
   }
   async function handleDeleteDocument() {
-    if (!activeDocumentId) return;
+    if (!activeDocumentId) return false;
     try {
       const nextDocumentId = documents.data?.find((document) => document.id !== activeDocumentId)?.id;
       await deleteDocument.mutateAsync();
@@ -402,8 +406,10 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
       setSelectedDocumentId(nextDocumentId);
       setSourceActionsDialog(undefined);
       toast.success(localization.documents.deleteSuccessAnnouncement);
+      return true;
     } catch {
       toast.error(localization.documents.deleteFailedAnnouncement);
+      return false;
     }
   }
   async function handleRenameSourceSpace(name: string) {
@@ -467,10 +473,13 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
       toast.error(localization.documents.deleteSourceSpaceFailed);
     }
   }
-  function openSourceActionsDialog(documentId: string) {
+  function openSourceActionsDialog(
+    documentId: string,
+    action: SourceActionDialogType,
+  ) {
     setSelectedDocumentId(documentId);
     deleteDocument.reset();
-    setSourceActionsDialog({ documentId });
+    setSourceActionsDialog({ action, documentId });
   }
   function handleSourceActionsDialogOpenChange(open: boolean) {
     if (open) return;
@@ -546,6 +555,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
           activeTeamKnowledgeBaseId={activeTeamKnowledgeBaseId}
           allKnowledgeBases={knowledgeBases.data ?? []}
           canManageSystemKnowledge={canManageSystemKnowledge}
+          canShareActiveDocument={canShareActiveDocument}
           documentKnowledgeBases={documentKnowledgeBases}
           documents={documents}
           effectiveDocumentDestination={effectiveDocumentDestination}
@@ -583,7 +593,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
       <SourcesSurfaceOverlays
         sourceActions={{
           open: Boolean(sourceActionsDialog), onOpenChange: handleSourceActionsDialogOpenChange,
-          localization, activeDocument, activeDocumentId, displayKnowledgeBaseId,
+          action: sourceActionsDialog?.action, localization, activeDocument, activeDocumentId, displayKnowledgeBaseId,
           allKnowledgeBases: knowledgeBases.data ?? [], canShareDocument: canShareActiveDocument,
           teamGroups,
           activeDocumentHasIngestion, ingest, deleteDocument, extractionRuns,
