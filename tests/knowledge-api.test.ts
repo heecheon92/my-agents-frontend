@@ -393,3 +393,104 @@ describe("MyAgentsKnowledgeBaseAPI lifecycle methods", () => {
     ]);
   });
 });
+
+describe("knowledge base API contracts", () => {
+  it("parses update and document preview backend payloads", () => {
+    expect(
+      knowledgeBaseUpdateRequestSchema.parse({ name: "  Renamed space  " }),
+    ).toEqual({ name: "Renamed space" });
+
+    expect(
+      knowledgeBaseDocumentPreviewSchema.parse({
+        id: "doc-1",
+        title: "Previewable source",
+        content: "# Extracted Markdown\nBody",
+        source_type: "word_document",
+        source_filename: "source.docx",
+        source_content_type:
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        source_byte_size: 2048,
+        source_page_count: 3,
+        parser_name: "office_parser",
+        created_at: "2026-06-24T01:00:00Z",
+      }),
+    ).toMatchObject({
+      id: "doc-1",
+      content: "# Extracted Markdown\nBody",
+      source_type: "word_document",
+    });
+  });
+
+  it("keeps document list parsing lightweight without full content", () => {
+    const parsed = documentSchema.parse({
+      id: "doc-1",
+      title: "List row",
+      owner_user_id: "user-1",
+      group_id: null,
+      knowledge_base_id: "kb-1",
+      source_type: "text",
+      content: "Full body should not be part of the list model.",
+    });
+
+    expect(parsed).not.toHaveProperty("content");
+  });
+});
+
+describe("MyAgentsKnowledgeBaseAPI lifecycle methods", () => {
+  it("updates, deletes, and previews through KB-scoped paths", async () => {
+    const calls: Array<{
+      path: string;
+      init?: { method?: string; body?: unknown };
+    }> = [];
+    const api = new MyAgentsKnowledgeBaseAPI({
+      fetch: async (path, init) => {
+        calls.push({ path, init });
+        if (path.endsWith("/preview")) {
+          return {
+            id: "doc-1",
+            title: "Previewable source",
+            content: "Preview body",
+            source_type: "text",
+            source_filename: "source.md",
+            source_content_type: "text/markdown",
+            source_byte_size: 42,
+            source_page_count: null,
+            parser_name: "markdown",
+            created_at: "2026-06-24T01:00:00Z",
+          };
+        }
+        if (init?.method === "DELETE") return null;
+        return {
+          id: "kb-1",
+          name: "Renamed space",
+          scope: "personal",
+          owner_user_id: "user-1",
+          group_id: null,
+          purpose: "standard",
+          published_group_ids: [],
+        };
+      },
+    });
+
+    await expect(
+      api.update("kb-1", { name: "Renamed space" }),
+    ).resolves.toMatchObject({ name: "Renamed space" });
+    await expect(api.remove("kb-1")).resolves.toBeUndefined();
+    await expect(api.documentPreview("kb-1", "doc-1")).resolves.toMatchObject({
+      id: "doc-1",
+      content: "Preview body",
+    });
+
+    expect(calls).toEqual([
+      {
+        path: "/knowledge-bases/kb-1",
+        init: { method: "PATCH", body: { name: "Renamed space" } },
+      },
+      { path: "/knowledge-bases/kb-1", init: { method: "DELETE" } },
+      {
+        path: "/knowledge-bases/kb-1/documents/doc-1/preview",
+        init: undefined,
+      },
+    ]);
+  });
+});
