@@ -117,13 +117,17 @@ export function useUpdateKnowledgeBase(knowledgeBaseId?: string) {
   return useMutation({
     mutationFn: (payload: KnowledgeBaseUpdateRequest) =>
       myAgentsAPI.knowledgeBases.update(knowledgeBaseId ?? "", payload),
-    onSuccess: (knowledgeBase) => {
-      if (!knowledgeBaseId) return;
-      invalidateKnowledgeBaseUpdateState(
-        queryClient,
-        knowledgeBaseId,
-        knowledgeBase,
+    onSuccess: (updated) => {
+      queryClient.setQueryData(
+        MyAgentsQueryKeys.knowledgeBases.detail(updated.id),
+        updated,
       );
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.knowledgeBases.list(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.knowledgeBases.detail(updated.id),
+      });
     },
   });
 }
@@ -133,8 +137,16 @@ export function useDeleteKnowledgeBase(knowledgeBaseId?: string) {
   return useMutation({
     mutationFn: () => myAgentsAPI.knowledgeBases.remove(knowledgeBaseId ?? ""),
     onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.knowledgeBases.list(),
+      });
       if (!knowledgeBaseId) return;
-      removeKnowledgeBaseDeletedState(queryClient, knowledgeBaseId);
+      queryClient.removeQueries({
+        queryKey: MyAgentsQueryKeys.knowledgeBases.detail(knowledgeBaseId),
+      });
+      queryClient.removeQueries({
+        queryKey: MyAgentsQueryKeys.knowledgeBases.documents(knowledgeBaseId),
+      });
     },
   });
 }
@@ -170,11 +182,7 @@ export function useKnowledgeBaseDocumentPreview(
         knowledgeBaseId ?? "",
         documentId ?? "",
       ),
-    enabled: isKnowledgeBaseDocumentPreviewEnabled(
-      knowledgeBaseId,
-      documentId,
-      enabled,
-    ),
+    enabled: Boolean(knowledgeBaseId && documentId && enabled),
   });
 }
 

@@ -24,7 +24,7 @@ export const knowledgeBaseCreateRequestSchema = z.object({
 });
 
 export const knowledgeBaseUpdateRequestSchema = z.object({
-  name: z.string().trim().min(1).max(160),
+  name: z.string().min(1).max(160),
 });
 
 export const documentSchema = z.object({
@@ -40,6 +40,19 @@ export const documentSchema = z.object({
   source_sha256: z.string().nullable().optional(),
   source_page_count: z.number().nullable().optional(),
   parser_name: z.string().nullable().optional(),
+});
+
+export const knowledgeBaseDocumentPreviewSchema = z.object({
+  id: z.string().min(1),
+  title: z.string(),
+  content: z.string(),
+  source_type: z.string().default("text"),
+  source_filename: z.string().nullable().optional(),
+  source_content_type: z.string().nullable().optional(),
+  source_byte_size: z.number().nullable().optional(),
+  source_page_count: z.number().nullable().optional(),
+  parser_name: z.string().nullable().optional(),
+  created_at: z.string(),
 });
 
 export const documentCreateRequestSchema = z.object({
@@ -144,6 +157,9 @@ export type KnowledgeBaseUpdateRequest = z.infer<
   typeof knowledgeBaseUpdateRequestSchema
 >;
 export type Document = z.infer<typeof documentSchema>;
+export type KnowledgeBaseDocumentPreview = z.infer<
+  typeof knowledgeBaseDocumentPreviewSchema
+>;
 export type DocumentCreateRequest = z.infer<typeof documentCreateRequestSchema>;
 export type KnowledgeBaseDocumentCreateRequest = z.infer<
   typeof knowledgeBaseDocumentCreateRequestSchema
