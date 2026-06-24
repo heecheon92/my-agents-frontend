@@ -1,10 +1,5 @@
 import { describe, expect, it } from "vitest";
 import { buildKnowledgeBaseCreateRequest } from "@/components/knowledge-base-create";
-import {
-  documentSchema,
-  knowledgeBaseDocumentPreviewSchema,
-  knowledgeBaseUpdateRequestSchema,
-} from "@/model/my-agents";
 import { MyAgentsKnowledgeBaseAPI } from "@/services/my-agents/MyAgentsKnowledgeBaseAPI";
 
 describe("knowledge base creation payloads", () => {

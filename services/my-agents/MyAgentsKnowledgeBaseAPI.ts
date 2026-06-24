@@ -30,25 +30,6 @@ export class MyAgentsKnowledgeBaseAPI {
     );
   }
 
-  async update(
-    knowledgeBaseId: string,
-    payload: KnowledgeBaseUpdateRequest,
-  ): Promise<KnowledgeBase> {
-    return parseWithSchema(
-      knowledgeBaseSchema,
-      await this.client.fetch(API_PATH.knowledgeBases.detail(knowledgeBaseId), {
-        method: "PATCH",
-        body: payload,
-      }),
-    );
-  }
-
-  async remove(knowledgeBaseId: string): Promise<void> {
-    await this.client.fetch(API_PATH.knowledgeBases.detail(knowledgeBaseId), {
-      method: "DELETE",
-    });
-  }
-
   async ensureTeamUploadStaging(): Promise<KnowledgeBase> {
     return parseWithSchema(
       knowledgeBaseSchema,
