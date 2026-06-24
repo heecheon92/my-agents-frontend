@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AgentMarkdown } from "@/components/AgentMarkdown";
 import { Field, selectClassName } from "@/components/Field";
@@ -17,15 +17,20 @@ import {
 } from "@/components/ui/sheet";
 import { useCreatePublishRequest } from "@/hooks/use-groups";
 import { useKnowledgeBaseDocumentPreview } from "@/hooks/use-knowledge";
-import type { Document, ExtractionRun, Group, KnowledgeBase } from "@/model/my-agents";
+import type {
+  Document,
+  ExtractionRun,
+  Group,
+  KnowledgeBase,
+} from "@/model/my-agents";
 import { SourceDeleteAlertDialog } from "./SourceDeleteAlertDialog";
-import { groupSourceSpacesForShareTarget } from "./sources/source-space-actions";
 import {
   documentMeta,
   extractionRunTone,
   InlineLoadingIndicator,
   isActiveExtractionRunStatus,
 } from "./shared";
+import { groupSourceSpacesForShareTarget } from "./sources/source-space-actions";
 
 type SourceActionsDialogLocalization = {
   common: {
@@ -140,10 +145,14 @@ export function SourceActionsDialog({
   );
   const createPublishRequest = useCreatePublishRequest(selectedGroupId);
   const documentTitle = activeDocument?.title ?? activeDocumentId ?? "";
-  const shareTargetSourceSpaces = groupSourceSpacesForShareTarget({
-    groupId: selectedGroupId,
-    knowledgeBases: allKnowledgeBases,
-  });
+  const shareTargetSourceSpaces = useMemo(
+    () =>
+      groupSourceSpacesForShareTarget({
+        groupId: selectedGroupId,
+        knowledgeBases: allKnowledgeBases,
+      }),
+    [allKnowledgeBases, selectedGroupId],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -247,7 +256,9 @@ export function SourceActionsDialog({
               ) : (
                 <EmptyState
                   title={localization.documents.sourcePreviewEmptyTitle}
-                  description={localization.documents.sourcePreviewEmptyDescription}
+                  description={
+                    localization.documents.sourcePreviewEmptyDescription
+                  }
                 />
               )}
             </section>
@@ -309,7 +320,10 @@ export function SourceActionsDialog({
                   </p>
                 ) : shareTargetSourceSpaces.length === 0 ? (
                   <p className="rounded-xl border border-cal-hairline bg-cal-canvas p-3 text-sm leading-6 text-cal-muted">
-                    {localization.documents.shareNoTargetSourceSpacesDescription}
+                    {
+                      localization.documents
+                        .shareNoTargetSourceSpacesDescription
+                    }
                   </p>
                 ) : null}
                 {createPublishRequest.error ? (

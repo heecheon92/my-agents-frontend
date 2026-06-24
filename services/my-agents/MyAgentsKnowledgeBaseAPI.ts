@@ -8,7 +8,6 @@ import {
   type KnowledgeBaseUpdateRequest,
   knowledgeBaseDocumentPreviewSchema,
   knowledgeBaseSchema,
-  type KnowledgeBaseUpdateRequest,
 } from "@/model/my-agents";
 import { type MyAgentsFetchClient, myAgentsFetchClient } from "./fetch-client";
 import { parseArrayWithSchema, parseWithSchema } from "./parser";

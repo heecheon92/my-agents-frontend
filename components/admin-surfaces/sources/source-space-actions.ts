@@ -17,7 +17,9 @@ export function canManageSourceSpace({
 }) {
   if (!knowledgeBase || knowledgeBase.purpose !== "standard") return false;
   if (knowledgeBase.scope === "personal") {
-    return Boolean(currentUserId && knowledgeBase.owner_user_id === currentUserId);
+    return Boolean(
+      currentUserId && knowledgeBase.owner_user_id === currentUserId,
+    );
   }
   if (knowledgeBase.scope === "system") return canManageSystemKnowledge;
   if (!knowledgeBase.group_id) return false;

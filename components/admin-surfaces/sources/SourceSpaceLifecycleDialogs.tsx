@@ -63,7 +63,9 @@ export function SourceSpaceRenameDialog({
     >
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{localization.documents.renameSourceSpaceTitle}</DialogTitle>
+          <DialogTitle>
+            {localization.documents.renameSourceSpaceTitle}
+          </DialogTitle>
           <DialogDescription>
             {localization.documents.renameSourceSpaceDescription}
           </DialogDescription>
@@ -125,11 +127,14 @@ export function SourceSpaceDeleteDialog({
     >
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{localization.documents.deleteSourceSpaceTitle}</DialogTitle>
+          <DialogTitle>
+            {localization.documents.deleteSourceSpaceTitle}
+          </DialogTitle>
           <DialogDescription>
             {localization.documents.deleteSourceSpaceDescription.replace(
               "{name}",
-              sourceSpace?.name ?? localization.documents.noSelectedSourceSpaceTitle,
+              sourceSpace?.name ??
+                localization.documents.noSelectedSourceSpaceTitle,
             )}
           </DialogDescription>
         </DialogHeader>
@@ -207,7 +212,9 @@ export function SourceSpaceShareDialog({
     >
       <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{localization.documents.shareSourceSpaceTitle}</DialogTitle>
+          <DialogTitle>
+            {localization.documents.shareSourceSpaceTitle}
+          </DialogTitle>
           <DialogDescription>
             {localization.documents.shareSourceSpaceDescription}
           </DialogDescription>
@@ -220,7 +227,9 @@ export function SourceSpaceShareDialog({
             <select
               className={selectClassName}
               value={selectedGroupId}
-              onChange={(event) => setSelectedGroupId(event.currentTarget.value)}
+              onChange={(event) =>
+                setSelectedGroupId(event.currentTarget.value)
+              }
               required
             >
               {groups.map((group) => (
@@ -250,7 +259,9 @@ export function SourceSpaceShareDialog({
             <Button
               type="submit"
               disabled={
-                !sourceSpace || !selectedGroupId || createPublishRequest.isPending
+                !sourceSpace ||
+                !selectedGroupId ||
+                createPublishRequest.isPending
               }
             >
               {createPublishRequest.isPending

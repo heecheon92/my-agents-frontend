@@ -37,11 +37,11 @@ import {
   PageCard,
 } from "./shared";
 import { SourcesSurfaceOverlays } from "./sources/SourcesSurfaceOverlays";
+import { SourcesWorkspace } from "./sources/SourcesWorkspace";
 import {
   canManageSourceSpace,
   canSharePersonalSourceSpace,
 } from "./sources/source-space-actions";
-import { SourcesWorkspace } from "./sources/SourcesWorkspace";
 import { TERMINAL_EXTRACTION_STATUSES } from "./sources/upload-config";
 import { useSourceUploadQueue } from "./sources/useSourceUploadQueue";
 
