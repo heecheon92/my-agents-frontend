@@ -380,7 +380,6 @@ export function GroupsDialogs({
       </Dialog>
 
       <GroupsPublishDialogs
-        activeGroupId={activeGroupId}
         approvePublishRequest={approvePublishRequest}
         localization={localization}
         publishReviewRequest={publishReviewRequest}
