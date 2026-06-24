@@ -11,6 +11,7 @@ import type {
   KnowledgeBaseCreateRequest,
   KnowledgeBaseDocumentCreateRequest,
   KnowledgeBaseDocumentUploadRequest,
+  KnowledgeBaseUpdateRequest,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 
@@ -50,6 +51,45 @@ export function useCreateKnowledgeBase() {
   });
 }
 
+export function useUpdateKnowledgeBase(knowledgeBaseId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: KnowledgeBaseUpdateRequest) =>
+      myAgentsAPI.knowledgeBases.update(knowledgeBaseId ?? "", payload),
+    onSuccess: (updated) => {
+      queryClient.setQueryData(
+        MyAgentsQueryKeys.knowledgeBases.detail(updated.id),
+        updated,
+      );
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.knowledgeBases.list(),
+      });
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.knowledgeBases.detail(updated.id),
+      });
+    },
+  });
+}
+
+export function useDeleteKnowledgeBase(knowledgeBaseId?: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => myAgentsAPI.knowledgeBases.remove(knowledgeBaseId ?? ""),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.knowledgeBases.list(),
+      });
+      if (!knowledgeBaseId) return;
+      queryClient.removeQueries({
+        queryKey: MyAgentsQueryKeys.knowledgeBases.detail(knowledgeBaseId),
+      });
+      queryClient.removeQueries({
+        queryKey: MyAgentsQueryKeys.knowledgeBases.documents(knowledgeBaseId),
+      });
+    },
+  });
+}
+
 export function useDocuments() {
   return useQuery({
     queryKey: MyAgentsQueryKeys.documents.list(),
@@ -63,6 +103,25 @@ export function useKnowledgeBaseDocuments(knowledgeBaseId?: string) {
     queryFn: () =>
       myAgentsAPI.documents.listByKnowledgeBase(knowledgeBaseId ?? ""),
     enabled: Boolean(knowledgeBaseId),
+  });
+}
+
+export function useKnowledgeBaseDocumentPreview(
+  knowledgeBaseId?: string,
+  documentId?: string,
+  enabled = true,
+) {
+  return useQuery({
+    queryKey: MyAgentsQueryKeys.knowledgeBases.documentPreview(
+      knowledgeBaseId ?? "",
+      documentId ?? "",
+    ),
+    queryFn: () =>
+      myAgentsAPI.knowledgeBases.documentPreview(
+        knowledgeBaseId ?? "",
+        documentId ?? "",
+      ),
+    enabled: Boolean(knowledgeBaseId && documentId && enabled),
   });
 }
 
@@ -192,6 +251,12 @@ export function useDeleteKnowledgeBaseDocument(
         if (knowledgeBaseId) {
           queryClient.removeQueries({
             queryKey: MyAgentsQueryKeys.knowledgeBases.extractionRuns(
+              knowledgeBaseId,
+              documentId,
+            ),
+          });
+          queryClient.removeQueries({
+            queryKey: MyAgentsQueryKeys.knowledgeBases.documentPreview(
               knowledgeBaseId,
               documentId,
             ),
