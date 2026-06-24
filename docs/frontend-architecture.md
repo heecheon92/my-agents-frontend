@@ -118,9 +118,12 @@ The BFF allowlist currently covers:
 - `POST /knowledge-bases` (personal/group, plus privileged `scope: "system"` project source creation when backend capability allows it)
 - `GET /knowledge-bases`
 - `GET /knowledge-bases/{knowledge_base_id}`
+- `PATCH /knowledge-bases/{knowledge_base_id}`
+- `DELETE /knowledge-bases/{knowledge_base_id}`
 - `POST /knowledge-bases/{knowledge_base_id}/documents`
 - `GET /knowledge-bases/{knowledge_base_id}/documents`
 - `POST /knowledge-bases/{knowledge_base_id}/documents/upload`
+- `GET /knowledge-bases/{knowledge_base_id}/documents/{document_id}/preview`
 - `POST /knowledge-bases/{knowledge_base_id}/documents/{document_id}/ingest`
 - `POST /knowledge-bases/{knowledge_base_id}/documents/{document_id}/ingest/async`
 - `GET /knowledge-bases/{knowledge_base_id}/documents/{document_id}/extraction-runs`
