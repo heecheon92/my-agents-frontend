@@ -28,7 +28,10 @@ import {
   useUpdateKnowledgeBase,
 } from "@/hooks/use-knowledge";
 import { useLocalization } from "@/hooks/useLocalization";
-import { canManageSystemKnowledge as canManageSystemKnowledgeForUser } from "@/model/my-agents";
+import {
+  canManageSystemKnowledge as canManageSystemKnowledgeForUser,
+  type KnowledgeBase,
+} from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 import {
   type DocumentDestination,
@@ -47,7 +50,11 @@ import { useSourceUploadQueue } from "./sources/useSourceUploadQueue";
 
 type SourcesSurfaceProps = { initialSourceId?: string };
 type SourceActionsDialogState = { documentId: string };
-type SourceSpaceDialogState = "rename" | "delete" | "share";
+type SourceSpaceDialogType = "rename" | "delete" | "share";
+type SourceSpaceDialogState = {
+  sourceSpaceId: string;
+  type: SourceSpaceDialogType;
+};
 const HEALTH_CONFIG_STALE_TIME_MS = 5 * 60 * 1000;
 // biome-ignore format: preserve line-budgeted orchestration shell
 export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
@@ -204,14 +211,15 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
       : effectiveDocumentDestination === "system"
         ? systemKnowledgeBases.find((kb) => kb.id === activeSystemKnowledgeBaseId)
         : documentKnowledgeBases.find((kb) => kb.id === activeKnowledgeBaseId);
-  const updateKnowledgeBase = useUpdateKnowledgeBase(activeSourceSpace?.id);
-  const deleteKnowledgeBase = useDeleteKnowledgeBase(activeSourceSpace?.id);
-  const canManageActiveSourceSpace = canManageSourceSpace({
-    canManageSystemKnowledge,
-    currentUserId: currentUser.data?.id,
-    groups: teamGroups,
-    knowledgeBase: activeSourceSpace,
-  });
+  const sourceSpaceDialogTarget = (knowledgeBases.data ?? []).find(
+    (knowledgeBase) => knowledgeBase.id === sourceSpaceDialog?.sourceSpaceId,
+  );
+  const updateKnowledgeBase = useUpdateKnowledgeBase(
+    sourceSpaceDialogTarget?.id,
+  );
+  const deleteKnowledgeBase = useDeleteKnowledgeBase(
+    sourceSpaceDialogTarget?.id,
+  );
   const canShareActiveSourceSpace = canSharePersonalSourceSpace({
     currentUserId: currentUser.data?.id,
     knowledgeBase: activeSourceSpace,
@@ -399,19 +407,31 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     }
   }
   async function handleRenameSourceSpace(name: string) {
-    if (!activeSourceSpace || !canManageActiveSourceSpace) return;
+    if (
+      !sourceSpaceDialogTarget ||
+      !sourceSpaceActions(sourceSpaceDialogTarget).canManage
+    ) {
+      return;
+    }
     try {
       const updated = await updateKnowledgeBase.mutateAsync({ name });
       setSourceSpaceDialog(undefined);
-      setOptimisticSourceId(updated.id);
+      if (activeSourceSpace?.id === updated.id) setOptimisticSourceId(updated.id);
       toast.success(localization.documents.renameSourceSpaceSuccess);
     } catch {
       toast.error(localization.documents.renameSourceSpaceFailed);
     }
   }
   async function handleDeleteSourceSpace() {
-    if (!activeSourceSpace || !canManageActiveSourceSpace) return;
-    const deletedSourceSpaceId = activeSourceSpace.id;
+    if (
+      !sourceSpaceDialogTarget ||
+      !sourceSpaceActions(sourceSpaceDialogTarget).canManage
+    ) {
+      return;
+    }
+    const deletedSourceSpaceId = sourceSpaceDialogTarget.id;
+    const isDeletingActiveSourceSpace =
+      activeSourceSpace?.id === deletedSourceSpaceId;
     const fallbackSourceSpace = [
       ...documentKnowledgeBases,
       ...teamGroups.flatMap((group) =>
@@ -424,6 +444,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
       setSourceSpaceDialog(undefined);
       setSelectedDocumentId(undefined);
       toast.success(localization.documents.deleteSourceSpaceSuccess);
+      if (!isDeletingActiveSourceSpace) return;
       if (!fallbackSourceSpace) {
         setOptimisticSourceId(undefined);
         router.push("/knowledge", { scroll: false });
@@ -455,6 +476,26 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     if (open) return;
     setSourceActionsDialog(undefined);
     deleteDocument.reset();
+  }
+  function sourceSpaceActions(knowledgeBase: KnowledgeBase) {
+    return {
+      canManage: canManageSourceSpace({
+        canManageSystemKnowledge,
+        currentUserId: currentUser.data?.id,
+        groups: teamGroups,
+        knowledgeBase,
+      }),
+      canShare: canSharePersonalSourceSpace({
+        currentUserId: currentUser.data?.id,
+        knowledgeBase,
+      }),
+    };
+  }
+  function openSourceSpaceDialog(
+    type: SourceSpaceDialogType,
+    knowledgeBase: KnowledgeBase,
+  ) {
+    setSourceSpaceDialog({ sourceSpaceId: knowledgeBase.id, type });
   }
   function selectPersonalSourceSpace(knowledgeBaseId: string) {
     if (isKnowledgeBaseSelectionLocked) return;
@@ -505,11 +546,10 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
           activeTeamKnowledgeBaseId={activeTeamKnowledgeBaseId}
           allKnowledgeBases={knowledgeBases.data ?? []}
           canManageSystemKnowledge={canManageSystemKnowledge}
-          canManageActiveSourceSpace={canManageActiveSourceSpace}
-          canShareActiveSourceSpace={canShareActiveSourceSpace}
           documentKnowledgeBases={documentKnowledgeBases}
           documents={documents}
           effectiveDocumentDestination={effectiveDocumentDestination}
+          getSourceSpaceActions={sourceSpaceActions}
           groupsError={groups.error}
           hasActiveKnowledgeBase={hasActiveKnowledgeBase}
           isKnowledgeBaseSelectionLocked={isKnowledgeBaseSelectionLocked}
@@ -517,17 +557,23 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
           knowledgeBasesIsLoading={knowledgeBases.isLoading}
           localization={localization}
           onCreateSourceSpace={() => setIsCreateSourceSpaceDialogOpen(true)}
-          onDeleteSourceSpace={() => setSourceSpaceDialog("delete")}
+          onDeleteSourceSpace={(knowledgeBase) =>
+            openSourceSpaceDialog("delete", knowledgeBase)
+          }
           onOpenFileUploadDialog={() => setIsFileUploadDialogOpen(true)}
           onOpenSourceActions={openSourceActionsDialog}
           onOpenSourceSpaceBrowser={() => setIsSourceSpaceBrowserOpen(true)}
           onOpenTextSourceDialog={() => setIsTextSourceDialogOpen(true)}
-          onRenameSourceSpace={() => setSourceSpaceDialog("rename")}
+          onRenameSourceSpace={(knowledgeBase) =>
+            openSourceSpaceDialog("rename", knowledgeBase)
+          }
           onSelectPersonalSourceSpace={selectPersonalSourceSpace}
           onSelectSystemSourceSpace={selectSystemSourceSpace}
           onSelectTeamGroup={selectTeamGroup}
           onSelectTeamSourceSpace={selectTeamSourceSpace}
-          onShareSourceSpace={() => setSourceSpaceDialog("share")}
+          onShareSourceSpace={(knowledgeBase) =>
+            openSourceSpaceDialog("share", knowledgeBase)
+          }
           readyDocumentCount={readyDocumentCount}
           sourceSpaceCount={sourceSpaceCount}
           systemKnowledgeBases={systemKnowledgeBases}
@@ -544,22 +590,27 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
           onDeleteDocument: handleDeleteDocument,
         }}
         sourceSpaceLifecycle={{
-          activeSourceSpace, deleteKnowledgeBase, groups: teamGroups,
+          activeSourceSpace: sourceSpaceDialogTarget, deleteKnowledgeBase, groups: teamGroups,
           localization, onDelete: handleDeleteSourceSpace,
-          onOpenChange: (open, dialog) => setSourceSpaceDialog(open ? dialog : undefined),
-          onRename: handleRenameSourceSpace, openDialog: sourceSpaceDialog,
+          onOpenChange: (open) => { if (!open) setSourceSpaceDialog(undefined); },
+          onRename: handleRenameSourceSpace, openDialog: sourceSpaceDialog?.type,
           updateKnowledgeBase,
         }}
         browserSheet={{
           activeKnowledgeBaseId, activeSystemKnowledgeBaseId, activeTeamGroupId,
           activeTeamKnowledgeBaseId, allKnowledgeBases: knowledgeBases.data ?? [],
           canManageSystemKnowledge, documentKnowledgeBases, effectiveDocumentDestination,
+          getSourceSpaceActions: sourceSpaceActions,
           groupsError: groups.error, isKnowledgeBaseSelectionLocked,
           knowledgeBasesError: knowledgeBases.error, knowledgeBasesIsLoading: knowledgeBases.isLoading,
+          onDeleteSourceSpace: (knowledgeBase) => openSourceSpaceDialog("delete", knowledgeBase),
           localization, onCreateSourceSpace: () => setIsCreateSourceSpaceDialogOpen(true),
+          onRenameSourceSpace: (knowledgeBase) => openSourceSpaceDialog("rename", knowledgeBase),
           onOpenChange: setIsSourceSpaceBrowserOpen, onSelectPersonalSourceSpace: selectPersonalSourceSpace,
           onSelectSystemSourceSpace: selectSystemSourceSpace, onSelectTeamGroup: selectTeamGroup,
-          onSelectTeamSourceSpace: selectTeamSourceSpace, open: isSourceSpaceBrowserOpen,
+          onSelectTeamSourceSpace: selectTeamSourceSpace,
+          onShareSourceSpace: (knowledgeBase) => openSourceSpaceDialog("share", knowledgeBase),
+          open: isSourceSpaceBrowserOpen,
           sourceSpaceCount, systemKnowledgeBases, teamGroups,
         }}
         createSourceSpaceDialog={{

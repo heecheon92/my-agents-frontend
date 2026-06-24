@@ -1,13 +1,33 @@
 "use client";
 
-import { FolderIcon, NetworkIcon, PlusIcon } from "lucide-react";
+import {
+  FolderIcon,
+  MenuIcon,
+  NetworkIcon,
+  PencilIcon,
+  PlusIcon,
+  Share2Icon,
+  Trash2Icon,
+} from "lucide-react";
 import Link from "next/link";
 import { groupKnowledgeBasesForGroup } from "@/components/document-knowledge-base";
 import { EmptyState, ErrorState } from "@/components/Status";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import type { Group, KnowledgeBase } from "@/model/my-agents";
 import { type DocumentDestination, knowledgeSourceHref } from "./shared";
+
+type SourceSpaceActionAvailability = {
+  canManage: boolean;
+  canShare: boolean;
+};
 
 type SourceSpaceTreeLocalization = {
   common: { loading: string };
@@ -15,6 +35,7 @@ type SourceSpaceTreeLocalization = {
     sourceSpacesTitle: string;
     sourceSpacesDescription: string;
     addSourceSpaceAction: string;
+    deleteSourceSpaceAction: string;
     knowledgeBaseLockedHint: string;
     noKnowledgeBaseTitle: string;
     noKnowledgeBaseDescription: string;
@@ -23,6 +44,10 @@ type SourceSpaceTreeLocalization = {
     noSystemKnowledgeBaseDescription: string;
     teamSourceSpacesTitle: string;
     noTeamKnowledgeBaseDescription: string;
+    renameSourceSpaceAction: string;
+    shareSourceSpaceAction: string;
+    sourceSpaceRowActions: string;
+    sourceSpaceRowActionsLabel: string;
   };
   groups: { roles: Record<string, string> };
 };
@@ -44,11 +69,17 @@ type SourceSpaceTreeProps = {
   activeSystemKnowledgeBaseId?: string;
   activeTeamGroupId?: string;
   activeTeamKnowledgeBaseId?: string;
+  getSourceSpaceActions: (
+    knowledgeBase: KnowledgeBase,
+  ) => SourceSpaceActionAvailability;
   onCreateSourceSpace: () => void;
+  onDeleteSourceSpace: (knowledgeBase: KnowledgeBase) => void;
+  onRenameSourceSpace: (knowledgeBase: KnowledgeBase) => void;
   onSelectPersonalSourceSpace: (knowledgeBaseId: string) => void;
   onSelectSystemSourceSpace: (knowledgeBaseId: string) => void;
   onSelectTeamGroup: (groupId: string) => void;
   onSelectTeamSourceSpace: (groupId: string, knowledgeBaseId: string) => void;
+  onShareSourceSpace: (knowledgeBase: KnowledgeBase) => void;
 };
 
 export function SourceSpaceTree({
@@ -68,12 +99,82 @@ export function SourceSpaceTree({
   activeSystemKnowledgeBaseId,
   activeTeamGroupId,
   activeTeamKnowledgeBaseId,
+  getSourceSpaceActions,
   onCreateSourceSpace,
+  onDeleteSourceSpace,
+  onRenameSourceSpace,
   onSelectPersonalSourceSpace,
   onSelectSystemSourceSpace,
   onSelectTeamGroup,
   onSelectTeamSourceSpace,
+  onShareSourceSpace,
 }: SourceSpaceTreeProps) {
+  function renderSourceSpaceActions(
+    knowledgeBase: KnowledgeBase,
+    active: boolean,
+  ) {
+    const actions = getSourceSpaceActions(knowledgeBase);
+
+    if (!actions.canManage && !actions.canShare) return null;
+
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
+              className={cn(
+                "mr-1 text-current",
+                active
+                  ? "hover:bg-white/15 focus-visible:ring-white/30 data-[popup-open]:bg-white/15"
+                  : "hover:bg-cal-surface-strong/80 focus-visible:ring-cal-primary/20 data-[popup-open]:bg-cal-surface-strong/80",
+              )}
+              aria-label={localization.documents.sourceSpaceRowActionsLabel.replace(
+                "{name}",
+                knowledgeBase.name,
+              )}
+            />
+          }
+        >
+          <MenuIcon />
+          <span className="sr-only">
+            {localization.documents.sourceSpaceRowActions}
+          </span>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          {actions.canManage ? (
+            <DropdownMenuItem
+              onClick={() => onRenameSourceSpace(knowledgeBase)}
+            >
+              <PencilIcon />
+              {localization.documents.renameSourceSpaceAction}
+            </DropdownMenuItem>
+          ) : null}
+          {actions.canShare ? (
+            <DropdownMenuItem onClick={() => onShareSourceSpace(knowledgeBase)}>
+              <Share2Icon />
+              {localization.documents.shareSourceSpaceAction}
+            </DropdownMenuItem>
+          ) : null}
+          {actions.canManage && actions.canShare ? (
+            <DropdownMenuSeparator />
+          ) : null}
+          {actions.canManage ? (
+            <DropdownMenuItem
+              variant="destructive"
+              onClick={() => onDeleteSourceSpace(knowledgeBase)}
+            >
+              <Trash2Icon />
+              {localization.documents.deleteSourceSpaceAction}
+            </DropdownMenuItem>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
   function renderSourceSpaceButton({
     knowledgeBase,
     active,
@@ -84,31 +185,36 @@ export function SourceSpaceTree({
     onSelect: () => void;
   }) {
     return (
-      <Link
+      <div
         key={knowledgeBase.id}
-        href={knowledgeSourceHref(knowledgeBase.id)}
-        scroll={false}
-        aria-current={active ? "page" : undefined}
-        aria-disabled={isKnowledgeBaseSelectionLocked ? true : undefined}
-        onClick={(event) => {
-          if (isKnowledgeBaseSelectionLocked) {
-            event.preventDefault();
-            return;
-          }
-          onSelect();
-        }}
         className={cn(
-          "group flex w-full min-w-0 items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm transition-colors aria-disabled:pointer-events-none aria-disabled:opacity-60",
+          "group/source-space-row flex w-full min-w-0 items-center gap-1 rounded-xl text-sm transition-colors",
           active
             ? "bg-cal-primary text-white shadow-[0_10px_24px_rgb(20_33_61/0.16)]"
             : "text-cal-ink hover:bg-cal-surface-soft",
         )}
       >
-        <FolderIcon className="size-4 shrink-0" />
-        <span className="min-w-0 flex-1 truncate font-medium">
-          {knowledgeBase.name}
-        </span>
-      </Link>
+        <Link
+          href={knowledgeSourceHref(knowledgeBase.id)}
+          scroll={false}
+          aria-current={active ? "page" : undefined}
+          aria-disabled={isKnowledgeBaseSelectionLocked ? true : undefined}
+          onClick={(event) => {
+            if (isKnowledgeBaseSelectionLocked) {
+              event.preventDefault();
+              return;
+            }
+            onSelect();
+          }}
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-xl py-2.5 pr-1 pl-3 text-left aria-disabled:pointer-events-none aria-disabled:opacity-60"
+        >
+          <FolderIcon className="size-4 shrink-0" />
+          <span className="min-w-0 flex-1 truncate font-medium">
+            {knowledgeBase.name}
+          </span>
+        </Link>
+        {renderSourceSpaceActions(knowledgeBase, active)}
+      </div>
     );
   }
 

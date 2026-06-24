@@ -4,11 +4,8 @@ import {
   DatabaseIcon,
   FileTextIcon,
   ListTreeIcon,
-  PencilIcon,
   PlusIcon,
   SearchIcon,
-  Share2Icon,
-  Trash2Icon,
   UploadIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -30,11 +27,13 @@ type SourcesWorkspaceProps = {
   activeTeamKnowledgeBaseId?: string;
   allKnowledgeBases: KnowledgeBase[];
   canManageSystemKnowledge: boolean;
-  canManageActiveSourceSpace: boolean;
-  canShareActiveSourceSpace: boolean;
   documentKnowledgeBases: KnowledgeBase[];
   documents: { data?: Document[]; isLoading: boolean; error: unknown };
   effectiveDocumentDestination: DocumentDestination;
+  getSourceSpaceActions: (knowledgeBase: KnowledgeBase) => {
+    canManage: boolean;
+    canShare: boolean;
+  };
   groupsError: unknown;
   hasActiveKnowledgeBase: boolean;
   isKnowledgeBaseSelectionLocked: boolean;
@@ -42,17 +41,17 @@ type SourcesWorkspaceProps = {
   knowledgeBasesIsLoading: boolean;
   localization: Localization["admin"];
   onCreateSourceSpace: () => void;
-  onDeleteSourceSpace: () => void;
+  onDeleteSourceSpace: (knowledgeBase: KnowledgeBase) => void;
   onOpenFileUploadDialog: () => void;
   onOpenSourceActions: (documentId: string) => void;
   onOpenSourceSpaceBrowser: () => void;
   onOpenTextSourceDialog: () => void;
-  onRenameSourceSpace: () => void;
+  onRenameSourceSpace: (knowledgeBase: KnowledgeBase) => void;
   onSelectPersonalSourceSpace: (knowledgeBaseId: string) => void;
   onSelectSystemSourceSpace: (knowledgeBaseId: string) => void;
   onSelectTeamGroup: (groupId: string) => void;
   onSelectTeamSourceSpace: (groupId: string, knowledgeBaseId: string) => void;
-  onShareSourceSpace: () => void;
+  onShareSourceSpace: (knowledgeBase: KnowledgeBase) => void;
   readyDocumentCount: number;
   sourceSpaceCount: number;
   systemKnowledgeBases: KnowledgeBase[];
@@ -69,11 +68,10 @@ export function SourcesWorkspace({
   activeTeamKnowledgeBaseId,
   allKnowledgeBases,
   canManageSystemKnowledge,
-  canManageActiveSourceSpace,
-  canShareActiveSourceSpace,
   documentKnowledgeBases,
   documents,
   effectiveDocumentDestination,
+  getSourceSpaceActions,
   groupsError,
   hasActiveKnowledgeBase,
   isKnowledgeBaseSelectionLocked,
@@ -121,11 +119,15 @@ export function SourcesWorkspace({
             activeSystemKnowledgeBaseId={activeSystemKnowledgeBaseId}
             activeTeamGroupId={activeTeamGroupId}
             activeTeamKnowledgeBaseId={activeTeamKnowledgeBaseId}
+            getSourceSpaceActions={getSourceSpaceActions}
             onCreateSourceSpace={onCreateSourceSpace}
+            onDeleteSourceSpace={onDeleteSourceSpace}
+            onRenameSourceSpace={onRenameSourceSpace}
             onSelectPersonalSourceSpace={onSelectPersonalSourceSpace}
             onSelectSystemSourceSpace={onSelectSystemSourceSpace}
             onSelectTeamGroup={onSelectTeamGroup}
             onSelectTeamSourceSpace={onSelectTeamSourceSpace}
+            onShareSourceSpace={onShareSourceSpace}
           />
         </OnboardingTarget>
       </aside>
@@ -160,39 +162,6 @@ export function SourcesWorkspace({
               ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              {canManageActiveSourceSpace ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onRenameSourceSpace}
-                  disabled={!activeSourceSpace}
-                >
-                  <PencilIcon />
-                  {localization.documents.renameSourceSpaceAction}
-                </Button>
-              ) : null}
-              {canShareActiveSourceSpace ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onShareSourceSpace}
-                  disabled={!activeSourceSpace}
-                >
-                  <Share2Icon />
-                  {localization.documents.shareSourceSpaceAction}
-                </Button>
-              ) : null}
-              {canManageActiveSourceSpace ? (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  onClick={onDeleteSourceSpace}
-                  disabled={!activeSourceSpace}
-                >
-                  <Trash2Icon />
-                  {localization.documents.deleteSourceSpaceAction}
-                </Button>
-              ) : null}
               <Button
                 type="button"
                 variant="outline"

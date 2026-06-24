@@ -26,10 +26,7 @@ type SourcesSurfaceOverlaysProps = {
       typeof SourceSpaceRenameDialog
     >["localization"];
     onDelete: ComponentProps<typeof SourceSpaceDeleteDialog>["onDelete"];
-    onOpenChange: (
-      open: boolean,
-      dialog: "rename" | "delete" | "share",
-    ) => void;
+    onOpenChange: (open: boolean) => void;
     onRename: ComponentProps<typeof SourceSpaceRenameDialog>["onRename"];
     openDialog?: "rename" | "delete" | "share";
     updateKnowledgeBase: ComponentProps<
@@ -56,9 +53,7 @@ export function SourcesSurfaceOverlays({
       <SourceSpaceRenameDialog
         localization={sourceSpaceLifecycle.localization}
         mutation={sourceSpaceLifecycle.updateKnowledgeBase}
-        onOpenChange={(open) =>
-          sourceSpaceLifecycle.onOpenChange(open, "rename")
-        }
+        onOpenChange={sourceSpaceLifecycle.onOpenChange}
         onRename={sourceSpaceLifecycle.onRename}
         open={sourceSpaceLifecycle.openDialog === "rename"}
         sourceSpace={sourceSpaceLifecycle.activeSourceSpace}
@@ -67,18 +62,14 @@ export function SourcesSurfaceOverlays({
         localization={sourceSpaceLifecycle.localization}
         mutation={sourceSpaceLifecycle.deleteKnowledgeBase}
         onDelete={sourceSpaceLifecycle.onDelete}
-        onOpenChange={(open) =>
-          sourceSpaceLifecycle.onOpenChange(open, "delete")
-        }
+        onOpenChange={sourceSpaceLifecycle.onOpenChange}
         open={sourceSpaceLifecycle.openDialog === "delete"}
         sourceSpace={sourceSpaceLifecycle.activeSourceSpace}
       />
       <SourceSpaceShareDialog
         groups={sourceSpaceLifecycle.groups}
         localization={sourceSpaceLifecycle.localization}
-        onOpenChange={(open) =>
-          sourceSpaceLifecycle.onOpenChange(open, "share")
-        }
+        onOpenChange={sourceSpaceLifecycle.onOpenChange}
         open={sourceSpaceLifecycle.openDialog === "share"}
         sourceSpace={sourceSpaceLifecycle.activeSourceSpace}
       />

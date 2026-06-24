@@ -21,17 +21,24 @@ type SourceSpaceBrowserSheetProps = {
   canManageSystemKnowledge: boolean;
   documentKnowledgeBases: KnowledgeBase[];
   effectiveDocumentDestination: DocumentDestination;
+  getSourceSpaceActions: (knowledgeBase: KnowledgeBase) => {
+    canManage: boolean;
+    canShare: boolean;
+  };
   groupsError: unknown;
   isKnowledgeBaseSelectionLocked: boolean;
   knowledgeBasesError: unknown;
   knowledgeBasesIsLoading: boolean;
   localization: Localization["admin"];
   onCreateSourceSpace: () => void;
+  onDeleteSourceSpace: (knowledgeBase: KnowledgeBase) => void;
   onOpenChange: (open: boolean) => void;
+  onRenameSourceSpace: (knowledgeBase: KnowledgeBase) => void;
   onSelectPersonalSourceSpace: (knowledgeBaseId: string) => void;
   onSelectSystemSourceSpace: (knowledgeBaseId: string) => void;
   onSelectTeamGroup: (groupId: string) => void;
   onSelectTeamSourceSpace: (groupId: string, knowledgeBaseId: string) => void;
+  onShareSourceSpace: (knowledgeBase: KnowledgeBase) => void;
   open: boolean;
   sourceSpaceCount: number;
   systemKnowledgeBases: KnowledgeBase[];
@@ -47,17 +54,21 @@ export function SourceSpaceBrowserSheet({
   canManageSystemKnowledge,
   documentKnowledgeBases,
   effectiveDocumentDestination,
+  getSourceSpaceActions,
   groupsError,
   isKnowledgeBaseSelectionLocked,
   knowledgeBasesError,
   knowledgeBasesIsLoading,
   localization,
   onCreateSourceSpace,
+  onDeleteSourceSpace,
   onOpenChange,
+  onRenameSourceSpace,
   onSelectPersonalSourceSpace,
   onSelectSystemSourceSpace,
   onSelectTeamGroup,
   onSelectTeamSourceSpace,
+  onShareSourceSpace,
   open,
   sourceSpaceCount,
   systemKnowledgeBases,
@@ -93,11 +104,15 @@ export function SourceSpaceBrowserSheet({
           activeSystemKnowledgeBaseId={activeSystemKnowledgeBaseId}
           activeTeamGroupId={activeTeamGroupId}
           activeTeamKnowledgeBaseId={activeTeamKnowledgeBaseId}
+          getSourceSpaceActions={getSourceSpaceActions}
           onCreateSourceSpace={onCreateSourceSpace}
+          onDeleteSourceSpace={onDeleteSourceSpace}
+          onRenameSourceSpace={onRenameSourceSpace}
           onSelectPersonalSourceSpace={onSelectPersonalSourceSpace}
           onSelectSystemSourceSpace={onSelectSystemSourceSpace}
           onSelectTeamGroup={onSelectTeamGroup}
           onSelectTeamSourceSpace={onSelectTeamSourceSpace}
+          onShareSourceSpace={onShareSourceSpace}
         />
       </SheetContent>
     </Sheet>

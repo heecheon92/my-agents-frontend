@@ -535,6 +535,8 @@
       "openSourceDetails": "Open details for {title}",
       "sourceRowActions": "Manage",
       "sourceRowActionsLabel": "Manage {title}",
+      "sourceSpaceRowActions": "Manage",
+      "sourceSpaceRowActionsLabel": "Manage {name} source space",
       "sourceActionsTitle": "Manage source",
       "sourceActionsDescription": "Preview, share, prepare, or delete this source without changing the selected knowledge space.",
       "sourcePreviewTitle": "Source preview",

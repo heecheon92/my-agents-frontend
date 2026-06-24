@@ -535,6 +535,8 @@
       "openSourceDetails": "{title} 상세 열기",
       "sourceRowActions": "관리",
       "sourceRowActionsLabel": "{title} 관리",
+      "sourceSpaceRowActions": "관리",
+      "sourceSpaceRowActionsLabel": "{name} 지식 공간 관리",
       "sourceActionsTitle": "지식 관리",
       "sourceActionsDescription": "선택한 지식 공간을 바꾸지 않고 이 지식을 미리보기, 공유, 준비 또는 삭제합니다.",
       "sourcePreviewTitle": "지식 미리보기",
