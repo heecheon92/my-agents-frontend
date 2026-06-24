@@ -100,15 +100,6 @@ describe("API_PATH", () => {
     expect(API_PATH.knowledgeBases.uploadDocument(knowledgeBaseId)).toBe(
       "/knowledge-bases/kb-1/documents/upload",
     );
-    expect(API_PATH.knowledgeBases.documentPreview(knowledgeBaseId, documentId)).toBe(
-      "/knowledge-bases/kb-1/documents/doc-1/preview",
-    );
-    expect(
-      API_PATH.knowledgeBases.documentPreview(knowledgeBaseId, documentId),
-    ).toBe("/knowledge-bases/kb-1/documents/doc-1/preview");
-    expect(
-      API_PATH.knowledgeBases.documentPreview(knowledgeBaseId, documentId),
-    ).toBe("/knowledge-bases/kb-1/documents/doc-1/preview");
     expect(
       API_PATH.knowledgeBases.documentPreview(knowledgeBaseId, documentId),
     ).toBe("/knowledge-bases/kb-1/documents/doc-1/preview");
