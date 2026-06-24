@@ -1,6 +1,11 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import type {
   GroupCreateRequest,
@@ -12,6 +17,20 @@ import type {
   MemberPatchRequest,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
+
+type PublishRequestQueryClient = Pick<QueryClient, "invalidateQueries">;
+
+export function invalidatePublishRequestCreationState(
+  queryClient: PublishRequestQueryClient,
+  groupId: string,
+) {
+  queryClient.invalidateQueries({
+    queryKey: MyAgentsQueryKeys.groups.publishRequests(groupId),
+  });
+  queryClient.invalidateQueries({
+    queryKey: MyAgentsQueryKeys.knowledgeBases.list(),
+  });
+}
 
 export function useGroups() {
   return useQuery({
@@ -185,10 +204,10 @@ export function useCreatePublishRequest(groupId?: string) {
   return useMutation({
     mutationFn: (payload: KnowledgePublishRequestCreateRequest) =>
       myAgentsAPI.groups.createPublishRequest(groupId ?? "", payload),
-    onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: MyAgentsQueryKeys.groups.publishRequests(groupId ?? ""),
-      }),
+    onSuccess: () => {
+      if (!groupId) return;
+      invalidatePublishRequestCreationState(queryClient, groupId);
+    },
   });
 }
 

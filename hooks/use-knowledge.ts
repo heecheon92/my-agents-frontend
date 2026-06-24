@@ -1,6 +1,11 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import type {
   Document,
@@ -8,6 +13,7 @@ import type {
   DocumentPermissionPatchRequest,
   DocumentUploadRequest,
   ExtractionRun,
+  KnowledgeBase,
   KnowledgeBaseCreateRequest,
   KnowledgeBaseDocumentCreateRequest,
   KnowledgeBaseDocumentUploadRequest,
@@ -16,6 +22,61 @@ import type {
 import { myAgentsAPI } from "@/services/my-agents";
 
 const ACTIVE_EXTRACTION_REFETCH_INTERVAL_MS = 1000;
+
+type KnowledgeQueryClient = Pick<
+  QueryClient,
+  "invalidateQueries" | "removeQueries" | "setQueryData"
+>;
+
+const knowledgeBaseDocumentScopedKey = (knowledgeBaseId: string) =>
+  ["my-agents", "knowledge-bases", "documents", knowledgeBaseId] as const;
+
+export function isKnowledgeBaseDocumentPreviewEnabled(
+  knowledgeBaseId?: string,
+  documentId?: string,
+  enabled = true,
+) {
+  return Boolean(knowledgeBaseId && documentId) && enabled;
+}
+
+export function invalidateKnowledgeBaseUpdateState(
+  queryClient: KnowledgeQueryClient,
+  knowledgeBaseId: string,
+  knowledgeBase?: KnowledgeBase,
+) {
+  if (knowledgeBase) {
+    queryClient.setQueryData(
+      MyAgentsQueryKeys.knowledgeBases.detail(knowledgeBaseId),
+      knowledgeBase,
+    );
+  }
+  queryClient.invalidateQueries({
+    queryKey: MyAgentsQueryKeys.knowledgeBases.list(),
+  });
+  queryClient.invalidateQueries({
+    queryKey: MyAgentsQueryKeys.knowledgeBases.detail(knowledgeBaseId),
+  });
+}
+
+export function removeKnowledgeBaseDeletedState(
+  queryClient: KnowledgeQueryClient,
+  knowledgeBaseId: string,
+) {
+  queryClient.setQueryData<KnowledgeBase[]>(
+    MyAgentsQueryKeys.knowledgeBases.list(),
+    (current) =>
+      current?.filter((knowledgeBase) => knowledgeBase.id !== knowledgeBaseId),
+  );
+  queryClient.invalidateQueries({
+    queryKey: MyAgentsQueryKeys.knowledgeBases.list(),
+  });
+  queryClient.removeQueries({
+    queryKey: MyAgentsQueryKeys.knowledgeBases.detail(knowledgeBaseId),
+  });
+  queryClient.removeQueries({
+    queryKey: knowledgeBaseDocumentScopedKey(knowledgeBaseId),
+  });
+}
 
 function hasActiveExtractionRun(runs: ExtractionRun[] | undefined) {
   return (
@@ -56,17 +117,13 @@ export function useUpdateKnowledgeBase(knowledgeBaseId?: string) {
   return useMutation({
     mutationFn: (payload: KnowledgeBaseUpdateRequest) =>
       myAgentsAPI.knowledgeBases.update(knowledgeBaseId ?? "", payload),
-    onSuccess: (updated) => {
-      queryClient.setQueryData(
-        MyAgentsQueryKeys.knowledgeBases.detail(updated.id),
-        updated,
+    onSuccess: (knowledgeBase) => {
+      if (!knowledgeBaseId) return;
+      invalidateKnowledgeBaseUpdateState(
+        queryClient,
+        knowledgeBaseId,
+        knowledgeBase,
       );
-      queryClient.invalidateQueries({
-        queryKey: MyAgentsQueryKeys.knowledgeBases.list(),
-      });
-      queryClient.invalidateQueries({
-        queryKey: MyAgentsQueryKeys.knowledgeBases.detail(updated.id),
-      });
     },
   });
 }
@@ -76,16 +133,8 @@ export function useDeleteKnowledgeBase(knowledgeBaseId?: string) {
   return useMutation({
     mutationFn: () => myAgentsAPI.knowledgeBases.remove(knowledgeBaseId ?? ""),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: MyAgentsQueryKeys.knowledgeBases.list(),
-      });
       if (!knowledgeBaseId) return;
-      queryClient.removeQueries({
-        queryKey: MyAgentsQueryKeys.knowledgeBases.detail(knowledgeBaseId),
-      });
-      queryClient.removeQueries({
-        queryKey: MyAgentsQueryKeys.knowledgeBases.documents(knowledgeBaseId),
-      });
+      removeKnowledgeBaseDeletedState(queryClient, knowledgeBaseId);
     },
   });
 }
@@ -121,7 +170,11 @@ export function useKnowledgeBaseDocumentPreview(
         knowledgeBaseId ?? "",
         documentId ?? "",
       ),
-    enabled: Boolean(knowledgeBaseId && documentId && enabled),
+    enabled: isKnowledgeBaseDocumentPreviewEnabled(
+      knowledgeBaseId,
+      documentId,
+      enabled,
+    ),
   });
 }
 
