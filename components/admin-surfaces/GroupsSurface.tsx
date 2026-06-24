@@ -376,6 +376,7 @@ export function GroupsSurface({
         <GroupsWorkspace
           activeGroupId={activeGroupId}
           activeGroup={activeGroup}
+          activeGroupKnowledgeBases={activeGroupKnowledgeBases}
           canManageMembers={canManageMembers}
           canReviewPublishRequests={canReviewPublishRequests}
           invitationCount={invitationCount}
