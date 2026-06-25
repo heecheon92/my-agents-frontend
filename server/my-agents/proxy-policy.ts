@@ -236,6 +236,16 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "knowledge-bases.detail",
   },
   {
+    method: "PATCH",
+    pattern: new RegExp(`^/knowledge-bases/${uuidLike}$`),
+    name: "knowledge-bases.update",
+  },
+  {
+    method: "DELETE",
+    pattern: new RegExp(`^/knowledge-bases/${uuidLike}$`),
+    name: "knowledge-bases.delete",
+  },
+  {
     method: "POST",
     pattern: new RegExp(`^/knowledge-bases/${uuidLike}/documents$`),
     name: "knowledge-bases.documents.create",
@@ -244,6 +254,13 @@ export const BFF_ALLOWLIST: Rule[] = [
     method: "GET",
     pattern: new RegExp(`^/knowledge-bases/${uuidLike}/documents$`),
     name: "knowledge-bases.documents.list",
+  },
+  {
+    method: "GET",
+    pattern: new RegExp(
+      `^/knowledge-bases/${uuidLike}/documents/${uuidLike}/preview$`,
+    ),
+    name: "knowledge-bases.documents.preview",
   },
   {
     method: "POST",

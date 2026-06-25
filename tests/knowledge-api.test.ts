@@ -207,4 +207,83 @@ describe("MyAgentsKnowledgeBaseAPI", () => {
       },
     ]);
   });
+
+  it("updates and deletes manageable knowledge bases through scoped paths", async () => {
+    const calls: Array<{
+      path: string;
+      init?: { method?: string; body?: unknown };
+    }> = [];
+    const api = new MyAgentsKnowledgeBaseAPI({
+      fetch: async (path, init) => {
+        calls.push({ path, init });
+        return {
+          id: "kb-personal-1",
+          name: "Renamed notes",
+          scope: "personal",
+          owner_user_id: "user-1",
+          group_id: null,
+          created_at: "2026-06-24T08:00:00Z",
+        };
+      },
+    });
+
+    await expect(
+      api.update("kb-personal-1", { name: "Renamed notes" }),
+    ).resolves.toMatchObject({
+      id: "kb-personal-1",
+      name: "Renamed notes",
+    });
+    await expect(api.remove("kb-personal-1")).resolves.toBeUndefined();
+
+    expect(calls).toEqual([
+      {
+        path: "/knowledge-bases/kb-personal-1",
+        init: {
+          method: "PATCH",
+          body: { name: "Renamed notes" },
+        },
+      },
+      {
+        path: "/knowledge-bases/kb-personal-1",
+        init: { method: "DELETE" },
+      },
+    ]);
+  });
+
+  it("loads KB-scoped document previews without inflating list payloads", async () => {
+    const calls: Array<{ path: string; init?: unknown }> = [];
+    const api = new MyAgentsKnowledgeBaseAPI({
+      fetch: async (path, init) => {
+        calls.push({ path, init });
+        if (path.endsWith("/preview")) {
+          return {
+            id: "doc-1",
+            title: "Preview memo",
+            content: "## Internal Markdown\n\nPreview body.",
+            source_type: "markdown",
+            source_filename: "memo.md",
+            source_content_type: "text/markdown",
+            source_byte_size: 128,
+            source_page_count: null,
+            parser_name: "markdown_upload",
+            created_at: "2026-06-24T08:00:00Z",
+          };
+        }
+        return [];
+      },
+    });
+
+    await expect(api.documentPreview("kb-1", "doc-1")).resolves.toMatchObject({
+      id: "doc-1",
+      content: "## Internal Markdown\n\nPreview body.",
+      parser_name: "markdown_upload",
+    });
+
+    expect(calls).toEqual([
+      {
+        path: "/knowledge-bases/kb-1/documents/doc-1/preview",
+        init: undefined,
+      },
+    ]);
+  });
 });

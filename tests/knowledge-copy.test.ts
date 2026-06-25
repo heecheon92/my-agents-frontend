@@ -145,17 +145,17 @@ describe("group publish copy", () => {
     expect(copy.membershipActions).toBe("Group access");
     expect(copy.browseGroupsAction).toBe("Browse groups");
     expect(copy.inviteMemberAction).toBe("Invite member");
-    expect(copy.requestShareAction).toBe("Request share");
+    expect(copy.publishOpenApiNote).toContain("created from Sources");
     expect(copy.manageInvitationAction).toBe("Manage invitation");
     expect(copy.reviewRequestAction).toBe("Review request");
     expect(copy.emptyDescription).toContain("Create a group");
     expect(copy.memberIdNote).toContain("email invitation acceptance");
     expect(copy.inviteEmailHint).toContain("does not reveal");
     expect(copy.publishBoundaryTitle).toBe("Shared sources");
-    expect(copy.publishBoundaryDescription).toContain("personal source space");
-    expect(copy.publishSourceKnowledgeBaseHint).toContain(
-      "whole personal source space",
+    expect(copy.publishBoundaryDescription).toContain(
+      "Start new share requests from Sources",
     );
+    expect(copy.noPublishRequestsDescription).toContain("from Sources");
     expect(copy.publishTargetKnowledgeBaseHint).toContain(
       "document-copy requests",
     );
@@ -168,17 +168,17 @@ describe("group publish copy", () => {
     expect(copy.membershipActions).toBe("그룹 접근");
     expect(copy.browseGroupsAction).toBe("그룹 보기");
     expect(copy.inviteMemberAction).toBe("멤버 초대");
-    expect(copy.requestShareAction).toBe("공유 요청");
+    expect(copy.publishOpenApiNote).toContain("지식 화면");
     expect(copy.manageInvitationAction).toBe("초대 관리");
     expect(copy.reviewRequestAction).toBe("요청 검토");
     expect(copy.emptyDescription).toContain("그룹을 만드세요");
     expect(copy.memberIdNote).toContain("이메일 초대 수락");
     expect(copy.inviteEmailHint).toContain("계정 존재 여부");
     expect(copy.publishBoundaryTitle).toBe("공유 지식");
-    expect(copy.publishBoundaryDescription).toContain("개인 지식 공간");
-    expect(copy.publishSourceKnowledgeBaseHint).toContain(
-      "개인 지식 공간 전체",
+    expect(copy.publishBoundaryDescription).toContain(
+      "새 공유 요청은 지식 화면",
     );
+    expect(copy.noPublishRequestsDescription).toContain("지식 화면");
     expect(copy.publishTargetKnowledgeBaseHint).toContain("문서 복사 요청");
   });
 });

@@ -16,6 +16,7 @@ import type { Localization } from "@/utils/localization";
 import { DocumentsTable } from "../DocumentsTable";
 import { SourceSpaceTree } from "../SourceSpaceTree";
 import type { DocumentDestination } from "../shared";
+import type { SourceActionDialogType } from "../source-actions/types";
 
 type SourcesWorkspaceProps = {
   activeDocumentId?: string;
@@ -27,9 +28,14 @@ type SourcesWorkspaceProps = {
   activeTeamKnowledgeBaseId?: string;
   allKnowledgeBases: KnowledgeBase[];
   canManageSystemKnowledge: boolean;
+  canShareActiveDocument: boolean;
   documentKnowledgeBases: KnowledgeBase[];
   documents: { data?: Document[]; isLoading: boolean; error: unknown };
   effectiveDocumentDestination: DocumentDestination;
+  getSourceSpaceActions: (knowledgeBase: KnowledgeBase) => {
+    canManage: boolean;
+    canShare: boolean;
+  };
   groupsError: unknown;
   hasActiveKnowledgeBase: boolean;
   isKnowledgeBaseSelectionLocked: boolean;
@@ -37,14 +43,20 @@ type SourcesWorkspaceProps = {
   knowledgeBasesIsLoading: boolean;
   localization: Localization["admin"];
   onCreateSourceSpace: () => void;
+  onDeleteSourceSpace: (knowledgeBase: KnowledgeBase) => void;
   onOpenFileUploadDialog: () => void;
-  onOpenSourceActions: (documentId: string) => void;
+  onOpenSourceActions: (
+    documentId: string,
+    action: SourceActionDialogType,
+  ) => void;
   onOpenSourceSpaceBrowser: () => void;
   onOpenTextSourceDialog: () => void;
+  onRenameSourceSpace: (knowledgeBase: KnowledgeBase) => void;
   onSelectPersonalSourceSpace: (knowledgeBaseId: string) => void;
   onSelectSystemSourceSpace: (knowledgeBaseId: string) => void;
   onSelectTeamGroup: (groupId: string) => void;
   onSelectTeamSourceSpace: (groupId: string, knowledgeBaseId: string) => void;
+  onShareSourceSpace: (knowledgeBase: KnowledgeBase) => void;
   readyDocumentCount: number;
   sourceSpaceCount: number;
   systemKnowledgeBases: KnowledgeBase[];
@@ -61,9 +73,11 @@ export function SourcesWorkspace({
   activeTeamKnowledgeBaseId,
   allKnowledgeBases,
   canManageSystemKnowledge,
+  canShareActiveDocument,
   documentKnowledgeBases,
   documents,
   effectiveDocumentDestination,
+  getSourceSpaceActions,
   groupsError,
   hasActiveKnowledgeBase,
   isKnowledgeBaseSelectionLocked,
@@ -71,14 +85,17 @@ export function SourcesWorkspace({
   knowledgeBasesIsLoading,
   localization,
   onCreateSourceSpace,
+  onDeleteSourceSpace,
   onOpenFileUploadDialog,
   onOpenSourceActions,
   onOpenSourceSpaceBrowser,
   onOpenTextSourceDialog,
+  onRenameSourceSpace,
   onSelectPersonalSourceSpace,
   onSelectSystemSourceSpace,
   onSelectTeamGroup,
   onSelectTeamSourceSpace,
+  onShareSourceSpace,
   readyDocumentCount,
   sourceSpaceCount,
   systemKnowledgeBases,
@@ -108,11 +125,15 @@ export function SourcesWorkspace({
             activeSystemKnowledgeBaseId={activeSystemKnowledgeBaseId}
             activeTeamGroupId={activeTeamGroupId}
             activeTeamKnowledgeBaseId={activeTeamKnowledgeBaseId}
+            getSourceSpaceActions={getSourceSpaceActions}
             onCreateSourceSpace={onCreateSourceSpace}
+            onDeleteSourceSpace={onDeleteSourceSpace}
+            onRenameSourceSpace={onRenameSourceSpace}
             onSelectPersonalSourceSpace={onSelectPersonalSourceSpace}
             onSelectSystemSourceSpace={onSelectSystemSourceSpace}
             onSelectTeamGroup={onSelectTeamGroup}
             onSelectTeamSourceSpace={onSelectTeamSourceSpace}
+            onShareSourceSpace={onShareSourceSpace}
           />
         </OnboardingTarget>
       </aside>
@@ -222,6 +243,8 @@ export function SourcesWorkspace({
                 documents={documents}
                 activeDocumentId={activeDocumentId}
                 activeIngestionDocumentIds={activeIngestionDocumentIds}
+                canReingestDocuments={hasActiveKnowledgeBase}
+                canShareDocuments={canShareActiveDocument}
                 localization={localization}
                 onOpenSourceActions={onOpenSourceActions}
               />

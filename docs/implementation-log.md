@@ -1,3 +1,13 @@
+## 2026-06-24 — Knowledge management lifecycle UX
+
+- Moved publish-request creation to Knowledge-owned source-space and document actions so users share selected entities through group/source-space selectors instead of typing document or knowledge-base IDs.
+- Added source-space rename/delete/share controls on the Knowledge page, while Groups now stays review/status oriented for publish requests.
+- Expanded the per-document Manage interaction into a richer sheet-style surface with lazy KB-scoped Markdown preview, preparation history, delete, reprocess, and share actions.
+- Updated typed API services, query keys, TanStack hooks, BFF proxy allowlist, localization, and route tests for KB preview/update/delete/share flows; duplicate preview allowlist policy was removed during cleanup.
+- Backend companion branch supplies the lifecycle contract: blank KB names reject, hidden staging KBs stay internal, pending requests withdraw on source deletion, and whole-KB approvals create group-owned copies with a legacy backfill script.
+
+Verification passed for this log entry: backend `uv run ruff check . --no-cache`, `uv run ruff format --check .`, and `uv run pytest -q` (452 passed / 1 skipped); frontend `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (148 passed), `pnpm build`, `pnpm exec playwright test` (26 passed / 2 skipped), and `git diff --check` in both repositories. Independent final code review returned APPROVE with zero issues, and final architecture review returned CLEAR.
+
 ## 2026-06-23 — DOCX-only upload affordance
 
 - Extended the Sources upload allowlist and bilingual upload copy to include modern Word documents (`.docx`) alongside PDF, Markdown, text, `.xlsx`, and `.pptx`.

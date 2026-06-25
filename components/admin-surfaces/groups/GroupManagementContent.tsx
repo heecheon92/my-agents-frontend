@@ -56,7 +56,6 @@ export function buildGroupManagementContent({
   onInviteMember,
   onManageInvitation,
   onRejectPublishRequest,
-  onRequestShare,
   onReviewRequest,
   onUpdateMemberRole,
   filterInvitations,
@@ -95,7 +94,6 @@ export function buildGroupManagementContent({
   onInviteMember: () => void;
   onManageInvitation: (invitation: GroupInvitation) => void;
   onRejectPublishRequest: (requestId: string) => void;
-  onRequestShare: () => void;
   onReviewRequest: (request: KnowledgePublishRequest) => void;
   onUpdateMemberRole: (member: GroupMember) => void;
   filterInvitations: (
@@ -311,10 +309,6 @@ export function buildGroupManagementContent({
         />
       </div>
     ),
-    footer: (
-      <Button type="button" onClick={onRequestShare}>
-        {localization.groups.requestShareAction}
-      </Button>
-    ),
+    footer: null,
   };
 }

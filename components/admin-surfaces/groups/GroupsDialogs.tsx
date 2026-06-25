@@ -15,27 +15,23 @@ import {
 import type {
   GroupInvitation,
   GroupMember,
-  KnowledgeBase,
   KnowledgePublishRequest,
 } from "@/model/my-agents";
-import { type GroupRole, type PublishSourceKind, RoleSelect } from "../shared";
+import { type GroupRole, RoleSelect } from "../shared";
 import type { MutationState, PublishSourceState } from "./dialogTypes";
 import { GroupsPublishDialogs } from "./GroupsPublishDialogs";
 import type { GroupsLocalization } from "./types";
 
 type GroupsDialogsProps = {
   activeGroupId?: string;
-  activeGroupKnowledgeBases: KnowledgeBase[];
   approvePublishRequest: MutationState;
   canManageMembers: boolean;
   cancelInvitation: MutationState;
   createGroup: MutationState;
   createInvitation: MutationState;
-  createPublishRequest: MutationState;
   handleCancelInvitation: () => void;
   handleCreateGroup: (event: FormEvent<HTMLFormElement>) => void;
   handleCreateInvitation: (event: FormEvent<HTMLFormElement>) => void;
-  handleCreatePublishRequest: (event: FormEvent<HTMLFormElement>) => void;
   handleInvitationActionOpenChange: (open: boolean) => void;
   handleMemberActionOpenChange: (open: boolean) => void;
   handleResendInvitation: () => void;
@@ -50,16 +46,13 @@ type GroupsDialogsProps = {
   invitationRole: GroupRole;
   isCreateGroupDialogOpen: boolean;
   isInviteDialogOpen: boolean;
-  isPublishDialogOpen: boolean;
   localization: GroupsLocalization;
   memberAction?: GroupMember;
   name: string;
-  publishablePersonalKnowledgeBases: KnowledgeBase[];
   publishReviewRequest?: KnowledgePublishRequest;
   publishReviewSource: PublishSourceState;
   publishRequestSourceLabel: (request: KnowledgePublishRequest) => string;
   publishRequestTargetLabel: (request: KnowledgePublishRequest) => string;
-  publishSourceKind: PublishSourceKind;
   rejectPublishRequest: MutationState;
   resendInvitation: MutationState;
   setInvitationActionRole: (role: GroupRole) => void;
@@ -67,19 +60,11 @@ type GroupsDialogsProps = {
   setInvitationRole: (role: GroupRole) => void;
   setIsCreateGroupDialogOpen: (open: boolean) => void;
   setIsInviteDialogOpen: (open: boolean) => void;
-  setIsPublishDialogOpen: (open: boolean) => void;
   setName: (name: string) => void;
   setPublishReviewRequest: (
     request: KnowledgePublishRequest | undefined,
   ) => void;
-  setPublishSourceKind: (kind: PublishSourceKind) => void;
-  setSourceDocumentId: (documentId: string) => void;
-  setSourceKnowledgeBaseId: (knowledgeBaseId: string) => void;
-  setTargetKnowledgeBaseId: (knowledgeBaseId: string) => void;
   setUpdateRole: (role: GroupRole) => void;
-  sourceDocumentId: string;
-  sourceKnowledgeBaseId: string;
-  targetKnowledgeBaseId: string;
   updateInvitation: MutationState;
   updateMember: MutationState;
   updateRole: GroupRole;
@@ -94,17 +79,14 @@ function DialogActions({ children }: { children: ReactNode }) {
 
 export function GroupsDialogs({
   activeGroupId,
-  activeGroupKnowledgeBases,
   approvePublishRequest,
   canManageMembers,
   cancelInvitation,
   createGroup,
   createInvitation,
-  createPublishRequest,
   handleCancelInvitation,
   handleCreateGroup,
   handleCreateInvitation,
-  handleCreatePublishRequest,
   handleInvitationActionOpenChange,
   handleMemberActionOpenChange,
   handleResendInvitation,
@@ -116,16 +98,13 @@ export function GroupsDialogs({
   invitationRole,
   isCreateGroupDialogOpen,
   isInviteDialogOpen,
-  isPublishDialogOpen,
   localization,
   memberAction,
   name,
-  publishablePersonalKnowledgeBases,
   publishReviewRequest,
   publishReviewSource,
   publishRequestSourceLabel,
   publishRequestTargetLabel,
-  publishSourceKind,
   rejectPublishRequest,
   resendInvitation,
   setInvitationActionRole,
@@ -133,17 +112,9 @@ export function GroupsDialogs({
   setInvitationRole,
   setIsCreateGroupDialogOpen,
   setIsInviteDialogOpen,
-  setIsPublishDialogOpen,
   setName,
   setPublishReviewRequest,
-  setPublishSourceKind,
-  setSourceDocumentId,
-  setSourceKnowledgeBaseId,
-  setTargetKnowledgeBaseId,
   setUpdateRole,
-  sourceDocumentId,
-  sourceKnowledgeBaseId,
-  targetKnowledgeBaseId,
   updateInvitation,
   updateMember,
   updateRole,
@@ -409,29 +380,14 @@ export function GroupsDialogs({
       </Dialog>
 
       <GroupsPublishDialogs
-        activeGroupId={activeGroupId}
-        activeGroupKnowledgeBases={activeGroupKnowledgeBases}
         approvePublishRequest={approvePublishRequest}
-        createPublishRequest={createPublishRequest}
-        handleCreatePublishRequest={handleCreatePublishRequest}
-        isPublishDialogOpen={isPublishDialogOpen}
         localization={localization}
-        publishablePersonalKnowledgeBases={publishablePersonalKnowledgeBases}
         publishReviewRequest={publishReviewRequest}
         publishReviewSource={publishReviewSource}
         publishRequestSourceLabel={publishRequestSourceLabel}
         publishRequestTargetLabel={publishRequestTargetLabel}
-        publishSourceKind={publishSourceKind}
         rejectPublishRequest={rejectPublishRequest}
-        setIsPublishDialogOpen={setIsPublishDialogOpen}
         setPublishReviewRequest={setPublishReviewRequest}
-        setPublishSourceKind={setPublishSourceKind}
-        setSourceDocumentId={setSourceDocumentId}
-        setSourceKnowledgeBaseId={setSourceKnowledgeBaseId}
-        setTargetKnowledgeBaseId={setTargetKnowledgeBaseId}
-        sourceDocumentId={sourceDocumentId}
-        sourceKnowledgeBaseId={sourceKnowledgeBaseId}
-        targetKnowledgeBaseId={targetKnowledgeBaseId}
         onApprovePublishRequest={onApprovePublishRequest}
         onRejectPublishRequest={onRejectPublishRequest}
       />

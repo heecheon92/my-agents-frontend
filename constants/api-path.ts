@@ -101,6 +101,9 @@ export const API_PATH = {
     document(knowledgeBaseId: string, documentId: string) {
       return `${this.documents(knowledgeBaseId)}/${documentId}`;
     },
+    documentPreview(knowledgeBaseId: string, documentId: string) {
+      return `${this.document(knowledgeBaseId, documentId)}/preview`;
+    },
     ingestDocument(knowledgeBaseId: string, documentId: string) {
       return `${this.document(knowledgeBaseId, documentId)}/ingest`;
     },

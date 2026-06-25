@@ -101,6 +101,9 @@ describe("API_PATH", () => {
       "/knowledge-bases/kb-1/documents/upload",
     );
     expect(
+      API_PATH.knowledgeBases.documentPreview(knowledgeBaseId, documentId),
+    ).toBe("/knowledge-bases/kb-1/documents/doc-1/preview");
+    expect(
       API_PATH.knowledgeBases.ingestDocumentAsync(knowledgeBaseId, documentId),
     ).toBe("/knowledge-bases/kb-1/documents/doc-1/ingest/async");
     expect(
@@ -169,6 +172,19 @@ describe("MyAgentsQueryKeys", () => {
       "extraction-runs",
       "doc-1",
       runId,
+    ]);
+    expect(
+      MyAgentsQueryKeys.knowledgeBases.documentPreview(
+        knowledgeBaseId,
+        documentId,
+      ),
+    ).toEqual([
+      "my-agents",
+      "knowledge-bases",
+      "documents",
+      knowledgeBaseId,
+      documentId,
+      "preview",
     ]);
     expect(
       MyAgentsQueryKeys.knowledgeBases.extractionRun(

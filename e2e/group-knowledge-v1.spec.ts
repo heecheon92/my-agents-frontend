@@ -170,6 +170,20 @@ const publishRequest = {
   created_at: now,
   reviewed_at: null,
 };
+const personalDocument = {
+  id: "doc-personal",
+  title: "Personal strategy memo",
+  owner_user_id: user.id,
+  group_id: null,
+  knowledge_base_id: personalKb.id,
+  source_type: "markdown",
+  source_filename: "strategy.md",
+  source_content_type: "text/markdown",
+  source_byte_size: 128,
+  source_sha256: null,
+  source_page_count: null,
+  parser_name: "markdown_upload",
+};
 const publishRequests = [
   publishRequest,
   {
@@ -251,6 +265,43 @@ async function mockGroupKnowledgeApi(
         betaGroupKb,
         personalKb,
         publishedMemberKb,
+      ]);
+    }
+    if (
+      method === "GET" &&
+      path === `/knowledge-bases/${personalKb.id}/documents`
+    ) {
+      return json([personalDocument]);
+    }
+    if (
+      method === "GET" &&
+      path ===
+        `/knowledge-bases/${personalKb.id}/documents/${personalDocument.id}/preview`
+    ) {
+      return json({
+        ...personalDocument,
+        content:
+          "## Preview section\n\nFull extracted source content loaded from the dedicated preview endpoint.",
+        created_at: now,
+      });
+    }
+    if (
+      method === "GET" &&
+      path ===
+        `/knowledge-bases/${personalKb.id}/documents/${personalDocument.id}/extraction-runs`
+    ) {
+      return json([
+        {
+          id: "run-preview-advanced-1",
+          document_id: personalDocument.id,
+          status: "completed",
+          stage: "chunking",
+          progress_percent: 100,
+          chunk_count: 3,
+          entity_count: 2,
+          relationship_count: 1,
+          error: null,
+        },
       ]);
     }
     if (method === "GET" && path === "/conversations") {
@@ -433,6 +484,9 @@ test("Groups dashboard caps previews and opens dedicated management pages", asyn
   await expect(page.getByText("Personal strategy memo")).toBeVisible();
   await expect(page.getByText("Archived context memo")).toBeVisible();
   await expect(page.getByText("Rejected field memo")).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: ko.admin.groups.requestShareAction }),
+  ).toHaveCount(0);
   await expect(page.getByText(/^\+1/)).toHaveCount(4);
 
   await page
@@ -481,6 +535,9 @@ test("Groups dashboard caps previews and opens dedicated management pages", asyn
       name: ko.admin.groups.viewPublishRequestsAction,
     }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: ko.admin.groups.requestShareAction }),
+  ).toHaveCount(0);
   await expect(page.getByText("Personal strategy memo")).toBeVisible();
   await expect(page.getByText("Private Notes")).toHaveCount(0);
   await page
@@ -512,6 +569,9 @@ test("Publish review controls are owner-only in Group admin UI", async ({
   await expect(
     page.getByRole("button", { name: ko.admin.groups.publishRejectNowButton }),
   ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: ko.admin.groups.requestShareAction }),
+  ).toHaveCount(0);
   await page
     .getByRole("button", { name: ko.admin.groups.reviewRequestAction })
     .click();
@@ -538,10 +598,8 @@ test("Publish review controls are owner-only in Group admin UI", async ({
     page.getByRole("heading", { name: ko.admin.groups.publishRequestsTitle }),
   ).toBeVisible();
   await expect(
-    page
-      .getByRole("button", { name: ko.admin.groups.requestShareAction })
-      .first(),
-  ).toBeVisible();
+    page.getByRole("button", { name: ko.admin.groups.requestShareAction }),
+  ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: ko.admin.groups.publishApproveNowButton }),
   ).toHaveCount(0);
@@ -640,4 +698,143 @@ test("Admin creation controls stay dialog-scoped and aligned", async ({
   expect(
     Math.abs((scopeBox?.height ?? 0) - (groupBox?.height ?? 0)),
   ).toBeLessThan(2);
+});
+
+test("Knowledge page owns source-space lifecycle controls and document sharing", async ({
+  page,
+}) => {
+  const requests = await mockGroupKnowledgeApi(page);
+  await page.goto("/knowledge");
+
+  await expect(
+    page.getByRole("heading", { name: personalKb.name }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", {
+      name: ko.admin.documents.sourceSpaceRowActionsLabel.replace(
+        "{name}",
+        personalKb.name,
+      ),
+    })
+    .click();
+  await expect(
+    page.getByRole("menuitem", {
+      name: ko.admin.documents.renameSourceSpaceAction,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", {
+      name: ko.admin.documents.deleteSourceSpaceAction,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("menuitem", {
+      name: ko.admin.documents.shareSourceSpaceAction,
+    })
+    .click();
+  await expect(
+    page.getByRole("heading", {
+      name: ko.admin.documents.shareSourceSpaceTitle,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("combobox", {
+      name: ko.admin.documents.shareTargetGroupLabel,
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /id|아이디/i })).toHaveCount(
+    0,
+  );
+  await page.getByRole("button", { name: ko.admin.common.cancel }).click();
+
+  await page
+    .getByRole("button", {
+      name: ko.admin.documents.sourceRowActionsLabel.replace(
+        "{title}",
+        personalDocument.title,
+      ),
+    })
+    .click();
+  await expect(
+    page.getByRole("menuitem", {
+      name: ko.admin.documents.sourcePreviewAction,
+    }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("menuitem", {
+      name: ko.admin.documents.shareSourceMenuAction,
+    }),
+  ).toBeVisible();
+  await page
+    .getByRole("menuitem", { name: ko.admin.documents.sourcePreviewAction })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: ko.admin.documents.sourcePreviewTitle }),
+  ).toBeVisible();
+  const previewDialog = page.getByRole("dialog", {
+    name: ko.admin.documents.sourcePreviewTitle,
+  });
+  await expect(
+    previewDialog.getByRole("tab", {
+      name: ko.admin.documents.sourcePreviewTab,
+      selected: true,
+    }),
+  ).toBeVisible();
+  await expect(
+    previewDialog.getByRole("heading", { name: "Preview section" }),
+  ).toBeVisible();
+  await previewDialog
+    .getByRole("tab", { name: ko.admin.documents.sourceAdvancedTab })
+    .click();
+  await expect(
+    previewDialog.getByText(ko.admin.documents.extractionRuns),
+  ).toBeVisible();
+  await expect(
+    previewDialog.getByText(new RegExp(`3 ${ko.admin.common.chunks}`)),
+  ).toBeVisible();
+  await page.getByRole("button", { name: ko.admin.common.close }).click();
+
+  await page
+    .getByRole("button", {
+      name: ko.admin.documents.sourceRowActionsLabel.replace(
+        "{title}",
+        personalDocument.title,
+      ),
+    })
+    .click();
+  await page
+    .getByRole("menuitem", { name: ko.admin.documents.shareSourceMenuAction })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: ko.admin.documents.shareSourceTitle }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("combobox", {
+      name: ko.admin.documents.shareTargetSourceSpaceLabel,
+    }),
+  ).toBeVisible();
+  await expect(page.getByRole("textbox", { name: /id|아이디/i })).toHaveCount(
+    0,
+  );
+
+  await page
+    .getByRole("button", { name: ko.admin.documents.shareSourceAction })
+    .click();
+  await expect
+    .poll(
+      () =>
+        requests.find(
+          (item) =>
+            item.method === "POST" &&
+            item.path === `/groups/${ownerGroup.id}/publish-requests` &&
+            Boolean(
+              (item.body as { source_document_id?: string } | null)
+                ?.source_document_id,
+            ),
+        )?.body,
+    )
+    .toMatchObject({
+      source_document_id: personalDocument.id,
+      target_knowledge_base_id: groupKb.id,
+    });
 });

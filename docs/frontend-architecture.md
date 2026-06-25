@@ -47,10 +47,10 @@ Browser components do not call the FastAPI backend directly. They call same-orig
 | `/login` | `components/AuthPanel.tsx` | Login through BFF `/auth/login`. |
 | `/signup` | `components/AuthPanel.tsx` | Signup parses the backend `SignupResponse` envelope, requires a display-only nickname, and shows an account-created handoff before login. |
 | `/chat` | `components/ChatWorkspace.tsx` + `components/chat/*` | Anchor Ask journey. Uses conversations, messages, streamed answers, citations near assistant replies, a compact top-of-chat source selector, and collapsed response evidence/work history. |
-| `/knowledge` | `components/AdminSurfaces.tsx` barrel → `components/admin-surfaces/SourcesSurface.tsx` | Knowledge journey root. Uses a source-space tree + source table shell, shadcn/Base UI dialogs for add flows, and keeps row-level permission/deletion controls in per-source Manage dialogs. |
+| `/knowledge` | `components/AdminSurfaces.tsx` barrel → `components/admin-surfaces/SourcesSurface.tsx` | Knowledge journey root. Uses a source-space tree + source table shell, shadcn/Base UI dialogs for add flows, source-space rename/share/delete actions, and per-source Manage sheets for Markdown preview, preparation history, delete, and share. |
 | `/knowledge/[sourceId]` | `components/AdminSurfaces.tsx` barrel → `components/admin-surfaces/SourcesSurface.tsx` | Addressable selected knowledge route. The segment may be a knowledge-base ID or group ID; refresh preserves the selected space/group instead of resetting to the first available item. |
 | `/documents` | `next/navigation` redirect | Legacy compatibility path that redirects to `/knowledge` so old links land on the merged Sources workflow. |
-| `/groups` and `/groups/[groupId]/[section]` | `components/AdminSurfaces.tsx` barrel → `components/admin-surfaces/GroupsSurface.tsx` | “Groups” journey. Manages shared knowledge requests, shows accepted-member display names when the backend contract provides them, and keeps raw ID-based member controls in Advanced disclosure. Shared group chrome lives in `components/admin-surfaces/GroupChrome.tsx`. |
+| `/groups` and `/groups/[groupId]/[section]` | `components/AdminSurfaces.tsx` barrel → `components/admin-surfaces/GroupsSurface.tsx` | “Groups” journey. Reviews shared-knowledge requests, shows accepted-member display names when the backend contract provides them, and keeps raw ID-based member controls in Advanced disclosure. Share-request creation is intentionally handed off to `/knowledge` so users do not type document/source IDs. Shared group chrome lives in `components/admin-surfaces/GroupChrome.tsx`. |
 
 All service routes live under `app/(service)/layout.tsx`, which renders `ServiceShell` and restores auth through `/auth/me`.
 
@@ -118,9 +118,12 @@ The BFF allowlist currently covers:
 - `POST /knowledge-bases` (personal/group, plus privileged `scope: "system"` project source creation when backend capability allows it)
 - `GET /knowledge-bases`
 - `GET /knowledge-bases/{knowledge_base_id}`
+- `PATCH /knowledge-bases/{knowledge_base_id}`
+- `DELETE /knowledge-bases/{knowledge_base_id}`
 - `POST /knowledge-bases/{knowledge_base_id}/documents`
 - `GET /knowledge-bases/{knowledge_base_id}/documents`
 - `POST /knowledge-bases/{knowledge_base_id}/documents/upload`
+- `GET /knowledge-bases/{knowledge_base_id}/documents/{document_id}/preview`
 - `POST /knowledge-bases/{knowledge_base_id}/documents/{document_id}/ingest`
 - `POST /knowledge-bases/{knowledge_base_id}/documents/{document_id}/ingest/async`
 - `GET /knowledge-bases/{knowledge_base_id}/documents/{document_id}/extraction-runs`

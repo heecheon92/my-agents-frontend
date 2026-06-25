@@ -154,6 +154,7 @@ describe("MyAgentsGroupAPI publish requests", () => {
           source_document_excerpt: "Preview text for review.",
           source_document_filename: null,
           source_knowledge_base_name: null,
+          source_knowledge_base_name_snapshot: null,
           target_knowledge_base_name: "Group KB",
           status: "pending",
           reviewer_user_id: null,
@@ -201,6 +202,7 @@ describe("MyAgentsGroupAPI publish requests", () => {
           source_document_excerpt: "Preview text for review.",
           source_document_filename: "draft.md",
           source_knowledge_base_name: null,
+          source_knowledge_base_name_snapshot: null,
           target_knowledge_base_name: "Group KB",
           status: path.endsWith("approve")
             ? "approved"
@@ -313,11 +315,14 @@ describe("MyAgentsGroupAPI publish requests", () => {
           source_document_excerpt: "Snapshot preserved after source deletion.",
           source_document_filename: "deleted.md",
           source_knowledge_base_name: null,
+          source_knowledge_base_name_snapshot: "Deleted source space",
           target_knowledge_base_name: "Group KB",
           status: "withdrawn",
           reviewer_user_id: null,
           published_document_id: null,
           published_knowledge_base_id: null,
+          published_knowledge_base_name: null,
+          published_knowledge_base_name_snapshot: null,
           created_at: "2026-06-15T07:00:00Z",
           reviewed_at: "2026-06-15T07:05:00Z",
         },
@@ -329,6 +334,7 @@ describe("MyAgentsGroupAPI publish requests", () => {
         status: "withdrawn",
         source_document_id: null,
         source_document_title: "Deleted source draft",
+        source_knowledge_base_name_snapshot: "Deleted source space",
       },
     ]);
   });
@@ -347,6 +353,7 @@ describe("MyAgentsGroupAPI publish requests", () => {
           source_document_excerpt: "Requester cancelled before review.",
           source_document_filename: "cancelled.md",
           source_knowledge_base_name: null,
+          source_knowledge_base_name_snapshot: null,
           target_knowledge_base_name: "Group KB",
           status: "cancelled",
           reviewer_user_id: null,
@@ -363,6 +370,45 @@ describe("MyAgentsGroupAPI publish requests", () => {
         status: "cancelled",
         source_document_id: "doc-1",
         source_document_title: "Cancelled draft",
+      },
+    ]);
+  });
+
+  it("parses approved whole-KB copy names for audit display", async () => {
+    const api = new MyAgentsGroupAPI({
+      fetch: async () => [
+        {
+          id: "request-kb-approved-1",
+          requester_user_id: "user-1",
+          target_group_id: "group-1",
+          target_knowledge_base_id: null,
+          source_document_id: null,
+          source_knowledge_base_id: null,
+          source_document_title: null,
+          source_document_excerpt: null,
+          source_document_filename: null,
+          source_knowledge_base_name: null,
+          source_knowledge_base_name_snapshot: "Original personal space",
+          target_knowledge_base_name: null,
+          status: "approved",
+          reviewer_user_id: "admin-1",
+          published_document_id: null,
+          published_knowledge_base_id: "kb-group-copy-1",
+          published_knowledge_base_name: "Original personal space",
+          published_knowledge_base_name_snapshot: "Original personal space",
+          created_at: "2026-06-24T01:00:00Z",
+          reviewed_at: "2026-06-24T01:05:00Z",
+        },
+      ],
+    });
+
+    await expect(api.publishRequests("group-1")).resolves.toMatchObject([
+      {
+        status: "approved",
+        source_knowledge_base_name_snapshot: "Original personal space",
+        published_knowledge_base_id: "kb-group-copy-1",
+        published_knowledge_base_name: "Original personal space",
+        published_knowledge_base_name_snapshot: "Original personal space",
       },
     ]);
   });
