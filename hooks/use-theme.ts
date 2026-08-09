@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import {
   DEFAULT_THEME_PREFERENCE,
   parseThemePreference,
@@ -24,6 +24,24 @@ export function readThemePreferenceCookie(): ThemePreference {
 }
 
 /**
+ * The cookie is the single source of truth for the preference, but a cookie
+ * emits no change event — so every reader has to be told when it moves.
+ *
+ * Without this, each component kept its own `useState` copy: the shell's toggle
+ * and the settings radio applied the same theme (they share the document class)
+ * while displaying different preferences, because neither learned about the
+ * other's write.
+ */
+const preferenceListeners = new Set<() => void>();
+
+function subscribeToThemePreference(listener: () => void) {
+  preferenceListeners.add(listener);
+  return () => {
+    preferenceListeners.delete(listener);
+  };
+}
+
+/**
  * Applies a preference to the document and persists it.
  *
  * `colorScheme` is set alongside the class so native controls, scrollbars, and
@@ -37,6 +55,7 @@ export function applyThemePreference(preference: ThemePreference) {
   const root = document.documentElement;
   root.classList.toggle("dark", isDark);
   root.style.colorScheme = isDark ? "dark" : "light";
+  for (const listener of preferenceListeners) listener();
 }
 
 /**
@@ -82,12 +101,22 @@ export function useResolvedTheme(): "light" | "dark" {
   return resolved;
 }
 
+/**
+ * The saved preference, shared by every control that can change it.
+ *
+ * Reads the cookie rather than holding local state, so the shell's toggle and
+ * the settings radio cannot drift apart. `initial` is only the server snapshot
+ * — the server rendered from the same cookie, so hydration matches.
+ */
 export function useThemePreference(initial: ThemePreference) {
-  const [preference, setPreferenceState] = useState<ThemePreference>(initial);
+  const preference = useSyncExternalStore(
+    subscribeToThemePreference,
+    readThemePreferenceCookie,
+    () => initial,
+  );
   const resolved = useResolvedTheme();
 
   const setPreference = useCallback((next: ThemePreference) => {
-    setPreferenceState(next);
     applyThemePreference(next);
   }, []);
 

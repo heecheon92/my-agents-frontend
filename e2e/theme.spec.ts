@@ -247,3 +247,73 @@ test.describe("dark theme", () => {
     });
   });
 });
+
+test.describe("theme controls stay in sync", () => {
+  test.use({ viewport: { width: 1280, height: 900 } });
+
+  const options = ko.settings.appearance.themeOptions;
+  /**
+   * The toggler's accessible name states the current mode *and* the next one,
+   * so matching on a single word is ambiguous — "시스템 설정" appears both when
+   * system is active and when dark is active (dark cycles to system). Build the
+   * full label instead.
+   */
+  const togglerLabel = (
+    current: keyof typeof options,
+    next: keyof typeof options,
+  ) =>
+    ko.settings.appearance.toggleLabel
+      .replace("{current}", options[current])
+      .replace("{next}", options[next]);
+
+  test("the header toggler follows a change made in settings", async ({
+    page,
+  }) => {
+    await mockWorkspace(page);
+    await page.goto("/settings/appearance");
+    await page.waitForLoadState("networkidle");
+    await dismissOnboarding(page);
+
+    await expect(
+      page.getByRole("button", { name: togglerLabel("system", "light") }),
+    ).toBeVisible();
+
+    await page.getByText(options.dark, { exact: true }).click();
+    await expect(page.locator("html")).toHaveClass(/dark/);
+
+    // Both controls describe one preference, so the header must now read dark.
+    // It used to keep its own `useState` copy and stay on system.
+    await expect(
+      page.getByRole("button", { name: togglerLabel("dark", "system") }),
+    ).toBeVisible();
+  });
+
+  test("settings follows a change made in the header toggler", async ({
+    page,
+  }) => {
+    await mockWorkspace(page);
+    await page.goto("/settings/appearance");
+    await page.waitForLoadState("networkidle");
+    await dismissOnboarding(page);
+
+    // system -> light
+    await page
+      .getByRole("button", { name: togglerLabel("system", "light") })
+      .click();
+
+    await expect(
+      page.getByRole("radio", { name: options.light }),
+    ).toBeChecked();
+    await expect(
+      page.getByRole("radio", { name: options.system }),
+    ).not.toBeChecked();
+    await expect(
+      page.getByText(
+        ko.settings.appearance.currentThemeLabel.replace(
+          "{theme}",
+          ko.settings.appearance.resolvedThemes.light,
+        ),
+      ),
+    ).toBeVisible();
+  });
+});
