@@ -161,6 +161,17 @@ const JARGON_RULINGS: Record<string, JargonRuling> = {
     paths: /^admin\.documents\.stages\./,
     why: "ingestion stage",
   },
+  // Allowed: the composer's reasoning controls name the capability the product
+  // is actually exposing. Confined to those keys so it cannot leak into
+  // first-run copy or primary actions.
+  추론: {
+    allowed: true,
+    paths: /^chat\.reasoning/,
+    why: "the composer's reasoning controls",
+  },
+  // Banned: transliterating the English term when 추론 already exists.
+  리즈닝: { allowed: false, instead: "추론" },
+  씽킹: { allowed: false, instead: "추론" },
   메타데이터: {
     allowed: true,
     paths: /^admin\.documents\.stages\./,

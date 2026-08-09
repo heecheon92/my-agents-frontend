@@ -14,6 +14,9 @@ export const API_PATH = {
     updateNickname: "/auth/me/nickname",
     updatePassword: "/auth/me/password",
   },
+  capabilities: {
+    reasoning: "/capabilities/reasoning",
+  },
   conversations: {
     root: "/conversations",
     detail(conversationId: string) {

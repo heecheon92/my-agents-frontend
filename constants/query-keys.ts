@@ -10,6 +10,11 @@ export const MyAgentsQueryKeys = {
       return ["my-agents", "auth", "guest-policy"] as const;
     },
   },
+  capabilities: {
+    reasoning() {
+      return ["my-agents", "capabilities", "reasoning"] as const;
+    },
+  },
   memories: {
     settings() {
       return ["my-agents", "memories", "settings"] as const;

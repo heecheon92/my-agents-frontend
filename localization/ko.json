@@ -342,7 +342,29 @@
     "sourceScopeTeam": "그룹",
     "systemProjectKnowledgePill": "프로젝트 지식",
     "systemAmbientBoundaryCopy": "시스템 프로젝트 지식은 따로 관리되며 자동으로 포함됩니다. 개인이나 그룹 지식 베이스를 적게 골라도 꺼지지 않습니다.",
-    "systemAmbientAvailableCopy": "자동으로 사용 가능한 프로젝트 지식: {count}"
+    "systemAmbientAvailableCopy": "자동으로 사용 가능한 프로젝트 지식: {count}",
+    "reasoningProLabel": "Pro 추론",
+    "reasoningEffortLabel": "추론 강도",
+    "reasoningLockedGuest": "게스트 세션은 기본 설정으로 실행됩니다.",
+    "reasoningProUnsupported": "지금 연결된 모델은 Pro 추론을 지원하지 않습니다.",
+    "reasoningEffortLabels": {
+      "none": "끄기",
+      "minimal": "최소",
+      "low": "낮음",
+      "medium": "보통",
+      "high": "높음",
+      "xhigh": "매우 높음",
+      "max": "최대"
+    },
+    "reasoningEffortHints": {
+      "none": "생각하는 단계 없이 바로 답합니다.",
+      "minimal": "거의 바로 답합니다.",
+      "low": "가볍게 살펴본 뒤 답합니다.",
+      "medium": "기본값입니다.",
+      "high": "꼼꼼히 따져 본 뒤 답합니다.",
+      "xhigh": "더 오래 생각합니다. 답이 늦어질 수 있습니다.",
+      "max": "가장 오래 생각합니다. 답이 많이 늦어질 수 있습니다."
+    }
   },
   "admin": {
     "common": {

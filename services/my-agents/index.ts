@@ -1,6 +1,7 @@
 export * from "./MyAgentsAPI";
 export * from "./MyAgentsAPIError";
 export * from "./MyAgentsAuthAPI";
+export * from "./MyAgentsCapabilityAPI";
 export * from "./MyAgentsConversationAPI";
 export * from "./MyAgentsDocumentAPI";
 export * from "./MyAgentsGroupAPI";

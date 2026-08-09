@@ -151,13 +151,20 @@ type RouteOverrides = {
   guest?: boolean;
   /** Render empty collections to capture empty states. */
   empty?: boolean;
+  /** Serve reasoning capabilities. `false` 404s them, as a backend without the migration does. */
+  reasoning?: boolean;
 };
 
 export async function mockWorkspace(
   page: Page,
   overrides: RouteOverrides = {},
 ) {
-  const { anonymous = false, guest = false, empty = false } = overrides;
+  const {
+    anonymous = false,
+    guest = false,
+    empty = false,
+    reasoning = true,
+  } = overrides;
   const knowledgeBases = empty ? [] : mockKnowledgeBases;
   const documents = empty ? [] : mockDocuments;
   const conversations = empty ? [] : [mockConversation];
@@ -181,6 +188,28 @@ export async function mockWorkspace(
       return json({ ...mockUser, is_guest: guest });
     }
     if (path === "/health") return json({ status: "ok" });
+    if (path === "/capabilities/reasoning") {
+      // A backend without the reasoning migration 404s here, and the composer
+      // must fall back to hiding its controls rather than erroring.
+      if (!reasoning) return json({ detail: "Not found" }, 404);
+      return json({
+        customizable: !guest,
+        default_mode: "standard",
+        default_effort: "medium",
+        supported_modes: ["standard", "pro"],
+        supported_efforts: [
+          "none",
+          "minimal",
+          "low",
+          "medium",
+          "high",
+          "xhigh",
+          "max",
+        ],
+        chat: { model: "gpt-5.6-sol", pro_supported: true },
+        document_workspace: { model: "gpt-5.6-sol", pro_supported: true },
+      });
+    }
     if (path === "/memories/settings") {
       return json({ enabled: false, updated_at: NOW });
     }

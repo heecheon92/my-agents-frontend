@@ -3,6 +3,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useCurrentUser } from "@/hooks/use-auth";
+import { useReasoningCapabilities } from "@/hooks/use-capabilities";
 import {
   useConversation,
   useConversations,
@@ -33,6 +35,12 @@ import {
   getAgentTraceStageKeys,
   sanitizeActivityEventPayload,
 } from "./chat/EvidencePanel";
+import {
+  REASONING_STORAGE_KEY,
+  type ReasoningSelection,
+  readStoredReasoning,
+  resolveReasoning,
+} from "./chat/reasoning-selection";
 import type { LiveActivityEvent, QueuedMessage } from "./chat/types";
 import { useChatRunLoop } from "./chat/useChatRunLoop";
 import { useChatWorkspaceEffects } from "./chat/useChatWorkspaceEffects";
@@ -118,7 +126,41 @@ export function ChatWorkspace() {
     null,
   );
   const [latestCitations, setLatestCitations] = useState<Citation[]>([]);
-  const [showGuestNotice, setShowGuestNotice] = useState(false);
+  // Derived from the session, not from `?guest=1`. The query param survives
+  // only until the first navigation, so the old derivation dropped the notice
+  // while the session was still a guest session.
+  const currentUser = useCurrentUser();
+  const isGuest = Boolean(currentUser.data?.is_guest);
+  const showGuestNotice = isGuest;
+
+  // Seeded from storage on first render so a reload does not flash the served
+  // default before the stored preference applies.
+  const reasoningCapabilities = useReasoningCapabilities();
+  const [storedReasoning, setStoredReasoning] =
+    useState<Partial<ReasoningSelection> | null>(() =>
+      typeof window === "undefined"
+        ? null
+        : readStoredReasoning(window.localStorage),
+    );
+  const reasoning = useMemo(
+    () =>
+      resolveReasoning(reasoningCapabilities.data, storedReasoning, isGuest),
+    [reasoningCapabilities.data, storedReasoning, isGuest],
+  );
+
+  function persistReasoning(next: Partial<ReasoningSelection>) {
+    const merged = { ...reasoning.selection, ...next };
+    setStoredReasoning(merged);
+    try {
+      window.localStorage.setItem(
+        REASONING_STORAGE_KEY,
+        JSON.stringify(merged),
+      );
+    } catch {
+      // Private-mode or quota failure. The selection still applies for this
+      // session; losing the persistence is not worth surfacing an error.
+    }
+  }
   // Compact-screen conversation browser. Lives here, not in the sheet, so
   // selecting a conversation can close it in the same handler.
   const [isConversationBrowserOpen, setIsConversationBrowserOpen] =
@@ -167,6 +209,13 @@ export function ChatWorkspace() {
     useChatRunLoop({
       activeRunIdRef,
       cancelAcceptedRef,
+      getReasoning: () =>
+        reasoning.selection
+          ? {
+              reasoning_mode: reasoning.selection.mode,
+              reasoning_effort: reasoning.selection.effort,
+            }
+          : null,
       isStreamingRef,
       localization,
       pendingImmediateMessageRef,
@@ -287,24 +336,37 @@ export function ChatWorkspace() {
   }
 
   async function handleSendNow() {
+    // Steering acts on whatever is pending: the queued message if one is held,
+    // otherwise the draft. Previously this was draft-only and was disabled
+    // whenever a queue existed, so a queued message could never be pushed
+    // through — you could queue or steer, never steer what you queued.
+    const pending = visibleQueuedMessage
+      ? {
+          conversationId: visibleQueuedMessage.conversationId,
+          content: visibleQueuedMessage.content,
+          knowledgeBaseSelection: visibleQueuedMessage.knowledgeBaseSelection,
+        }
+      : activeId && draftMessage
+        ? {
+            conversationId: activeId,
+            content: draftMessage,
+            knowledgeBaseSelection: activeKnowledgeBaseSelection,
+          }
+        : null;
     if (
       !activeId ||
-      !draftMessage ||
+      !pending ||
       !isStreaming ||
       isCancelling ||
       !activeRunId ||
-      visibleQueuedMessage ||
-      requiresKnowledgeBaseSelection
+      (!visibleQueuedMessage && requiresKnowledgeBaseSelection)
     )
       return;
-    const immediateMessage = {
-      conversationId: activeId,
-      content: draftMessage,
-      knowledgeBaseSelection: activeKnowledgeBaseSelection,
-    };
+    const immediateMessage = pending;
+    if (visibleQueuedMessage) setQueuedMessage(null);
     pendingImmediateMessageRef.current = immediateMessage;
     cancelAcceptedRef.current = false;
-    setDraft("");
+    if (!visibleQueuedMessage) setDraft("");
     setIsCancelling(true);
     setStatusAnnouncement(localization.stoppingCurrentAnswerAnnouncement);
     try {
@@ -382,12 +444,11 @@ export function ChatWorkspace() {
     (conversationIsBusy && Boolean(visibleQueuedMessage));
   const isSendNowDisabled =
     !activeId ||
-    !hasActiveDraft ||
+    (!hasActiveDraft && !visibleQueuedMessage) ||
     !isStreaming ||
     isCancelling ||
     !activeRunId ||
-    Boolean(visibleQueuedMessage) ||
-    requiresKnowledgeBaseSelection;
+    (!visibleQueuedMessage && requiresKnowledgeBaseSelection);
   const sendNowHelper = isCancelling
     ? localization.stoppingCurrentAnswer
     : visibleQueuedMessage
@@ -426,7 +487,6 @@ export function ChatWorkspace() {
     setObservedServerActiveRun,
     setQueuedMessageState,
     setSelectedKnowledgeBaseIds,
-    setShowGuestNotice,
     setStatusAnnouncement,
     shouldAutoScrollRef,
   });
@@ -482,6 +542,9 @@ export function ChatWorkspace() {
         selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}
         sendNowHelper={sendNowHelper}
         serverActiveRunIsStale={serverActiveRunIsStale}
+        reasoning={reasoning}
+        onReasoningModeChange={(mode) => persistReasoning({ mode })}
+        onReasoningEffortChange={(effort) => persistReasoning({ effort })}
         showGuestNotice={showGuestNotice}
         sortedRuns={sortedRuns}
         statusAnnouncement={statusAnnouncement}

@@ -9,6 +9,7 @@ import type {
   Conversation,
   KnowledgeBase,
   Message,
+  ReasoningEffort,
 } from "@/model/my-agents";
 import type { Localization } from "@/utils/localization";
 import { ChatTranscript } from "./ChatTranscript";
@@ -16,6 +17,7 @@ import { ComposerBar } from "./ComposerBar";
 import { ConversationBrowserSheet } from "./ConversationBrowserSheet";
 import { ConversationSidebar } from "./ConversationSidebar";
 import { KnowledgeSourceSelector } from "./KnowledgeSourceSelector";
+import type { ResolvedReasoning } from "./reasoning-selection";
 import type { LiveActivityEvent, QueuedMessage } from "./types";
 
 /**
@@ -88,6 +90,9 @@ type ChatWorkspaceLayoutProps = {
   sendNowHelper: string;
   serverActiveRunIsStale: boolean;
   showGuestNotice: boolean;
+  reasoning: ResolvedReasoning;
+  onReasoningModeChange: (next: "standard" | "pro") => void;
+  onReasoningEffortChange: (next: ReasoningEffort) => void;
   sortedRuns: AgentRunSummary[];
   statusAnnouncement: string;
   streamError: unknown;
@@ -144,6 +149,9 @@ export function ChatWorkspaceLayout({
   sendNowHelper,
   serverActiveRunIsStale,
   showGuestNotice,
+  reasoning,
+  onReasoningModeChange,
+  onReasoningEffortChange,
   sortedRuns,
   statusAnnouncement,
   streamError,
@@ -291,6 +299,9 @@ export function ChatWorkspaceLayout({
                 onSendNow={onSendNow}
                 sendNowHelper={sendNowHelper}
                 showGuestNotice={showGuestNotice}
+                reasoning={reasoning}
+                onReasoningModeChange={onReasoningModeChange}
+                onReasoningEffortChange={onReasoningEffortChange}
                 streamError={streamError}
                 statusAnnouncement={statusAnnouncement}
                 onSendQueuedMessage={onSendQueuedMessage}

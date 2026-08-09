@@ -86,6 +86,14 @@ describe("proxy policy", () => {
     expect(isAllowedBackendPath("GET", "/auth/guest/policy").allowed).toBe(
       true,
     );
+    // The composer reads this before rendering its reasoning controls. It is
+    // read-only, so it stays out of the CSRF exemption list below.
+    expect(isAllowedBackendPath("GET", "/capabilities/reasoning").allowed).toBe(
+      true,
+    );
+    expect(
+      isAllowedBackendPath("POST", "/capabilities/reasoning"),
+    ).toMatchObject({ allowed: false, code: "path_not_allowed" });
     expect(isAllowedBackendPath("POST", "/auth/guest/login").allowed).toBe(
       true,
     );

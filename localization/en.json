@@ -342,7 +342,29 @@
     "sourceScopeTeam": "Group",
     "systemProjectKnowledgePill": "Project knowledge",
     "systemAmbientBoundaryCopy": "System project knowledge is managed separately and may be included automatically; selecting fewer personal or group sources does not disable it.",
-    "systemAmbientAvailableCopy": "Project knowledge available automatically: {count}"
+    "systemAmbientAvailableCopy": "Project knowledge available automatically: {count}",
+    "reasoningProLabel": "Pro reasoning",
+    "reasoningEffortLabel": "Reasoning effort",
+    "reasoningLockedGuest": "Guest sessions run with the default settings.",
+    "reasoningProUnsupported": "The connected model does not support Pro reasoning.",
+    "reasoningEffortLabels": {
+      "none": "Off",
+      "minimal": "Minimal",
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "xhigh": "Very high",
+      "max": "Max"
+    },
+    "reasoningEffortHints": {
+      "none": "Answers immediately, with no thinking step.",
+      "minimal": "Answers almost immediately.",
+      "low": "Takes a quick look before answering.",
+      "medium": "The default.",
+      "high": "Works through the problem before answering.",
+      "xhigh": "Thinks for longer. Answers may be slower.",
+      "max": "Thinks for as long as it can. Answers may be much slower."
+    }
   },
   "admin": {
     "common": {

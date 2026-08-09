@@ -3,7 +3,9 @@ import { inputClassName } from "@/components/Field";
 import { ErrorState } from "@/components/Status";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { KnowledgeBase } from "@/model/my-agents";
+import type { KnowledgeBase, ReasoningEffort } from "@/model/my-agents";
+import { ReasoningControls } from "./ReasoningControls";
+import type { ResolvedReasoning } from "./reasoning-selection";
 import type { ChatLocalization, QueuedMessage } from "./types";
 
 /** Roughly eight lines, after which the composer scrolls instead of growing. */
@@ -52,6 +54,9 @@ export function ComposerBar({
   onEditQueuedMessage,
   onCancelQueuedMessage,
   composerPlaceholder,
+  reasoning,
+  onReasoningModeChange,
+  onReasoningEffortChange,
 }: {
   localization: ChatLocalization;
   draft: string;
@@ -76,6 +81,9 @@ export function ComposerBar({
   onEditQueuedMessage: () => void;
   onCancelQueuedMessage: () => void;
   composerPlaceholder: string;
+  reasoning: ResolvedReasoning;
+  onReasoningModeChange: (next: "standard" | "pro") => void;
+  onReasoningEffortChange: (next: ReasoningEffort) => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -136,7 +144,20 @@ export function ComposerBar({
               </p>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
-              {!conversationIsBusy ? (
+              {conversationIsBusy ? (
+                // Steer: stop the running answer and send this instead. The
+                // queue used to offer nothing here, so a held message could
+                // only wait for a run that might take minutes.
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={onSendNow}
+                  disabled={isSendNowDisabled}
+                  aria-describedby="chat-steering-helper"
+                >
+                  {localization.sendNow}
+                </Button>
+              ) : (
                 <Button
                   type="button"
                   variant="secondary"
@@ -145,7 +166,7 @@ export function ComposerBar({
                 >
                   {localization.sendQueued}
                 </Button>
-              ) : null}
+              )}
               <Button
                 type="button"
                 variant="secondary"
@@ -206,6 +227,21 @@ export function ComposerBar({
             </Button>
           ) : null}
         </div>
+        {/* Inside the input surface, below the text and send cluster. Renders
+            only once the backend has confirmed it accepts these fields, so a
+            deployment without the reasoning migration shows the composer
+            exactly as it looked before. */}
+        {reasoning.available ? (
+          <div className="sm:col-span-2">
+            <ReasoningControls
+              resolved={reasoning}
+              localization={localization}
+              onModeChange={onReasoningModeChange}
+              onEffortChange={onReasoningEffortChange}
+              disabled={!activeId || isCancelling}
+            />
+          </div>
+        ) : null}
       </div>
       {conversationIsBusy ? (
         <p

@@ -24,6 +24,14 @@ export const BFF_ALLOWLIST: Rule[] = [
   },
   { method: "POST", pattern: /^\/auth\/login$/, name: "auth.login" },
   {
+    // Read-only. The composer needs the accepted reasoning levels and the
+    // active defaults before it can render its controls, and it must degrade
+    // to hiding them when this 404s on a backend without the feature.
+    method: "GET",
+    pattern: /^\/capabilities\/reasoning$/,
+    name: "capabilities.reasoning",
+  },
+  {
     // Unauthenticated: `/guest` needs the active limits and delivery mode
     // before anyone signs in, so the copy can state them accurately.
     method: "GET",

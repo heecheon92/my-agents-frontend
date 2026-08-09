@@ -38,7 +38,6 @@ type UseChatWorkspaceEffectsOptions = {
     React.SetStateAction<QueuedMessage | null>
   >;
   setSelectedKnowledgeBaseIds: React.Dispatch<React.SetStateAction<string[]>>;
-  setShowGuestNotice: (show: boolean) => void;
   setStatusAnnouncement: (message: string) => void;
   shouldAutoScrollRef: React.MutableRefObject<boolean>;
 };
@@ -62,7 +61,6 @@ export function useChatWorkspaceEffects({
   setObservedServerActiveRun,
   setQueuedMessageState,
   setSelectedKnowledgeBaseIds,
-  setShowGuestNotice,
   setStatusAnnouncement,
   shouldAutoScrollRef,
 }: UseChatWorkspaceEffectsOptions) {
@@ -134,12 +132,6 @@ export function useChatWorkspaceEffects({
     setQueuedMessageState,
     setStatusAnnouncement,
   ]);
-
-  useEffect(() => {
-    setShowGuestNotice(
-      new URLSearchParams(window.location.search).get("guest") === "1",
-    );
-  }, [setShowGuestNotice]);
 
   useEffect(() => {
     const availableIds = new Set(selectableKnowledgeBases.map((kb) => kb.id));

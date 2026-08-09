@@ -7,6 +7,9 @@ import type {
   ConversationRunResponse,
   KnowledgeBaseSelection,
   Message,
+  ReasoningEffort,
+  ReasoningMode,
+  RunCancelledEventData,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 import type { LiveActivityEvent, QueuedMessage } from "./types";
@@ -30,6 +33,16 @@ type UseChatRunLoopOptions = {
   queuedMessageRef: React.MutableRefObject<QueuedMessage | null>;
   pendingImmediateMessageRef: React.MutableRefObject<QueuedMessage | null>;
   cancelAcceptedRef: React.MutableRefObject<boolean>;
+  /**
+   * Read at send time rather than captured, so a level changed while a run is
+   * in flight applies to the next message instead of the one already sent.
+   * Returns `null` when the backend has not confirmed it accepts the fields,
+   * and the payload then omits them entirely.
+   */
+  getReasoning: () => {
+    reasoning_mode: ReasoningMode;
+    reasoning_effort: ReasoningEffort;
+  } | null;
   localization: {
     runFailed: string;
     queueAlreadyExistsAnnouncement: string;
@@ -60,6 +73,7 @@ type UseChatRunLoopOptions = {
 export function useChatRunLoop({
   activeRunIdRef,
   cancelAcceptedRef,
+  getReasoning,
   isStreamingRef,
   localization,
   pendingImmediateMessageRef,
@@ -114,11 +128,19 @@ export function useChatRunLoop({
     });
     let completed = false;
     let cancelled = false;
+    // The backend reports whether it stored the partial answer. If it did, the
+    // refetch below brings it back and the live buffer should clear; if it did
+    // not, clearing would silently discard text the user already read.
+    let partialReplyPersisted = false;
     let liveSequence = 0;
     try {
       for await (const streamEvent of myAgentsAPI.conversations.streamRunEvents(
         conversationId,
-        { message, knowledge_base_selection: knowledgeBaseSelection },
+        {
+          message,
+          knowledge_base_selection: knowledgeBaseSelection,
+          ...(getReasoning() ?? {}),
+        },
       )) {
         if (streamEvent.event === "answer_delta") {
           const data = streamEvent.data as AnswerDeltaEventData;
@@ -139,7 +161,13 @@ export function useChatRunLoop({
           const data = streamEvent.data as { run_id: string };
           setCurrentRunId(data.run_id);
         }
-        if (streamEvent.event === "run_cancelled") cancelled = true;
+        if (streamEvent.event === "run_cancelled") {
+          cancelled = true;
+          partialReplyPersisted = Boolean(
+            (streamEvent.data as RunCancelledEventData)
+              ?.partial_reply_persisted,
+          );
+        }
         if (streamEvent.event === "run_completed") {
           const data = streamEvent.data as ConversationRunResponse;
           completed = true;
@@ -166,7 +194,7 @@ export function useChatRunLoop({
         }),
       ]);
       setOptimisticMessage(null);
-      setStreamedReply("");
+      if (!cancelled || partialReplyPersisted) setStreamedReply("");
       return cancelled ? "cancelled" : "completed";
     } catch (error) {
       if (isConversationRunAlreadyActiveError(error)) {

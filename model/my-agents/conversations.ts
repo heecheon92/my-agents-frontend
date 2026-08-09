@@ -1,6 +1,19 @@
 import { z } from "zod";
+import { reasoningEffortSchema, reasoningModeSchema } from "./capabilities";
 import { routeDecisionSchema } from "./common";
 import { citationSchema } from "./knowledge";
+
+/**
+ * The effective pair the backend resolved for a run.
+ *
+ * Optional on responses because a backend without the reasoning migration
+ * omits them, and these schemas are not `.strict()` — so this stays additive
+ * in both directions and an older backend keeps parsing.
+ */
+export const runReasoningSchema = z.object({
+  reasoning_mode: reasoningModeSchema.optional(),
+  reasoning_effort: reasoningEffortSchema.optional(),
+});
 
 export const conversationSchema = z.object({
   id: z.string().min(1),
@@ -30,10 +43,12 @@ export const knowledgeBaseSelectionSchema = z.object({
   knowledge_base_ids: z.array(z.string().min(1)).default([]),
 });
 
-export const conversationRunRequestSchema = z.object({
-  message: z.string().min(1),
-  knowledge_base_selection: knowledgeBaseSelectionSchema.optional(),
-});
+export const conversationRunRequestSchema = z
+  .object({
+    message: z.string().min(1),
+    knowledge_base_selection: knowledgeBaseSelectionSchema.optional(),
+  })
+  .merge(runReasoningSchema);
 
 export const runSourceContextSchema = z.object({
   resolved_knowledge_base_ids: z.array(z.string().min(1)).default([]),
@@ -79,7 +94,8 @@ export const conversationRunResponseSchema = z
       knowledge_base_ids: [],
     }),
   })
-  .merge(runSourceContextSchema);
+  .merge(runSourceContextSchema)
+  .merge(runReasoningSchema);
 
 export const runStartedEventDataSchema = z
   .object({
@@ -88,7 +104,8 @@ export const runStartedEventDataSchema = z
     status: z.string(),
     knowledge_base_selection: knowledgeBaseSelectionSchema.optional(),
   })
-  .merge(runSourceContextSchema.partial());
+  .merge(runSourceContextSchema.partial())
+  .merge(runReasoningSchema);
 
 export const answerDeltaEventDataSchema = z.object({
   delta: z.string(),
@@ -121,7 +138,8 @@ export const agentRunSummarySchema = z
       knowledge_base_ids: [],
     }),
   })
-  .merge(runSourceContextSchema);
+  .merge(runSourceContextSchema)
+  .merge(runReasoningSchema);
 
 export const agentEventSchema = z.object({
   id: z.string().min(1),
@@ -146,6 +164,7 @@ export type KnowledgeBaseSelection = z.infer<
 export type ConversationRunRequest = z.infer<
   typeof conversationRunRequestSchema
 >;
+export type RunReasoning = z.infer<typeof runReasoningSchema>;
 export type ConversationRunWarning = z.infer<
   typeof conversationRunWarningSchema
 >;
