@@ -24,6 +24,7 @@ export function ErrorState({
   title = defaultLocalization.status.defaultErrorTitle,
   error,
   description,
+  fallbackDescription,
   localization = defaultLocalization,
 }: {
   title?: string;
@@ -36,6 +37,12 @@ export function ErrorState({
    */
   description?: string;
   /**
+   * Copy for a server failure that carries no specific code. Use it where
+   * generic status copy would misdescribe what the user was doing — a 403 on
+   * "request guest access" is not a permissions problem from their side.
+   */
+  fallbackDescription?: string;
+  /**
    * Optional because `LocalizationProvider` is currently hardcoded to `ko` and
    * `defaultLocalization` *is* the Korean dictionary, so the fallback is
    * correct at runtime. Threading it explicitly from the 28 call sites is left
@@ -43,7 +50,9 @@ export function ErrorState({
    */
   localization?: Localization;
 }) {
-  const message = description ?? resolveErrorMessage(error, localization);
+  const message =
+    description ??
+    resolveErrorMessage(error, localization, fallbackDescription);
   return (
     <div className="rounded-xl border border-km-error/25 bg-km-error/8 p-4 text-sm text-km-error">
       <p className="font-semibold">{title}</p>

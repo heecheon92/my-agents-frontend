@@ -77,7 +77,8 @@ export function GuestAccessPanel() {
             {guestAccessRequest.error ? (
               <ErrorState
                 error={guestAccessRequest.error}
-                title={localization.guestFailed}
+                title={localization.guestRequestFailed}
+                fallbackDescription={localization.guestRequestUnavailable}
               />
             ) : null}
             <form onSubmit={handleRequest} className="grid gap-3">
@@ -135,7 +136,8 @@ export function GuestAccessPanel() {
             {guestCodeLogin.error ? (
               <ErrorState
                 error={guestCodeLogin.error}
-                title={localization.guestFailed}
+                title={localization.guestCodeFailed}
+                fallbackDescription={localization.guestCodeRejected}
               />
             ) : null}
             <form onSubmit={handleCodeLogin} className="grid gap-3">

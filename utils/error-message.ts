@@ -66,12 +66,27 @@ function copyForStatus(status: number, errors: Localization["errors"]) {
 export function resolveErrorMessage(
   error: unknown,
   localization: Localization = defaultLocalization,
+  /**
+   * Copy for when the backend gives no specific code, supplied by a caller that
+   * knows what the user was trying to do.
+   *
+   * Status-based copy is context-blind, and that shows. Requesting guest access
+   * returns 403 with the category code `permission_denied`, which rendered as
+   * "이 작업을 할 권한이 없습니다" — permission framing aimed at someone who had
+   * just typed their email into a form. A specific `byCode` match still wins;
+   * this only replaces the generic status line.
+   */
+  fallbackDescription?: string,
 ): string {
   if (isMyAgentsAPIError(error)) {
     return (
       copyForCode(errorCodeOf(error), localization.errors) ??
+      fallbackDescription ??
       copyForStatus(error.status, localization.errors)
     );
+  }
+  if (fallbackDescription && !(error instanceof TypeError)) {
+    return fallbackDescription;
   }
 
   // A network failure surfaces as a plain TypeError with no useful public text.

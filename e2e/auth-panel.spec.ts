@@ -320,3 +320,45 @@ test("login offers a reachable password reset request", async ({ page }) => {
   ).toBeVisible();
   expect(requestedEmail).toBe("reset@example.com");
 });
+
+test("guest request failure describes the request, not a sign-in", async ({
+  page,
+}) => {
+  // Reproduces a real report: the backend disables guest access and returns
+  // 403 with the category code `permission_denied`. That rendered as
+  // "게스트 입장에 실패했습니다 / 이 작업을 할 권한이 없습니다" — sign-in
+  // language and permission framing, for someone who had just typed an email
+  // into a request form.
+  await page.route("**/api/my-agents/auth/guest/request", async (route) => {
+    await route.fulfill({
+      status: 403,
+      contentType: "application/json",
+      body: JSON.stringify({
+        detail: "guest access disabled",
+        code: "permission_denied",
+      }),
+    });
+  });
+  await page.route("**/api/my-agents/**", async (route) => {
+    await route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: JSON.stringify({ detail: "Not authenticated" }),
+    });
+  });
+
+  await page.goto("/guest");
+  await page
+    .getByRole("textbox", { name: new RegExp(`^${ko.auth.guestEmailLabel}`) })
+    .fill("reviewer@example.com");
+  await page.getByRole("button", { name: ko.auth.guestRequestSubmit }).click();
+
+  await expect(page.getByText(ko.auth.guestRequestFailed)).toBeVisible();
+  await expect(page.getByText(ko.auth.guestRequestUnavailable)).toBeVisible();
+
+  // The old wording must not come back.
+  await expect(page.getByText(ko.errors.byStatus.forbidden)).toHaveCount(0);
+  await expect(page.getByText("입장")).toHaveCount(0);
+  // And never the backend's English.
+  await expect(page.getByText("guest access disabled")).toHaveCount(0);
+});
