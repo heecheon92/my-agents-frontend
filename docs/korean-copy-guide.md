@@ -42,7 +42,8 @@ for; they are wrong here, not merely dispreferred.
 | citation | `인용` | `출처 표기`, `레퍼런스` | |
 | group | `그룹` | `팀`, `조직` | Matches the API's `group`. |
 | member | `멤버` | `구성원`, `회원` | `회원` means "registered user of a service", which is a different concept here. |
-| guest session | `게스트 세션` | `방문자 세션` | |
+| guest session | `게스트 세션` | `방문자 세션`, `데모 세션` | |
+| guest access | `게스트 이용` | `데모`, `데모 모드`, `체험판` | **Never call the product a demo.** Guest is an account tier with limits, not a trial of something unfinished. State the limits plainly — 24 hours, one conversation, five questions, three documents — but do not frame the product itself as a sample. |
 | run (one answer attempt) | `답변` in user-facing copy; `실행` only in advanced disclosures | — | Users think in answers, not runs. |
 | ingestion / preparation | `준비` | `수집`, `인제스트`, `색인` | `준비` says what the user gets: the document becomes usable. |
 

@@ -134,6 +134,10 @@ describe("Korean terminology (docs/korean-copy-guide.md)", () => {
       [/안전한\s*오류/, "안전한 오류 → 안내 메시지"],
       [/임의\s*값/, "임의 값 → describe the real behavior"],
       [/백엔드/, "백엔드 → do not expose implementation to users"],
+      [
+        /데모/,
+        "데모 → the product is never framed as a demo; guest is a tier with limits",
+      ],
     ];
 
     for (const entry of koreanEntries) {

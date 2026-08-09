@@ -226,9 +226,9 @@ source of truth for frontend API models — nothing here changed a model, but th
 
 ## 2026-08-09 — a specific code for "guest access disabled"
 
-Status: proposed
+Status: withdrawn
 Frontend need: Tell a visitor that guest access is switched off, rather than implying they lack permission.
 Current backend behavior: With the guest feature disabled by environment flag, `POST /auth/guest/request` returns `403 { "detail": "guest access disabled", "code": "permission_denied" }`. `permission_denied` is a category-level code shared with genuine authorization failures, so the frontend cannot distinguish "this feature is off" from "you may not do this".
-Requested backend contract: A specific code such as `guest_access_disabled` on both `/auth/guest/request` and `/auth/guest/login` when the feature flag is off. Optionally, expose the flag on an unauthenticated config or health payload so `/guest` can explain the state before a visitor fills in the form.
-Why it matters: The visitor did nothing wrong and cannot act on a permissions message. With a specific code the UI can say the demo is currently unavailable; with a config signal it could say so up front instead of after a failed submit.
-Frontend workaround, if any: `/guest` passes contextual fallback copy to `ErrorState`, so an uncoded 403 now reads "지금은 게스트 이용 요청을 받을 수 없습니다" instead of the generic permission line. Correct, but deliberately vague about the cause, and only shown after the user submits.
+Requested backend contract: none. **Withdrawn on product direction:** the product does not tell users it is running in a demo or degraded mode, so the UI will not announce that guest access is switched off — neither up front nor after a failed submit. A specific code would only enable a message we have decided not to show.
+Why it mattered: the visitor did nothing wrong and cannot act on a permissions message. That part is solved frontend-side without any backend change.
+Resolution: `/guest` passes contextual fallback copy to `ErrorState`, so an uncoded 403 reads "지금은 게스트 이용 요청을 받을 수 없습니다" instead of the generic permission line. Deliberately vague about the cause, which is now the intended behaviour rather than a limitation.
