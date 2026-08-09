@@ -41,7 +41,10 @@ export function EvidencePanel({
   );
 
   return (
-    <fieldset
+    // A `<fieldset>` announces a group of form controls; this is a set of
+    // disclosures attached to a message, so `<section>` with a label is the
+    // honest semantic and stops screen readers calling it a form group.
+    <section
       aria-label={localization.messageFooterLabel}
       data-testid="assistant-message-footer"
       className="mt-3 border-t border-cal-hairline/70 pt-2"
@@ -91,6 +94,6 @@ export function EvidencePanel({
           </p>
         )}
       </div>
-    </fieldset>
+    </section>
   );
 }

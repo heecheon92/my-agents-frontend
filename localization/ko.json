@@ -239,6 +239,16 @@
     "noRunsTitle": "실행 기록이 없습니다",
     "noRunsDescription": "메시지를 보내 첫 실행을 만드세요.",
     "activityEvents": "작업 내역",
+    "eventTypes": {
+      "run_started": "실행 시작",
+      "graph_invoked": "작업 준비",
+      "retrieval_completed": "문서 검색 완료",
+      "answer_composed": "답변 작성 완료",
+      "run_completed": "실행 완료",
+      "run_failed": "실행 실패",
+      "run_cancelled": "실행 취소"
+    },
+    "activityRawPayload": "원본 기록",
     "agentTrace": {
       "title": "에이전트 흐름",
       "currentStep": "현재 단계",

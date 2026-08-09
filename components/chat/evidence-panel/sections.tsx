@@ -108,6 +108,26 @@ function RunHistorySection({
   );
 }
 
+/**
+ * Turns a backend event enum into readable copy.
+ *
+ * Event rows used to render the raw enum (`retrieval_completed`) directly into
+ * a Korean UI. The backend does not publish a closed set — that contract is
+ * requested in `docs/backend-requests.md` — so unknown types degrade to a
+ * de-snaked, sentence-cased form rather than disappearing or throwing.
+ */
+export function describeEventType(
+  eventType: string,
+  localization: ChatLocalization,
+) {
+  const known = (
+    localization.eventTypes as Record<string, string> | undefined
+  )?.[eventType];
+  if (known) return known;
+  const humanized = eventType.replace(/_/g, " ").trim();
+  return humanized.charAt(0).toUpperCase() + humanized.slice(1);
+}
+
 function ActivitySection({
   localization,
   events,
@@ -140,13 +160,14 @@ function ActivitySection({
           className="rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-sm"
         >
           <p className="break-words font-medium text-cal-ink">
-            {event.sequence}. {event.event_type}
+            {event.sequence}.{" "}
+            {describeEventType(event.event_type, localization)}
           </p>
           <details className="mt-2 rounded-md border border-cal-hairline bg-cal-surface-soft p-2 text-xs text-cal-muted">
             <summary className="cursor-pointer font-medium text-cal-ink">
-              {localization.activityDetails}
+              {localization.activityRawPayload}
             </summary>
-            <pre className="mt-2 max-h-40 overflow-auto rounded-xl border border-cal-hairline bg-km-surface p-3 text-xs text-cal-muted">
+            <pre className="mt-2 max-h-40 overflow-auto rounded-xl border border-cal-hairline bg-km-surface p-3 font-mono text-xs text-cal-muted">
               {formatActivityEventPayload(
                 event.payload,
                 localization.activityPayloadHidden,

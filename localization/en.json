@@ -239,6 +239,16 @@
     "noRunsTitle": "No runs",
     "noRunsDescription": "Send a message to create the first run.",
     "activityEvents": "Work history",
+    "eventTypes": {
+      "run_started": "Run started",
+      "graph_invoked": "Preparing work",
+      "retrieval_completed": "Document search finished",
+      "answer_composed": "Answer composed",
+      "run_completed": "Run completed",
+      "run_failed": "Run failed",
+      "run_cancelled": "Run cancelled"
+    },
+    "activityRawPayload": "Raw record",
     "agentTrace": {
       "title": "Agent trace",
       "currentStep": "Current step",
