@@ -251,7 +251,7 @@ Frontend workaround: every hardcoded number is removed — the copy now says a l
 
 ## 2026-08-09 — backend response: guest policy endpoint
 
-Status: implemented backend-side (uncommitted at time of writing); frontend wired.
+Status: **published** on backend `origin/develop` at `d81f849`; frontend wired and allowlisted. Deployment still pending.
 
 `GET /auth/guest/policy`, unauthenticated, returns the active configuration:
 
@@ -289,3 +289,32 @@ proxy rejects the path.
 To enable automatic delivery, the hosted service needs `GUEST_ACCESS_ENABLED=true`,
 `GUEST_CODE_AUTO_APPROVAL=true`, and the three limit variables, then a redeploy
 and a repeat of the hosted probe.
+
+## 2026-08-09 — release state after the backend handoff
+
+Backend contracts are committed and pushed (`d81f849` on `origin/develop`), and a
+migration check confirmed there is nothing to apply: `origin/main` is an ancestor
+of `origin/develop`, the `alembic/versions` tree hash is identical on both, and
+the production database already sits at head `20260624_0029`. Every change was
+response-layer or configuration, not schema.
+
+Two things still gate the guest path, both outside this repository:
+
+1. **Deploy the frontend.** `GET /auth/guest/policy` is allowlisted in
+   `server/my-agents/proxy-policy.ts` as of `1fcf329`, and covered by
+   `tests/proxy-policy.test.ts`. The deployed BFF still runs the older build that
+   rejects the path.
+2. **Set the hosted environment**, then restart or redeploy the backend:
+   `MY_AGENTS_GUEST_ACCESS_ENABLED=true`, `MY_AGENTS_GUEST_CODE_AUTO_APPROVAL=true`,
+   `MY_AGENTS_GUEST_MAX_CONVERSATIONS=3`, `MY_AGENTS_GUEST_MAX_PROMPTS=20`,
+   `MY_AGENTS_GUEST_MAX_DOCUMENT_UPLOADS=5`. Raised repository defaults do **not**
+   override explicitly configured hosted values.
+
+Until both land, `/guest` degrades safely rather than lying: with no policy it
+says nothing about how a code arrives, and with `manual_approval` it says an
+operator will send one.
+
+Delivery is verified only as far as the provider. Resend accepted the send and
+reported `last_event=delivered` for its own `delivered@resend.dev` test recipient
+— provider acceptance and simulated delivery, not proof that a real inbox
+receives anything. Worth one end-to-end send to a real address after deploying.

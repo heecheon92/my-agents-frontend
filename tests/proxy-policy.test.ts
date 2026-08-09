@@ -80,6 +80,12 @@ describe("proxy policy", () => {
     expect(isAllowedBackendPath("POST", "/auth/guest/request").allowed).toBe(
       true,
     );
+    // `/guest` reads this before anyone signs in, so the proxy must pass it.
+    // The deployed BFF rejected it as outside the allowlist, which the backend
+    // agent flagged as a release blocker — worth a test rather than a memory.
+    expect(isAllowedBackendPath("GET", "/auth/guest/policy").allowed).toBe(
+      true,
+    );
     expect(isAllowedBackendPath("POST", "/auth/guest/login").allowed).toBe(
       true,
     );
@@ -171,6 +177,9 @@ describe("proxy policy", () => {
   it("exempts unauthenticated auth lifecycle mutations from CSRF cookies", () => {
     expect(isCsrfExemptPath("/auth/signup")).toBe(true);
     expect(isCsrfExemptPath("/auth/verify-email")).toBe(true);
+    // Read-only, so it needs no CSRF exemption — exempting it would widen the
+    // mutation bypass list for no reason.
+    expect(isCsrfExemptPath("/auth/guest/policy")).toBe(false);
     expect(isCsrfExemptPath("/auth/guest/request")).toBe(true);
     expect(isCsrfExemptPath("/auth/guest/login")).toBe(true);
     expect(isCsrfExemptPath("/auth/password-reset/request")).toBe(true);
