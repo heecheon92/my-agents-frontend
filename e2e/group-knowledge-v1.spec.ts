@@ -487,7 +487,11 @@ test("Groups dashboard caps previews and opens dedicated management pages", asyn
   await expect(
     page.getByRole("button", { name: ko.admin.groups.requestShareAction }),
   ).toHaveCount(0);
-  await expect(page.getByText(/^\+1/)).toHaveCount(4);
+  // Derived from ko.json rather than hardcoding the copy: each of the four
+  // overview cards caps its preview and shows a "1 more" hint.
+  await expect(
+    page.getByText(ko.admin.groups.hiddenRowsHint.replace("{count}", "1")),
+  ).toHaveCount(4);
 
   await page
     .getByRole("button", { name: ko.admin.groups.manageMembersAction })

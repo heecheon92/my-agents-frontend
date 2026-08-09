@@ -119,6 +119,83 @@ describe("localized product copy guardrails", () => {
   });
 });
 
+describe("Korean terminology (docs/korean-copy-guide.md)", () => {
+  const koreanEntries = entries.filter((entry) => /[가-힣]/.test(entry.ko));
+
+  it("uses one approved term per concept", () => {
+    // Banned alternatives from the glossary. Each was in the shipped copy.
+    const banned: Array<[RegExp, string]> = [
+      [/지식\s*공간/, "지식 공간 → 지식 베이스"],
+      [/지식베이스/, "지식베이스 → 지식 베이스 (spacing)"],
+      [/게시\s*요청/, "게시 요청 → 공유 요청"],
+      [/고급\s*(처리\s*)?(내역|정보)/, "고급 … → 상세 정보"],
+      [/처리\s*정보/, "처리 정보 → 상세 정보"],
+      [/옵트인/, "옵트인 → 직접 켠 / 사용 설정한"],
+      [/안전한\s*오류/, "안전한 오류 → 안내 메시지"],
+      [/임의\s*값/, "임의 값 → describe the real behavior"],
+      [/백엔드/, "백엔드 → do not expose implementation to users"],
+    ];
+
+    for (const entry of koreanEntries) {
+      for (const [pattern, guidance] of banned) {
+        expect(entry.ko, `${entry.path}: ${guidance}`).not.toMatch(pattern);
+      }
+    }
+  });
+
+  it("never counts or acts on 지식, which is a mass noun", () => {
+    // `지식` stays valid as an uncountable concept ("내 지식에서 질문"), so this
+    // targets only the countable and object uses that were ungrammatical.
+    const countable =
+      /지식\s*\{count\}|지식\s*[0-9]+\s*개|지식을\s*(삭제|추가|공유|미리)/;
+    for (const entry of koreanEntries) {
+      expect(
+        entry.ko,
+        `${entry.path}: count/act on 문서, not 지식`,
+      ).not.toMatch(countable);
+    }
+  });
+
+  it("keeps Korean particles agreeing with 베이스", () => {
+    // `베이스` ends in a vowel. A find-and-replace from `공간` (consonant) broke
+    // 40 of these in one pass, so it is worth locking down.
+    for (const entry of koreanEntries) {
+      expect(
+        entry.ko,
+        `${entry.path}: wrong particle after 베이스`,
+      ).not.toMatch(/베이스(을|은|과|으로|이[ ,.]|이나)/);
+    }
+  });
+
+  it("uses the correct ellipsis character", () => {
+    for (const entry of koreanEntries) {
+      expect(entry.ko, `${entry.path}: use … (U+2026), not ...`).not.toContain(
+        "...",
+      );
+    }
+  });
+
+  it("does not slash-chain alternatives in Korean prose", () => {
+    for (const entry of koreanEntries) {
+      expect(
+        entry.ko,
+        `${entry.path}: write 소유자나 관리자, not 소유자/관리자`,
+      ).not.toMatch(/[가-힣]\/[가-힣]/);
+    }
+  });
+
+  it("keeps action labels short enough to fit a button", () => {
+    for (const entry of entries) {
+      if (!/(Action|Submit|Button)$/.test(entry.path)) continue;
+      if (!/[가-힣]/.test(entry.ko)) continue;
+      expect(
+        entry.ko.length,
+        `${entry.path} is ${entry.ko.length} chars: "${entry.ko}"`,
+      ).toBeLessThanOrEqual(16);
+    }
+  });
+});
+
 describe("supported upload format copy", () => {
   it("advertises exactly the formats the uploader accepts", () => {
     // Legacy Office binaries are not supported; advertising `.doc` would be a

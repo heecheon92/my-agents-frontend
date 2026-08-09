@@ -103,6 +103,37 @@ or fewer** per sentence in descriptions and hints.
 - Keep file extensions, product names, and API terms in Latin script: `PDF`,
   `Markdown`, `.docx`, `Ask`.
 
+### Particles after a renamed noun (조사 호응)
+
+**Never rename a noun with a plain find-and-replace.** Korean particles agree
+with whether the preceding syllable ends in a consonant, so changing the noun
+changes the particle:
+
+| After a consonant | After a vowel |
+|---|---|
+| `공간을` | `베이스를` |
+| `공간은` | `베이스는` |
+| `공간이` | `베이스가` |
+| `공간으로` | `베이스로` |
+| `공간과` | `베이스와` |
+| `공간이나` | `베이스나` |
+
+Renaming `지식 공간` → `지식 베이스` in this repo produced 40 broken particles
+(`지식 베이스을`) in one pass. After any noun rename, grep for the new noun plus
+the following character and check every form:
+
+```bash
+python3 -c "
+import re, collections
+s = open('localization/ko.json', encoding='utf-8').read()
+print(collections.Counter(re.findall(r'베이스(.)', s)).most_common())
+"
+```
+
+Avoid writing copy that needs `(으)로` or `을(를)` to stay correct. If a string
+interpolates a name whose final consonant is unknown, rewrite the sentence so no
+particle directly follows the placeholder.
+
 ### Spacing (띄어쓰기)
 
 `지식 베이스`, `표시 이름`, `공유 요청`, `작업 내역` are spaced. Do not write
