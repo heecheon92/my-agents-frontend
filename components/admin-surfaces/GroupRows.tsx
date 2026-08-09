@@ -13,6 +13,7 @@ import type {
   KnowledgePublishRequestStatus,
 } from "@/model/my-agents";
 import {
+  formatDateTime,
   type GroupRole,
   InlineLoadingIndicator,
   invitationStatusTone,
@@ -131,7 +132,7 @@ export function InvitationRows({
               </div>
               <p className="mt-2 text-xs leading-5 text-cal-muted">
                 {localization.groups.invitationExpiryLabel}:{" "}
-                {invitation.expires_at}
+                {formatDateTime(invitation.expires_at)}
               </p>
               {mode === "management" ? (
                 <details className="mt-2 text-xs text-cal-muted">
@@ -211,7 +212,8 @@ export function MemberRows({
                 </Pill>
               </div>
               <p className="mt-2 text-xs leading-5 text-cal-muted">
-                {localization.groups.memberJoinedLabel}: {member.created_at}
+                {localization.groups.memberJoinedLabel}:{" "}
+                {formatDateTime(member.created_at)}
               </p>
               <details className="mt-2 text-xs text-cal-muted">
                 <summary className="cursor-pointer font-medium text-cal-ink">
@@ -329,7 +331,7 @@ export function PublishRequestRows({
                   {publishRequestTargetLabel(request)}
                 </p>
                 <p className="mt-1 text-xs leading-5 text-cal-muted">
-                  {request.created_at}
+                  {formatDateTime(request.created_at)}
                 </p>
                 <details className="mt-2 rounded-lg bg-cal-canvas p-2 text-xs text-cal-muted">
                   <summary className="cursor-pointer font-medium text-cal-ink">
@@ -347,13 +349,21 @@ export function PublishRequestRows({
                   </div>
                 </details>
               </div>
+              {/*
+                Four same-weight buttons used to sit here with no hierarchy, so
+                "approve without reading" looked as normal as "review". Review
+                is the primary action — it opens the drawer where the content
+                can actually be read — and the direct decisions stay available
+                but visually secondary. They are deliberately kept rather than
+                removed: owner-only quick approve/reject is tested behaviour in
+                `e2e/group-knowledge-v1.spec.ts`.
+              */}
               {showReviewActions || showCancelAction ? (
                 <div className="flex flex-wrap items-center gap-2">
                   {showReviewActions ? (
                     <>
                       <Button
                         type="button"
-                        variant="outline"
                         size="sm"
                         onClick={() => onReviewRequest(request)}
                       >
@@ -361,6 +371,7 @@ export function PublishRequestRows({
                       </Button>
                       <Button
                         type="button"
+                        variant="ghost"
                         size="sm"
                         disabled={mutationPending}
                         onClick={() => onApproveRequest(request.id)}
@@ -369,7 +380,7 @@ export function PublishRequestRows({
                       </Button>
                       <Button
                         type="button"
-                        variant="secondary"
+                        variant="ghost"
                         size="sm"
                         disabled={mutationPending}
                         onClick={() => onRejectRequest(request.id)}
@@ -381,7 +392,7 @@ export function PublishRequestRows({
                   {showCancelAction ? (
                     <Button
                       type="button"
-                      variant="outline"
+                      variant="ghost"
                       size="sm"
                       disabled={mutationPending}
                       onClick={() => onCancelRequest(request.id)}

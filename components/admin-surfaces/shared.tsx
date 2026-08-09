@@ -3,6 +3,7 @@
 import type * as React from "react";
 import { Field, selectClassName } from "@/components/Field";
 import type { Pill } from "@/components/Status";
+import { i18n } from "@/i18n.config";
 import { cn } from "@/lib/utils";
 
 export type GroupRole = "owner" | "admin" | "editor" | "viewer";
@@ -26,6 +27,27 @@ export function formatFileSize(bytes: number) {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+/**
+ * Formats a backend ISO timestamp for display.
+ *
+ * Group rows rendered `created_at` and `expires_at` straight through, so users
+ * saw `2026-06-01T00:00:00.000Z` next to a member's name. Invalid or missing
+ * values return an empty string rather than `Invalid Date`.
+ */
+export function formatDateTime(
+  value: string | null | undefined,
+  locale: string = i18n.defaultLocale,
+) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(locale, {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
 }
 
 export function safeErrorMessage(error: unknown, fallback: string) {

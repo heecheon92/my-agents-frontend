@@ -70,21 +70,31 @@ type GroupsWorkspaceProps = {
   knowledgeBasesLoading: boolean;
 };
 
+/**
+ * "N more" was static text telling the user to go somewhere, while the link
+ * that actually goes there was a separate button in the card header. The hint
+ * is the link now — it names a destination, so it should be one.
+ */
 function HiddenRowsHint({
   hiddenCount,
   localization,
+  href,
 }: {
   hiddenCount: number;
   localization: GroupsLocalization;
+  href: string;
 }) {
   if (hiddenCount <= 0) return null;
   return (
-    <p className="mt-3 rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-xs text-cal-muted">
+    <Link
+      href={href}
+      className="mt-3 block rounded-lg border border-cal-hairline bg-cal-surface-soft p-3 text-xs text-cal-muted transition-colors hover:border-cal-primary/40 hover:bg-cal-surface-soft hover:text-cal-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-km-accent"
+    >
       {localization.groups.hiddenRowsHint.replace(
         "{count}",
         String(hiddenCount),
       )}
-    </p>
+    </Link>
   );
 }
 
@@ -289,6 +299,7 @@ export function GroupsWorkspace({
                 onUpdateMemberRole={onUpdateMemberRole}
               />
               <HiddenRowsHint
+                href={groupManagementHref(activeGroupId ?? "", "members")}
                 hiddenCount={memberCount - memberPreviewRows.length}
                 localization={localization}
               />
@@ -344,6 +355,7 @@ export function GroupsWorkspace({
                 onManageInvitation={onManageInvitation}
               />
               <HiddenRowsHint
+                href={groupManagementHref(activeGroupId ?? "", "invitations")}
                 hiddenCount={invitationCount - invitationPreviewRows.length}
                 localization={localization}
               />
@@ -392,6 +404,7 @@ export function GroupsWorkspace({
                 localization={localization}
               />
               <HiddenRowsHint
+                href={groupManagementHref(activeGroupId ?? "", "source-spaces")}
                 hiddenCount={
                   activeGroupKnowledgeBases.length -
                   sourceSpacePreviewRows.length
@@ -446,6 +459,10 @@ export function GroupsWorkspace({
                 onRejectRequest={onRejectPublishRequest}
               />
               <HiddenRowsHint
+                href={groupManagementHref(
+                  activeGroupId ?? "",
+                  "publish-requests",
+                )}
                 hiddenCount={
                   publishRequestCount - publishRequestPreviewRows.length
                 }

@@ -66,7 +66,7 @@ export function GroupsPublishDialogs({
               </DrawerDescription>
             </div>
             {publishReviewRequest ? (
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="hidden flex-wrap items-center gap-2 lg:flex">
                 <Button
                   type="button"
                   variant="secondary"
