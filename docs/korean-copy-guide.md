@@ -64,10 +64,10 @@ Keep these. Do not "simplify" them into vaguer Korean:
 | retrieval | `검색` | agent trace, activity events |
 | citation | `인용` | everywhere; this one is user-facing |
 
-**Why.** This is a portfolio product whose audience includes technical
-reviewers assessing the author's AI engineering work. Naming the pipeline
-accurately is part of what the product is demonstrating, so `임베딩 생성` is
-better than a softened `의미 분석`, and `청크` is better than `문단`.
+**Why.** Showing its work is part of what this product offers, and its readers
+are technical enough to want the real names rather than a euphemism. So
+`임베딩 생성` is better than a softened `의미 분석`, and `청크` is better than
+`문단`.
 
 **The line.** Domain terms are allowed where the surface is already about
 inspection — extraction history, citation details, the agent trace. They do not

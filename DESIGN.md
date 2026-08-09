@@ -32,8 +32,8 @@ documents, and permissions read as connected operational evidence.
 **Trust signals.** Provenance sits next to answers. Backend-owned limits are
 stated honestly. Errors explain the next safe step without exposing internals.
 
-**Audience.** Alongside ordinary users, this is a portfolio product read by
-technical reviewers assessing the author's AI engineering work. That is a design
+**Audience.** Readers are technically literate and want to see *how* an answer
+was produced, not only that it appeared. That is a design
 input, not just context: the retrieval pipeline, agent trace, citation chunks,
 and extraction stages are **evidence of how the system works, and should stay
 legible rather than be smoothed away**. Name the pipeline accurately in
