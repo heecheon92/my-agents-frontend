@@ -260,6 +260,7 @@ export function SourcesWorkspace({
             <div className="min-h-0 flex-1 overflow-auto">
               <DocumentsTable
                 documents={documents}
+                isFiltered={documentSearch.trim().length > 0}
                 activeDocumentId={activeDocumentId}
                 activeIngestionDocumentIds={activeIngestionDocumentIds}
                 canReingestDocuments={hasActiveKnowledgeBase}

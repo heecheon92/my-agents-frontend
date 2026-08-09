@@ -46,6 +46,8 @@ type DocumentsTableLocalization = {
     sourceTableDetails: string;
     sourceTableActions: string;
     empty: string;
+    sourceSearchEmptyTitle: string;
+    sourceSearchEmptyDescription: string;
     openSourceDetails: string;
     ingestionLoading: string;
     sourceReadyStatus: string;
@@ -82,6 +84,8 @@ type DocumentsTableProps = {
   activeIngestionDocumentIds: Set<string>;
   canReingestDocuments: boolean;
   canShareDocuments: boolean;
+  /** True when the list is empty only because a search filtered it. */
+  isFiltered: boolean;
   localization: DocumentsTableLocalization;
   onOpenSourceActions: (
     documentId: string,
@@ -95,6 +99,7 @@ export function DocumentsTable({
   activeIngestionDocumentIds,
   canReingestDocuments,
   canShareDocuments,
+  isFiltered,
   localization,
   onOpenSourceActions,
 }: DocumentsTableProps) {
@@ -142,9 +147,19 @@ export function DocumentsTable({
         (documents.data?.length ?? 0) === 0 ? (
           <TableRow className="hover:bg-transparent">
             <TableCell colSpan={4} className="px-4 py-12 whitespace-normal">
+              {/* "No documents yet" is the wrong message when a search
+                  simply matched nothing. */}
               <EmptyState
-                title={localization.documents.empty}
-                description={localization.common.emptyListDescription}
+                title={
+                  isFiltered
+                    ? localization.documents.sourceSearchEmptyTitle
+                    : localization.documents.empty
+                }
+                description={
+                  isFiltered
+                    ? localization.documents.sourceSearchEmptyDescription
+                    : localization.common.emptyListDescription
+                }
               />
             </TableCell>
           </TableRow>

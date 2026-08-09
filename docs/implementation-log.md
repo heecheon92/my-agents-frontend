@@ -538,3 +538,52 @@ Verification passed for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `
 - Recorded backend contract assumptions in `docs/backend-requests.md` pending authoritative hosted OpenAPI/runtime confirmation.
 
 Verification pending for this log entry: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run`, `pnpm build`, and browser/UI smoke after the current edit set is complete.
+
+## 2026-08-09 — UI/UX renewal
+
+Full design pass across the frontend. API wiring, query hooks, services, and the
+BFF proxy were not touched.
+
+Sequence, one commit each:
+
+1. **Test contracts.** Replaced literal class-name and exact-sentence assertions
+   with intent assertions, landed green against unchanged source so the
+   generalization was provable rather than retrofitted. Added
+   `e2e/helpers/layout.ts` and a visual-evidence harness with a horizontal
+   overflow gate at 390px, which nothing checked before.
+2. **ErrorState.** Stopped rendering `error.message`; status-driven localized
+   copy via `utils/error-message.ts`. Backend `detail` deliberately dropped
+   (English prose in a Korean UI) — see `docs/backend-requests.md`.
+3. **Tokens + typography.** Elevation, motion, and semantic radius scales. Full
+   `km-*` dark palette. Pretendard self-hosted as 92 unicode-range subsets,
+   `word-break: keep-all`, negative tracking removed.
+4. **Dark mode.** Cookie-read preference, pre-paint script for `system`, no
+   `next-themes`. A contrast audit caught 20 components hardcoding `bg-white`
+   (body text at 1.11:1 against an AA floor of 4.5).
+5. **Theme toggler.** Animate UI's effect primitive adapted; its button wrapper
+   needs `next-themes`, the effect does not. Fixed upstream persisting after
+   the animation (lost on reload mid-transition) and added a reduced-motion path.
+6. **Korean copy.** ~200 strings rewritten; `docs/korean-copy-guide.md` written
+   as the durable policy. Terminology invariants enforced in
+   `tests/knowledge-copy.test.ts`.
+7. **Chat layout.** Shell owns scrolling (`h-dvh` + per-route fill/scroll);
+   removed `calc(100dvh-8rem)`, which was arithmetically wrong at mobile widths.
+   Conversation list moves into a Sheet below `xl`.
+8. **Composer.** Autosizing textarea, Enter/Shift+Enter with an IME guard,
+   safe-area padding.
+9. **Evidence panel.** Localized event types with a graceful fallback; fixed
+   `<fieldset>` misuse.
+10. **Knowledge.** Raw UUIDs out of the reading path, real search replacing a
+    decorative chip, responsive table.
+11. **Groups.** Formatted timestamps, de-duplicated drawer actions, action
+    hierarchy on review rows, "N more" is now a link.
+12. **Shell/auth.** Password reset made reachable (route, service, and hook all
+    existed; no UI called them). Skeleton auth-restore. Duplicate logout removed.
+
+Verification: `pnpm lint`, `tsc --noEmit`, 165 vitest, 70 Playwright (2 skipped,
+env-gated), `pnpm build`. Visual evidence captured at 390/768/1280 in both
+themes.
+
+Known follow-ups: 76 unreferenced localization leaf keys need a per-key check
+before deletion (some may be reached by dynamic index); three backend contract
+requests are open with codex.

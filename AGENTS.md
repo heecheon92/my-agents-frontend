@@ -107,7 +107,8 @@ Read the relevant repo-local guide before modifying code in that area:
 - `docs/next-component-boundaries.md` for Server Component / Client Component boundary decisions.
 - `docs/server-fetch-policy.md` for server-side fetch freshness, caching, cookies, CSRF, and BFF policy.
 - `docs/mobile-responsiveness.md` for responsive route/screen/overlay changes.
-- `DESIGN.md` for visual language, responsive behavior, component states, accessibility, and content voice.
+- `DESIGN.md` for visual language, layout architecture, component states, accessibility, and responsive behavior.
+- `docs/korean-copy-guide.md` before editing any user-facing string. Korean is this product's primary language, not a translation: it owns the glossary, register rules, anti-patterns, and canonical action labels.
 - `docs/frontend-architecture.md` for feature folders, routes, endpoint coverage, and integration shape.
 - `docs/security-and-backend-boundary.md` for frontend/backend scope and safe auth/session handling.
 - `docs/verification-runbook.md` for validation commands and evidence expectations.
@@ -156,6 +157,7 @@ Build in this order unless the user requests otherwise:
 - Build accessible, keyboard-navigable UI by default.
 - Prefer simple, readable layouts over decorative AI-dashboard noise.
 - Korean and English text should be legible; avoid tiny body text. Use at least comfortable default body sizing unless a component has a clear accessibility reason.
+- Follow `docs/korean-copy-guide.md` for all Korean copy. Never rename a Korean noun with a plain find-and-replace: particles agree with the previous syllable's final consonant, and a rename silently corrupts them.
 - Keep loading, empty, error, and unauthorized states explicit.
 - Agent activity events must be visible as redacted operational steps, not hidden chain-of-thought.
 - Citations should be visually tied to the answer and source document/chunk snippet.
