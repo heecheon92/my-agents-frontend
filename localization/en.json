@@ -76,7 +76,7 @@
     "guestCodeStepTitle": "Step 2 · Start with your code",
     "guestAccessLink": "Continue as a guest",
     "backToLoginLink": "Back to login",
-    "guestDescription": "A guest code will be sent to the address you enter. Guest sessions last 24 hours and limit how many conversations, questions, and documents you can have.",
+    "guestDescription": "A guest code will be sent to the address you enter. Guest sessions are limited in length and in how many conversations, questions, and documents you can have.",
     "guestRequestFailed": "Could not send the guest request",
     "guestRequestUnavailable": "Guest requests are not being accepted right now. Try again in a little while.",
     "guestCodeFailed": "Could not start with that code",
@@ -313,7 +313,7 @@
       "pending": "pending"
     },
     "guestNoticeTitle": "Guest limits",
-    "guestNoticeDescription": "This guest session lasts 24 hours and is limited to one chat, 5 prompts, and 3 document uploads. If you hit a limit, a safe error appears here.",
+    "guestNoticeDescription": "Guest sessions are limited in how long they last and how many conversations, questions, and documents you can have. You will see a message here when you reach a limit.",
     "knowledgeSourceTitle": "Documents for this answer",
     "knowledgeSourceDescription": "Choose which authorized personal or group knowledge bases Ask may reference. System project knowledge may also be added automatically when available.",
     "knowledgeSourceAll": "All sources",
@@ -489,7 +489,7 @@
       "uploadFailed": "Upload or preparation failed.",
       "uploadAndIngestButton": "Upload and prepare files",
       "uploadProcessingButton": "Uploading and preparing...",
-      "guestUploadLimitHint": "Guest upload limits apply automatically, and each accepted file counts towards the three-document limit.",
+      "guestUploadLimitHint": "Guest upload limits apply automatically, and each accepted file counts towards them.",
       "stageLabel": "Step",
       "stages": {
         "queued": "Waiting to start",
@@ -783,9 +783,9 @@
     "byCode": {
       "invalid_credentials": "That email or password is not correct.",
       "guest_access_expired": "Your guest session expired. Request a new code.",
-      "guest_conversation_limit_reached": "Guest sessions are limited to one conversation.",
+      "guest_conversation_limit_reached": "You have used every conversation available in a guest session.",
       "guest_prompt_limit_reached": "You have used every guest question. Create an account to continue.",
-      "guest_document_limit_reached": "Guest sessions are limited to three documents.",
+      "guest_document_limit_reached": "You have uploaded every document available in a guest session.",
       "upload_too_large": "That file is too large. Reduce its size and upload it again.",
       "unsupported_media_type": "That file type is not supported.",
       "publish_request_already_reviewed": "This request was already handled. Refresh the list.",

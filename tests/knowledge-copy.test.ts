@@ -301,6 +301,21 @@ describe("Korean terminology (docs/korean-copy-guide.md)", () => {
     }
   });
 
+  it("does not hardcode environment-configured guest limits", () => {
+    // `24시간`, `대화 1개`, `질문 5개`, `문서 3개` were written into copy from
+    // `.env.example` — which is not production, and production config lives
+    // outside this repo. Stating a limit the deployment does not enforce is
+    // worse than saying a limit exists. Interpolate a served value or stay
+    // general; a `{placeholder}` contains no digit and passes.
+    for (const entry of koreanEntries) {
+      if (!entry.ko.includes("게스트")) continue;
+      expect(
+        entry.ko,
+        `${entry.path}: interpolate the real value instead of hardcoding it`,
+      ).not.toMatch(/\d+\s*(시간|분|일|개)/);
+    }
+  });
+
   it("keeps action labels short enough to fit a button", () => {
     for (const entry of entries) {
       if (!/(Action|Submit|Button)$/.test(entry.path)) continue;

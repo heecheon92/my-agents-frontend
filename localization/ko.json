@@ -76,7 +76,7 @@
     "guestCodeStepTitle": "2단계 · 코드로 시작하기",
     "guestAccessLink": "게스트로 둘러보기",
     "backToLoginLink": "로그인으로 돌아가기",
-    "guestDescription": "입력한 주소로 게스트 코드가 발송됩니다. 게스트 세션은 24시간 동안 쓸 수 있고, 대화·질문·문서 수에 제한이 있습니다.",
+    "guestDescription": "입력한 주소로 게스트 코드가 발송됩니다. 게스트 세션은 사용 기간과 대화·질문·문서 수에 제한이 있습니다.",
     "guestRequestFailed": "게스트 이용 요청을 보내지 못했습니다",
     "guestRequestUnavailable": "지금은 게스트 이용 요청을 받을 수 없습니다. 잠시 후 다시 시도해 주세요.",
     "guestCodeFailed": "게스트 코드로 시작하지 못했습니다",
@@ -313,7 +313,7 @@
       "pending": "대기 중"
     },
     "guestNoticeTitle": "게스트 이용 제한",
-    "guestNoticeDescription": "이 게스트 세션은 24시간 동안 유지되며 대화 1개, 질문 5개, 문서 업로드 3개로 제한됩니다. 제한에 도달하면 안내 메시지가 여기에 표시됩니다.",
+    "guestNoticeDescription": "게스트 세션은 사용 기간과 대화·질문·문서 수에 제한이 있습니다. 제한에 도달하면 안내 메시지가 여기에 표시됩니다.",
     "knowledgeSourceTitle": "이 답변에 사용할 문서",
     "knowledgeSourceDescription": "Ask가 참고할 개인 또는 그룹 지식 베이스를 고르세요. 시스템 프로젝트 지식은 사용 가능하면 자동으로 포함됩니다.",
     "knowledgeSourceAll": "모든 문서",
@@ -489,7 +489,7 @@
       "uploadFailed": "업로드 또는 준비에 실패했습니다.",
       "uploadAndIngestButton": "파일 업로드 및 준비",
       "uploadProcessingButton": "업로드와 준비 중…",
-      "guestUploadLimitHint": "게스트 업로드 제한은 자동으로 적용되며, 올린 파일마다 3개 제한에 포함됩니다.",
+      "guestUploadLimitHint": "게스트 업로드 제한은 자동으로 적용되며, 올린 파일마다 제한에 포함됩니다.",
       "stageLabel": "처리 단계",
       "stages": {
         "queued": "대기 중",
@@ -783,9 +783,9 @@
     "byCode": {
       "invalid_credentials": "이메일 또는 비밀번호가 올바르지 않습니다.",
       "guest_access_expired": "게스트 세션이 만료되었습니다. 새 코드를 요청하세요.",
-      "guest_conversation_limit_reached": "게스트 세션에서는 대화를 1개만 만들 수 있습니다.",
+      "guest_conversation_limit_reached": "게스트 세션에서 만들 수 있는 대화 수를 모두 사용했습니다.",
       "guest_prompt_limit_reached": "게스트 질문 횟수를 모두 사용했습니다. 계정을 만들면 계속할 수 있습니다.",
-      "guest_document_limit_reached": "게스트 세션에서는 문서를 3개까지만 올릴 수 있습니다.",
+      "guest_document_limit_reached": "게스트 세션에서 올릴 수 있는 문서 수를 모두 사용했습니다.",
       "upload_too_large": "파일이 너무 큽니다. 크기를 줄여 다시 올려 주세요.",
       "unsupported_media_type": "지원하지 않는 파일 형식입니다.",
       "publish_request_already_reviewed": "이미 처리된 요청입니다. 목록을 새로고침해 주세요.",

@@ -242,9 +242,9 @@ Resolution: `/guest` passes contextual fallback copy to `ErrorState`, so an unco
 
 ## 2026-08-09 — serve the guest limits instead of hardcoding them in copy
 
-Status: proposed
+Status: sent to the backend agent 2026-08-09, alongside two related items — whether the current limit values are too restrictive now that guest is the main entry path, and whether hosted email delivery actually works before `GUEST_CODE_AUTO_APPROVAL` is enabled.
 Frontend need: State guest limits accurately without the frontend guessing them.
 Current backend behavior: Guest limits are environment-configured — `MY_AGENTS_GUEST_ACCESS_TTL_SECONDS`, `MY_AGENTS_GUEST_MAX_CONVERSATIONS`, `MY_AGENTS_GUEST_CODE_TTL_SECONDS`, and the prompt/document caps. `/auth/me` already exposes `guest_expires_at`, but no counts.
 Requested backend contract: Return the active guest limits — session TTL or expiry, max conversations, max prompts, max documents, and the code TTL — on a payload the UI can read. `/auth/me` covers the in-session cases; the pre-login figures on `/guest` would need an unauthenticated config endpoint, or the copy there stays non-specific.
 Why it matters: Five user-facing strings currently hardcode `24시간`, `대화 1개`, `질문 5개`, `문서 3개`. Those numbers came from `.env.example`, which is **not** production — production configuration lives outside this repo. If the deployed values differ, the product is stating limits that are simply wrong, in exactly the copy `AGENTS.md` requires to be honest.
-Frontend workaround, if any: `chat.guestNoticeDescription`, `auth.guestDescription`, `admin.documents.guestUploadLimitHint`, and two `errors.byCode` strings still carry the literal numbers. The code TTL claim was removed once this was noticed. Interpolating real values is a small change once the data is available.
+Frontend workaround: every hardcoded number is removed — the copy now says a limit exists without naming it, which is general but never wrong. `tests/knowledge-copy.test.ts` fails if a digit-plus-unit reappears in any string mentioning 게스트, so the only way back to specifics is interpolating a served value. That is a small change once the data exists.
