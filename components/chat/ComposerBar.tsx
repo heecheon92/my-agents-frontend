@@ -1,9 +1,13 @@
+import { useEffect, useRef } from "react";
 import { inputClassName } from "@/components/Field";
 import { ErrorState } from "@/components/Status";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { KnowledgeBase } from "@/model/my-agents";
 import type { ChatLocalization, QueuedMessage } from "./types";
+
+/** Roughly eight lines, after which the composer scrolls instead of growing. */
+const MAX_COMPOSER_HEIGHT_PX = 200;
 
 export function describeKnowledgeBaseSelection(
   selection: QueuedMessage["knowledgeBaseSelection"],
@@ -73,10 +77,38 @@ export function ComposerBar({
   onCancelQueuedMessage: () => void;
   composerPlaceholder: string;
 }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Grow with the content instead of scrolling a one-line box. Measured after
+  // every draft change, including when the draft is cleared on send or
+  // restored from the queue.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `draft` is the trigger, not a read value — the height is measured from the DOM after React commits the new text.
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, MAX_COMPOSER_HEIGHT_PX)}px`;
+  }, [draft]);
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey) return;
+    // An IME composition commit also fires Enter; submitting there would send
+    // a half-typed Korean phrase. `isComposing` is the documented guard, and
+    // this is a Korean-first product, so it is not optional.
+    if (event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    formRef.current?.requestSubmit();
+  }
+
   return (
     <form
+      ref={formRef}
       onSubmit={onSubmit}
-      className="border-t border-cal-hairline bg-cal-surface-card p-4"
+      // Safe-area padding: on iOS the composer otherwise sits under the home
+      // indicator, which only became visible once the panel was genuinely
+      // viewport-bounded.
+      className="border-t border-cal-hairline bg-cal-surface-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
     >
       <p className="sr-only" aria-live="polite">
         {statusAnnouncement}
@@ -88,7 +120,10 @@ export function ComposerBar({
               <p className="font-semibold text-cal-ink">
                 {localization.queuedTitle}
               </p>
-              <p className="mt-1 max-h-20 overflow-hidden break-words text-cal-ink">
+              {/* `max-h-20 overflow-hidden` silently truncated with no
+                  affordance — a long queued question just stopped mid-word.
+                  `line-clamp` ellipsizes honestly. */}
+              <p className="mt-1 line-clamp-3 break-words text-cal-ink">
                 {visibleQueuedMessage.content}
               </p>
               <p className="mt-1 text-xs text-cal-muted">{queuedHelper}</p>
@@ -132,13 +167,16 @@ export function ComposerBar({
         </div>
       ) : null}
       <div className="rounded-2xl border border-cal-hairline bg-cal-canvas p-2 shadow-raised sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-2 sm:p-3">
-        <input
+        <textarea
+          ref={textareaRef}
+          rows={1}
           className={cn(
             inputClassName,
-            "min-h-14 w-full border-0 bg-transparent px-3 text-base shadow-none focus-visible:ring-0",
+            "min-h-14 w-full resize-none border-0 bg-transparent px-3 py-3 text-base leading-6 shadow-none focus-visible:ring-0",
           )}
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder={composerPlaceholder}
           disabled={!activeId || isCancelling}
           aria-describedby={

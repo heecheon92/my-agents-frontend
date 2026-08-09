@@ -164,3 +164,97 @@ for (const viewport of VIEWPORTS) {
     await expectNoNestedChatScroll(page);
   });
 }
+
+test("composer sends on Enter and inserts a newline on Shift+Enter", async ({
+  page,
+}) => {
+  let runCount = 0;
+  await page.route("**/api/my-agents/**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace("/api/my-agents", "");
+    const json = (value: unknown) =>
+      route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(value),
+      });
+
+    if (request.method() === "POST" && path.includes("/runs")) {
+      runCount += 1;
+      return json({ ...run, reply: "ok", citations: [] });
+    }
+    if (request.method() === "GET" && path === "/auth/me") return json(user);
+    if (request.method() === "GET" && path === "/conversations") {
+      return json([conversation]);
+    }
+    if (
+      request.method() === "GET" &&
+      path === `/conversations/${conversation.id}`
+    ) {
+      return json(conversation);
+    }
+    if (
+      request.method() === "GET" &&
+      path === `/conversations/${conversation.id}/messages`
+    ) {
+      return json([]);
+    }
+    return json([]);
+  });
+
+  await page.goto("/chat");
+  const composer = page.getByPlaceholder(ko.chat.composerPlaceholder);
+  await expect(composer).toBeVisible();
+
+  // Shift+Enter must not submit.
+  await composer.fill("첫 줄");
+  await composer.press("Shift+Enter");
+  await composer.pressSequentially("둘째 줄");
+  expect(await composer.inputValue()).toContain("\n");
+  expect(runCount).toBe(0);
+
+  // It also has to have grown rather than scrolling a one-line box.
+  const twoLineHeight = await composer.evaluate(
+    (element) => element.getBoundingClientRect().height,
+  );
+  await composer.fill("한 줄");
+  const oneLineHeight = await composer.evaluate(
+    (element) => element.getBoundingClientRect().height,
+  );
+  expect(twoLineHeight).toBeGreaterThan(oneLineHeight);
+
+  await composer.press("Enter");
+  await expect.poll(() => runCount).toBe(1);
+});
+
+test("composer does not submit while an IME composition is active", async ({
+  page,
+}) => {
+  // Korean input commits a syllable with Enter. Submitting on that keystroke
+  // would send a half-typed phrase, so the handler checks `isComposing`.
+  await mockCompactCitationChat(page);
+  await page.goto("/chat");
+
+  const composer = page.getByPlaceholder(ko.chat.composerPlaceholder);
+  await composer.fill("한글");
+
+  const submitted = await composer.evaluate((element) => {
+    const form = element.closest("form");
+    let didSubmit = false;
+    form?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      didSubmit = true;
+    });
+    element.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        bubbles: true,
+        // Chromium reports an in-flight IME commit this way.
+        isComposing: true,
+      } as KeyboardEventInit),
+    );
+    return didSubmit;
+  });
+
+  expect(submitted).toBe(false);
+});
