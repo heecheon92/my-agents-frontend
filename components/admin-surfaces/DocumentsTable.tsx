@@ -27,7 +27,7 @@ import {
 import { cn } from "@/lib/utils";
 import type { Document } from "@/model/my-agents";
 import {
-  documentMeta,
+  documentSecondaryMeta,
   documentSourceLabel,
   InlineLoadingIndicator,
 } from "./shared";
@@ -99,10 +99,10 @@ export function DocumentsTable({
   onOpenSourceActions,
 }: DocumentsTableProps) {
   return (
-    <Table className="min-w-[56rem]">
+    <Table className="min-w-[36rem]">
       <TableHeader>
         <TableRow className="border-cal-hairline bg-cal-surface-soft hover:bg-cal-surface-soft">
-          <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+          <TableHead className="w-[38%] px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
             {localization.documents.sourceTableSource}
           </TableHead>
           <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
@@ -111,10 +111,10 @@ export function DocumentsTable({
           <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
             {localization.documents.sourceTableStatus}
           </TableHead>
-          <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+          <TableHead className="hidden px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted xl:table-cell">
             {localization.documents.sourceTableDetails}
           </TableHead>
-          <TableHead className="px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+          <TableHead className="w-14 px-4 py-3 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
             {localization.documents.sourceTableActions}
           </TableHead>
         </TableRow>
@@ -123,7 +123,7 @@ export function DocumentsTable({
         {documents.isLoading ? (
           <TableRow className="hover:bg-transparent">
             <TableCell
-              colSpan={5}
+              colSpan={4}
               className="px-4 py-14 text-center text-sm text-cal-muted"
             >
               {localization.common.loading}
@@ -132,7 +132,7 @@ export function DocumentsTable({
         ) : null}
         {documents.error ? (
           <TableRow className="hover:bg-transparent">
-            <TableCell colSpan={5} className="px-4 py-6 whitespace-normal">
+            <TableCell colSpan={4} className="px-4 py-6 whitespace-normal">
               <ErrorState error={documents.error} />
             </TableCell>
           </TableRow>
@@ -141,7 +141,7 @@ export function DocumentsTable({
         !documents.error &&
         (documents.data?.length ?? 0) === 0 ? (
           <TableRow className="hover:bg-transparent">
-            <TableCell colSpan={5} className="px-4 py-12 whitespace-normal">
+            <TableCell colSpan={4} className="px-4 py-12 whitespace-normal">
               <EmptyState
                 title={localization.documents.empty}
                 description={localization.common.emptyListDescription}
@@ -177,9 +177,6 @@ export function DocumentsTable({
                   <span className="break-words text-[15px] font-semibold leading-6 text-cal-ink">
                     {document.title}
                   </span>
-                  <span className="break-all text-xs text-cal-muted">
-                    {document.id}
-                  </span>
                 </button>
               </TableCell>
               <TableCell className="px-4 py-4 whitespace-normal text-sm text-cal-body">
@@ -196,8 +193,8 @@ export function DocumentsTable({
                   </Pill>
                 )}
               </TableCell>
-              <TableCell className="px-4 py-4 whitespace-normal text-sm text-cal-muted">
-                {documentMeta(document, localization)}
+              <TableCell className="hidden px-4 py-4 whitespace-normal text-sm text-cal-muted xl:table-cell">
+                {documentSecondaryMeta(document, localization)}
               </TableCell>
               <TableCell className="px-4 py-4 whitespace-normal">
                 <DropdownMenu>

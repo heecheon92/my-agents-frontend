@@ -1,7 +1,7 @@
 "use client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
   canAutoApproveTeamDocumentUpload,
@@ -198,6 +198,22 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
         ? activeKnowledgeBaseId
         : undefined;
   const documents = useKnowledgeBaseDocuments(displayKnowledgeBaseId);
+  const [documentSearch, setDocumentSearch] = useState("");
+  // Filtered here rather than in the table so `DocumentsTable` stays purely
+  // presentational. Client-side is the right call at the list sizes one
+  // knowledge base holds; a server `q` param is premature until it is not.
+  const visibleDocuments = useMemo(() => {
+    const query = documentSearch.trim().toLowerCase();
+    if (!query || !documents.data) return documents;
+    return {
+      ...documents,
+      data: documents.data.filter((document) =>
+        [document.title, document.source_filename]
+          .filter((value): value is string => Boolean(value))
+          .some((value) => value.toLowerCase().includes(query)),
+      ),
+    };
+  }, [documents, documentSearch]);
   const createDocument = useCreateKnowledgeBaseDocument(directWriteKnowledgeBaseId);
   const activeDocumentId = sourceActionsDialog?.documentId ?? selectedDocumentId;
   const activeDocument = documents.data?.find((document) => document.id === activeDocumentId);
@@ -557,7 +573,9 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
           canManageSystemKnowledge={canManageSystemKnowledge}
           canShareActiveDocument={canShareActiveDocument}
           documentKnowledgeBases={documentKnowledgeBases}
-          documents={documents}
+          documents={visibleDocuments}
+          documentSearch={documentSearch}
+          onDocumentSearchChange={setDocumentSearch}
           effectiveDocumentDestination={effectiveDocumentDestination}
           getSourceSpaceActions={sourceSpaceActions}
           groupsError={groups.error}

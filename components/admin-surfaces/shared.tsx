@@ -182,6 +182,31 @@ export function documentMeta(
   return `${source}${pages}`;
 }
 
+/**
+ * The parts of a document's metadata that `documentSourceLabel` does *not*
+ * already say.
+ *
+ * The sources table rendered `documentSourceLabel` in its Type column and
+ * `documentMeta` in its Details column — but `documentMeta` is
+ * `documentSourceLabel` plus the page count, so the two columns printed the
+ * same filename twice. This returns only the remainder, for surfaces that show
+ * both.
+ */
+export function documentSecondaryMeta(
+  doc: {
+    source_page_count?: number | null;
+    source_byte_size?: number | null;
+  },
+  localization: { documents: { pagesLabel: string } },
+) {
+  const parts: string[] = [];
+  if (doc.source_page_count) {
+    parts.push(`${doc.source_page_count} ${localization.documents.pagesLabel}`);
+  }
+  if (doc.source_byte_size) parts.push(formatFileSize(doc.source_byte_size));
+  return parts.join(" · ");
+}
+
 export function documentSourceLabel(
   doc: {
     source_type?: string;

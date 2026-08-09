@@ -31,6 +31,8 @@ type SourcesWorkspaceProps = {
   canShareActiveDocument: boolean;
   documentKnowledgeBases: KnowledgeBase[];
   documents: { data?: Document[]; isLoading: boolean; error: unknown };
+  documentSearch: string;
+  onDocumentSearchChange: (value: string) => void;
   effectiveDocumentDestination: DocumentDestination;
   getSourceSpaceActions: (knowledgeBase: KnowledgeBase) => {
     canManage: boolean;
@@ -66,6 +68,8 @@ type SourcesWorkspaceProps = {
 export function SourcesWorkspace({
   activeDocumentId,
   activeIngestionDocumentIds,
+  documentSearch,
+  onDocumentSearchChange,
   activeKnowledgeBaseId,
   activeSourceSpace,
   activeSystemKnowledgeBaseId,
@@ -162,7 +166,7 @@ export function SourcesWorkspace({
                   .replace("{ready}", String(readyDocumentCount))}
               </p>
               {effectiveDocumentDestination === "system" ? (
-                <p className="mt-2 max-w-3xl rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-900">
+                <p className="mt-2 max-w-3xl rounded-xl border border-cal-warning/25 bg-cal-warning/10 px-3 py-2 text-sm leading-6 text-cal-warning">
                   {localization.documents.systemSourcePublicWarning}
                 </p>
               ) : null}
@@ -233,10 +237,25 @@ export function SourcesWorkspace({
                   {localization.documents.sourceTableDescription}
                 </p>
               </div>
-              <div className="flex items-center gap-2 rounded-xl border border-cal-hairline bg-cal-canvas px-3 py-2 text-sm text-cal-muted">
-                <SearchIcon className="size-4" />
-                <span>{localization.documents.sourceTableSearchHint}</span>
-              </div>
+              {/* This was a decorative chip: a search icon and static text
+                  that looked like a control but was not an input. It filters
+                  for real now — client-side, which is right at the list sizes
+                  a single knowledge base holds. */}
+              <label className="flex items-center gap-2 rounded-control border border-cal-hairline bg-cal-canvas px-3 py-2 text-sm text-cal-muted focus-within:border-km-accent focus-within:ring-3 focus-within:ring-km-accent/20">
+                <SearchIcon className="size-4 shrink-0" aria-hidden="true" />
+                <span className="sr-only">
+                  {localization.documents.sourceSearchLabel}
+                </span>
+                <input
+                  type="search"
+                  value={documentSearch}
+                  onChange={(event) =>
+                    onDocumentSearchChange(event.target.value)
+                  }
+                  placeholder={localization.documents.sourceSearchPlaceholder}
+                  className="w-full min-w-0 bg-transparent text-cal-ink outline-none placeholder:text-cal-muted-soft sm:w-44"
+                />
+              </label>
             </div>
             <div className="min-h-0 flex-1 overflow-auto">
               <DocumentsTable
