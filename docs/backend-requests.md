@@ -153,3 +153,30 @@ Current backend behavior: RALPLAN defines `can_manage_system_knowledge` as the c
 Requested backend contract: Return `can_manage_system_knowledge: true` from `/auth/me` and related auth envelopes only for root/system managers; optionally return read-only `user_type: "root" | "system"` only with that positive capability signal; omit both fields for normal users and guests; accept privileged `POST /knowledge-bases { scope: "system" }`; return system KBs from `GET /knowledge-bases` only to managers; keep normal/guest list/get/manage paths non-enumerating; support system document create/upload/ingest through the planned nested KB document routes or publish an explicit replacement route set; keep ambient system retrieval separate from user-selected personal/group source IDs.
 Why it matters: Normal users and guests should benefit from project knowledge in Ask without seeing or managing system sources. Root/system managers need honest UI warnings that system source content is public to authenticated chat users, including guests.
 Frontend workaround, if any: Frontend schemas and UI now accept the planned system contract, gate management strictly on `can_manage_system_knowledge === true`, filter system KBs out of explicit chat source toggles, and document that backend/OpenAPI remains authoritative.
+
+## 2026-08-09 — machine-readable error codes for localized error copy
+
+Status: proposed
+Frontend need: Render specific, actionable error copy in Korean without printing English backend prose into a Korean UI.
+Current backend behavior: Errors return `{ detail: string }` written in English. `services/my-agents/fetch-client.ts` preserves it on `MyAgentsAPIError.detail`, and the UI previously rendered it verbatim through `ErrorState`.
+Requested backend contract: Alongside the existing `detail`, return a stable machine-readable `code` (for example `guest_prompt_limit_reached`, `invalid_credentials`, `upload_too_large`, `publish_request_already_reviewed`). Codes should be additive, enumerable, and stable across releases; `detail` may stay English and human-readable for logs and API consumers.
+Why it matters: The product renders in Korean. Status codes alone cannot distinguish "you hit the guest prompt limit" from "you lack permission", so today both read as generic 403 copy. `DESIGN.md` requires guest limits and backend-owned constraints to be surfaced honestly, which needs a code the frontend can map to Korean.
+Frontend workaround, if any: `utils/error-message.ts` maps HTTP status to fully localized copy and deliberately drops `detail` so no English reaches the UI. Once `code` exists, the same module gains a code-to-copy map and regains specificity with no other frontend change.
+
+## 2026-08-09 — typed, pre-redacted activity event display contract
+
+Status: proposed
+Frontend need: Render the agent activity timeline as readable operational steps instead of a raw JSON dump.
+Current backend behavior: `GET /conversations/{id}/runs/{run_id}/events` returns `{ event_type, sequence, payload }` where `payload` is a free-form object. `components/chat/evidence-panel/sections.tsx` renders `JSON.stringify(payload, null, 2)` inside a `<pre>` because no key is documented as safe or stable, and `event_type` is shown as a raw backend enum with no localization.
+Requested backend contract: Publish a closed, documented `event_type` enum the frontend can map to localized labels, plus an explicitly safe-for-display subset of payload fields per event type (counts, durations, document/citation counts) that is guaranteed free of prompts, provider traces, chain-of-thought, and credentials. The existing `agent_trace` array is the right shape and should be documented as stable.
+Why it matters: This is `DESIGN.md` open question #5. Activity events are a core trust signal — they are the evidence that the answer came from the user's documents — but a JSON blob under a raw enum reads as a debug console rather than a product surface.
+Frontend workaround, if any: The evidence panel promotes the derived `AgentTraceSummary` stages to the default view and keeps raw payloads behind a disclosure, with `sanitizeActivityEventPayload` stripping known-internal routing keys. That improves the reading path but cannot localize event names or guarantee payload safety.
+
+## 2026-08-09 — ingestion progress for the upload queue
+
+Status: proposed
+Frontend need: Distinguish a large document that is still processing from one that has stalled.
+Current backend behavior: `extractionRunSchema` already carries `stage` and `progress_percent`, but async ingestion appears to leave `progress_percent` at its default until completion, so `UploadQueueRow` can only render a binary spinner.
+Requested backend contract: Emit monotonically increasing `progress_percent` (or a `stage_index` / `stage_total` pair) as an extraction run advances through chunking, embedding, indexing, and entity stages.
+Why it matters: A 12-page PDF and a stalled run currently look identical for minutes, which reads as a hang and drives users to retry work that is already in flight.
+Frontend workaround, if any: The upload queue shows the existing stage labels from `uploadStatusLabels`, which convey phase but not progress.

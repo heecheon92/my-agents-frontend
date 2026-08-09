@@ -721,6 +721,18 @@
     }
   },
   "errors": {
+    "byStatus": {
+      "unauthorized": "You need to sign in again to continue.",
+      "forbidden": "You do not have permission to do this.",
+      "notFound": "That item could not be found. It may already have been deleted.",
+      "conflict": "Something else changed first. Refresh and try again.",
+      "payloadTooLarge": "That file is too large. Reduce its size and upload it again.",
+      "unprocessable": "Check the information you entered and try again.",
+      "tooManyRequests": "Too many requests. Wait a moment and try again.",
+      "server": "The server ran into a problem. Try again in a moment.",
+      "network": "Could not reach the server. Check your connection.",
+      "unknown": "Something went wrong. Try again."
+    },
     "csrfMissing": "Session proof is missing. Please sign in again.",
     "requestFailed": "Request failed",
     "pathNotAllowed": "Path is not allowed",

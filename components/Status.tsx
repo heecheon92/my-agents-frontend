@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
-import { defaultLocalization } from "@/utils/localization";
+import { resolveErrorMessage } from "@/utils/error-message";
+import { defaultLocalization, type Localization } from "@/utils/localization";
 
 export function EmptyState({
   title,
@@ -22,14 +23,27 @@ export function EmptyState({
 export function ErrorState({
   title = defaultLocalization.status.defaultErrorTitle,
   error,
+  description,
+  localization = defaultLocalization,
 }: {
   title?: string;
-  error: unknown;
+  /** A thrown value. Its message is never rendered directly — see `resolveErrorMessage`. */
+  error?: unknown;
+  /**
+   * Already-localized copy for failures the UI detects itself, such as form
+   * validation. Use this instead of wrapping a message in `new Error(...)`:
+   * `error` is treated as untrusted and deliberately collapsed to generic copy.
+   */
+  description?: string;
+  /**
+   * Optional because `LocalizationProvider` is currently hardcoded to `ko` and
+   * `defaultLocalization` *is* the Korean dictionary, so the fallback is
+   * correct at runtime. Threading it explicitly from the 28 call sites is left
+   * for whenever locale switching becomes real.
+   */
+  localization?: Localization;
 }) {
-  const message =
-    error instanceof Error
-      ? error.message
-      : defaultLocalization.status.defaultErrorDescription;
+  const message = description ?? resolveErrorMessage(error, localization);
   return (
     <div className="rounded-xl border border-km-error/25 bg-km-error/8 p-4 text-sm text-km-error">
       <p className="font-semibold">{title}</p>

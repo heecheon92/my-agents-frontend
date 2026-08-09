@@ -90,7 +90,7 @@ export function AccountSettingsPanel() {
           <p className="text-sm font-semibold text-cal-muted">
             {copy.account.summaryEyebrow}
           </p>
-          <h2 className="mt-2 font-heading text-2xl font-semibold tracking-[-0.03em] text-cal-ink">
+          <h2 className="mt-2 font-heading text-2xl font-semibold text-cal-ink">
             {user.data?.nickname ?? copy.account.loadingAccount}
           </h2>
           <dl className="mt-5 grid gap-3 text-sm">
@@ -125,7 +125,7 @@ export function AccountSettingsPanel() {
             className="cal-card rounded-xl p-5"
           >
             <div>
-              <h2 className="font-heading text-xl font-semibold tracking-[-0.03em] text-cal-ink">
+              <h2 className="font-heading text-xl font-semibold text-cal-ink">
                 {copy.account.nicknameTitle}
               </h2>
               <p className="mt-2 text-sm leading-6 text-cal-muted">
@@ -198,7 +198,7 @@ export function AccountSettingsPanel() {
             className="cal-card rounded-xl p-5"
           >
             <div>
-              <h2 className="font-heading text-xl font-semibold tracking-[-0.03em] text-cal-ink">
+              <h2 className="font-heading text-xl font-semibold text-cal-ink">
                 {copy.account.passwordTitle}
               </h2>
               <p className="mt-2 text-sm leading-6 text-cal-muted">
@@ -257,7 +257,7 @@ export function AccountSettingsPanel() {
               {passwordError ? (
                 <ErrorState
                   title={copy.account.passwordErrorTitle}
-                  error={new Error(passwordError)}
+                  description={passwordError}
                 />
               ) : null}
               {updatePassword.error ? (
