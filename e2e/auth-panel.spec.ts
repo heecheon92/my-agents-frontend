@@ -59,8 +59,6 @@ test.describe("auth pages", () => {
     await expect(
       page.getByRole("button", { name: ko.auth.guestCodeSubmit }),
     ).toHaveCount(0);
-    await expect(page.getByText(ko.auth.heroTitle)).toHaveCount(0);
-    await expect(page.getByText(ko.auth.heroDescription)).toHaveCount(0);
     await expectSingleLineText(page, ko.auth.welcomeBack);
   });
 
@@ -97,8 +95,6 @@ test.describe("auth pages", () => {
     await expect(
       page.getByRole("button", { name: ko.auth.guestCodeSubmit }),
     ).toHaveCount(0);
-    await expect(page.getByText(ko.auth.heroTitle)).toHaveCount(0);
-    await expect(page.getByText(ko.auth.heroDescription)).toHaveCount(0);
   });
 
   test("guest access request posts email and shows a generic accepted message", async ({

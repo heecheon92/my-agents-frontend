@@ -484,9 +484,6 @@ test("Groups dashboard caps previews and opens dedicated management pages", asyn
   await expect(page.getByText("Personal strategy memo")).toBeVisible();
   await expect(page.getByText("Archived context memo")).toBeVisible();
   await expect(page.getByText("Rejected field memo")).toHaveCount(0);
-  await expect(
-    page.getByRole("button", { name: ko.admin.groups.requestShareAction }),
-  ).toHaveCount(0);
   // Derived from ko.json rather than hardcoding the copy: each of the four
   // overview cards caps its preview and shows a "1 more" hint.
   await expect(
@@ -539,9 +536,6 @@ test("Groups dashboard caps previews and opens dedicated management pages", asyn
       name: ko.admin.groups.viewPublishRequestsAction,
     }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: ko.admin.groups.requestShareAction }),
-  ).toHaveCount(0);
   await expect(page.getByText("Personal strategy memo")).toBeVisible();
   await expect(page.getByText("Private Notes")).toHaveCount(0);
   await page
@@ -573,9 +567,6 @@ test("Publish review controls are owner-only in Group admin UI", async ({
   await expect(
     page.getByRole("button", { name: ko.admin.groups.publishRejectNowButton }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: ko.admin.groups.requestShareAction }),
-  ).toHaveCount(0);
   await page
     .getByRole("button", { name: ko.admin.groups.reviewRequestAction })
     .click();
@@ -601,9 +592,6 @@ test("Publish review controls are owner-only in Group admin UI", async ({
   await expect(
     page.getByRole("heading", { name: ko.admin.groups.publishRequestsTitle }),
   ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: ko.admin.groups.requestShareAction }),
-  ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: ko.admin.groups.publishApproveNowButton }),
   ).toHaveCount(0);

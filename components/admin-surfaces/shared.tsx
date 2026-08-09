@@ -197,7 +197,6 @@ export function documentMeta(
     source_page_count?: number | null;
   },
   localization: {
-    common: { knowledgeBasePrefix: string };
     documents: {
       pdfSourcePrefix: string;
       pdfSource: string;

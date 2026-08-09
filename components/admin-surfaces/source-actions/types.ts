@@ -8,7 +8,6 @@ export type SourceActionsLocalization = {
     chunks: string;
     close: string;
     entities: string;
-    knowledgeBasePrefix: string;
     loading: string;
     relationships: string;
   };

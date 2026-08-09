@@ -37,7 +37,6 @@ type DocumentsTableLocalization = {
   common: {
     loading: string;
     emptyListDescription: string;
-    knowledgeBasePrefix: string;
   };
   documents: {
     sourceTableSource: string;
