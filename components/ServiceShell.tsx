@@ -12,6 +12,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { OnboardingRuntime } from "@/components/onboarding/OnboardingRuntime";
 import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
+import { ThemeTogglerButton } from "@/components/ThemeTogglerButton";
 import { Button } from "@/components/ui/button";
 import {
   Sidebar,
@@ -28,6 +29,7 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import type { ThemePreference } from "@/constants/theme";
 import { useCurrentUser, useLogout } from "@/hooks/use-auth";
 import { useLocalization } from "@/hooks/useLocalization";
 import { ErrorState } from "./Status";
@@ -42,11 +44,13 @@ const navRoutes = [
 type ServiceShellProps = {
   children: React.ReactNode;
   defaultSidebarOpen?: boolean;
+  themePreference?: ThemePreference;
 };
 
 export function ServiceShell({
   children,
   defaultSidebarOpen = true,
+  themePreference = "system",
 }: ServiceShellProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -219,6 +223,7 @@ export function ServiceShell({
               </p>
             </OnboardingTarget>
           </div>
+          <ThemeTogglerButton initialPreference={themePreference} />
           <Button
             className="md:hidden"
             variant="outline"

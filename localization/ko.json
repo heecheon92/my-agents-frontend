@@ -771,7 +771,8 @@
         "light": "밝게",
         "dark": "어둡게"
       },
-      "currentThemeLabel": "지금 화면: {theme}"
+      "currentThemeLabel": "지금 화면: {theme}",
+      "toggleLabel": "화면 테마: {current}. 누르면 {next}(으)로 바뀝니다."
     },
     "account": {
       "title": "계정 설정",

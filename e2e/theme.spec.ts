@@ -177,6 +177,52 @@ test.describe("dark theme", () => {
     });
   }
 
+  test("the shell toggler cycles system, light, and dark", async ({ page }) => {
+    await mockWorkspace(page);
+    await page.goto("/chat");
+    await page.waitForLoadState("networkidle");
+    await dismissOnboarding(page);
+
+    const options = ko.settings.appearance.themeOptions;
+    const toggler = page.getByRole("button", {
+      name: new RegExp(options.system),
+    });
+    await expect(toggler).toBeVisible();
+
+    // system -> light
+    await toggler.click();
+    await expect(page.locator("html")).not.toHaveClass(/dark/);
+
+    // light -> dark, the transition that actually animates
+    await page.getByRole("button", { name: new RegExp(options.light) }).click();
+    await expect(page.locator("html")).toHaveClass(/dark/);
+
+    // The cookie must survive a reload, not just the in-memory state.
+    await page.reload();
+    await expect(page.locator("html")).toHaveClass(/dark/);
+  });
+
+  test("the toggler still switches under reduced motion", async ({
+    browser,
+  }) => {
+    // Upstream's effect always runs the wipe; DESIGN.md requires a fallback,
+    // so verify the theme still changes when animation is skipped entirely.
+    const context = await browser.newContext({ reducedMotion: "reduce" });
+    const page = await context.newPage();
+    await mockWorkspace(page);
+    await page.goto("/chat");
+    await page.waitForLoadState("networkidle");
+    await dismissOnboarding(page);
+
+    const options = ko.settings.appearance.themeOptions;
+    await page
+      .getByRole("button", { name: new RegExp(options.system) })
+      .click();
+    await page.getByRole("button", { name: new RegExp(options.light) }).click();
+    await expect(page.locator("html")).toHaveClass(/dark/);
+    await context.close();
+  });
+
   test("settings exposes the theme control", async ({ page }) => {
     await mockWorkspace(page);
     await page.goto("/settings/appearance");

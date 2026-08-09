@@ -771,7 +771,8 @@
         "light": "Light",
         "dark": "Dark"
       },
-      "currentThemeLabel": "Currently showing: {theme}"
+      "currentThemeLabel": "Currently showing: {theme}",
+      "toggleLabel": "Theme: {current}. Press to switch to {next}."
     },
     "account": {
       "title": "Account settings",
