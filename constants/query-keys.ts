@@ -6,6 +6,9 @@ export const MyAgentsQueryKeys = {
     me() {
       return ["my-agents", "auth", "me"] as const;
     },
+    guestPolicy() {
+      return ["my-agents", "auth", "guest-policy"] as const;
+    },
   },
   memories: {
     settings() {

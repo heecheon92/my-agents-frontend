@@ -50,6 +50,23 @@ export const acceptedResponseSchema = z
   })
   .strict();
 
+/**
+ * The active guest configuration, served unauthenticated so `/guest` can state
+ * real limits instead of hardcoding them.
+ *
+ * `code_delivery_mode` matters as much as the numbers: with `manual_approval`
+ * the UI must not claim a code was sent, because nobody has sent one yet.
+ */
+export const guestPolicySchema = z.object({
+  enabled: z.boolean(),
+  code_delivery_mode: z.enum(["automatic_email", "manual_approval"]),
+  code_ttl_seconds: z.number(),
+  session_ttl_seconds: z.number(),
+  max_conversations: z.number(),
+  max_prompts: z.number(),
+  max_document_uploads: z.number(),
+});
+
 export const guestAccessRequestSchema = z
   .object({
     email: z.string().email(),
@@ -121,6 +138,7 @@ export type SignupRequest = z.infer<typeof signupRequestSchema>;
 export type SignupResponse = z.infer<typeof signupResponseSchema>;
 export type VerifyEmailRequest = z.infer<typeof verifyEmailRequestSchema>;
 export type LoginRequest = z.infer<typeof loginRequestSchema>;
+export type GuestPolicy = z.infer<typeof guestPolicySchema>;
 export type GuestAccessRequest = z.infer<typeof guestAccessRequestSchema>;
 export type GuestAccessResponse = z.infer<typeof guestAccessResponseSchema>;
 export type GuestLoginRequest = z.infer<typeof guestLoginRequestSchema>;

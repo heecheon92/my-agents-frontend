@@ -5,7 +5,9 @@ import {
   type AccountPasswordUpdateRequest,
   acceptedResponseSchema,
   type GuestAccessRequest,
+  type GuestPolicy,
   guestAccessResponseSchema,
+  guestPolicySchema,
   type LoginRequest,
   type LoginResponse,
   loginResponseSchema,
@@ -69,6 +71,11 @@ export class MyAgentsAuthAPI {
       body: { code },
     });
     return parseWithSchema(loginResponseSchema, value);
+  }
+
+  async guestPolicy(): Promise<GuestPolicy> {
+    const value = await this.client.fetch(API_PATH.auth.guestPolicy);
+    return parseWithSchema(guestPolicySchema, value);
   }
 
   async requestPasswordReset(

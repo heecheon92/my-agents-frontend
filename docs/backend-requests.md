@@ -248,3 +248,44 @@ Current backend behavior: Guest limits are environment-configured — `MY_AGENTS
 Requested backend contract: Return the active guest limits — session TTL or expiry, max conversations, max prompts, max documents, and the code TTL — on a payload the UI can read. `/auth/me` covers the in-session cases; the pre-login figures on `/guest` would need an unauthenticated config endpoint, or the copy there stays non-specific.
 Why it matters: Five user-facing strings currently hardcode `24시간`, `대화 1개`, `질문 5개`, `문서 3개`. Those numbers came from `.env.example`, which is **not** production — production configuration lives outside this repo. If the deployed values differ, the product is stating limits that are simply wrong, in exactly the copy `AGENTS.md` requires to be honest.
 Frontend workaround: every hardcoded number is removed — the copy now says a limit exists without naming it, which is general but never wrong. `tests/knowledge-copy.test.ts` fails if a digit-plus-unit reappears in any string mentioning 게스트, so the only way back to specifics is interpolating a served value. That is a small change once the data exists.
+
+## 2026-08-09 — backend response: guest policy endpoint
+
+Status: implemented backend-side (uncommitted at time of writing); frontend wired.
+
+`GET /auth/guest/policy`, unauthenticated, returns the active configuration:
+
+```json
+{
+  "enabled": true,
+  "code_delivery_mode": "automatic_email" | "manual_approval",
+  "code_ttl_seconds": 900,
+  "session_ttl_seconds": 86400,
+  "max_conversations": 3,
+  "max_prompts": 20,
+  "max_document_uploads": 5
+}
+```
+
+Repo defaults were raised from 1/5/3 to 3 conversations, 20 prompts, 5
+documents, on the argument that the old values were too narrow to evaluate
+retrieval and follow-up behaviour. **Production overrides these**, so the
+externally managed configuration has to be updated separately for the new
+defaults to apply.
+
+**The operational finding matters more than the endpoint.** Hosted automatic
+delivery is *not* active: production has `MY_AGENTS_GUEST_CODE_AUTO_APPROVAL=false`,
+and a live request through the deployed BFF returned 200 while producing no
+email event. The Resend credential and sender are verified and work — the flag
+is simply off. Until it is on, the frontend must not say a code was sent.
+
+That is why the panel keys its copy on `code_delivery_mode` rather than assuming
+delivery. It also renders nothing about how the code arrives until the policy
+loads, so a slow or failed policy fetch cannot produce a false promise.
+
+The BFF allowlist needed `/auth/guest/policy` added; without it the deployed
+proxy rejects the path.
+
+To enable automatic delivery, the hosted service needs `GUEST_ACCESS_ENABLED=true`,
+`GUEST_CODE_AUTO_APPROVAL=true`, and the three limit variables, then a redeploy
+and a repeat of the hosted probe.

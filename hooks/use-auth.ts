@@ -43,6 +43,21 @@ export function useLogin() {
   });
 }
 
+/**
+ * The active guest configuration.
+ *
+ * Unauthenticated and cached for the session: it changes only with a redeploy,
+ * and `/guest` needs it before the visitor does anything.
+ */
+export function useGuestPolicy() {
+  return useQuery({
+    queryKey: MyAgentsQueryKeys.auth.guestPolicy(),
+    queryFn: () => myAgentsAPI.auth.guestPolicy(),
+    staleTime: 5 * 60 * 1000,
+    retry: 1,
+  });
+}
+
 export function useGuestAccessRequest() {
   return useMutation({
     mutationFn: (payload: GuestAccessRequest) =>

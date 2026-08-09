@@ -7,7 +7,11 @@ import { useState } from "react";
 import { Field, inputClassName } from "@/components/Field";
 import { ErrorState } from "@/components/Status";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { useGuestAccessRequest, useGuestCodeLogin } from "@/hooks/use-auth";
+import {
+  useGuestAccessRequest,
+  useGuestCodeLogin,
+  useGuestPolicy,
+} from "@/hooks/use-auth";
 import { useLocalization } from "@/hooks/useLocalization";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +29,7 @@ import { cn } from "@/lib/utils";
  */
 export function GuestAccessPanel() {
   const router = useRouter();
+  const guestPolicy = useGuestPolicy();
   const guestAccessRequest = useGuestAccessRequest();
   const guestCodeLogin = useGuestCodeLogin();
   const [guestEmail, setGuestEmail] = useState("");
@@ -54,6 +59,32 @@ export function GuestAccessPanel() {
   }
 
   const isBusy = guestAccessRequest.isPending || guestCodeLogin.isPending;
+  const policy = guestPolicy.data;
+  // Until the policy loads, say nothing about how the code arrives. Promising
+  // "a code was sent" when delivery is actually manual is the failure this
+  // whole contract exists to prevent.
+  const deliveryCopy = !policy
+    ? null
+    : policy.code_delivery_mode === "automatic_email"
+      ? localization.guestDeliveryAutomatic
+      : localization.guestDeliveryManual;
+  const sentCopy =
+    policy?.code_delivery_mode === "automatic_email"
+      ? localization.guestSentAutomatic
+      : policy
+        ? localization.guestSentManual
+        : null;
+  const limitsCopy = policy
+    ? localization.guestLimitsSummary
+        .replace(
+          "{hours}",
+          String(Math.round(policy.session_ttl_seconds / 3600)),
+        )
+        .replace("{conversations}", String(policy.max_conversations))
+        .replace("{prompts}", String(policy.max_prompts))
+        .replace("{documents}", String(policy.max_document_uploads))
+    : null;
+  const isGuestDisabled = policy?.enabled === false;
 
   return (
     <main className="min-h-dvh bg-cal-canvas py-6 sm:py-8">
@@ -67,13 +98,32 @@ export function GuestAccessPanel() {
             {localization.guestPageDescription}
           </p>
 
-          <section className="mt-8 grid gap-3">
+          {isGuestDisabled ? (
+            <div className="mt-8 rounded-control border border-cal-warning/25 bg-cal-warning/10 p-4 text-sm leading-6 text-cal-body">
+              <p className="font-semibold text-cal-ink">
+                {localization.guestUnavailableTitle}
+              </p>
+              <p className="mt-1">{localization.guestUnavailableDescription}</p>
+            </div>
+          ) : null}
+
+          <section
+            className="mt-8 grid gap-3"
+            hidden={isGuestDisabled}
+            aria-hidden={isGuestDisabled}
+          >
             <h2 className="text-sm font-semibold text-cal-ink">
               {localization.guestRequestStepTitle}
             </h2>
             <p className="text-sm leading-6 text-cal-muted">
               {localization.guestDescription}
             </p>
+            {deliveryCopy ? (
+              <p className="text-sm leading-6 text-cal-muted">{deliveryCopy}</p>
+            ) : null}
+            {limitsCopy ? (
+              <p className="text-sm leading-6 text-cal-muted">{limitsCopy}</p>
+            ) : null}
             {guestAccessRequest.error ? (
               <ErrorState
                 error={guestAccessRequest.error}
@@ -121,12 +171,17 @@ export function GuestAccessPanel() {
                     "{email}",
                     requestedEmail,
                   )}
+                  {sentCopy ? ` ${sentCopy}` : ""}
                 </p>
               </output>
             ) : null}
           </section>
 
-          <section className="mt-6 grid gap-3 border-t border-cal-hairline pt-6">
+          <section
+            className="mt-6 grid gap-3 border-t border-cal-hairline pt-6"
+            hidden={isGuestDisabled}
+            aria-hidden={isGuestDisabled}
+          >
             <h2 className="text-sm font-semibold text-cal-ink">
               {localization.guestCodeStepTitle}
             </h2>

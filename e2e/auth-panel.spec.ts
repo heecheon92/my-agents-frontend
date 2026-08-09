@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import ko from "@/localization/ko.json";
+import type { GuestPolicy } from "@/model/my-agents";
 
 async function expectSingleLineText(
   page: import("@playwright/test").Page,
@@ -120,6 +121,24 @@ test.describe("auth pages", () => {
         body: JSON.stringify({ detail: "unexpected code redemption" }),
         contentType: "application/json",
         status: 500,
+      });
+    });
+
+    // Without this the page asks the real backend, which currently reports
+    // guest access disabled — and the form is then correctly hidden.
+    await page.route("**/api/my-agents/auth/guest/policy", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          enabled: true,
+          code_delivery_mode: "manual_approval",
+          code_ttl_seconds: 900,
+          session_ttl_seconds: 86400,
+          max_conversations: 3,
+          max_prompts: 20,
+          max_document_uploads: 5,
+        }),
       });
     });
 
@@ -391,4 +410,91 @@ test("a first-time visitor is pointed at guest access", async ({ page }) => {
   await expect(
     page.getByRole("link", { name: ko.auth.guestAccessLink }),
   ).toBeVisible();
+});
+
+const guestPolicy: GuestPolicy = {
+  enabled: true,
+  code_delivery_mode: "automatic_email",
+  code_ttl_seconds: 900,
+  session_ttl_seconds: 86400,
+  max_conversations: 3,
+  max_prompts: 20,
+  max_document_uploads: 5,
+};
+
+async function mockGuestPolicy(
+  page: import("@playwright/test").Page,
+  policy: Partial<typeof guestPolicy>,
+) {
+  // Registration order matters: Playwright checks handlers in reverse, so the
+  // catch-all has to go first or it swallows the policy request.
+  await page.route("**/api/my-agents/**", async (route) => {
+    if (route.request().method() === "POST") {
+      return route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ status: "accepted" }),
+      });
+    }
+    return route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: JSON.stringify({ detail: "Not authenticated" }),
+    });
+  });
+  await page.route("**/api/my-agents/auth/guest/policy", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ...guestPolicy, ...policy }),
+    });
+  });
+}
+
+test("guest page states the real limits from the policy", async ({ page }) => {
+  await mockGuestPolicy(page, {});
+  await page.goto("/guest");
+
+  // Interpolated, not hardcoded: 86400s becomes 24 hours.
+  await expect(
+    page.getByText(
+      ko.auth.guestLimitsSummary
+        .replace("{hours}", "24")
+        .replace("{conversations}", "3")
+        .replace("{prompts}", "20")
+        .replace("{documents}", "5"),
+    ),
+  ).toBeVisible();
+});
+
+test("guest page never promises an email when delivery is manual", async ({
+  page,
+}) => {
+  // This is production's current state: enabled, but codes are issued by hand.
+  // Saying "your code was sent" here would be a lie.
+  await mockGuestPolicy(page, { code_delivery_mode: "manual_approval" });
+  await page.goto("/guest");
+
+  await expect(page.getByText(ko.auth.guestDeliveryManual)).toBeVisible();
+  await expect(page.getByText(ko.auth.guestDeliveryAutomatic)).toHaveCount(0);
+
+  await page
+    .getByRole("textbox", { name: new RegExp(`^${ko.auth.guestEmailLabel}`) })
+    .fill("reviewer@example.com");
+  await page.getByRole("button", { name: ko.auth.guestRequestSubmit }).click();
+
+  await expect(page.getByText(ko.auth.guestSentManual)).toBeVisible();
+  await expect(page.getByText(ko.auth.guestSentAutomatic)).toHaveCount(0);
+});
+
+test("guest page says so plainly when guest access is off", async ({
+  page,
+}) => {
+  await mockGuestPolicy(page, { enabled: false });
+  await page.goto("/guest");
+
+  await expect(page.getByText(ko.auth.guestUnavailableTitle)).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: ko.auth.guestRequestSubmit }),
+  ).toBeHidden();
 });

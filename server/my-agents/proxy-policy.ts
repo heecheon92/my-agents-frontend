@@ -24,6 +24,13 @@ export const BFF_ALLOWLIST: Rule[] = [
   },
   { method: "POST", pattern: /^\/auth\/login$/, name: "auth.login" },
   {
+    // Unauthenticated: `/guest` needs the active limits and delivery mode
+    // before anyone signs in, so the copy can state them accurately.
+    method: "GET",
+    pattern: /^\/auth\/guest\/policy$/,
+    name: "auth.guest.policy",
+  },
+  {
     method: "POST",
     pattern: /^\/auth\/guest\/request$/,
     name: "auth.guest.request",
