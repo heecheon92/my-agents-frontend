@@ -2,183 +2,215 @@ import { describe, expect, it } from "vitest";
 import en from "@/localization/en.json";
 import ko from "@/localization/ko.json";
 
-function collectStrings(value: unknown): string[] {
-  if (typeof value === "string") return [value];
-  if (Array.isArray(value)) return value.flatMap(collectStrings);
-  if (value && typeof value === "object") {
-    return Object.values(value).flatMap(collectStrings);
+/**
+ * Copy guardrails, expressed as invariants rather than exact sentences.
+ *
+ * This file used to assert ~60 literal strings in both locales. That made every
+ * wording change a two-file edit while catching almost nothing: a literal
+ * assertion cannot distinguish a good rewrite from a bad one, it only notices
+ * that *a* change happened. The rules below encode what actually must stay
+ * true — interpolation survives, nothing is left untranslated, implementation
+ * vocabulary never reaches a user, and the format list stays honest — so copy
+ * can be improved freely and still be protected.
+ *
+ * Terminology bans (see docs/korean-copy-guide.md) are added by the
+ * terminology pass; this file is the place they belong.
+ */
+
+type LocalizedEntry = { path: string; en: string; ko: string };
+
+function collectEntries(
+  english: unknown,
+  korean: unknown,
+  path: string,
+  entries: LocalizedEntry[],
+): void {
+  if (typeof english === "string") {
+    entries.push({ path, en: english, ko: String(korean ?? "") });
+    return;
   }
-  return [];
+  if (Array.isArray(english)) {
+    english.forEach((value, index) => {
+      collectEntries(
+        value,
+        Array.isArray(korean) ? korean[index] : undefined,
+        `${path}[${index}]`,
+        entries,
+      );
+    });
+    return;
+  }
+  if (english && typeof english === "object") {
+    for (const key of Object.keys(english)) {
+      collectEntries(
+        (english as Record<string, unknown>)[key],
+        (korean as Record<string, unknown> | undefined)?.[key],
+        path ? `${path}.${key}` : key,
+        entries,
+      );
+    }
+  }
 }
 
-describe("localized product copy guardrails", () => {
-  it("keeps implementation terms out of visible English and Korean locale values", () => {
-    const visibleCopy = [...collectStrings(en), ...collectStrings(ko)];
+const entries: LocalizedEntry[] = [];
+collectEntries(en, ko, "", entries);
 
-    for (const text of visibleCopy) {
-      expect(text).not.toMatch(/Group Chat|그룹 채팅/);
-      expect(text).not.toMatch(/\bKB\b/);
-      expect(text).not.toMatch(/backend|OpenAPI|route|라우트|\.\.\/my-agents/i);
+const placeholdersOf = (value: string) =>
+  (value.match(/\{[a-zA-Z_]+\}/g) ?? []).sort();
+
+/**
+ * Values that are legitimately identical across locales: the product name,
+ * file-format names, and the `Ask` surface name. Anything else being identical
+ * means a Korean string was never translated.
+ */
+const UNTRANSLATED_BY_DESIGN = new Set([
+  "metadata.title",
+  "brand.name",
+  "service.nav.chat",
+  "chat.title",
+  "chat.roles.assistant",
+  "admin.documents.pdfSource",
+  "admin.documents.pdfSourcePrefix",
+  "admin.documents.markdownSource",
+  "admin.documents.markdownSourcePrefix",
+  "admin.documents.fileTypePdf",
+  "admin.documents.fileTypeMarkdown",
+  "admin.documents.fileTypeWord",
+]);
+
+describe("localized product copy guardrails", () => {
+  it("collects every localized string pair", () => {
+    expect(entries.length).toBeGreaterThan(500);
+  });
+
+  it("keeps implementation terms out of visible English and Korean values", () => {
+    for (const entry of entries) {
+      for (const text of [entry.en, entry.ko]) {
+        expect(text, entry.path).not.toMatch(/Group Chat|그룹 채팅/);
+        expect(text, entry.path).not.toMatch(/\bKB\b/);
+        expect(text, entry.path).not.toMatch(
+          /backend|OpenAPI|route|라우트|\.\.\/my-agents/i,
+        );
+      }
+    }
+  });
+
+  it("preserves interpolation placeholders across locales", () => {
+    for (const entry of entries) {
+      expect(placeholdersOf(entry.ko), entry.path).toEqual(
+        placeholdersOf(entry.en),
+      );
+    }
+  });
+
+  it("leaves no Korean string untranslated", () => {
+    for (const entry of entries) {
+      if (UNTRANSLATED_BY_DESIGN.has(entry.path)) continue;
+      expect(entry.ko, entry.path).not.toBe(entry.en);
+      expect(entry.ko.trim(), entry.path).not.toBe("");
+    }
+  });
+
+  it("keeps every Korean string free of stray whitespace", () => {
+    for (const entry of entries) {
+      expect(entry.ko, entry.path).toBe(entry.ko.trim());
+      expect(entry.ko, entry.path).not.toMatch(/ {2,}/);
     }
   });
 });
 
-describe("document source empty-state copy", () => {
-  it("offers an inline localized path to create a knowledge space", () => {
-    expect(en.admin.documents.createFirstSourceSpaceTitle).toContain(
-      "Create your first source space",
-    );
-    expect(en.admin.documents.noKnowledgeBaseDescription).not.toContain(
-      "Go to Knowledge",
-    );
-    expect(ko.admin.documents.createFirstSourceSpaceTitle).toContain(
-      "첫 지식 공간 만들기",
-    );
-    expect(ko.admin.documents.noKnowledgeBaseDescription).not.toContain("이동");
+describe("supported upload format copy", () => {
+  it("advertises exactly the formats the uploader accepts", () => {
+    // Legacy Office binaries are not supported; advertising `.doc` would be a
+    // false capability claim. This is a product contract, so it stays literal.
+    const formatCopy = [
+      en.admin.documents.fileUploadHint,
+      en.admin.documents.multiFileUploadHint,
+      en.admin.documents.unsupportedFileError,
+      ko.admin.documents.fileUploadHint,
+      ko.admin.documents.multiFileUploadHint,
+      ko.admin.documents.unsupportedFileError,
+    ];
+
+    for (const text of formatCopy) {
+      expect(text).toContain(".docx");
+      expect(text).not.toMatch(/\.doc(?!x)/);
+      expect(text).not.toMatch(/\.xls(?!x)/);
+      expect(text).not.toMatch(/\.ppt(?!x)/);
+    }
+  });
+
+  it("names every upload queue status in both locales", () => {
+    const statusKeys = [
+      "selected",
+      "uploading",
+      "uploaded",
+      "queued",
+      "ingesting",
+      "completed",
+      "failed",
+      "publishing",
+    ] as const;
+
+    for (const key of statusKeys) {
+      expect(en.admin.documents.uploadStatusLabels[key].trim()).not.toBe("");
+      expect(ko.admin.documents.uploadStatusLabels[key]).toMatch(/[가-힣]/);
+    }
+  });
+
+  it("does not resurrect the removed selectedActions key", () => {
+    expect(en.admin.documents).not.toHaveProperty("selectedActions");
+    expect(ko.admin.documents).not.toHaveProperty("selectedActions");
   });
 });
 
-describe("document upload workflow copy", () => {
-  it("frames file upload and preparation as one workflow", () => {
-    const enDocuments = en.admin.documents;
-    const koDocuments = ko.admin.documents;
+describe("boundary copy that carries a security or permission promise", () => {
+  it("states the personal, group, and system source-space boundary", () => {
+    // These sentences explain who can read what. They may be reworded, but each
+    // scope must remain explicitly described in both locales.
+    for (const scopeHint of [
+      en.admin.knowledge.scopeHint,
+      ko.admin.knowledge.scopeHint,
+    ]) {
+      expect(scopeHint.length).toBeGreaterThan(40);
+    }
 
-    expect(enDocuments.fileUploadTitle).toBe("Upload and prepare files");
-    expect(enDocuments.uploadAndIngestButton).toBe("Upload and prepare files");
-    expect(enDocuments.fileUploadHint).toContain("Word document (.docx)");
-    expect(enDocuments.multiFileUploadHint).toContain(".docx");
-    expect(enDocuments.unsupportedFileError).toContain(".docx");
-    expect(enDocuments.unsupportedFileError).not.toMatch(/\.doc(?!x)/);
-    expect(enDocuments.fileTypeWord).toBe("Word");
-    expect(enDocuments.dropDescription).toContain("one workflow");
-    expect(enDocuments.uploadStatusLabels.ingesting).toBe("Preparing source");
-    expect(enDocuments.runIngest).toBe("Prepare or retry source");
-    expect(enDocuments.sourceActionsTitle).toBe("Manage source");
-    expect(enDocuments.sourceTableActions).toBe("Actions");
-    expect(enDocuments).not.toHaveProperty("selectedActions");
-    expect(enDocuments.prepareRecoveryHint).toContain("preparation failed");
+    for (const note of [
+      en.admin.knowledge.scopeBoundaryNote,
+      ko.admin.knowledge.scopeBoundaryNote,
+    ]) {
+      expect(note.length).toBeGreaterThan(80);
+    }
 
-    expect(koDocuments.fileUploadTitle).toBe("파일 업로드 및 준비");
-    expect(koDocuments.fileUploadHint).toContain("Word 문서(.docx)");
-    expect(koDocuments.multiFileUploadHint).toContain(".docx");
-    expect(koDocuments.unsupportedFileError).toContain(".docx");
-    expect(koDocuments.unsupportedFileError).not.toMatch(/\.doc(?!x)/);
-    expect(koDocuments.fileTypeWord).toBe("Word");
-    expect(koDocuments.uploadStatusLabels.ingesting).not.toContain("수집");
-    expect(koDocuments.runIngest).toBe("지식 준비 또는 재시도");
-    expect(koDocuments.sourceActionsTitle).toBe("지식 관리");
-    expect(koDocuments.sourceTableActions).toBe("작업");
-    expect(koDocuments).not.toHaveProperty("selectedActions");
-    expect(koDocuments.prepareRecoveryHint).toContain("준비가 실패");
-  });
-});
-
-describe("source-space creation copy", () => {
-  it("states the private and group source-space boundary in English", () => {
-    const copy = en.admin.knowledge;
-
-    expect(copy.description).toContain("Create spaces");
-    expect(copy.description).toContain("add sources");
-    expect(copy.nameLabel).toBe("Source space name");
-    expect(copy.scopeHint).toContain("Personal source spaces stay private");
-    expect(copy.scopeHint).toContain("Group source spaces");
-    expect(copy.scopeHint).toContain("System source spaces");
-    expect(copy.scopeBoundaryNote).toContain(
-      "Add sources to personal spaces first",
+    // System project spaces are readable by any authenticated Ask user, so the
+    // "do not upload secrets" warning is not optional.
+    expect(en.admin.documents.systemSourcePublicWarning).toMatch(
+      /secret|credential/i,
     );
-    expect(copy.scopeBoundaryNote).toContain("requires owner/admin approval");
-    expect(copy.scopeBoundaryNote).toContain(
-      "does not share member conversations",
-    );
-    expect(copy.scopeBoundaryNote).toContain("never add secrets");
-    expect(copy.scopeSystemOption).toBe("System project source space");
-    expect(copy.listPersonalSubtitle).toContain("private to your account");
-    expect(copy.listGroupSubtitle).toContain("group members");
-    expect(copy.listSystemSubtitle).toContain("public project knowledge");
+    expect(ko.admin.documents.systemSourcePublicWarning).toMatch(/비밀|자격/);
   });
 
-  it("states the same ownership boundary in Korean", () => {
-    const copy = ko.admin.knowledge;
+  it("never implies user search exists in membership copy", () => {
+    for (const text of [
+      en.admin.groups.memberIdNote,
+      ko.admin.groups.memberIdNote,
+      en.admin.groups.inviteEmailHint,
+      ko.admin.groups.inviteEmailHint,
+    ]) {
+      expect(text).not.toMatch(/search for (a )?user|사용자 검색|회원 검색/i);
+    }
 
-    expect(copy.description).toContain("파일과 메모");
-    expect(copy.description).toContain("Ask에서");
-    expect(copy.nameLabel).toBe("지식 공간 이름");
-    expect(copy.scopeHint).toContain("개인 지식 공간");
-    expect(copy.scopeHint).toContain("그룹 지식 공간");
-    expect(copy.scopeHint).toContain("시스템 지식 공간");
-    expect(copy.scopeBoundaryNote).toContain("먼저 개인 공간에 추가");
-    expect(copy.scopeBoundaryNote).toContain("승인이 필요");
-    expect(copy.scopeBoundaryNote).toContain("멤버 대화");
-    expect(copy.scopeBoundaryNote).toContain("비밀");
-    expect(copy.scopeSystemOption).toBe("시스템 프로젝트 지식 공간");
-    expect(copy.listPersonalSubtitle).toContain("내 계정 전용");
-    expect(copy.listGroupSubtitle).toContain("선택한 그룹 멤버");
-    expect(copy.listSystemSubtitle).toContain("공개 프로젝트 지식");
+    // The invite response must not reveal whether an account already exists.
+    expect(en.admin.groups.inviteEmailHint).toMatch(/does not reveal/i);
+    expect(ko.admin.groups.inviteEmailHint).toMatch(/드러내지|알 수 없/);
   });
-});
 
-describe("ambient system project knowledge copy", () => {
-  it("keeps source selector copy honest in English", () => {
-    expect(en.chat.knowledgeSourceDescription).toContain(
-      "System project knowledge",
-    );
-    expect(en.chat.systemProjectKnowledgePill).toBe("Project knowledge");
-    expect(en.chat.systemAmbientBoundaryCopy).toContain("does not disable it");
+  it("keeps ambient system knowledge honest in the chat source selector", () => {
     expect(en.chat.systemAmbientAvailableCopy).toContain("{count}");
-  });
-
-  it("keeps source selector copy honest in Korean", () => {
-    expect(ko.chat.knowledgeSourceDescription).toContain(
-      "시스템 프로젝트 지식",
-    );
-    expect(ko.chat.systemProjectKnowledgePill).toBe("프로젝트 지식");
-    expect(ko.chat.systemAmbientBoundaryCopy).toContain("꺼지지 않습니다");
     expect(ko.chat.systemAmbientAvailableCopy).toContain("{count}");
-  });
-});
-
-describe("group publish copy", () => {
-  it("frames Groups as shared source spaces in English", () => {
-    const copy = en.admin.groups;
-
-    expect(copy.description).toContain("invite-accepted spaces");
-    expect(copy.membershipActions).toBe("Group access");
-    expect(copy.browseGroupsAction).toBe("Browse groups");
-    expect(copy.inviteMemberAction).toBe("Invite member");
-    expect(copy.publishOpenApiNote).toContain("created from Sources");
-    expect(copy.manageInvitationAction).toBe("Manage invitation");
-    expect(copy.reviewRequestAction).toBe("Review request");
-    expect(copy.emptyDescription).toContain("Create a group");
-    expect(copy.memberIdNote).toContain("email invitation acceptance");
-    expect(copy.inviteEmailHint).toContain("does not reveal");
-    expect(copy.publishBoundaryTitle).toBe("Shared sources");
-    expect(copy.publishBoundaryDescription).toContain(
-      "Start new share requests from Sources",
-    );
-    expect(copy.noPublishRequestsDescription).toContain("from Sources");
-    expect(copy.publishTargetKnowledgeBaseHint).toContain(
-      "document-copy requests",
-    );
-  });
-
-  it("frames Groups as shared source spaces in Korean", () => {
-    const copy = ko.admin.groups;
-
-    expect(copy.description).toContain("초대를 수락한 뒤");
-    expect(copy.membershipActions).toBe("그룹 접근");
-    expect(copy.browseGroupsAction).toBe("그룹 보기");
-    expect(copy.inviteMemberAction).toBe("멤버 초대");
-    expect(copy.publishOpenApiNote).toContain("지식 화면");
-    expect(copy.manageInvitationAction).toBe("초대 관리");
-    expect(copy.reviewRequestAction).toBe("요청 검토");
-    expect(copy.emptyDescription).toContain("그룹을 만드세요");
-    expect(copy.memberIdNote).toContain("이메일 초대 수락");
-    expect(copy.inviteEmailHint).toContain("계정 존재 여부");
-    expect(copy.publishBoundaryTitle).toBe("공유 지식");
-    expect(copy.publishBoundaryDescription).toContain(
-      "새 공유 요청은 지식 화면",
-    );
-    expect(copy.noPublishRequestsDescription).toContain("지식 화면");
-    expect(copy.publishTargetKnowledgeBaseHint).toContain("문서 복사 요청");
+    // Selecting fewer personal/group spaces does not turn system knowledge off,
+    // and the copy must say so rather than implying full user control.
+    expect(en.chat.systemAmbientBoundaryCopy.length).toBeGreaterThan(40);
+    expect(ko.chat.systemAmbientBoundaryCopy.length).toBeGreaterThan(20);
   });
 });

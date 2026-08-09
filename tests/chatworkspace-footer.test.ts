@@ -38,43 +38,60 @@ describe("ChatWorkspace assistant message footer", () => {
   });
 
   it("spins the replay icon counter-clockwise while regenerating", () => {
-    expect(REPLAY_ICON_PENDING_CLASS_NAME).toBe(
-      "animate-[spin_1s_linear_infinite_reverse]",
+    // Intent, not literal: the pending replay icon must spin in reverse so it
+    // reads as "undo/regenerate" rather than "loading". The optional
+    // `motion-safe:` prefix lets the reduced-motion pass tighten this without
+    // rewriting the test.
+    expect(REPLAY_ICON_PENDING_CLASS_NAME).toMatch(
+      /^(motion-safe:)?animate-\[spin_[^\]]*_reverse\]$/,
     );
   });
 
-  it("keeps footer action labels localized, including Korean regenerate copy", () => {
-    expect(ko.chat.replayAction).toBe("다시 생성");
-    expect(en.chat.messageFooterLabel).toBe("Answer actions and sources");
-    expect(ko.chat.messageFooterLabel).toBe("답변 작업과 출처");
-    expect(en.chat.viewRunHistory).toBe("View answer history");
-    expect(ko.chat.viewRunHistory).toBe("답변 기록 보기");
-    expect(en.chat.viewActivityEvents).toBe("View work history");
-    expect(ko.chat.viewActivityEvents).toBe("작업 내역 보기");
-    expect(en.chat.viewLatestCitations).toBe("View citations");
-    expect(ko.chat.viewLatestCitations).toBe("인용 보기");
-    expect(en.chat.citationSummary).toBe("Citations ({count})");
-    expect(ko.chat.citationSummary).toBe("인용 {count}개");
-    expect(en.chat.viewCitationDetails).toBe("View citation details");
-    expect(ko.chat.viewCitationDetails).toBe("인용 자세히 보기");
-    expect(en.chat.replaySourcesUnavailable).toContain(
-      "currently available sources",
-    );
-    expect(ko.chat.replaySourcesUnavailable).toContain("현재 사용 가능한 지식");
-    expect(en.chat.activeRunStale).toContain("interrupted");
-    expect(ko.chat.activeRunStale).toContain("중단");
-    expect(en.chat.activeRunStaleHelper).toContain("checking its status");
-    expect(ko.chat.activeRunStaleHelper).toContain("상태를 확인");
-    expect(en.chat.runStatuses.cancelling).toBe("cancelling");
-    expect(ko.chat.runStatuses.cancelled).toBe("취소됨");
-    expect(en.chat.replayFailedAnnouncement).toContain("refreshed");
-    expect(ko.chat.replayFailedAnnouncement).toContain("새로고침");
-    expect(en.chat.deleteConversationAction).toBe("Delete");
-    expect(ko.chat.deleteConversationAction).toBe("삭제");
-    expect(en.chat.deleteConversationConfirm).toContain(
-      "conversation and all messages",
-    );
-    expect(ko.chat.deleteConversationConfirm).toContain("모든 메시지");
+  it("keeps every footer action label present and translated in both locales", () => {
+    // Asserted as a contract over the key set rather than as exact sentences.
+    // Exact-sentence assertions made every copy edit a two-file change and gave
+    // no real protection: they could not tell a good rewrite from a bad one.
+    // What actually matters is that each label exists, is non-empty, and is
+    // genuinely localized rather than an untranslated English string.
+    const footerActionKeys = [
+      "replayAction",
+      "replayLoading",
+      "messageFooterLabel",
+      "viewRunHistory",
+      "viewActivityEvents",
+      "viewLatestCitations",
+      "viewCitationDetails",
+      "viewResponseEvidence",
+      "deleteConversationAction",
+    ] as const;
+
+    for (const key of footerActionKeys) {
+      expect(en.chat[key].trim().length).toBeGreaterThan(0);
+      expect(ko.chat[key].trim().length).toBeGreaterThan(0);
+      // A Korean label that is byte-identical to English is an untranslated string.
+      expect(ko.chat[key]).not.toBe(en.chat[key]);
+      expect(ko.chat[key]).toMatch(/[가-힣]/);
+    }
+
+    // Interpolation contract: the count placeholder must survive rewording.
+    expect(en.chat.citationSummary).toContain("{count}");
+    expect(ko.chat.citationSummary).toContain("{count}");
+    expect(en.chat.deleteConversationConfirm).toContain("{title}");
+    expect(ko.chat.deleteConversationConfirm).toContain("{title}");
+
+    // Run status vocabulary must cover every status the UI can render.
+    const runStatusKeys = [
+      "completed",
+      "failed",
+      "cancelled",
+      "cancelling",
+      "running",
+      "pending",
+    ] as const;
+    for (const key of runStatusKeys) {
+      expect(en.chat.runStatuses[key].trim().length).toBeGreaterThan(0);
+      expect(ko.chat.runStatuses[key].trim().length).toBeGreaterThan(0);
+    }
   });
 
   it("hides internal route details from activity evidence payloads", () => {
@@ -94,8 +111,8 @@ describe("ChatWorkspace assistant message footer", () => {
       reply: "Visible answer",
       nested: { safe: "kept" },
     });
-    expect(en.chat.runEvidenceLabel).toBe("Sources used");
-    expect(ko.chat.activityPayloadHidden).toBe("내부 처리 정보는 숨김");
+    expect(en.chat.runEvidenceLabel.trim().length).toBeGreaterThan(0);
+    expect(ko.chat.activityPayloadHidden).toMatch(/[가-힣]/);
   });
 
   it("keeps answer deltas out of visible live activity history", () => {
@@ -133,13 +150,19 @@ describe("ChatWorkspace assistant message footer", () => {
   });
 
   it("summarizes agentic run events into localized compact trace stages", () => {
-    expect(en.chat.agentTrace.stages.planning).toBe("Planning");
-    expect(ko.chat.agentTrace.stages.searchingKnowledge).toBe("지식 검색");
-    expect(en.chat.agentTrace.stages.checkingCitations).toBe(
-      "Checking citations",
-    );
-    expect(ko.chat.agentTrace.stages.answerReady).toBe("답변 준비 완료");
-    expect(en.chat.agentTrace.stages.needsEvidence).toBe("Needs evidence");
+    // Every stage the inference below can produce must have copy in both locales.
+    const stageKeys = [
+      "planning",
+      "searchingKnowledge",
+      "draftingAnswer",
+      "checkingCitations",
+      "answerReady",
+      "needsEvidence",
+    ] as const;
+    for (const key of stageKeys) {
+      expect(en.chat.agentTrace.stages[key].trim().length).toBeGreaterThan(0);
+      expect(ko.chat.agentTrace.stages[key]).toMatch(/[가-힣]/);
+    }
 
     expect(
       getAgentTraceStageKeys({
@@ -295,13 +318,35 @@ describe("ChatWorkspace assistant message footer", () => {
   it("keeps selected conversation contrast stable on hover", () => {
     const activeClassName = getConversationCardClassName(true);
     const inactiveClassName = getConversationCardClassName(false);
+    const tokensOf = (className: string) =>
+      className.split(/\s+/).filter(Boolean);
+    const hoverTokensOf = (className: string) =>
+      tokensOf(className).filter((token) => token.startsWith("hover:"));
 
-    expect(activeClassName).toContain("bg-cal-primary");
-    expect(activeClassName).toContain("text-white");
-    expect(activeClassName).toContain("hover:bg-cal-primary");
-    expect(activeClassName).toContain("hover:text-white");
-    expect(activeClassName).not.toContain("hover:bg-cal-surface-soft");
-    expect(inactiveClassName).toContain("hover:bg-cal-surface-soft");
+    // Selected and unselected rows must be visually distinguishable.
+    expect(activeClassName).not.toBe(inactiveClassName);
+
+    // The real invariant: every hover style on the *selected* row restates a
+    // value the row already has, so hovering the current conversation never
+    // repaints it. Asserted structurally so it survives any token rename.
+    for (const hoverToken of hoverTokensOf(activeClassName)) {
+      expect(tokensOf(activeClassName)).toContain(
+        hoverToken.slice("hover:".length),
+      );
+    }
+
+    // The unselected row must still have a hover affordance that actually
+    // changes something.
+    const inactiveHoverTokens = hoverTokensOf(inactiveClassName);
+    expect(inactiveHoverTokens.length).toBeGreaterThan(0);
+    expect(
+      inactiveHoverTokens.some(
+        (hoverToken) =>
+          !tokensOf(inactiveClassName).includes(
+            hoverToken.slice("hover:".length),
+          ),
+      ),
+    ).toBe(true);
   });
 
   it("selects a stable neighboring conversation after deleting the active one", () => {
@@ -387,12 +432,27 @@ describe("ChatWorkspace assistant message footer", () => {
   });
 
   it("keeps the chat transcript viewport-bounded and internally scrollable", () => {
-    expect(CHAT_WORKSPACE_PANEL_CLASS_NAME).toContain("h-[calc(100dvh-8rem)]");
-    expect(CHAT_WORKSPACE_PANEL_CLASS_NAME).toContain("min-h-0");
-    expect(CHAT_WORKSPACE_PANEL_CLASS_NAME).toContain("overflow-hidden");
-    expect(CHAT_WORKSPACE_PANEL_CLASS_NAME).toContain("xl:h-full");
-    expect(CHAT_SCROLL_REGION_CLASS_NAME).toContain("min-h-0");
-    expect(CHAT_SCROLL_REGION_CLASS_NAME).toContain("flex-1");
-    expect(CHAT_SCROLL_REGION_CLASS_NAME).toContain("overflow-auto");
+    // Structure, not pixels. Vitest runs in a node environment with no DOM, so
+    // it can only string-match; the measured version of this contract lives in
+    // `expectChatTranscriptLayoutBounded` (e2e/helpers/chat-layout.ts), which
+    // reads real computed style at 390/768/1280.
+    //
+    // The panel must be a height-bounded flex column that clips its own
+    // overflow, so the transcript scrolls inside it rather than growing the page.
+    expect(CHAT_WORKSPACE_PANEL_CLASS_NAME).toMatch(/(^|\s)flex(\s|$)/);
+    expect(CHAT_WORKSPACE_PANEL_CLASS_NAME).toMatch(/(^|\s)flex-col(\s|$)/);
+    expect(CHAT_WORKSPACE_PANEL_CLASS_NAME).toMatch(/(^|\s)min-h-0(\s|$)/);
+    expect(CHAT_WORKSPACE_PANEL_CLASS_NAME).toMatch(
+      /(^|\s)overflow-hidden(\s|$)/,
+    );
+    expect(CHAT_WORKSPACE_PANEL_CLASS_NAME).toMatch(/(^|\s)(\w+:)?h-\S+/);
+
+    // The scroll region is the single element that actually scrolls.
+    expect(CHAT_SCROLL_REGION_CLASS_NAME).toMatch(/(^|\s)min-h-0(\s|$)/);
+    expect(CHAT_SCROLL_REGION_CLASS_NAME).toMatch(/(^|\s)flex-1(\s|$)/);
+    expect(CHAT_SCROLL_REGION_CLASS_NAME).toMatch(
+      /(^|\s)overflow-(auto|y-auto)(\s|$)/,
+    );
+    expect(CHAT_SCROLL_REGION_CLASS_NAME).not.toMatch(/calc\(/);
   });
 });

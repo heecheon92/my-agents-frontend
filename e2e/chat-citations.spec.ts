@@ -1,5 +1,11 @@
 import { expect, test } from "@playwright/test";
 import ko from "@/localization/ko.json";
+import {
+  expectChatTranscriptLayoutBounded,
+  expectNoHorizontalOverflow,
+  expectNoNestedChatScroll,
+  VIEWPORTS,
+} from "./helpers/layout";
 
 const now = "2026-06-01T00:00:00.000Z";
 const user = {
@@ -136,3 +142,25 @@ test("assistant citation references stay compact until opened", async ({
   await footer.getByText(ko.chat.advancedDetails).first().click();
   await expect(footer.getByText(citation.document_id)).toBeVisible();
 });
+
+// The measured counterpart to the class-name assertions in
+// `tests/chatworkspace-footer.test.ts`. Vitest has no DOM, so this is the only
+// place the transcript's bounded-and-internally-scrollable contract is actually
+// verified — and the only place it is verified at narrow widths.
+for (const viewport of VIEWPORTS) {
+  test(`chat transcript stays bounded at ${viewport.width}px`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({
+      width: viewport.width,
+      height: viewport.height,
+    });
+    await mockCompactCitationChat(page);
+    await page.goto("/chat");
+
+    await expect(page.getByTestId("chat-workspace-panel")).toBeVisible();
+    await expectNoHorizontalOverflow(page, `/chat @ ${viewport.width}px`);
+    await expectChatTranscriptLayoutBounded(page);
+    await expectNoNestedChatScroll(page);
+  });
+}

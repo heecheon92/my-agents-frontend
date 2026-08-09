@@ -1,6 +1,7 @@
 import { execSync } from "node:child_process";
 import { expect, test } from "@playwright/test";
 import ko from "@/localization/ko.json";
+import { expectChatTranscriptLayoutBounded } from "./helpers/layout";
 
 const demoEmail = process.env.V1_DEMO_EMAIL;
 const demoPassword = process.env.V1_DEMO_PASSWORD;
@@ -8,34 +9,6 @@ const publicVisitorSmoke = process.env.V1_PUBLIC_VISITOR_SMOKE === "1";
 const seededDocumentTitle = "V1 Product Chat Service Demo";
 const sensitiveStoragePattern =
   /(api[_-]?key|csrf|password|session|sk-[a-zA-Z0-9]|token)/i;
-
-async function expectChatTranscriptLayoutBounded(
-  page: import("@playwright/test").Page,
-) {
-  const metrics = await page
-    .getByTestId("chat-workspace-panel")
-    .evaluate((panel) => {
-      const scrollRegion = panel.querySelector(
-        '[data-testid="chat-scroll-region"]',
-      );
-      if (!(scrollRegion instanceof HTMLElement)) {
-        throw new Error("chat scroll region missing");
-      }
-      return {
-        panelHeight: panel.getBoundingClientRect().height,
-        scrollHeight: scrollRegion.getBoundingClientRect().height,
-        viewportHeight: window.innerHeight,
-        scrollOverflowY: window.getComputedStyle(scrollRegion).overflowY,
-        panelOverflowY: window.getComputedStyle(panel).overflowY,
-      };
-    });
-
-  expect(metrics.panelHeight).toBeGreaterThan(0);
-  expect(metrics.scrollHeight).toBeGreaterThan(0);
-  expect(metrics.panelHeight).toBeLessThanOrEqual(metrics.viewportHeight);
-  expect(metrics.scrollOverflowY).toMatch(/auto|scroll/);
-  expect(metrics.panelOverflowY).toBe("hidden");
-}
 
 function latestAssistantFooter(page: import("@playwright/test").Page) {
   return page.getByTestId("assistant-message-footer").last();
