@@ -273,3 +273,48 @@ test.describe("auth pages", () => {
     });
   });
 });
+
+test("login offers a reachable password reset request", async ({ page }) => {
+  // `/password-reset` and `requestPasswordReset` both existed already, but no
+  // UI called them, so the route could only be reached from an email nobody
+  // could trigger.
+  let requestedEmail: string | null = null;
+
+  await page.route("**/api/my-agents/**", async (route) => {
+    const request = route.request();
+    const path = new URL(request.url()).pathname.replace("/api/my-agents", "");
+    if (request.method() === "POST" && path.includes("password-reset")) {
+      requestedEmail = JSON.parse(request.postData() ?? "{}").email ?? null;
+      return route.fulfill({
+        status: 202,
+        contentType: "application/json",
+        body: JSON.stringify({ status: "accepted" }),
+      });
+    }
+    return route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: JSON.stringify({ detail: "Not authenticated" }),
+    });
+  });
+
+  await page.goto("/login");
+  await page
+    .getByRole("button", { name: ko.auth.passwordResetRequestLink })
+    .click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(
+    dialog.getByText(ko.auth.passwordResetRequestTitle),
+  ).toBeVisible();
+
+  await dialog.getByLabel(ko.auth.email).fill("reset@example.com");
+  await dialog
+    .getByRole("button", { name: ko.auth.passwordResetRequestSubmit })
+    .click();
+
+  await expect(
+    dialog.getByText(ko.auth.passwordResetRequestSentDescription),
+  ).toBeVisible();
+  expect(requestedEmail).toBe("reset@example.com");
+});

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
+import { PasswordResetRequestDialog } from "@/components/auth/PasswordResetRequestDialog";
 import { Button } from "@/components/ui/button";
 import {
   useGuestAccessRequest,
@@ -202,6 +203,16 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
                 minLength={isSignup ? 8 : 1}
               />
             </Field>
+            {!isSignup ? (
+              <PasswordResetRequestDialog localization={localization.auth}>
+                <button
+                  type="button"
+                  className="justify-self-start text-sm font-medium text-km-accent underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-km-accent"
+                >
+                  {localization.auth.passwordResetRequestLink}
+                </button>
+              </PasswordResetRequestDialog>
+            ) : null}
             {signupEmail ? (
               <div className="rounded-lg border border-cal-success/20 bg-cal-success/5 p-4 text-sm text-cal-success">
                 <p className="font-semibold">

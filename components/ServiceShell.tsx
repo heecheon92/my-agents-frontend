@@ -29,6 +29,7 @@ import {
   SidebarRail,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { ThemePreference } from "@/constants/theme";
 import { useCurrentUser, useLogout } from "@/hooks/use-auth";
 import { useLocalization } from "@/hooks/useLocalization";
@@ -84,9 +85,32 @@ export function ServiceShell({
   }
 
   if (user.isLoading) {
+    // Was a single centred word on an otherwise blank page. Sketching the
+    // shell keeps the layout from jumping when the session resolves, and the
+    // `aria-live` line still announces what is happening.
     return (
-      <div className="grid min-h-dvh place-items-center bg-cal-canvas text-cal-ink">
-        {localization.service.restoringSession}
+      <div className="flex h-dvh bg-cal-canvas text-cal-ink">
+        <div className="hidden w-72 shrink-0 border-r border-cal-hairline bg-cal-surface-soft p-3 md:block">
+          <Skeleton className="h-14 w-full rounded-card" />
+          <div className="mt-6 grid gap-2">
+            <Skeleton className="h-10 w-full rounded-control" />
+            <Skeleton className="h-10 w-full rounded-control" />
+            <Skeleton className="h-10 w-full rounded-control" />
+            <Skeleton className="h-10 w-full rounded-control" />
+          </div>
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <div className="flex min-h-16 shrink-0 items-center gap-3 border-b border-cal-hairline bg-cal-surface-soft px-4 sm:px-6 lg:px-8">
+            <Skeleton className="size-9 rounded-control" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <div className="flex-1 p-4 sm:p-6 lg:p-8">
+            <Skeleton className="h-full w-full rounded-card" />
+          </div>
+        </div>
+        <p aria-live="polite" className="sr-only">
+          {localization.service.restoringSession}
+        </p>
       </div>
     );
   }
@@ -243,15 +267,6 @@ export function ServiceShell({
             </OnboardingTarget>
           </div>
           <ThemeTogglerButton initialPreference={themePreference} />
-          <Button
-            className="md:hidden"
-            variant="outline"
-            size="sm"
-            onClick={handleLogout}
-            disabled={logout.isPending}
-          >
-            {localization.service.logout}
-          </Button>
         </header>
         {/*
           Two modes, chosen from the route the shell already resolved.
