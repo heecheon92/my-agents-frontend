@@ -152,7 +152,7 @@ export function SourcesWorkspace({
                       : localization.common.scopePersonal}
                 </span>
               </div>
-              <h2 className="mt-2 truncate text-2xl font-semibold tracking-[-0.03em] text-cal-ink">
+              <h2 className="mt-2 truncate text-2xl font-semibold text-cal-ink">
                 {activeSourceSpace?.name ??
                   localization.documents.noSelectedSourceSpaceTitle}
               </h2>

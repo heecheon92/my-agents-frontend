@@ -1,15 +1,42 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+/*
+ * Pretendard, self-hosted from `public/fonts/pretendard/` (SIL OFL 1.1,
+ * licence committed alongside the files).
+ *
+ * This is the dynamic-subset build: 92 woff2 files split by `unicode-range`,
+ * so a browser fetches only the ranges a page actually uses — roughly
+ * 150-400KB for a Korean screen, against 2.1MB for the single full variable
+ * file. That per-file `unicode-range` split is also why this is plain
+ * `@font-face` CSS rather than `next/font/local`, which has no way to express
+ * it. A font file is an asset, not a dependency, so this does not violate the
+ * no-new-dependency rule.
+ *
+ * Before this, `Geist` was loaded with `subsets: ["latin"]` only, so every
+ * Hangul glyph in a Korean-first product fell through to whatever the OS
+ * happened to pick.
+ */
+@import "./pretendard.css";
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  /* The fallback chain lists the platform Korean faces first so that, during
+     the swap window, Hangul renders in a real Korean face rather than a Latin
+     font's tofu. `--font-heading` is now genuinely distinct from `--font-sans`
+     via weight and tracking rather than being a no-op alias. */
+  --font-sans:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui,
+    sans-serif;
   --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-geist-sans);
+  --font-heading:
+    "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
+    "Apple SD Gothic Neo", "Malgun Gothic", "Noto Sans KR", system-ui,
+    sans-serif;
   --color-km-primary: var(--km-primary);
   --color-km-primary-active: var(--km-primary-active);
   --color-km-primary-disabled: var(--km-primary-disabled);
@@ -56,6 +83,12 @@
   --color-cal-badge-pink: var(--cal-badge-pink);
   --color-cal-badge-violet: var(--cal-badge-violet);
   --color-cal-badge-emerald: var(--cal-badge-emerald);
+  /* Declared in `:root` since the original theme work but never exposed, so
+     `bg-km-badge-*` did not exist as a utility. */
+  --color-km-badge-orange: var(--km-badge-orange);
+  --color-km-badge-pink: var(--km-badge-pink);
+  --color-km-badge-violet: var(--km-badge-violet);
+  --color-km-badge-emerald: var(--km-badge-emerald);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -92,6 +125,25 @@
   --radius-2xl: calc(var(--radius) * 2.5);
   --radius-3xl: calc(var(--radius) * 3);
   --radius-4xl: calc(var(--radius) * 3.5);
+
+  /* Semantic radius, per the DESIGN.md shape rule: 10px controls, 16px cards,
+     20px workspace panes. The numeric scale above stays for back-compat, but
+     new work should name the role rather than pick a step. */
+  --radius-control: 10px;
+  --radius-card: 16px;
+  --radius-pane: 20px;
+
+  /* Elevation scale. These replace six hand-written arbitrary shadow values
+     that had drifted apart; each is redefined for dark mode, where elevation
+     comes from borders rather than shadow. */
+  --shadow-control: var(--elevation-control);
+  --shadow-card: var(--elevation-card);
+  --shadow-raised: var(--elevation-raised);
+  --shadow-overlay: var(--elevation-overlay);
+
+  /* Motion. DESIGN.md specifies these timings and easing; nothing implemented
+     them until now. */
+  --ease-standard: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 :root {
@@ -107,6 +159,22 @@
   --space-fluid-md: clamp(1rem, 0.75rem + 1.25vw, 1.75rem);
   --space-fluid-lg: clamp(1.5rem, 1rem + 2.5vw, 3rem);
   --space-fluid-xl: clamp(2.5rem, 1.35rem + 5.75vw, 6rem);
+
+  /* Motion durations. Referenced with `duration-[var(--duration-fast)]`;
+     Tailwind v4 has no `--duration-*` theme namespace to map them onto. */
+  --duration-fast: 150ms;
+  --duration-panel: 220ms;
+
+  --elevation-control: 0 1px 2px rgb(20 22 23 / 0.12);
+  --elevation-card:
+    0 1px 2px rgb(20 22 23 / 0.04), 0 10px 30px rgb(20 22 23 / 0.06);
+  --elevation-raised: 0 10px 30px rgb(20 22 23 / 0.08);
+  --elevation-overlay: 0 18px 60px rgb(20 22 23 / 0.1);
+
+  /* Select chevron. Kept as a variable so the stroke colour can follow the
+     theme; it used to be a hex baked into the data URI. */
+  --km-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5.5 7.5L10 12L14.5 7.5' stroke='%2369716c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+
   --km-canvas: #fbfaf7;
   --km-surface: #ffffff;
   --km-surface-muted: #f1f0eb;
@@ -159,9 +227,12 @@
   --cal-badge-emerald: var(--km-badge-emerald);
   --background: var(--cal-canvas);
   --foreground: var(--cal-ink);
-  --card: var(--cal-canvas);
+  /* Cards and popovers use `surface`, not `canvas`. They previously matched the
+     page background exactly, so no dialog, sheet, dropdown, or tooltip had any
+     elevation contrast against the page behind it. */
+  --card: var(--km-surface);
   --card-foreground: var(--cal-ink);
-  --popover: var(--cal-canvas);
+  --popover: var(--km-surface);
   --popover-foreground: var(--cal-ink);
   --primary: var(--cal-primary);
   --primary-foreground: #ffffff;
@@ -191,33 +262,94 @@
   --sidebar-ring: var(--cal-ink);
 }
 
+/*
+ * Dark theme.
+ *
+ * This block used to override only the shadcn semantic layer, while roughly
+ * 95% of the markup uses `km-*` / `cal-*` utilities directly — so enabling it
+ * produced a half-light screen. Every `--km-*` value is redefined here, and
+ * because `--cal-*` aliases `--km-*`, both namespaces switch together.
+ *
+ * Two constraints shaped the palette:
+ *
+ *  - Warm, not black. The light theme is warm parchment (#fbfaf7); a neutral
+ *    or blue-black dark would read as a different product. These are warm
+ *    charcoals with the same hue bias.
+ *  - `--km-primary` stays a *dark* navy rather than flipping to a light fill.
+ *    Components pair it with a hardcoded `text-white` (for example the sidebar
+ *    brand block and active nav item in `ServiceShell`), so a light primary
+ *    would render white-on-white. Lifting the navy keeps it visible against
+ *    the dark canvas while preserving every existing pairing — about 14 call
+ *    sites that would otherwise each need a `dark:` override.
+ */
 .dark {
-  --background: var(--cal-surface-dark);
-  --foreground: #ffffff;
-  --card: var(--cal-surface-dark-elevated);
-  --card-foreground: #ffffff;
-  --popover: var(--cal-surface-dark-elevated);
-  --popover-foreground: #ffffff;
-  --primary: #ffffff;
-  --primary-foreground: var(--cal-surface-dark);
-  --secondary: var(--cal-surface-dark-elevated);
-  --secondary-foreground: #ffffff;
-  --muted: var(--cal-surface-dark-elevated);
-  --muted-foreground: var(--cal-on-dark-soft);
-  --accent: var(--cal-surface-dark-elevated);
-  --accent-foreground: #ffffff;
-  --destructive: #f87171;
-  --border: rgb(255 255 255 / 10%);
-  --input: rgb(255 255 255 / 15%);
-  --ring: var(--cal-on-dark-soft);
-  --sidebar: var(--cal-surface-dark-elevated);
-  --sidebar-foreground: #ffffff;
-  --sidebar-primary: #ffffff;
-  --sidebar-primary-foreground: var(--cal-surface-dark);
-  --sidebar-accent: #242424;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: rgb(255 255 255 / 10%);
-  --sidebar-ring: var(--cal-on-dark-soft);
+  --km-canvas: #131311;
+  --km-surface: #1c1b19;
+  --km-surface-muted: #24231f;
+  --km-surface-strong: #302e2a;
+  --km-surface-dark: #0d0d0c;
+  --km-surface-dark-elevated: #1c1b19;
+  --km-on-dark-soft: #a09a8f;
+  --km-ink: #f5f3ee;
+  --km-body: #d6d3cb;
+  --km-muted: #a8a297; /* 6.2:1 on canvas — DESIGN.md wants AA+ for metadata */
+  --km-muted-soft: #7d776c;
+  --km-hairline: #35332e;
+  --km-hairline-soft: #26251f;
+  --km-primary: #2f4372; /* 9.8:1 with white text */
+  --km-primary-active: #3a5189;
+  --km-primary-disabled: #302e2a;
+  --km-accent: #3bb3a6;
+  --km-success: #4ba85f;
+  --km-warning: #d8a23a;
+  --km-error: #f0736b;
+  --km-info: #5c9dff;
+  --km-badge-orange: #e08a52;
+  --km-badge-pink: #e2769f;
+  --km-badge-violet: #a48ae8;
+  --km-badge-emerald: #45b389;
+
+  /* Elevation on dark comes from the border, not the shadow. Keeping the
+     light theme's 30px ambient shadows here would just muddy the surface. */
+  --elevation-control: 0 1px 2px rgb(0 0 0 / 0.4);
+  --elevation-card: 0 1px 2px rgb(0 0 0 / 0.3);
+  --elevation-raised: 0 8px 24px rgb(0 0 0 / 0.45);
+  --elevation-overlay: 0 18px 60px rgb(0 0 0 / 0.6);
+
+  --km-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5.5 7.5L10 12L14.5 7.5' stroke='%23a8a297' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+
+  /* shadcn semantic layer, derived from the values above. */
+  --background: var(--km-canvas);
+  --foreground: var(--km-ink);
+  --card: var(--km-surface);
+  --card-foreground: var(--km-ink);
+  --popover: var(--km-surface);
+  --popover-foreground: var(--km-ink);
+  --primary: var(--km-primary);
+  --primary-foreground: #ffffff;
+  --secondary: var(--km-surface-muted);
+  --secondary-foreground: var(--km-ink);
+  --muted: var(--km-surface-muted);
+  --muted-foreground: var(--km-muted);
+  --accent: var(--km-surface-muted);
+  --accent-foreground: var(--km-ink);
+  --destructive: var(--km-error);
+  --border: var(--km-hairline);
+  --input: var(--km-hairline);
+  --ring: var(--km-accent);
+  --chart-1: var(--km-accent);
+  --chart-2: var(--km-badge-orange);
+  --chart-3: var(--km-badge-pink);
+  --chart-4: var(--km-badge-violet);
+  --chart-5: var(--km-badge-emerald);
+  --sidebar: var(--km-surface);
+  --sidebar-foreground: var(--km-ink);
+  --sidebar-primary: var(--km-primary);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--km-surface-muted);
+  --sidebar-accent-foreground: var(--km-ink);
+  --sidebar-border: var(--km-hairline);
+  --sidebar-ring: var(--km-accent);
 }
 
 @layer base {
@@ -228,9 +360,43 @@
     @apply bg-background text-foreground;
     color: var(--cal-body);
     letter-spacing: 0;
+    /*
+     * Korean line-breaking. Browsers break Hangul at any syllable by default,
+     * which splits words mid-token and is the single most recognisable sign of
+     * a Korean page laid out with Latin defaults. `keep-all` breaks at spaces
+     * instead; `break-word` is the escape hatch so an unbroken token — a long
+     * filename or a document ID — still wraps rather than forcing horizontal
+     * overflow.
+     */
+    word-break: keep-all;
+    overflow-wrap: break-word;
   }
   html {
     @apply font-sans;
+  }
+
+  /*
+   * DESIGN.md requires reduced-motion fallbacks and nothing implemented them.
+   * Animations are collapsed rather than removed so that progress and
+   * streaming affordances still reach their final state.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      /* `!important` is load-bearing: Tailwind's `duration-*` and `animate-*`
+         utilities are more specific than this universal selector, so without it
+         the reset silently does nothing. This is the standard reduced-motion
+         pattern, not a specificity workaround. */
+      /* biome-ignore lint/complexity/noImportantStyles: must outrank Tailwind duration utilities */
+      animation-duration: 0.01ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: must outrank Tailwind animation utilities */
+      animation-iteration-count: 1 !important;
+      /* biome-ignore lint/complexity/noImportantStyles: must outrank Tailwind transition utilities */
+      transition-duration: 0.01ms !important;
+      /* biome-ignore lint/complexity/noImportantStyles: must outrank scroll-smooth */
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -268,7 +434,7 @@
 
   .km-select {
     @apply appearance-none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5.5 7.5L10 12L14.5 7.5' stroke='%2369716c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+    background-image: var(--km-select-chevron);
     background-position: right 1rem center;
     background-repeat: no-repeat;
     background-size: 1rem 1rem;
@@ -282,12 +448,12 @@
 
   .km-card,
   .cal-card {
-    @apply border border-km-hairline bg-km-surface shadow-[0_10px_30px_rgb(20_22_23/0.06)];
+    @apply border border-km-hairline bg-km-surface shadow-card;
   }
 
   .km-product-card,
   .cal-product-card {
-    @apply border border-km-hairline bg-km-surface shadow-[0_10px_30px_rgb(20_22_23/0.08)];
+    @apply border border-km-hairline bg-km-surface shadow-raised;
   }
 
   .km-label,
@@ -297,7 +463,14 @@
 
   .km-heading,
   .cal-heading {
-    @apply font-heading font-semibold tracking-[-0.035em] text-km-ink;
+    /*
+     * No negative tracking. Tightening letter-spacing is a Latin display
+     * technique; Hangul syllable blocks are already dense, and pulling them
+     * together makes the jamo inside each block read as one smudge. The
+     * heading voice comes from weight and size instead.
+     */
+    @apply font-heading font-semibold text-km-ink;
+    letter-spacing: 0;
   }
 
   .km-fluid-display,

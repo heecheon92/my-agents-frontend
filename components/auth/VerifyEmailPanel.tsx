@@ -51,7 +51,7 @@ export function VerifyEmailPanel() {
           <p className="cal-label">
             {localization.auth.emailVerificationEyebrow}
           </p>
-          <h2 className="cal-heading mt-3 text-[clamp(1.5rem,5vw,2rem)] leading-tight tracking-[-0.03em]">
+          <h2 className="cal-heading mt-3 text-[clamp(1.5rem,5vw,2rem)] leading-tight">
             {state === "verified"
               ? localization.auth.emailVerificationSuccessTitle
               : state === "failed"

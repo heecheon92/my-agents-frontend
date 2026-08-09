@@ -155,7 +155,7 @@ export function GroupsWorkspace({
                 </Pill>
               ) : null}
             </div>
-            <h2 className="mt-2 truncate text-2xl font-semibold tracking-[-0.03em] text-cal-ink">
+            <h2 className="mt-2 truncate text-2xl font-semibold text-cal-ink">
               {activeGroup?.name ?? localization.groups.noSelectedDescription}
             </h2>
             <p className="mt-2 text-sm leading-6 text-cal-muted">
@@ -213,7 +213,7 @@ export function GroupsWorkspace({
                 >
                   {localization.groups.backToGroupOverviewAction}
                 </Button>
-                <h3 className="mt-4 text-xl font-semibold tracking-[-0.02em] text-cal-ink">
+                <h3 className="mt-4 text-xl font-semibold text-cal-ink">
                   {managementPageContent.title}
                 </h3>
                 <p className="mt-2 text-sm leading-6 text-cal-muted">

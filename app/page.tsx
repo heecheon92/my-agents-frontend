@@ -8,9 +8,7 @@ export default function Home() {
     <main className="min-h-dvh bg-cal-canvas text-cal-ink">
       <div className="responsive-container flex min-h-dvh flex-col py-4 sm:py-6">
         <header className="flex min-h-16 flex-wrap items-center justify-between gap-3 border-b border-cal-hairline py-3">
-          <p className="font-heading text-xl font-semibold tracking-[-0.04em]">
-            {brand.name}
-          </p>
+          <p className="font-heading text-xl font-semibold">{brand.name}</p>
           <div className="responsive-cluster justify-end">
             <Link
               className="inline-flex min-h-11 items-center justify-center rounded-md border border-cal-hairline bg-cal-canvas px-5 text-sm font-semibold text-cal-ink transition hover:bg-cal-surface-soft"

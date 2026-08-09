@@ -126,7 +126,7 @@ export function ServiceShell({
                   <SparklesIcon />
                 </span>
                 <span className="flex min-w-0 flex-col gap-0.5 group-data-[collapsible=icon]:hidden">
-                  <span className="truncate font-heading text-lg font-semibold tracking-[-0.04em]">
+                  <span className="truncate font-heading text-lg font-semibold">
                     {localization.brand.name}
                   </span>
                   <span className="truncate text-xs font-medium text-white/75">

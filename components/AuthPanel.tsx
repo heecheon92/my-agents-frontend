@@ -122,7 +122,7 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
           <h2
             className={
               !isSignup
-                ? "cal-heading text-[clamp(1.5rem,5vw,2rem)] leading-tight tracking-[-0.03em]"
+                ? "cal-heading text-[clamp(1.5rem,5vw,2rem)] leading-tight"
                 : "cal-heading cal-fluid-title"
             }
           >

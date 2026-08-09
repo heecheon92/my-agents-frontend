@@ -135,9 +135,7 @@ export function GroupSummaryCard({
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
             {title}
           </p>
-          <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-cal-ink">
-            {value}
-          </p>
+          <p className="mt-2 text-2xl font-semibold text-cal-ink">{value}</p>
         </div>
         {action}
       </div>

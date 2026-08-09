@@ -37,7 +37,7 @@ export function PasswordResetPanel() {
       <div className="responsive-container flex min-h-[calc(100svh-3rem)] items-center justify-center">
         <section className="cal-product-card w-full max-w-md rounded-xl p-5 sm:p-6 lg:p-8">
           <p className="cal-label">{localization.auth.passwordResetEyebrow}</p>
-          <h2 className="cal-heading mt-3 text-[clamp(1.5rem,5vw,2rem)] leading-tight tracking-[-0.03em]">
+          <h2 className="cal-heading mt-3 text-[clamp(1.5rem,5vw,2rem)] leading-tight">
             {isComplete
               ? localization.auth.passwordResetSuccessTitle
               : token

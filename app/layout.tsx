@@ -1,15 +1,19 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist_Mono } from "next/font/google";
 import { i18n } from "@/i18n.config";
 import { defaultLocalization } from "@/utils/localization";
 import { AppProviders } from "./providers";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
+/**
+ * Geist Sans is gone: it shipped `subsets: ["latin"]`, so it carried no Hangul
+ * at all and every Korean glyph — the majority of this UI — fell back to an OS
+ * font. Body and headings now use self-hosted Pretendard, wired up in
+ * `app/globals.css`.
+ *
+ * Geist Mono stays for event payloads, document IDs, and other monospace runs,
+ * which are ASCII by nature.
+ */
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
@@ -28,7 +32,7 @@ export default function RootLayout({
   return (
     <html
       lang={i18n.defaultLocale}
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistMono.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
         <AppProviders>{children}</AppProviders>

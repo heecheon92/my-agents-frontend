@@ -95,7 +95,7 @@ export function GroupInvitationAcceptPanel() {
           <p className="cal-label">
             {localization.auth.groupInvitationEyebrow}
           </p>
-          <h2 className="cal-heading mt-3 text-[clamp(1.5rem,5vw,2rem)] leading-tight tracking-[-0.03em]">
+          <h2 className="cal-heading mt-3 text-[clamp(1.5rem,5vw,2rem)] leading-tight">
             {title}
           </h2>
           <p className="mt-4 text-sm leading-6 text-cal-muted">{description}</p>
