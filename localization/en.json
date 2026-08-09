@@ -488,6 +488,17 @@
       "uploadProcessingButton": "Uploading and preparing...",
       "guestUploadLimitHint": "Guest upload limits apply automatically, and each accepted file counts towards the three-document limit.",
       "stageLabel": "Step",
+      "stages": {
+        "queued": "Waiting to start",
+        "claimed": "Started",
+        "chunking": "Splitting into passages",
+        "embedding": "Building embeddings",
+        "indexing": "Building the search index",
+        "entities": "Extracting key entities",
+        "metadata": "Finishing metadata",
+        "completed": "Completed",
+        "failed": "Failed"
+      },
       "ingestionLoading": "Preparing source",
       "uploadStatusLabels": {
         "selected": "Selected",

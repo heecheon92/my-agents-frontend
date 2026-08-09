@@ -1,6 +1,7 @@
 import { EmptyState, ErrorState, Pill } from "@/components/Status";
 import { cn } from "@/lib/utils";
 import {
+  describeExtractionStage,
   extractionRunTone,
   InlineLoadingIndicator,
   isActiveExtractionRunStatus,
@@ -62,7 +63,8 @@ export function SourceIngestionHistory({
           </p>
           {run.stage ? (
             <p className="mt-1 text-xs text-cal-muted">
-              {localization.documents.stageLabel}: {run.stage}
+              {localization.documents.stageLabel}:{" "}
+              {describeExtractionStage(run.stage, localization)}
             </p>
           ) : null}
           {run.error ? (

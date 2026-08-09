@@ -45,6 +45,7 @@ export type SourceActionsLocalization = {
     noExtractionRunsTitle: string;
     noExtractionRunsDescription: string;
     stageLabel: string;
+    stages: Record<string, string>;
     pdfSourcePrefix: string;
     pdfSource: string;
     markdownSourcePrefix: string;

@@ -488,6 +488,17 @@
       "uploadProcessingButton": "업로드와 준비 중…",
       "guestUploadLimitHint": "게스트 업로드 제한은 자동으로 적용되며, 올린 파일마다 3개 제한에 포함됩니다.",
       "stageLabel": "처리 단계",
+      "stages": {
+        "queued": "대기 중",
+        "claimed": "처리 시작",
+        "chunking": "문단 나누기",
+        "embedding": "임베딩 생성",
+        "indexing": "검색 색인 생성",
+        "entities": "핵심 개체 추출",
+        "metadata": "메타데이터 정리",
+        "completed": "완료",
+        "failed": "실패"
+      },
       "ingestionLoading": "문서 준비 중",
       "uploadStatusLabels": {
         "selected": "선택됨",

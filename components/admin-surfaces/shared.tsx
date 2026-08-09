@@ -94,6 +94,25 @@ export function isActiveExtractionRunStatus(status: string) {
   return status === "pending" || status === "running";
 }
 
+/**
+ * Turns a backend extraction stage into readable copy.
+ *
+ * The ingestion history rendered `run.stage` directly, so a Korean UI showed
+ * `chunking` and `embedding`. Same problem as the activity event types, and the
+ * same shape of fix: a label map with a fallback, so a stage added server-side
+ * degrades to a de-snaked phrase instead of leaking the raw enum.
+ */
+export function describeExtractionStage(
+  stage: string | null | undefined,
+  localization: { documents: { stages: Record<string, string> } },
+) {
+  if (!stage) return "";
+  const known = localization.documents.stages[stage];
+  if (known) return known;
+  const humanized = stage.replace(/_/g, " ").trim();
+  return humanized.charAt(0).toUpperCase() + humanized.slice(1);
+}
+
 export function InlineLoadingIndicator({ label }: { label: string }) {
   return (
     <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-cal-muted">

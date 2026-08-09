@@ -328,7 +328,7 @@ Previously open, now settled:
   time, the original need — "is this stalled?" — is only met if a long stay in
   `queued` says so explicitly. That is the case the whole feature exists for.
 
-  Related bug, independent of this decision: `SourceIngestionHistory` renders
-  `run.stage` as the raw backend enum, so a Korean UI shows `chunking` and
-  `embedding`. Same class of problem as the activity event types, and it needs
-  the same fix — a localized label map with a fallback.
+  The related raw-enum bug in `SourceIngestionHistory` is fixed:
+  `describeExtractionStage` localizes the stage with a de-snaked fallback, and
+  `tests/extraction-stage-copy.test.ts` drives off the zod enum so a new backend
+  stage fails the build rather than leaking into the UI.
