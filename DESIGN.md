@@ -280,3 +280,29 @@ Previously open, now settled:
 - [ ] **Unused localization keys.** 76 leaf keys are not referenced anywhere in
   source. Most are genuinely dead, but some may be reached by dynamic index, so
   a bulk delete is unsafe without per-key checking. Worth a dedicated pass.
+
+- [ ] **Ingestion progress: restore, or delete the dead field?** Not a
+  never-built feature. `956cc6c` (2026-05-22) shipped per-file percentage bars;
+  `a081ef6` (2026-05-27) replaced them with indeterminate spinners because
+  external-worker jobs could sit at 0% while queued correctly, making the
+  percentage misleading. The field survived the removal but the value did not:
+  `useSourceUploadQueue` writes `progressPercent: 0` in twelve places and a
+  hardcoded `10` in one, and `UploadQueueRow` declares it in its props type
+  without ever rendering it. It is entirely synthetic today.
+
+  The backend now emits verified monotonic progress, so the original objection
+  is weaker — but not gone. Its scale still starts `queued 0% → claimed 1%`, so
+  a bare percentage still shows 0% for a correctly-queued job, which is exactly
+  what `a081ef6` rejected.
+
+  What changes the picture is `stage`, which the schema already parses
+  (`queued`, `claimed`, `chunking`, `embedding`, `indexing`, `entities`,
+  `metadata`, `completed`). Stage disambiguates 0%: "queued" reads as waiting,
+  where a bare 0% reads as stuck. Given that, percentage adds little over stage,
+  and driving the row from stage alone would resolve the original objection
+  without reintroducing a number that can mislead.
+
+  Related bug, independent of this decision: `SourceIngestionHistory` renders
+  `run.stage` as the raw backend enum, so a Korean UI shows `chunking` and
+  `embedding`. Same class of problem as the activity event types, and it needs
+  the same fix — a localized label map with a fallback.

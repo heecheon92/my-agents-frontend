@@ -214,9 +214,16 @@ not deployed this yet.
 
 **Ingestion progress.** The backend already emits monotonic progress
 (queued 0 → claimed 1 → chunking 15 → embedding 45 → indexing 70 → entities 85
-→ metadata 95 → completed 100), now covered by a polling test. The frontend does
-**not** consume `progress_percent` yet — `UploadQueueRow` still shows stage
-labels only. That is open frontend work, not a backend gap.
+→ metadata 95 → completed 100), now covered by a polling test.
+
+Correction to my earlier note: the frontend has not merely "not built this yet".
+It shipped percentage bars in `956cc6c` and deliberately removed them in
+`a081ef6`, because external-worker jobs could sit at 0% while queued correctly.
+`progressPercent` survives as a synthetic field — written as 0 (and once 10) and
+never rendered. Whether to restore it or delete it is tracked in `DESIGN.md`;
+note that the backend scale still starts `queued 0%`, so the original objection
+applies to a bare percentage even now, and `stage` is the signal that
+disambiguates it.
 
 **Outstanding verification.** These were read from the backend agent's report,
 not from a running server. Per `AGENTS.md`, the hosted OpenAPI document is the
