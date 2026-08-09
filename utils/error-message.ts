@@ -1,4 +1,7 @@
-import { isMyAgentsAPIError } from "@/services/my-agents/MyAgentsAPIError";
+import {
+  isMyAgentsAPIError,
+  type MyAgentsAPIError,
+} from "@/services/my-agents/MyAgentsAPIError";
 import { defaultLocalization, type Localization } from "@/utils/localization";
 
 /**
@@ -14,20 +17,36 @@ import { defaultLocalization, type Localization } from "@/utils/localization";
  *  - For API failures the message is the backend's `detail`, which is English
  *    prose rendered inside a Korean UI.
  *
- * The HTTP status therefore drives fully localized copy, and the backend
- * `detail` is not rendered at all.
+ * Copy is therefore chosen by the backend's machine-readable `code` where one
+ * is present, falling back to the HTTP status. The backend's `detail` is never
+ * rendered: it is English prose, so surfacing it puts "(Invalid credentials)"
+ * inside an otherwise Korean sentence.
  *
- * Dropping `detail` is a deliberate trade. `DESIGN.md` allows showing a safe
- * backend `{ detail }`, but the backend writes it in English, so surfacing it
- * puts "(Invalid credentials)" inside an otherwise Korean sentence — which is
- * both worse copy and worse localization than saying nothing. It also costs
- * specificity: a guest hitting a prompt limit now reads generic 403 copy.
- *
- * The fix is a stable machine-readable `code` alongside `detail`, which this
- * module can map to Korean the same way it maps status. That is recorded in
- * `docs/backend-requests.md`; until it lands, generic-but-correct Korean beats
- * specific-but-English.
+ * The `code` field is the contract requested in `docs/backend-requests.md` and
+ * implemented backend-side. Reading it is deliberately defensive — an absent or
+ * unrecognized code falls through to status-based copy, so this behaves exactly
+ * as before against any backend that does not send one.
  */
+
+/** Codes worth distinguishing from their HTTP status. */
+function copyForCode(
+  code: string | undefined,
+  errors: Localization["errors"],
+): string | undefined {
+  if (!code) return undefined;
+  return (errors.byCode as Record<string, string> | undefined)?.[code];
+}
+
+/**
+ * Reads `code` off the parsed error body without changing any response model.
+ * `MyAgentsAPIError` already retains the raw body.
+ */
+function errorCodeOf(error: MyAgentsAPIError): string | undefined {
+  const body = error.body;
+  if (!body || typeof body !== "object") return undefined;
+  const code = (body as { code?: unknown }).code;
+  return typeof code === "string" ? code : undefined;
+}
 
 function copyForStatus(status: number, errors: Localization["errors"]) {
   const byStatus = errors.byStatus;
@@ -49,7 +68,10 @@ export function resolveErrorMessage(
   localization: Localization = defaultLocalization,
 ): string {
   if (isMyAgentsAPIError(error)) {
-    return copyForStatus(error.status, localization.errors);
+    return (
+      copyForCode(errorCodeOf(error), localization.errors) ??
+      copyForStatus(error.status, localization.errors)
+    );
   }
 
   // A network failure surfaces as a plain TypeError with no useful public text.

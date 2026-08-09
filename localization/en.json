@@ -254,12 +254,14 @@
     "activityEvents": "Work history",
     "eventTypes": {
       "run_started": "Run started",
+      "user_message_stored": "Question saved",
       "graph_invoked": "Preparing work",
       "retrieval_completed": "Document search finished",
       "answer_composed": "Answer composed",
-      "run_completed": "Run completed",
+      "run_cancel_requested": "Stop requested",
+      "run_cancelled": "Run cancelled",
       "run_failed": "Run failed",
-      "run_cancelled": "Run cancelled"
+      "run_completed": "Run completed"
     },
     "activityRawPayload": "Raw record",
     "agentTrace": {
@@ -760,6 +762,18 @@
       "server": "The server ran into a problem. Try again in a moment.",
       "network": "Could not reach the server. Check your connection.",
       "unknown": "Something went wrong. Try again."
+    },
+    "byCode": {
+      "invalid_credentials": "That email or password is not correct.",
+      "guest_access_expired": "Your guest session expired. Request a new code.",
+      "guest_conversation_limit_reached": "Guest sessions are limited to one conversation.",
+      "guest_prompt_limit_reached": "You have used every guest question. Create an account to continue.",
+      "guest_document_limit_reached": "Guest sessions are limited to three documents.",
+      "upload_too_large": "That file is too large. Reduce its size and upload it again.",
+      "unsupported_media_type": "That file type is not supported.",
+      "publish_request_already_reviewed": "This request was already handled. Refresh the list.",
+      "conversation_run_already_active": "An answer is still being generated in this conversation.",
+      "conversation_run_failed": "The answer could not be generated. Try again."
     },
     "csrfMissing": "Session proof is missing. Please sign in again.",
     "requestFailed": "Request failed",

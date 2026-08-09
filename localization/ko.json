@@ -254,12 +254,14 @@
     "activityEvents": "작업 내역",
     "eventTypes": {
       "run_started": "실행 시작",
+      "user_message_stored": "질문 저장",
       "graph_invoked": "작업 준비",
       "retrieval_completed": "문서 검색 완료",
       "answer_composed": "답변 작성 완료",
-      "run_completed": "실행 완료",
+      "run_cancel_requested": "중지 요청",
+      "run_cancelled": "실행 취소됨",
       "run_failed": "실행 실패",
-      "run_cancelled": "실행 취소"
+      "run_completed": "실행 완료"
     },
     "activityRawPayload": "원본 기록",
     "agentTrace": {
@@ -760,6 +762,18 @@
       "server": "서버에서 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.",
       "network": "서버에 연결하지 못했습니다. 네트워크 상태를 확인해 주세요.",
       "unknown": "문제가 발생했습니다. 다시 시도해 주세요."
+    },
+    "byCode": {
+      "invalid_credentials": "이메일 또는 비밀번호가 올바르지 않습니다.",
+      "guest_access_expired": "게스트 세션이 만료되었습니다. 새 코드를 요청하세요.",
+      "guest_conversation_limit_reached": "게스트 세션에서는 대화를 1개만 만들 수 있습니다.",
+      "guest_prompt_limit_reached": "게스트 질문 횟수를 모두 사용했습니다. 계정을 만들면 계속할 수 있습니다.",
+      "guest_document_limit_reached": "게스트 세션에서는 문서를 3개까지만 올릴 수 있습니다.",
+      "upload_too_large": "파일이 너무 큽니다. 크기를 줄여 다시 올려 주세요.",
+      "unsupported_media_type": "지원하지 않는 파일 형식입니다.",
+      "publish_request_already_reviewed": "이미 처리된 요청입니다. 목록을 새로고침해 주세요.",
+      "conversation_run_already_active": "이 대화에서 답변이 생성 중입니다. 끝난 뒤에 다시 시도하세요.",
+      "conversation_run_failed": "답변 생성에 실패했습니다. 다시 시도해 주세요."
     },
     "csrfMissing": "세션 증명이 없습니다. 다시 로그인해 주세요.",
     "requestFailed": "요청에 실패했습니다",

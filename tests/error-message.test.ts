@@ -96,3 +96,51 @@ describe("resolveErrorMessage", () => {
     }
   });
 });
+
+describe("backend error codes", () => {
+  function codedError(status: number, code: string) {
+    return new MyAgentsAPIError({
+      message: "failed",
+      status,
+      detail: "English prose from the backend",
+      body: { detail: "English prose from the backend", code },
+    });
+  }
+
+  it("prefers the machine-readable code over the status", () => {
+    // The whole point: a guest hitting a limit gets specific Korean, not the
+    // generic 403 copy it would otherwise fall back to.
+    const message = resolveErrorMessage(
+      codedError(403, "guest_prompt_limit_reached"),
+    );
+    expect(message).toBe(
+      defaultLocalization.errors.byCode.guest_prompt_limit_reached,
+    );
+    expect(message).not.toBe(errors.forbidden);
+    expect(message).toMatch(/[가-힣]/);
+  });
+
+  it("localizes every code the backend documents", () => {
+    for (const [code, copy] of Object.entries(
+      defaultLocalization.errors.byCode,
+    )) {
+      expect(resolveErrorMessage(codedError(400, code)), code).toBe(copy);
+      expect(copy, code).toMatch(/[가-힣]/);
+    }
+  });
+
+  it("falls back to status for an unknown or absent code", () => {
+    // Backends without the field, and codes added after this release, must
+    // behave exactly as they did before.
+    expect(resolveErrorMessage(codedError(404, "some_future_code"))).toBe(
+      errors.notFound,
+    );
+    expect(resolveErrorMessage(apiError(404))).toBe(errors.notFound);
+  });
+
+  it("still never renders the English detail alongside the code", () => {
+    const message = resolveErrorMessage(codedError(413, "upload_too_large"));
+    expect(message).not.toContain("English prose");
+    expect(message).not.toMatch(/[A-Za-z]{4,}/);
+  });
+});

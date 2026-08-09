@@ -156,7 +156,7 @@ Frontend workaround, if any: Frontend schemas and UI now accept the planned syst
 
 ## 2026-08-09 — machine-readable error codes for localized error copy
 
-Status: proposed
+Status: implemented backend-side (uncommitted at time of writing); frontend wired defensively
 Frontend need: Render specific, actionable error copy in Korean without printing English backend prose into a Korean UI.
 Current backend behavior: Errors return `{ detail: string }` written in English. `services/my-agents/fetch-client.ts` preserves it on `MyAgentsAPIError.detail`, and the UI previously rendered it verbatim through `ErrorState`.
 Requested backend contract: Alongside the existing `detail`, return a stable machine-readable `code` (for example `guest_prompt_limit_reached`, `invalid_credentials`, `upload_too_large`, `publish_request_already_reviewed`). Codes should be additive, enumerable, and stable across releases; `detail` may stay English and human-readable for logs and API consumers.
@@ -165,7 +165,7 @@ Frontend workaround, if any: `utils/error-message.ts` maps HTTP status to fully 
 
 ## 2026-08-09 — typed, pre-redacted activity event display contract
 
-Status: proposed
+Status: implemented backend-side (uncommitted at time of writing); frontend labels aligned
 Frontend need: Render the agent activity timeline as readable operational steps instead of a raw JSON dump.
 Current backend behavior: `GET /conversations/{id}/runs/{run_id}/events` returns `{ event_type, sequence, payload }` where `payload` is a free-form object. `components/chat/evidence-panel/sections.tsx` renders `JSON.stringify(payload, null, 2)` inside a `<pre>` because no key is documented as safe or stable, and `event_type` is shown as a raw backend enum with no localization.
 Requested backend contract: Publish a closed, documented `event_type` enum the frontend can map to localized labels, plus an explicitly safe-for-display subset of payload fields per event type (counts, durations, document/citation counts) that is guaranteed free of prompts, provider traces, chain-of-thought, and credentials. The existing `agent_trace` array is the right shape and should be documented as stable.
@@ -174,9 +174,52 @@ Frontend workaround, if any: The evidence panel promotes the derived `AgentTrace
 
 ## 2026-08-09 — ingestion progress for the upload queue
 
-Status: proposed
+Status: verified working backend-side; frontend not yet consuming progress_percent
 Frontend need: Distinguish a large document that is still processing from one that has stalled.
 Current backend behavior: `extractionRunSchema` already carries `stage` and `progress_percent`, but async ingestion appears to leave `progress_percent` at its default until completion, so `UploadQueueRow` can only render a binary spinner.
 Requested backend contract: Emit monotonically increasing `progress_percent` (or a `stage_index` / `stage_total` pair) as an extraction run advances through chunking, embedding, indexing, and entity stages.
 Why it matters: A 12-page PDF and a stalled run currently look identical for minutes, which reads as a hang and drives users to retry work that is already in flight.
 Frontend workaround, if any: The upload queue shows the existing stage labels from `uploadStatusLabels`, which convey phase but not progress.
+
+## 2026-08-09 — backend responses to the three requests above
+
+The backend implemented all three. Recorded here because the frontend now
+depends on the shape, and because two of my assumptions were wrong.
+
+**Activity events.** Now an OpenAPI discriminated union keyed by `event_type`,
+with unknown stored fields — including nested prompt text, credentials, and
+provider traces — stripped before serialization. `agent_trace` is a stable typed
+contract with closed stage IDs and display-safe evidence fields.
+
+The persisted set is: `run_started`, `user_message_stored`,
+`retrieval_completed`, `graph_invoked`, `answer_composed`,
+`run_cancel_requested`, `run_cancelled`, `run_failed`.
+
+Two corrections to the set the frontend had guessed by grepping backend source:
+
+- `user_message_stored` and `run_cancel_requested` exist and were missed.
+- `run_completed`, `run_error`, and `answer_delta` are **streaming-only SSE
+  events, not persisted activity events**. `run_completed` still keeps a label
+  because `shouldRecordLiveActivityEvent` records it into live activity, so it
+  does reach the UI during a run — just never from the events endpoint.
+
+This is exactly why `AGENTS.md` says not to derive contracts from source
+inspection.
+
+**Error codes.** Responses now carry a stable `code` beside `detail`.
+`utils/error-message.ts` prefers `code`, falls back to HTTP status, and still
+never renders `detail`. Reading it is defensive: an absent or unrecognized code
+behaves exactly as before, so the frontend is safe against a backend that has
+not deployed this yet.
+
+**Ingestion progress.** The backend already emits monotonic progress
+(queued 0 → claimed 1 → chunking 15 → embedding 45 → indexing 70 → entities 85
+→ metadata 95 → completed 100), now covered by a polling test. The frontend does
+**not** consume `progress_percent` yet — `UploadQueueRow` still shows stage
+labels only. That is open frontend work, not a backend gap.
+
+**Outstanding verification.** These were read from the backend agent's report,
+not from a running server. Per `AGENTS.md`, the hosted OpenAPI document is the
+source of truth for frontend API models — nothing here changed a model, but the
+`code` and `event_type` values should be confirmed against a live
+`/openapi.json` before anyone treats them as guaranteed.
