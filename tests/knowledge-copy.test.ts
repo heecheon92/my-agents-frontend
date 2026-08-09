@@ -119,6 +119,119 @@ describe("localized product copy guardrails", () => {
   });
 });
 
+/**
+ * Every technical term the guide has ruled on.
+ *
+ * The point is the default. A plain banned-list only catches jargon someone
+ * already noticed, so new vocabulary slips in unchallenged; this inverts it —
+ * a watched term must be explicitly allowed or it fails. `스레드`, `토큰`, and
+ * `콘솔` were all in shipped copy until this list was written, and `스레드`
+ * directly contradicted the guide's own glossary.
+ *
+ * `paths` scopes an allowed term to the surfaces it belongs in. Domain
+ * vocabulary is legible evidence in an inspection surface and noise in a
+ * first-run empty state, so the scope is part of the ruling, not a detail.
+ */
+type JargonRuling =
+  | { allowed: false; instead: string }
+  | { allowed: true; paths: RegExp; why: string };
+
+const JARGON_RULINGS: Record<string, JargonRuling> = {
+  // Allowed: names the retrieval pipeline accurately where a reader has asked
+  // for that detail. See the audience note in DESIGN.md.
+  임베딩: {
+    allowed: true,
+    paths: /^admin\.documents\.stages\./,
+    why: "ingestion stage in the processing history",
+  },
+  청크: {
+    allowed: true,
+    paths: /^admin\.common\.chunks$|^chat\.chunkLabel$/,
+    why: "citation and extraction detail",
+  },
+  엔티티: {
+    allowed: true,
+    paths: /^admin\.common\.entities$/,
+    why: "extraction counts",
+  },
+  색인: {
+    allowed: true,
+    paths: /^admin\.documents\.stages\./,
+    why: "ingestion stage",
+  },
+  메타데이터: {
+    allowed: true,
+    paths: /^admin\.documents\.stages\./,
+    why: "ingestion stage",
+  },
+  에이전트: {
+    allowed: true,
+    paths: /^chat\.agentTrace\./,
+    why: "the agent trace is the product's evidence surface",
+  },
+
+  // Banned: implementation vocabulary with no meaning for a reader.
+  옵트인: { allowed: false, instead: "직접 켠 / 사용 설정한" },
+  백엔드: { allowed: false, instead: "describe the user-visible behaviour" },
+  스레드: { allowed: false, instead: "대화" },
+  콘솔: { allowed: false, instead: "워크스페이스" },
+  토큰: { allowed: false, instead: "링크 (a user never sees a token)" },
+  엔드포인트: { allowed: false, instead: "describe the action, not the route" },
+  파라미터: {
+    allowed: false,
+    instead: "describe the value, not the parameter",
+  },
+  프롬프트: { allowed: false, instead: "질문" },
+  캐시: { allowed: false, instead: "describe the effect" },
+  런타임: { allowed: false, instead: "describe the effect" },
+  스키마: { allowed: false, instead: "describe the shape in plain terms" },
+  디버그: { allowed: false, instead: "상세 정보" },
+};
+
+describe("technical vocabulary is ruled on, not left to chance", () => {
+  const koreanEntries = entries.filter((entry) => /[가-힣]/.test(entry.ko));
+
+  it("uses watched terms only where the guide allows them", () => {
+    // Collected rather than thrown on the first hit: a copy pass should see
+    // every violation at once instead of rediscovering them one run at a time.
+    const violations: string[] = [];
+
+    for (const entry of koreanEntries) {
+      for (const [term, ruling] of Object.entries(JARGON_RULINGS)) {
+        if (!entry.ko.includes(term)) continue;
+        if (!ruling.allowed) {
+          violations.push(
+            `${entry.path}: "${term}" is banned — use ${ruling.instead}\n    ${entry.ko}`,
+          );
+          continue;
+        }
+        if (!ruling.paths.test(entry.path)) {
+          violations.push(
+            `${entry.path}: "${term}" is allowed only in ${ruling.why}, not here\n    ${entry.ko}`,
+          );
+        }
+      }
+    }
+
+    expect(
+      violations,
+      `technical vocabulary used outside its ruling (docs/korean-copy-guide.md):\n${violations.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("keeps the allowed domain terms actually present", () => {
+    // Guards the other direction: a well-meaning "simplify the jargon" pass
+    // would strip these, losing precision the product deliberately shows.
+    const allKorean = koreanEntries.map((entry) => entry.ko).join("\n");
+    for (const [term, ruling] of Object.entries(JARGON_RULINGS)) {
+      if (!ruling.allowed) continue;
+      expect(allKorean, `${term} should still appear somewhere`).toContain(
+        term,
+      );
+    }
+  });
+});
+
 describe("Korean terminology (docs/korean-copy-guide.md)", () => {
   const koreanEntries = entries.filter((entry) => /[가-힣]/.test(entry.ko));
 

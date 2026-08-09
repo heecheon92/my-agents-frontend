@@ -77,6 +77,27 @@ implementation-facing vocabulary banned below: `백엔드`, `라우트`, `옵트
 `임의 값`, raw enums, or bare identifiers in a primary reading path. Naming your
 retrieval pipeline is showing craft; leaking your stack trace is not.
 
+**How this is enforced.** `JARGON_RULINGS` in `tests/knowledge-copy.test.ts`
+holds every watched term with its ruling, and allowed terms carry the key paths
+they are allowed in — so the scope above is checked, not just the word.
+
+The default matters more than the list. A plain banned-list only catches jargon
+somebody already noticed, so new vocabulary arrives unchallenged. Here a watched
+term must be explicitly allowed or the build fails, and allowed terms are also
+asserted to still *exist*, so a well-meaning "simplify the jargon" pass cannot
+quietly strip them.
+
+Writing that list found three terms in shipped copy that nobody had ruled on:
+`스레드` (which contradicted this file's own glossary — conversations are
+`대화`), `토큰` (users never see a token, only a link), and `콘솔` (describes
+the codebase, not the product). All three are fixed and now banned.
+
+**Adding a term.** When new vocabulary appears, decide once and record it:
+either `{ allowed: false, instead }` with the replacement, or
+`{ allowed: true, paths, why }` naming the surfaces it belongs in. Do not widen
+a `paths` pattern to make a failing string pass — that inverts the rule back to
+allow-by-default.
+
 ### Actions and states
 
 | Concept | Korean | Never |
