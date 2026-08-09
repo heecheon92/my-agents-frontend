@@ -1,5 +1,4 @@
 import { Trash2 } from "lucide-react";
-import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { EmptyState, ErrorState } from "@/components/Status";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -23,13 +22,12 @@ export function ConversationSidebar({
   error,
   createError,
   deleteError,
-  isCreatePending,
   isDeletePending,
   conversationIsBusy,
   isCancelling,
-  onCreate,
   onSelect,
   onDelete,
+  className,
 }: {
   localization: ChatLocalization;
   conversations?: Conversation[];
@@ -38,30 +36,36 @@ export function ConversationSidebar({
   error: unknown;
   createError: unknown;
   deleteError: unknown;
-  isCreatePending: boolean;
   isDeletePending: boolean;
   conversationIsBusy: boolean;
   isCancelling: boolean;
-  onCreate: () => void;
   onSelect: (conversationId: string) => void;
   onDelete: (conversation: Conversation) => void;
+  /**
+   * Chrome is supplied by the caller so the same component can be the desktop
+   * rail and the body of the compact-screen sheet.
+   */
+  className?: string;
 }) {
   return (
-    <aside className="cal-card min-w-0 rounded-xl p-4 xl:overflow-auto">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="cal-heading cal-fluid-title">{localization.title}</h1>
+    <aside className={cn("flex min-h-0 min-w-0 flex-col", className)}>
+      <div className="flex shrink-0 flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          {/*
+            An h2, not an h1: the page heading now lives in the transcript panel
+            header, which stays mounted at every width. Below `xl` this list
+            moves into a closed sheet, so an h1 here would leave the route with
+            no heading at all on mobile.
+          */}
+          <h2 className="cal-heading text-lg">
+            {localization.conversationListTitle}
+          </h2>
           <p className="mt-1 text-sm text-cal-muted">
             {localization.description}
           </p>
         </div>
-        <OnboardingTarget id="chat.new-conversation">
-          <Button size="sm" onClick={onCreate} disabled={isCreatePending}>
-            {localization.newButton}
-          </Button>
-        </OnboardingTarget>
       </div>
-      <div className="mt-5 grid gap-2">
+      <div className="mt-5 grid min-h-0 flex-1 auto-rows-min gap-2 overflow-y-auto">
         {error ? <ErrorState error={error} /> : null}
         {createError ? <ErrorState error={createError} /> : null}
         {deleteError ? <ErrorState error={deleteError} /> : null}

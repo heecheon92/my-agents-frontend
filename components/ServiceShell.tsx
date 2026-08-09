@@ -32,13 +32,26 @@ import {
 import type { ThemePreference } from "@/constants/theme";
 import { useCurrentUser, useLogout } from "@/hooks/use-auth";
 import { useLocalization } from "@/hooks/useLocalization";
+import { cn } from "@/lib/utils";
 import { ErrorState } from "./Status";
 
 const navRoutes = [
-  { href: "/chat", key: "chat", icon: MessageSquareTextIcon },
-  { href: "/knowledge", key: "knowledge", icon: FilePlus2Icon },
-  { href: "/groups", key: "groups", icon: UsersRoundIcon },
-  { href: "/settings", key: "settings", icon: SettingsIcon },
+  // `fill` routes get a height-bounded content box and manage their own
+  // internal scrolling; `scroll` routes scroll the whole content region.
+  {
+    href: "/chat",
+    key: "chat",
+    icon: MessageSquareTextIcon,
+    layout: "fill",
+  },
+  {
+    href: "/knowledge",
+    key: "knowledge",
+    icon: FilePlus2Icon,
+    layout: "scroll",
+  },
+  { href: "/groups", key: "groups", icon: UsersRoundIcon, layout: "scroll" },
+  { href: "/settings", key: "settings", icon: SettingsIcon, layout: "scroll" },
 ] as const;
 
 type ServiceShellProps = {
@@ -105,7 +118,10 @@ export function ServiceShell({
   return (
     <SidebarProvider
       defaultOpen={defaultSidebarOpen}
-      className="min-h-dvh bg-cal-canvas text-cal-ink"
+      // `h-dvh`, not `min-h-dvh`: this bounds `SidebarInset` so the content
+      // region below can own the page's only scrollbar. Routes then never need
+      // to guess the chrome's height with `calc(100dvh - …)`.
+      className="h-dvh bg-cal-canvas text-cal-ink"
       style={
         {
           "--sidebar-width": "18rem",
@@ -208,7 +224,10 @@ export function ServiceShell({
         <SidebarRail />
       </Sidebar>
       <SidebarInset className="min-w-0 bg-cal-canvas">
-        <header className="sticky top-0 z-20 flex min-h-16 items-center gap-3 border-b border-cal-hairline bg-cal-surface-soft/95 px-4 backdrop-blur supports-backdrop-filter:bg-cal-surface-soft/85 sm:px-6 lg:px-8">
+        {/* `sticky` was a near no-op here: the scroll container is this
+            header's sibling, not its ancestor. Now that the shell is height
+            bounded, `shrink-0` is what actually keeps it in place. */}
+        <header className="z-20 flex min-h-16 shrink-0 items-center gap-3 border-b border-cal-hairline bg-cal-surface-soft px-4 sm:px-6 lg:px-8">
           <SidebarTrigger
             aria-label={localization.service.toggleSidebar}
             title={localization.service.toggleSidebar}
@@ -234,7 +253,23 @@ export function ServiceShell({
             {localization.service.logout}
           </Button>
         </header>
-        <div className="min-h-0 flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+        {/*
+          Two modes, chosen from the route the shell already resolved.
+          `fill` gives the route a fixed-height box it can divide up, which is
+          what a transcript needs; every other route scrolls normally.
+
+          Deriving this from the pathname rather than threading a prop avoids
+          adding `app/(service)/chat/layout.tsx` for a single boolean. The
+          trade-off is recorded in DESIGN.md.
+        */}
+        <div
+          className={cn(
+            "min-h-0 flex-1 p-4 sm:p-6 lg:p-8",
+            currentRoute.layout === "fill"
+              ? "overflow-hidden"
+              : "overflow-auto",
+          )}
+        >
           {children}
         </div>
       </SidebarInset>

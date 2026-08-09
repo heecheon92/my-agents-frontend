@@ -119,6 +119,10 @@ export function ChatWorkspace() {
   );
   const [latestCitations, setLatestCitations] = useState<Citation[]>([]);
   const [showGuestNotice, setShowGuestNotice] = useState(false);
+  // Compact-screen conversation browser. Lives here, not in the sheet, so
+  // selecting a conversation can close it in the same handler.
+  const [isConversationBrowserOpen, setIsConversationBrowserOpen] =
+    useState(false);
   const [conversationPendingDelete, setConversationPendingDelete] =
     useState<Conversation>();
   const [knowledgeBaseMode, setKnowledgeBaseMode] =
@@ -443,6 +447,7 @@ export function ChatWorkspace() {
         events={visibleActivityEvents}
         hasActiveDraft={hasActiveDraft}
         isCancelling={isCancelling}
+        isConversationBrowserOpen={isConversationBrowserOpen}
         isPrimaryActionDisabled={isPrimaryActionDisabled}
         isSendNowDisabled={isSendNowDisabled}
         isStreaming={isStreaming}
@@ -455,6 +460,7 @@ export function ChatWorkspace() {
         messagesError={messages.error}
         onCancelQueuedMessage={handleCancelQueuedMessage}
         onChatScroll={handleChatScroll}
+        onConversationBrowserOpenChange={setIsConversationBrowserOpen}
         onCreate={handleCreate}
         onDeleteConversation={requestDeleteConversation}
         onDraftChange={setDraft}

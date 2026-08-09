@@ -455,4 +455,13 @@ describe("ChatWorkspace assistant message footer", () => {
     );
     expect(CHAT_SCROLL_REGION_CLASS_NAME).not.toMatch(/calc\(/);
   });
+
+  it("delegates viewport bounding to the shell, not to hardcoded math", () => {
+    // A deliberately literal assertion, locking in an architectural decision
+    // rather than a pixel. The panel used to be `h-[calc(100dvh-8rem)]`, which
+    // assumed 64px of shell padding while the shell actually uses 16px at
+    // mobile — so it was wrong at exactly the widths it mattered most.
+    expect(CHAT_WORKSPACE_PANEL_CLASS_NAME).not.toMatch(/calc\(100dvh/);
+    expect(CHAT_WORKSPACE_PANEL_CLASS_NAME).toMatch(/(^|\s)h-full(\s|$)/);
+  });
 });
