@@ -4,6 +4,7 @@ import { inputClassName } from "@/components/Field";
 import { Pill } from "@/components/Status";
 import { Button } from "@/components/ui/button";
 import {
+  describeExtractionStage,
   fileExtension,
   formatFileSize,
   InlineLoadingIndicator,
@@ -26,6 +27,12 @@ export type UploadQueueItem = {
   title: string;
   status: UploadQueueStatus;
   progressPercent: number;
+  /**
+   * Backend extraction stage. Carried alongside the percentage because it is
+   * what disambiguates 0%: `queued` means waiting for a worker, which reads
+   * very differently from a bar stuck at zero.
+   */
+  stage?: string;
   documentId?: string;
   extractionRunId?: string;
   error?: string;
@@ -37,6 +44,51 @@ export const PPTX_CONTENT_TYPE =
   "application/vnd.openxmlformats-officedocument.presentationml.presentation";
 export const DOCX_CONTENT_TYPE =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+export type UploadProgress = { label: string; percent: number | null };
+
+/**
+ * Decides what progress, if any, to show for a queued upload.
+ *
+ * Only where the number means something. The backend scale starts
+ * `queued 0 → claimed 1`, so a bar at 0% would say "stuck" about a job that is
+ * merely waiting for a worker — exactly what got the original progress bar
+ * removed in `a081ef6`. While queued we show the stage in words and no bar.
+ * Upload and publish have no real byte or request progress, so they stay
+ * indeterminate too.
+ *
+ * The percentages are milestone commits, not elapsed time: 45 means "reached
+ * embedding", so a step can hold for a while. Their spacing does encode
+ * relative cost, which is why the number beats a plain step counter.
+ */
+export function resolveUploadProgress(
+  item: Pick<UploadQueueItem, "status" | "stage" | "progressPercent">,
+  localization: {
+    progressWaitingForWorker: string;
+    progressStageLabel: string;
+    stages: Record<string, string>;
+  },
+): UploadProgress | null {
+  if (item.status !== "ingesting") return null;
+
+  const stageLabel = describeExtractionStage(item.stage, {
+    documents: localization,
+  });
+  if (!item.stage || item.stage === "queued") {
+    return {
+      label: stageLabel || localization.progressWaitingForWorker,
+      percent: null,
+    };
+  }
+
+  const percent = Math.round(Math.min(Math.max(item.progressPercent, 0), 100));
+  return {
+    label: localization.progressStageLabel
+      .replace("{stage}", stageLabel)
+      .replace("{percent}", String(percent)),
+    percent,
+  };
+}
+
 export function UploadQueueRow({
   item,
   localization,
@@ -59,6 +111,9 @@ export function UploadQueueRow({
     retryUpload: string;
     removeUpload: string;
     ingestionLoading: string;
+    progressWaitingForWorker: string;
+    progressStageLabel: string;
+    stages: Record<string, string>;
   };
   onTitleChange: (localId: string, title: string) => void;
   onRemove: (localId: string) => void;
@@ -67,6 +122,8 @@ export function UploadQueueRow({
 }) {
   const canEdit = !disabled && ["selected", "failed"].includes(item.status);
   const isBusy = isUploadQueueItemBusy(item.status);
+
+  const progress = resolveUploadProgress(item, localization);
 
   return (
     <article className="rounded-xl border border-cal-hairline bg-cal-canvas p-3 text-sm">
@@ -89,6 +146,28 @@ export function UploadQueueRow({
           <p className="mt-2 break-words font-medium text-cal-ink">
             {item.file.name}
           </p>
+          {progress ? (
+            <div className="mt-2">
+              <div className="flex items-center justify-between gap-2 text-xs text-cal-muted">
+                <span>{progress.label}</span>
+              </div>
+              {progress.percent === null ? null : (
+                <div
+                  className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-cal-surface-strong"
+                  role="progressbar"
+                  aria-valuenow={progress.percent}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={progress.label}
+                >
+                  <div
+                    className="h-full rounded-full bg-km-accent transition-[width] duration-[var(--duration-panel)] ease-standard"
+                    style={{ width: `${progress.percent}%` }}
+                  />
+                </div>
+              )}
+            </div>
+          ) : null}
           {item.documentId || item.extractionRunId ? (
             <details className="mt-2 rounded-lg bg-cal-surface-soft p-2 text-xs text-cal-muted">
               <summary className="cursor-pointer font-medium text-cal-ink">

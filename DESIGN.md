@@ -298,8 +298,8 @@ Previously open, now settled:
   source. Most are genuinely dead, but some may be reached by dynamic index, so
   a bulk delete is unsafe without per-key checking. Worth a dedicated pass.
 
-- [ ] **Ingestion progress: agreed direction, not yet built.** Not a
-  never-built feature, and the earlier removal was correct.
+- [x] **Ingestion progress — built.** Not a never-built feature, and the
+  earlier removal was correct.
 
   **What actually happened.** `956cc6c` (2026-05-22) shipped per-file progress
   alongside backend `50461d3`, which added observable stages. Crucially the
@@ -321,13 +321,9 @@ Previously open, now settled:
   — `45` means "reached the embedding stage", not "45% of the time elapsed", so
   a large embedding step can hold at 45 for most of the run.
 
-  **What survives today.** Only plumbing: the schema parses `progress_percent`,
-  `UploadQueueItem` carries `progressPercent`, polling runs every second, and
-  `useSourceUploadQueue` throws the value away by writing `0` (and one hardcoded
-  `10`). `UploadQueueRow` declares the field without rendering it.
-
-  **Agreed direction when this is built.** Use the backend value honestly rather
-  than restoring the old bar or deleting the field:
+  **What ships now.** `resolveUploadProgress` in `UploadQueueRow` is the whole
+  rule, exported and unit-tested rather than inlined, and the poll passes
+  `progress_percent` and `stage` through instead of writing `0`:
 
   - `queued` — indeterminate, labelled as waiting for a worker. No percentage.
   - `claimed` … `metadata` — stage name plus the backend milestone percentage.
@@ -341,9 +337,10 @@ Previously open, now settled:
   the 30-point jump across embedding says something a "step 4 of 7" indicator
   would throw away.
 
-  One addition: because a run can legitimately hold at one milestone for a long
-  time, the original need — "is this stalled?" — is only met if a long stay in
-  `queued` says so explicitly. That is the case the whole feature exists for.
+  Because a run can legitimately hold at one milestone for a while, `queued`
+  says so in words rather than showing a zero — the "is this stalled?" question
+  is the case the whole feature exists for. No backend change was required for
+  any of this; the value had been arriving and being discarded since May.
 
   The related raw-enum bug in `SourceIngestionHistory` is fixed:
   `describeExtractionStage` localizes the stage with a de-snaked fallback, and

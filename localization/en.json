@@ -498,6 +498,8 @@
       "uploadProcessingButton": "Uploading and preparing...",
       "guestUploadLimitHint": "Guest upload limits apply automatically, and each accepted file counts towards them.",
       "stageLabel": "Step",
+      "progressWaitingForWorker": "Waiting to start",
+      "progressStageLabel": "{stage} · {percent}%",
       "stages": {
         "queued": "Waiting to start",
         "claimed": "Started",

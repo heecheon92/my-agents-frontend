@@ -76,6 +76,8 @@ const UNTRANSLATED_BY_DESIGN = new Set([
   "admin.documents.fileTypePdf",
   "admin.documents.fileTypeMarkdown",
   "admin.documents.fileTypeWord",
+  // Pure format string — "{stage} · {percent}%" contains no words to translate.
+  "admin.documents.progressStageLabel",
 ]);
 
 describe("localized product copy guardrails", () => {

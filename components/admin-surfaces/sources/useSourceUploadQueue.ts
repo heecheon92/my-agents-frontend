@@ -287,7 +287,11 @@ export function useSourceUploadQueue({
         updateQueueItem(localId, {
           extractionRunId: run.id,
           status: run.status === "failed" ? "failed" : "ingesting",
-          progressPercent: 0,
+          // Was hardcoded to 0, discarding the value the poll had just
+          // fetched. The backend emits monotonic milestones, so pass them
+          // through and let the row decide how to present them.
+          progressPercent: run.progress_percent,
+          stage: run.stage ?? undefined,
           error: run.error ?? undefined,
         });
       }

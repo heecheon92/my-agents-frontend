@@ -498,6 +498,8 @@
       "uploadProcessingButton": "업로드와 준비 중…",
       "guestUploadLimitHint": "게스트 업로드 제한은 자동으로 적용되며, 올린 파일마다 제한에 포함됩니다.",
       "stageLabel": "처리 단계",
+      "progressWaitingForWorker": "처리 대기 중",
+      "progressStageLabel": "{stage} · {percent}%",
       "stages": {
         "queued": "대기 중",
         "claimed": "처리 시작",
