@@ -4,15 +4,11 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { PasswordResetRequestDialog } from "@/components/auth/PasswordResetRequestDialog";
-import { Button } from "@/components/ui/button";
-import {
-  useGuestAccessRequest,
-  useGuestCodeLogin,
-  useLogin,
-  useSignup,
-} from "@/hooks/use-auth";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { useLogin, useSignup } from "@/hooks/use-auth";
 import { useSignupFromGroupInvitation } from "@/hooks/use-groups";
 import { useLocalization } from "@/hooks/useLocalization";
+import { cn } from "@/lib/utils";
 import { Field, inputClassName } from "./Field";
 import { ErrorState } from "./Status";
 
@@ -23,17 +19,10 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
   const login = useLogin();
   const signup = useSignup();
   const inviteSignup = useSignupFromGroupInvitation();
-  const guestAccessRequest = useGuestAccessRequest();
-  const guestCodeLogin = useGuestCodeLogin();
   const [activeMode, setActiveMode] = useState(mode);
   const [email, setEmail] = useState("");
   const [nickname, setNickname] = useState("");
   const [password, setPassword] = useState("");
-  const [guestEmail, setGuestEmail] = useState("");
-  const [guestCode, setGuestCode] = useState("");
-  const [guestRequestEmail, setGuestRequestEmail] = useState<string | null>(
-    null,
-  );
   const [signupEmail, setSignupEmail] = useState<string | null>(null);
   const [signupApprovalRequired, setSignupApprovalRequired] = useState(false);
   const { localization } = useLocalization((state) => ({
@@ -42,37 +31,12 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
   const isSignup = activeMode === "signup";
   const isInviteSignup = isSignup && Boolean(inviteToken);
   const active = isInviteSignup ? inviteSignup : isSignup ? signup : login;
-  const isGuestPending =
-    guestAccessRequest.isPending || guestCodeLogin.isPending;
   const inviteTokenQuery = inviteToken
     ? `?invite_token=${encodeURIComponent(inviteToken)}`
     : "";
   const invitationAcceptHref = inviteToken
     ? `/group-invitations/accept?token=${encodeURIComponent(inviteToken)}`
     : "/groups";
-
-  async function handleGuestAccessRequest(
-    event: React.FormEvent<HTMLFormElement>,
-  ) {
-    event.preventDefault();
-    const trimmedEmail = guestEmail.trim();
-    try {
-      await guestAccessRequest.mutateAsync({ email: trimmedEmail });
-      setGuestRequestEmail(trimmedEmail);
-    } catch {
-      // React Query stores the API error on the mutation; render it below.
-    }
-  }
-
-  async function handleGuestCodeLogin(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    try {
-      await guestCodeLogin.mutateAsync(guestCode.trim());
-      router.push("/chat?guest=1");
-    } catch {
-      // React Query stores the API error on the mutation; render it below.
-    }
-  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -234,11 +198,7 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
                 title={localization.auth.authenticationFailed}
               />
             ) : null}
-            <Button
-              type="submit"
-              size="lg"
-              disabled={active.isPending || isGuestPending}
-            >
+            <Button type="submit" size="lg" disabled={active.isPending}>
               {active.isPending
                 ? localization.auth.working
                 : isSignup
@@ -246,107 +206,27 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
                   : localization.auth.loginSubmit}
             </Button>
           </form>
+          {/*
+            Guest access lives on `/guest`. It used to sit here permanently, so
+            every visitor read two extra forms — request a code, then redeem one
+            — before reaching the sign-in they came for. It is one link now.
+            Hidden during invite signup, where the path is already decided.
+          */}
           {!isInviteSignup ? (
-            <div className="mt-4 grid gap-4 rounded-lg border border-cal-hairline bg-cal-surface-soft p-4 text-sm text-cal-muted">
-              <div>
-                <p className="font-semibold text-cal-ink">
-                  {localization.auth.guestTitle}
-                </p>
-                <p className="mt-1 leading-6">
-                  {localization.auth.guestDescription}
-                </p>
-              </div>
-              {guestAccessRequest.error ? (
-                <ErrorState
-                  error={guestAccessRequest.error}
-                  title={localization.auth.guestFailed}
-                />
-              ) : null}
-              <form onSubmit={handleGuestAccessRequest} className="grid gap-3">
-                <Field
-                  label={localization.auth.guestEmailLabel}
-                  hint={localization.auth.guestEmailHint}
-                >
-                  <input
-                    className={inputClassName}
-                    type="email"
-                    autoComplete="email"
-                    value={guestEmail}
-                    onChange={(event) => {
-                      setGuestEmail(event.target.value);
-                      setGuestRequestEmail(null);
-                    }}
-                    required
-                  />
-                </Field>
-                <Button
-                  type="submit"
-                  variant="outline"
-                  disabled={guestAccessRequest.isPending || active.isPending}
-                >
-                  {guestAccessRequest.isPending
-                    ? localization.auth.working
-                    : localization.auth.guestRequestSubmit}
-                </Button>
-              </form>
-              {guestRequestEmail ? (
-                <output
-                  aria-live="polite"
-                  className="rounded-lg border border-cal-success/20 bg-cal-success/5 p-4 text-sm text-cal-success"
-                >
-                  <p className="font-semibold">
-                    {localization.auth.guestRequestReceivedTitle}
-                  </p>
-                  <p className="mt-1 leading-6">
-                    {localization.auth.guestRequestReceivedDescription.replace(
-                      "{email}",
-                      guestRequestEmail,
-                    )}
-                  </p>
-                </output>
-              ) : null}
-              <div className="grid gap-3 border-t border-cal-hairline pt-4">
-                <div>
-                  <p className="font-semibold text-cal-ink">
-                    {localization.auth.guestCodeTitle}
-                  </p>
-                  <p className="mt-1 leading-6">
-                    {localization.auth.guestCodeDescription}
-                  </p>
-                </div>
-                {guestCodeLogin.error ? (
-                  <ErrorState
-                    error={guestCodeLogin.error}
-                    title={localization.auth.guestFailed}
-                  />
-                ) : null}
-                <form onSubmit={handleGuestCodeLogin} className="grid gap-3">
-                  <Field
-                    label={localization.auth.guestCodeLabel}
-                    hint={localization.auth.guestCodeHint}
-                  >
-                    <input
-                      className={inputClassName}
-                      type="text"
-                      autoComplete="one-time-code"
-                      value={guestCode}
-                      onChange={(event) => {
-                        setGuestCode(event.target.value);
-                      }}
-                      required
-                    />
-                  </Field>
-                  <Button
-                    type="submit"
-                    variant="outline"
-                    disabled={guestCodeLogin.isPending || active.isPending}
-                  >
-                    {guestCodeLogin.isPending
-                      ? localization.auth.working
-                      : localization.auth.guestCodeSubmit}
-                  </Button>
-                </form>
-              </div>
+            <div className="mt-6 border-t border-cal-hairline pt-6">
+              {/* A real <Link>, not `Button render={<Link/>}`: Base UI keeps
+                  role="button" on the anchor, which costs screen-reader users
+                  the "link" affordance and browsers the open-in-new-tab
+                  behaviour. `buttonVariants` gives the same appearance. */}
+              <Link
+                href="/guest"
+                className={cn(buttonVariants({ variant: "outline" }), "w-full")}
+              >
+                {localization.auth.guestAccessLink}
+              </Link>
+              <p className="mt-2 text-center text-xs leading-5 text-cal-muted">
+                {localization.auth.guestTitle}
+              </p>
             </div>
           ) : null}
           <p className="mt-6 text-sm text-cal-muted">

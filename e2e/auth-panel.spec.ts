@@ -24,7 +24,7 @@ test.describe("auth pages", () => {
     await page.setViewportSize({ width: 1280, height: 900 });
   });
 
-  test("login keeps the form, guest access, and signup path without the service description pane", async ({
+  test("login keeps the form and signup path, and links out to guest access", async ({
     page,
   }) => {
     await page.goto("/login");
@@ -48,28 +48,22 @@ test.describe("auth pages", () => {
     await expect(
       page.getByRole("link", { name: ko.auth.signupLink }),
     ).toBeVisible();
+    // Guest access moved to its own route; the auth pages only link to it.
     await expect(
-      page.getByRole("textbox", {
-        name: new RegExp(`^${ko.auth.guestEmailLabel}`),
-      }),
+      page.getByRole("link", { name: ko.auth.guestAccessLink }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: ko.auth.guestRequestSubmit }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("textbox", {
-        name: new RegExp(`^${ko.auth.guestCodeLabel}`),
-      }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: ko.auth.guestCodeSubmit }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(page.getByText(ko.auth.heroTitle)).toHaveCount(0);
     await expect(page.getByText(ko.auth.heroDescription)).toHaveCount(0);
     await expectSingleLineText(page, ko.auth.welcomeBack);
   });
 
-  test("signup keeps the account form, guest access, and login path without the service description pane", async ({
+  test("signup keeps the account form and login path, and links out to guest access", async ({
     page,
   }) => {
     await page.goto("/signup");
@@ -92,22 +86,16 @@ test.describe("auth pages", () => {
     await expect(
       page.getByRole("link", { name: ko.auth.loginLink }),
     ).toBeVisible();
+    // Guest access moved to its own route; the auth pages only link to it.
     await expect(
-      page.getByRole("textbox", {
-        name: new RegExp(`^${ko.auth.guestEmailLabel}`),
-      }),
+      page.getByRole("link", { name: ko.auth.guestAccessLink }),
     ).toBeVisible();
     await expect(
       page.getByRole("button", { name: ko.auth.guestRequestSubmit }),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("textbox", {
-        name: new RegExp(`^${ko.auth.guestCodeLabel}`),
-      }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: ko.auth.guestCodeSubmit }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(page.getByText(ko.auth.heroTitle)).toHaveCount(0);
     await expect(page.getByText(ko.auth.heroDescription)).toHaveCount(0);
   });
@@ -136,6 +124,13 @@ test.describe("auth pages", () => {
     });
 
     await page.goto("/login");
+    // Reach guest access the way a visitor does, which also covers the link.
+    await page.getByRole("link", { name: ko.auth.guestAccessLink }).click();
+    await expect(page).toHaveURL(/\/guest$/);
+    await expect(
+      page.getByRole("heading", { name: ko.auth.guestPageTitle }),
+    ).toBeVisible();
+
     await page
       .getByRole("textbox", {
         name: new RegExp(`^${ko.auth.guestEmailLabel}`),
@@ -158,6 +153,13 @@ test.describe("auth pages", () => {
     ).toBeVisible();
     expect(guestRequestBody).toEqual({ email: "reviewer@example.com" });
     expect(guestLoginCalls).toBe(0);
+
+    // And the way back, so neither page is a dead end.
+    await page.getByRole("link", { name: ko.auth.backToLoginLink }).click();
+    await expect(page).toHaveURL(/\/login$/);
+    await expect(
+      page.getByRole("heading", { name: ko.auth.welcomeBack }),
+    ).toBeVisible();
   });
 
   test("group invitation accept sends signed-out recipients to nickname/password signup", async ({

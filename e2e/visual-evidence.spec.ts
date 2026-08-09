@@ -29,6 +29,7 @@ const OUTPUT_DIR = `test-results/visual-evidence/${LABEL}`;
 const ROUTES = [
   { name: "landing", path: "/", anonymous: true },
   { name: "login", path: "/login", anonymous: true },
+  { name: "guest", path: "/guest", anonymous: true },
   { name: "chat", path: "/chat", anonymous: false },
   { name: "knowledge", path: "/knowledge", anonymous: false },
   { name: "groups", path: "/groups", anonymous: false },
