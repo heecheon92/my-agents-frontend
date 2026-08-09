@@ -100,6 +100,22 @@ both covered in `tests/reasoning-selection.test.ts`.
 anyway; hiding the controls would imply the product lacks the feature rather
 than that this session cannot use it.
 
+**There is no `cal-surface` token.** `@theme` exposes `cal-surface-soft`,
+`-card`, `-strong`, `-dark` — a bare `bg-cal-surface` compiles to nothing and
+renders transparent. That shipped briefly on the slider thumb, which appeared
+as a ring around empty space. An e2e assertion now reads the thumb's computed
+`background-color` rather than trusting the class name. Worth remembering: a
+misspelt Tailwind token fails silently, so assert on computed style whenever
+visibility is the point.
+
+**The effort hint block is height-reserved (`h-10`, two lines).** Hints differ
+in length, and an auto-sized block reflows the composer on every slider step —
+the input visibly jumps while dragging. Note that asserting "composer height is
+equal across stops" is *not* a valid guard: today's hints all fit one line, so
+it passes with the fix removed. The test asserts the block is explicitly two
+lines tall, which is what protects future longer copy. Both this and the thumb
+guard were checked by reverting the fix and confirming they fail.
+
 **Effort is framed as deliberation time, not capability.** A seven-stop slider
 named 끄기 → 최대 reads as a quality scale, which is the wrong mental model: the
 same frontier model answers at every level, and `낮음` is still a very capable

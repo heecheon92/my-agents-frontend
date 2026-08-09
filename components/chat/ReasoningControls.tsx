@@ -4,6 +4,7 @@ import { useId } from "react";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import type { ReasoningEffort } from "@/model/my-agents";
+import { ReasoningEffortGuideDialog } from "./ReasoningEffortGuideDialog";
 import type { ResolvedReasoning } from "./reasoning-selection";
 import type { ChatLocalization } from "./types";
 
@@ -102,18 +103,27 @@ export function ReasoningControls({
         </span>
       </div>
 
-      <div className="min-w-0 sm:max-w-72">
-        <p className="text-xs leading-5 text-cal-muted">
+      {/* Fixed height, not auto. The hints differ in length, so an
+          auto-sized block re-flowed the composer on every slider step and the
+          whole input jumped as you dragged. Two lines at `leading-5` is enough
+          for the longest hint at 390px, and reserving it means the height is
+          identical at every stop. */}
+      <div
+        data-slot="reasoning-hint"
+        className="flex h-10 min-w-0 items-start gap-2 sm:max-w-80"
+      >
+        <p
+          key={selection.effort}
+          className="min-w-0 animate-in text-xs text-cal-muted leading-5 fade-in duration-[var(--duration-fast)]"
+        >
           {lockReason ?? effortHints[selection.effort] ?? ""}
         </p>
-        {/* Stated once, always visible: a lower level is a shorter review, not
-            a weaker model. Without this the stop names read as a quality
-            scale, which is the wrong mental model and undersells every level
-            below the top one. */}
         {!locked ? (
-          <p className="mt-1 text-xs leading-5 text-cal-muted/80">
-            {localization.reasoningEffortNote}
-          </p>
+          <ReasoningEffortGuideDialog
+            localization={localization}
+            efforts={efforts}
+            current={selection.effort}
+          />
         ) : null}
       </div>
     </div>

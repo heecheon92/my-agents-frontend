@@ -357,15 +357,27 @@
       "max": "Max"
     },
     "reasoningEffortHints": {
-      "none": "Replies straight away. Good for simple questions.",
-      "minimal": "Replies almost straight away. Good for short questions.",
-      "low": "Replies quickly. Enough for most questions.",
+      "none": "Replies with no review step.",
+      "minimal": "Reviews only very briefly.",
+      "low": "Reviews quickly, then replies.",
       "medium": "The default balance of speed and review.",
-      "high": "Works through the problem in steps. Good for complex questions.",
-      "xhigh": "Reviews for longer. Replies take longer.",
-      "max": "Reviews for as long as it can. Replies take much longer."
+      "high": "Works through the problem in steps.",
+      "xhigh": "Reviews for a long time. Replies are slower.",
+      "max": "Reviews for as long as it can. Replies are much slower."
     },
-    "reasoningEffortNote": "The same frontier model answers at every level. Effort only sets how long it reviews before replying."
+    "reasoningEffortGuideAction": "About the levels",
+    "reasoningEffortGuideTitle": "Choosing a reasoning effort",
+    "reasoningEffortGuideDescription": "The same frontier model answers at every level. Effort only sets how long it reviews before replying — a lower level does not make the model less capable.",
+    "reasoningEffortDetails": {
+      "none": "Skips the review step entirely, so it is the fastest. Not suited to questions needing several sources weighed together. Use it for short factual lookups and classification. If speed matters, try Low first and drop to Off only if you still need to.",
+      "minimal": "Replies almost immediately with minimal review. Good for short questions answered in a sentence.",
+      "low": "Slightly slower, but it can search and plan a few steps. The best balance of speed and cost for finding evidence in documents, drafting, and short analysis.",
+      "medium": "The most balanced point between quality and speed, which is why it is the default. Most questions needing planning or comparison across sources belong here.",
+      "high": "Use when accuracy matters more than speed. Noticeably better when evidence is scattered, sources disagree, or the answer is long and involved. Worth comparing against Medium.",
+      "xhigh": "For long-running research. Use it only when there is a lot of material to work through, and check the extra wait is worth it.",
+      "max": "For the most complex work only. Use it to retry a question that Very high could not settle."
+    },
+    "reasoningEffortGuideCurrent": "Currently selected"
   },
   "admin": {
     "common": {

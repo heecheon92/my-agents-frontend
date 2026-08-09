@@ -51,9 +51,14 @@ function Slider({
               ))}
             </div>
           ) : null}
+          {/* `bg-cal-surface-card`, not `bg-cal-surface` — the latter is not a
+              token in `@theme` (only `-soft`, `-card`, `-strong`, `-dark`), so
+              it compiled to nothing and the thumb rendered with a visible
+              border around a transparent centre. The primary-coloured ring
+              keeps it legible against the filled track in both themes. */}
           <SliderPrimitive.Thumb
             getAriaValueText={getAriaValueText}
-            className="size-4 rounded-full border border-cal-hairline bg-cal-surface shadow-control transition-[left] duration-[var(--duration-fast)] ease-[var(--ease-standard)] focus-visible:outline-2 focus-visible:outline-cal-primary focus-visible:outline-offset-2"
+            className="size-4 rounded-full border-2 border-cal-primary bg-cal-surface-card shadow-control transition-[left] duration-[var(--duration-fast)] ease-[var(--ease-standard)] focus-visible:outline-2 focus-visible:outline-cal-primary focus-visible:outline-offset-2"
           />
         </SliderPrimitive.Track>
       </SliderPrimitive.Control>
