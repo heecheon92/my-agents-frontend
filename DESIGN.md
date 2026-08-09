@@ -281,26 +281,52 @@ Previously open, now settled:
   source. Most are genuinely dead, but some may be reached by dynamic index, so
   a bulk delete is unsafe without per-key checking. Worth a dedicated pass.
 
-- [ ] **Ingestion progress: restore, or delete the dead field?** Not a
-  never-built feature. `956cc6c` (2026-05-22) shipped per-file percentage bars;
-  `a081ef6` (2026-05-27) replaced them with indeterminate spinners because
-  external-worker jobs could sit at 0% while queued correctly, making the
-  percentage misleading. The field survived the removal but the value did not:
-  `useSourceUploadQueue` writes `progressPercent: 0` in twelve places and a
-  hardcoded `10` in one, and `UploadQueueRow` declares it in its props type
-  without ever rendering it. It is entirely synthetic today.
+- [ ] **Ingestion progress: agreed direction, not yet built.** Not a
+  never-built feature, and the earlier removal was correct.
 
-  The backend now emits verified monotonic progress, so the original objection
-  is weaker — but not gone. Its scale still starts `queued 0% → claimed 1%`, so
-  a bare percentage still shows 0% for a correctly-queued job, which is exactly
-  what `a081ef6` rejected.
+  **What actually happened.** `956cc6c` (2026-05-22) shipped per-file progress
+  alongside backend `50461d3`, which added observable stages. Crucially the
+  frontend never rendered the backend value — it built its own queue bar:
 
-  What changes the picture is `stage`, which the schema already parses
-  (`queued`, `claimed`, `chunking`, `embedding`, `indexing`, `entities`,
-  `metadata`, `completed`). Stage disambiguates 0%: "queued" reads as waiting,
-  where a bare 0% reads as stuck. Given that, percentage adds little over stage,
-  and driving the row from stage alone would resolve the original objection
-  without reintroducing a number that can mislead.
+  ```
+  40 + Math.round(progress_percent * 0.6)
+  ```
+
+  with synthetic milestones for uploading (10), uploaded (35), and queued (40).
+  Then `2aaaa75` moved hosted ingestion to an external worker, so a run could
+  sit queued at backend 0% for an unbounded time — which this formula rendered
+  as **40%**. A bar sitting at 40% claims the document is nearly half processed
+  when no worker has touched it. `a081ef6` replaced the bars with indeterminate
+  spinners 19 seconds later. That was the right call.
+
+  **Two separate defects, worth keeping distinct.** The queue bar was partly
+  fabricated; and backend percentages are *milestone commits*, not measurements
+  — `45` means "reached the embedding stage", not "45% of the time elapsed", so
+  a large embedding step can hold at 45 for most of the run.
+
+  **What survives today.** Only plumbing: the schema parses `progress_percent`,
+  `UploadQueueItem` carries `progressPercent`, polling runs every second, and
+  `useSourceUploadQueue` throws the value away by writing `0` (and one hardcoded
+  `10`). `UploadQueueRow` declares the field without rendering it.
+
+  **Agreed direction when this is built.** Use the backend value honestly rather
+  than restoring the old bar or deleting the field:
+
+  - `queued` — indeterminate, labelled as waiting for a worker. No percentage.
+  - `claimed` … `metadata` — stage name plus the backend milestone percentage.
+  - `completed` — 100%.
+  - uploading and publishing — indeterminate, since no real byte or request
+    progress exists for them.
+  - No ETA, and nothing implying the percentage is linear in time.
+
+  The milestone spacing (0, 1, 15, 45, 70, 85, 95, 100) already encodes relative
+  cost, which is why the percentage is worth keeping over a plain step counter:
+  the 30-point jump across embedding says something a "step 4 of 7" indicator
+  would throw away.
+
+  One addition: because a run can legitimately hold at one milestone for a long
+  time, the original need — "is this stalled?" — is only met if a long stay in
+  `queued` says so explicitly. That is the case the whole feature exists for.
 
   Related bug, independent of this decision: `SourceIngestionHistory` renders
   `run.stage` as the raw backend enum, so a Korean UI shows `chunking` and

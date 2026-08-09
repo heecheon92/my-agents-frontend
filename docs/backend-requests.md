@@ -174,12 +174,12 @@ Frontend workaround, if any: The evidence panel promotes the derived `AgentTrace
 
 ## 2026-08-09 — ingestion progress for the upload queue
 
-Status: verified working backend-side; frontend not yet consuming progress_percent
-Frontend need: Distinguish a large document that is still processing from one that has stalled.
-Current backend behavior: `extractionRunSchema` already carries `stage` and `progress_percent`, but async ingestion appears to leave `progress_percent` at its default until completion, so `UploadQueueRow` can only render a binary spinner.
-Requested backend contract: Emit monotonically increasing `progress_percent` (or a `stage_index` / `stage_total` pair) as an extraction run advances through chunking, embedding, indexing, and entity stages.
-Why it matters: A 12-page PDF and a stalled run currently look identical for minutes, which reads as a hang and drives users to retry work that is already in flight.
-Frontend workaround, if any: The upload queue shows the existing stage labels from `uploadStatusLabels`, which convey phase but not progress.
+Status: **withdrawn — the premise was wrong.** No backend change was ever needed.
+Frontend need: Distinguish a document still processing from one that has stalled. Still valid.
+Current backend behavior: The backend emits monotonic milestone progress and always did — `queued 0`, `claimed 1`, `chunking 15`, `embedding 45`, `indexing 70`, `entities 85`, `metadata 95`, `completed 100`.
+Requested backend contract: None. This entry originally claimed async ingestion "appears to leave `progress_percent` at its default until completion". That was an inference from the UI showing no progress, and it was wrong: the value arrives fine, and `useSourceUploadQueue` discards it by writing `progressPercent: 0` on every poll. A frontend decision was misdiagnosed as a backend gap.
+Why it matters: Recorded rather than deleted because it is the second time in this pass that inferring a contract from observed behaviour produced a false request — the first being the activity event-type set. `AGENTS.md` already says to treat the hosted OpenAPI document as the source of truth; these are what that rule is protecting against.
+Resolution: Whether to render the value, and how, is a frontend design decision tracked in `DESIGN.md`.
 
 ## 2026-08-09 — backend responses to the three requests above
 
