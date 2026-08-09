@@ -239,3 +239,12 @@ Current backend behavior: With the guest feature disabled by environment flag, `
 Requested backend contract: none. **Withdrawn on product direction:** the product does not tell users it is running in a demo or degraded mode, so the UI will not announce that guest access is switched off — neither up front nor after a failed submit. A specific code would only enable a message we have decided not to show.
 Why it mattered: the visitor did nothing wrong and cannot act on a permissions message. That part is solved frontend-side without any backend change.
 Resolution: `/guest` passes contextual fallback copy to `ErrorState`, so an uncoded 403 reads "지금은 게스트 이용 요청을 받을 수 없습니다" instead of the generic permission line. Deliberately vague about the cause, which is now the intended behaviour rather than a limitation.
+
+## 2026-08-09 — serve the guest limits instead of hardcoding them in copy
+
+Status: proposed
+Frontend need: State guest limits accurately without the frontend guessing them.
+Current backend behavior: Guest limits are environment-configured — `MY_AGENTS_GUEST_ACCESS_TTL_SECONDS`, `MY_AGENTS_GUEST_MAX_CONVERSATIONS`, `MY_AGENTS_GUEST_CODE_TTL_SECONDS`, and the prompt/document caps. `/auth/me` already exposes `guest_expires_at`, but no counts.
+Requested backend contract: Return the active guest limits — session TTL or expiry, max conversations, max prompts, max documents, and the code TTL — on a payload the UI can read. `/auth/me` covers the in-session cases; the pre-login figures on `/guest` would need an unauthenticated config endpoint, or the copy there stays non-specific.
+Why it matters: Five user-facing strings currently hardcode `24시간`, `대화 1개`, `질문 5개`, `문서 3개`. Those numbers came from `.env.example`, which is **not** production — production configuration lives outside this repo. If the deployed values differ, the product is stating limits that are simply wrong, in exactly the copy `AGENTS.md` requires to be honest.
+Frontend workaround, if any: `chat.guestNoticeDescription`, `auth.guestDescription`, `admin.documents.guestUploadLimitHint`, and two `errors.byCode` strings still carry the literal numbers. The code TTL claim was removed once this was noticed. Interpolating real values is a small change once the data is available.

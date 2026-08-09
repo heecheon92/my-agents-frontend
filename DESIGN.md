@@ -279,6 +279,13 @@ Previously open, now settled:
 
 ## Open questions
 
+- [ ] **Guest limits are hardcoded in copy.** `24시간`, `대화 1개`, `질문 5개`,
+  `문서 3개` appear in five strings, taken from `.env.example` — which is not
+  production; production configuration lives outside this repo. If the deployed
+  values differ, the product states limits that are wrong. `/auth/me` already
+  carries `guest_expires_at`, so the session-length case can be fixed today;
+  the counts need the backend request filed in `docs/backend-requests.md`.
+
 - [ ] **Product name.** The visible brand is still `my-agents`; the `km-` token
   prefix hints at an unused "Keymesh". Affects brand lockup, metadata, nav.
 - [ ] **`Ask` as a nav label.** The only untranslated nav item. Defensible as a

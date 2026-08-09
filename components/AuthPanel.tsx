@@ -105,9 +105,19 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
               </p>
             </div>
           ) : isSignup ? (
-            <p className="mt-3 text-sm leading-6 text-cal-muted">
-              {localization.auth.signupDescription}
-            </p>
+            <>
+              <p className="mt-3 text-sm leading-6 text-cal-muted">
+                {localization.auth.signupDescription}
+              </p>
+              {/*
+                Stated before the form, not after submitting. Signing up now
+                means waiting on approval, and finding that out only once the
+                account exists is the kind of surprise that makes someone leave.
+              */}
+              <p className="mt-4 rounded-control border border-cal-hairline bg-cal-surface-soft p-3 text-sm leading-6 text-cal-body">
+                {localization.auth.signupApprovalNotice}
+              </p>
+            </>
           ) : inviteToken ? (
             <div className="mt-4 rounded-lg border border-cal-hairline bg-cal-surface-soft p-4 text-sm">
               <p className="font-semibold text-cal-ink">
@@ -220,7 +230,10 @@ export function AuthPanel({ mode }: { mode: "login" | "signup" }) {
                   behaviour. `buttonVariants` gives the same appearance. */}
               <Link
                 href="/guest"
-                className={cn(buttonVariants({ variant: "outline" }), "w-full")}
+                className={cn(
+                  buttonVariants({ variant: isSignup ? "default" : "outline" }),
+                  "w-full",
+                )}
               >
                 {localization.auth.guestAccessLink}
               </Link>

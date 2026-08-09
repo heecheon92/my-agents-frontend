@@ -362,3 +362,33 @@ test("guest request failure describes the request, not a sign-in", async ({
   // And never the backend's English.
   await expect(page.getByText("guest access disabled")).toHaveCount(0);
 });
+
+test("a first-time visitor is pointed at guest access", async ({ page }) => {
+  // Signup waits on operator approval, so guest is the path that actually
+  // lets someone see the product today. It leads on the landing page, and
+  // signup says so before the form rather than after submitting.
+  await page.route("**/api/my-agents/**", async (route) => {
+    await route.fulfill({
+      status: 401,
+      contentType: "application/json",
+      body: JSON.stringify({ detail: "Not authenticated" }),
+    });
+  });
+
+  await page.goto("/");
+  const guestCta = page.getByRole("link", { name: ko.home.guestCta });
+  await expect(guestCta).toBeVisible();
+  await expect(page.getByText(ko.home.guestCtaHint)).toBeVisible();
+
+  await guestCta.click();
+  await expect(page).toHaveURL(/\/guest$/);
+  await expect(
+    page.getByRole("heading", { name: ko.auth.guestPageTitle }),
+  ).toBeVisible();
+
+  await page.goto("/signup");
+  await expect(page.getByText(ko.auth.signupApprovalNotice)).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: ko.auth.guestAccessLink }),
+  ).toBeVisible();
+});

@@ -33,20 +33,33 @@ export default function Home() {
             <p className="cal-subcopy cal-fluid-subtitle mt-6 max-w-2xl">
               {home.description}
             </p>
+            {/*
+              Guest leads. Someone arriving cold wants to see the product, not
+              open an account — and signup now waits on operator approval, so
+              making it the primary call to action would send a first-time
+              visitor into a queue. Signup and login stay one click away.
+            */}
             <div className="responsive-cluster mt-8">
               <Link
-                className="inline-flex min-h-11 items-center justify-center rounded-md bg-cal-primary px-5 text-sm font-semibold text-white transition hover:bg-cal-primary-active"
+                className="inline-flex min-h-11 items-center justify-center rounded-control bg-cal-primary px-5 text-sm font-semibold text-white transition hover:bg-cal-primary-active"
+                href="/guest"
+              >
+                {home.guestCta}
+              </Link>
+              <Link
+                className="inline-flex min-h-11 items-center justify-center rounded-control border border-cal-hairline bg-cal-canvas px-5 text-sm font-semibold text-cal-ink transition hover:bg-cal-surface-soft"
                 href="/signup"
               >
                 {home.signup}
               </Link>
               <Link
-                className="inline-flex min-h-11 items-center justify-center rounded-md border border-cal-hairline bg-cal-canvas px-5 text-sm font-semibold text-cal-ink transition hover:bg-cal-surface-soft"
+                className="inline-flex min-h-11 items-center justify-center rounded-control px-5 text-sm font-semibold text-cal-ink underline-offset-4 transition hover:underline"
                 href="/login"
               >
                 {home.login}
               </Link>
             </div>
+            <p className="mt-3 text-sm text-cal-muted">{home.guestCtaHint}</p>
           </div>
           <div className="cal-product-card overflow-hidden rounded-xl p-4">
             <div className="mb-3 rounded-lg border border-cal-hairline bg-cal-surface-soft p-3">
