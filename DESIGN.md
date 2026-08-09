@@ -32,6 +32,16 @@ documents, and permissions read as connected operational evidence.
 **Trust signals.** Provenance sits next to answers. Backend-owned limits are
 stated honestly. Errors explain the next safe step without exposing internals.
 
+**Audience.** Alongside ordinary users, this is a portfolio product read by
+technical reviewers assessing the author's AI engineering work. That is a design
+input, not just context: the retrieval pipeline, agent trace, citation chunks,
+and extraction stages are **evidence of how the system works, and should stay
+legible rather than be smoothed away**. Name the pipeline accurately in
+inspection surfaces — `임베딩`, `청크`, `엔티티`, `색인` are correct there, and
+`docs/korean-copy-guide.md` records the boundary. This never licenses leaking
+internals: raw enums, identifiers in a primary reading path, stack traces, and
+provider detail stay out regardless of who is reading.
+
 **Avoid.** Generic AI gradients, purple-on-white SaaS tropes, glassmorphism,
 floating orbs, decorative chat bubbles without provenance. Low-contrast
 gray-on-gray metadata. Raw identifiers, enums, or ISO timestamps in the primary

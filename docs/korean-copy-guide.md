@@ -47,6 +47,36 @@ for; they are wrong here, not merely dispreferred.
 | run (one answer attempt) | `답변` in user-facing copy; `실행` only in advanced disclosures | — | Users think in answers, not runs. |
 | ingestion / preparation | `준비` | `수집`, `인제스트`, `색인` | `준비` says what the user gets: the document becomes usable. |
 
+### Domain vocabulary — keep it
+
+There is a real distinction between **AI domain vocabulary**, which belongs in
+this product, and **implementation leakage**, which does not. The anti-jargon
+rules further down target the second kind only.
+
+Keep these. Do not "simplify" them into vaguer Korean:
+
+| Term | Korean | Where |
+|---|---|---|
+| embedding | `임베딩` | processing history, ingestion stages |
+| chunk | `청크` | citation details, extraction counts |
+| entity | `엔티티` | extraction counts |
+| index | `색인` | ingestion stages |
+| retrieval | `검색` | agent trace, activity events |
+| citation | `인용` | everywhere; this one is user-facing |
+
+**Why.** This is a portfolio product whose audience includes technical
+reviewers assessing the author's AI engineering work. Naming the pipeline
+accurately is part of what the product is demonstrating, so `임베딩 생성` is
+better than a softened `의미 분석`, and `청크` is better than `문단`.
+
+**The line.** Domain terms are allowed where the surface is already about
+inspection — extraction history, citation details, the agent trace. They do not
+belong in first-run copy, empty states, or primary actions, where the reader has
+not asked for that level of detail. And they never license the genuinely
+implementation-facing vocabulary banned below: `백엔드`, `라우트`, `옵트인`,
+`임의 값`, raw enums, or bare identifiers in a primary reading path. Naming your
+retrieval pipeline is showing craft; leaking your stack trace is not.
+
 ### Actions and states
 
 | Concept | Korean | Never |
