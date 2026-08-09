@@ -79,7 +79,7 @@ export function SourceSpaceBrowserSheet({
       <SheetContent
         side="left"
         showCloseButton={false}
-        className="w-full max-w-sm gap-0 border-r border-cal-hairline bg-white p-0"
+        className="w-full max-w-sm gap-0 border-r border-cal-hairline bg-km-surface p-0"
       >
         <SheetHeader className="sr-only">
           <SheetTitle>{localization.documents.sourceSpacesTitle}</SheetTitle>

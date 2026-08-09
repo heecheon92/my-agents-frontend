@@ -8,6 +8,7 @@ type SettingsPageShellProps = {
   title: string;
   description: string;
   accountTab: string;
+  appearanceTab: string;
   experimentalTab: string;
   children: React.ReactNode;
   maxWidthClassName?: string;
@@ -18,6 +19,7 @@ export function SettingsPageShell({
   title,
   description,
   accountTab,
+  appearanceTab,
   experimentalTab,
   children,
   maxWidthClassName = "max-w-5xl",
@@ -38,6 +40,7 @@ export function SettingsPageShell({
         </div>
         <SettingsTabs
           accountLabel={accountTab}
+          appearanceLabel={appearanceTab}
           experimentalLabel={experimentalTab}
         />
       </div>

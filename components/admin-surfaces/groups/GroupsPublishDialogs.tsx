@@ -54,7 +54,7 @@ export function GroupsPublishDialogs({
         if (!open) setPublishReviewRequest(undefined);
       }}
     >
-      <DrawerContent className="max-h-[92dvh] bg-white">
+      <DrawerContent className="max-h-[92dvh] bg-km-surface">
         <DrawerHeader className="items-stretch border-b border-cal-hairline text-left group-data-[vaul-drawer-direction=bottom]/drawer-content:text-left">
           <div className="mx-auto flex w-full max-w-5xl flex-col gap-3 text-left lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
@@ -121,7 +121,7 @@ export function GroupsPublishDialogs({
             ) : null}
           </div>
         </div>
-        <DrawerFooter className="border-t border-cal-hairline bg-white lg:hidden">
+        <DrawerFooter className="border-t border-cal-hairline bg-km-surface lg:hidden">
           <div className="grid grid-cols-3 gap-2">
             <DrawerClose asChild>
               <Button type="button" variant="outline">

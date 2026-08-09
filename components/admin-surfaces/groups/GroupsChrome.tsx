@@ -54,7 +54,7 @@ export function GroupsChrome({
         title={localization.groups.title}
         description={localization.groups.description}
       >
-        <div className="flex min-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-3xl border border-cal-hairline bg-white shadow-[0_18px_60px_rgb(20_22_23/0.08)] lg:grid lg:grid-cols-[20rem_minmax(0,1fr)]">
+        <div className="flex min-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-3xl border border-cal-hairline bg-km-surface shadow-overlay lg:grid lg:grid-cols-[20rem_minmax(0,1fr)]">
           <aside className="hidden min-h-0 border-r border-cal-hairline lg:flex">
             {browser}
           </aside>
@@ -66,7 +66,7 @@ export function GroupsChrome({
         <SheetContent
           side="left"
           showCloseButton={false}
-          className="w-full max-w-sm gap-0 border-r border-cal-hairline bg-white p-0"
+          className="w-full max-w-sm gap-0 border-r border-cal-hairline bg-km-surface p-0"
         >
           <SheetHeader className="sr-only">
             <SheetTitle>{localization.groups.title}</SheetTitle>

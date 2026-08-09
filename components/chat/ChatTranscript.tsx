@@ -43,7 +43,7 @@ export function getReplayDisplayedMessages(
 function AssistantGeneratingIndicator({ label }: { label: string }) {
   return (
     <output aria-label={label} className="mt-1 flex min-h-11 items-center">
-      <span className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-km-accent/25 bg-white text-km-accent shadow-sm">
+      <span className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-km-accent/25 bg-km-surface text-km-accent shadow-sm">
         <span className="absolute h-full w-full rounded-full bg-km-accent/20 opacity-75 motion-safe:animate-ping" />
         <Sparkles
           aria-hidden="true"

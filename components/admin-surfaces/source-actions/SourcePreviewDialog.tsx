@@ -69,8 +69,8 @@ export function SourcePreviewDialog({
         className={cn(
           "min-h-9 flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-cal-primary/20",
           selected
-            ? "bg-white text-cal-ink shadow-[0_1px_2px_rgb(20_22_23/0.08)]"
-            : "text-cal-muted hover:bg-white/70 hover:text-cal-ink",
+            ? "bg-km-surface text-cal-ink shadow-control"
+            : "text-cal-muted hover:bg-km-surface/70 hover:text-cal-ink",
         )}
         onClick={() => setActiveTab(tab)}
       >
@@ -91,7 +91,7 @@ export function SourcePreviewDialog({
 
         <div className="grid gap-4">
           {activeDocument ? (
-            <section className="grid gap-3 rounded-2xl border border-cal-hairline bg-white p-4 text-sm">
+            <section className="grid gap-3 rounded-2xl border border-cal-hairline bg-km-surface p-4 text-sm">
               <div>
                 <p className="break-words text-base font-semibold text-cal-ink">
                   {activeDocument.title}
@@ -158,7 +158,7 @@ export function SourcePreviewDialog({
               role="tabpanel"
               aria-labelledby={advancedTabId}
               hidden={activeTab !== "advanced"}
-              className="rounded-xl border border-cal-hairline bg-white p-4"
+              className="rounded-xl border border-cal-hairline bg-km-surface p-4"
             >
               <h3 className="text-sm font-semibold text-cal-ink">
                 {localization.documents.extractionRuns}

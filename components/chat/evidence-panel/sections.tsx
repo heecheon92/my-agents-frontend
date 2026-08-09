@@ -146,7 +146,7 @@ function ActivitySection({
             <summary className="cursor-pointer font-medium text-cal-ink">
               {localization.activityDetails}
             </summary>
-            <pre className="mt-2 max-h-40 overflow-auto rounded-xl border border-cal-hairline bg-white p-3 text-xs text-cal-muted">
+            <pre className="mt-2 max-h-40 overflow-auto rounded-xl border border-cal-hairline bg-km-surface p-3 text-xs text-cal-muted">
               {formatActivityEventPayload(
                 event.payload,
                 localization.activityPayloadHidden,

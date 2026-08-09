@@ -35,6 +35,7 @@ export function ExperimentalSettingsPanel() {
       title={copy.experimental.title}
       description={copy.experimental.description}
       accountTab={copy.tabs.account}
+      appearanceTab={copy.tabs.appearance}
       experimentalTab={copy.tabs.experimental}
       maxWidthClassName="max-w-3xl"
     >

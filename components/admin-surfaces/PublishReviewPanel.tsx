@@ -105,7 +105,7 @@ function PublishSourceDocument({
         </div>
         <Pill tone="slate">{document.source_type}</Pill>
       </div>
-      <div className="mt-3 max-h-96 overflow-auto rounded-md border border-cal-hairline bg-white p-3 text-sm leading-6 text-cal-ink">
+      <div className="mt-3 max-h-96 overflow-auto rounded-md border border-cal-hairline bg-km-surface p-3 text-sm leading-6 text-cal-ink">
         <AgentMarkdown
           content={
             document.content || localization.groups.publishReviewNoPreview

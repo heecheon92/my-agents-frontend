@@ -9,7 +9,7 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          "bg-km-primary text-primary-foreground shadow-[0_1px_2px_rgb(20_22_23/0.12)] hover:bg-km-primary-active [a]:hover:bg-km-primary-active",
+          "bg-km-primary text-primary-foreground shadow-control hover:bg-km-primary-active [a]:hover:bg-km-primary-active",
         outline:
           "border-km-hairline bg-km-surface text-km-ink hover:border-km-accent/40 hover:bg-km-surface-muted aria-expanded:bg-km-surface-muted",
         secondary:

@@ -161,7 +161,7 @@ export function GroupsWorkspace({
             <p className="mt-2 text-sm leading-6 text-cal-muted">
               {localization.groups.publishBoundaryDescription}
             </p>
-            <details className="mt-3 max-w-xl rounded-lg border border-cal-hairline bg-white p-3 text-xs text-cal-muted">
+            <details className="mt-3 max-w-xl rounded-lg border border-cal-hairline bg-km-surface p-3 text-xs text-cal-muted">
               <summary className="cursor-pointer font-medium text-cal-ink">
                 {localization.groups.advancedGroupDetails}
               </summary>
@@ -202,7 +202,7 @@ export function GroupsWorkspace({
 
       {managementPageContent ? (
         <div className="min-h-0 flex-1 overflow-auto bg-cal-canvas/40 p-4 xl:p-6">
-          <section className="mx-auto grid max-w-5xl gap-4 rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)] sm:p-6">
+          <section className="mx-auto grid max-w-5xl gap-4 rounded-2xl border border-cal-hairline bg-km-surface p-4 shadow-card sm:p-6">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="min-w-0">
                 <Button
@@ -255,7 +255,7 @@ export function GroupsWorkspace({
           </div>
 
           <div className="mt-4 grid gap-4 xl:grid-cols-2">
-            <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
+            <section className="rounded-2xl border border-cal-hairline bg-km-surface p-4 shadow-card">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="font-semibold text-cal-ink">
@@ -294,7 +294,7 @@ export function GroupsWorkspace({
               />
             </section>
 
-            <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
+            <section className="rounded-2xl border border-cal-hairline bg-km-surface p-4 shadow-card">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="font-semibold text-cal-ink">
@@ -349,7 +349,7 @@ export function GroupsWorkspace({
               />
             </section>
 
-            <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
+            <section className="rounded-2xl border border-cal-hairline bg-km-surface p-4 shadow-card">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="font-semibold text-cal-ink">
@@ -400,7 +400,7 @@ export function GroupsWorkspace({
               />
             </section>
 
-            <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
+            <section className="rounded-2xl border border-cal-hairline bg-km-surface p-4 shadow-card">
               <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h3 className="font-semibold text-cal-ink">

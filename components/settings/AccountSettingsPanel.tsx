@@ -83,6 +83,7 @@ export function AccountSettingsPanel() {
       title={copy.account.title}
       description={copy.account.description}
       accountTab={copy.tabs.account}
+      appearanceTab={copy.tabs.appearance}
       experimentalTab={copy.tabs.experimental}
     >
       <div className="grid gap-4 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">

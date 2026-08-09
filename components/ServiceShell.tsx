@@ -173,7 +173,7 @@ export function ServiceShell({
         </SidebarContent>
         <SidebarFooter className="gap-3 border-t border-cal-hairline p-3">
           <OnboardingTarget id="service.guest-session-card">
-            <div className="rounded-xl border border-cal-hairline bg-cal-canvas p-4 text-sm text-cal-muted shadow-[0_4px_16px_rgb(0_0_0/0.04)] group-data-[collapsible=icon]:hidden">
+            <div className="rounded-xl border border-cal-hairline bg-cal-canvas p-4 text-sm text-cal-muted shadow-card group-data-[collapsible=icon]:hidden">
               <p className="truncate font-medium text-cal-ink">
                 {sessionLabel}
               </p>

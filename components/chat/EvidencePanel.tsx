@@ -51,7 +51,7 @@ export function EvidencePanel({
         {isLatestAssistantMessage || isStreaming ? (
           <>
             {citations.length > 0 ? (
-              <details className="group/citations min-w-0 rounded-lg border border-cal-hairline bg-white/70 text-cal-ink open:w-full open:bg-white">
+              <details className="group/citations min-w-0 rounded-lg border border-cal-hairline bg-km-surface/70 text-cal-ink open:w-full open:bg-km-surface">
                 <summary
                   aria-label={`${localization.viewCitationDetails} (${citations.length})`}
                   className="flex min-h-9 cursor-pointer list-none items-center gap-2 px-3 text-xs font-semibold marker:hidden hover:text-cal-primary"
@@ -65,7 +65,7 @@ export function EvidencePanel({
               </details>
             ) : null}
             <OnboardingTarget id="chat.response-evidence">
-              <details className="group/evidence min-w-0 rounded-lg border border-cal-hairline bg-white/70 text-cal-ink open:w-full open:bg-white">
+              <details className="group/evidence min-w-0 rounded-lg border border-cal-hairline bg-km-surface/70 text-cal-ink open:w-full open:bg-km-surface">
                 <summary
                   aria-label={`${localization.viewResponseEvidence} (${evidenceCount})`}
                   className="flex min-h-9 cursor-pointer list-none items-center gap-2 px-3 text-xs font-semibold marker:hidden hover:text-cal-primary"

@@ -157,7 +157,7 @@ export function buildGroupManagementContent({
       ),
       body: (
         <div className="grid gap-4">
-          <div className="grid gap-3 rounded-xl border border-cal-hairline bg-white p-3">
+          <div className="grid gap-3 rounded-xl border border-cal-hairline bg-km-surface p-3">
             <div className="flex flex-wrap gap-2">
               {(
                 [
@@ -255,7 +255,7 @@ export function buildGroupManagementContent({
     ),
     body: (
       <div className="grid gap-4">
-        <div className="grid gap-3 rounded-xl border border-cal-hairline bg-white p-3">
+        <div className="grid gap-3 rounded-xl border border-cal-hairline bg-km-surface p-3">
           <div className="flex flex-wrap gap-2">
             {(
               [

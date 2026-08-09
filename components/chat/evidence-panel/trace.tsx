@@ -283,7 +283,7 @@ export function AgentTraceSummary({
         {stageKeys.map((stageKey, index) => (
           <li
             key={stageKey}
-            className="inline-flex min-h-8 min-w-0 items-center gap-1 rounded-full border border-km-accent/20 bg-white px-2.5 py-1 text-xs font-medium text-cal-ink"
+            className="inline-flex min-h-8 min-w-0 items-center gap-1 rounded-full border border-km-accent/20 bg-km-surface px-2.5 py-1 text-xs font-medium text-cal-ink"
           >
             <span className="shrink-0 text-cal-muted">{index + 1}</span>
             <span className="min-w-0 truncate">

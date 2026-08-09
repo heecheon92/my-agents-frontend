@@ -91,7 +91,7 @@ export function SourceReingestDialog({
           {ingest.error ? <ErrorState error={ingest.error} /> : null}
         </div>
 
-        <details className="rounded-2xl border border-cal-hairline bg-white p-4">
+        <details className="rounded-2xl border border-cal-hairline bg-km-surface p-4">
           <summary className="cursor-pointer font-semibold text-cal-ink">
             {localization.documents.extractionRuns}
           </summary>

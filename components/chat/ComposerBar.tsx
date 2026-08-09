@@ -131,7 +131,7 @@ export function ComposerBar({
           </div>
         </div>
       ) : null}
-      <div className="rounded-2xl border border-cal-hairline bg-cal-canvas p-2 shadow-[0_10px_30px_rgb(20_22_23/0.08)] sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-2 sm:p-3">
+      <div className="rounded-2xl border border-cal-hairline bg-cal-canvas p-2 shadow-raised sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-2 sm:p-3">
         <input
           className={cn(
             inputClassName,

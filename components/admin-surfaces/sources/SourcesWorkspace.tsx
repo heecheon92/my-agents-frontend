@@ -102,7 +102,7 @@ export function SourcesWorkspace({
   teamGroups,
 }: SourcesWorkspaceProps) {
   return (
-    <div className="flex min-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-3xl border border-cal-hairline bg-white shadow-[0_18px_60px_rgb(20_22_23/0.08)] lg:grid lg:grid-cols-[20rem_minmax(0,1fr)]">
+    <div className="flex min-h-[calc(100dvh-11rem)] flex-col overflow-hidden rounded-3xl border border-cal-hairline bg-km-surface shadow-overlay lg:grid lg:grid-cols-[20rem_minmax(0,1fr)]">
       <aside className="hidden min-h-0 border-r border-cal-hairline lg:flex">
         <OnboardingTarget
           id="documents.knowledge-destination"
@@ -207,7 +207,7 @@ export function SourcesWorkspace({
             </div>
           </div>
           {(documents.data?.length ?? 0) > 0 ? (
-            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-cal-hairline bg-white p-4 text-sm text-cal-muted sm:flex-row sm:items-center sm:justify-between">
+            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-cal-hairline bg-km-surface p-4 text-sm text-cal-muted sm:flex-row sm:items-center sm:justify-between">
               <p className="leading-6">
                 {localization.documents.askSourcesHint}
               </p>
@@ -223,7 +223,7 @@ export function SourcesWorkspace({
         </div>
 
         <div className="grid min-h-0 flex-1 gap-4 overflow-auto bg-cal-canvas/40 p-4 xl:p-6">
-          <section className="flex min-h-[28rem] min-w-0 flex-col rounded-2xl border border-cal-hairline bg-white shadow-[0_10px_30px_rgb(20_22_23/0.06)]">
+          <section className="flex min-h-[28rem] min-w-0 flex-col rounded-2xl border border-cal-hairline bg-km-surface shadow-card">
             <div className="flex shrink-0 flex-col gap-3 border-b border-cal-hairline p-4 sm:flex-row sm:items-center sm:justify-between">
               <div>
                 <h2 className="font-semibold text-cal-ink">

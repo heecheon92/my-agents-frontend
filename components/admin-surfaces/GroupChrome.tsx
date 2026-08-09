@@ -41,7 +41,7 @@ export function GroupBrowser({
   onSelectGroup,
 }: GroupBrowserProps) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-white">
+    <div className="flex min-h-0 flex-1 flex-col bg-km-surface">
       <div className="shrink-0 border-b border-cal-hairline px-4 py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
@@ -129,7 +129,7 @@ export function GroupSummaryCard({
   action?: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-cal-hairline bg-white p-4 shadow-[0_10px_30px_rgb(20_22_23/0.05)]">
+    <section className="rounded-2xl border border-cal-hairline bg-km-surface p-4 shadow-card">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">

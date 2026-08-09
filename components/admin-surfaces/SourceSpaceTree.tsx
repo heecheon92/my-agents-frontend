@@ -219,7 +219,7 @@ export function SourceSpaceTree({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-white">
+    <div className="flex min-h-0 flex-1 flex-col bg-km-surface">
       <div className="shrink-0 border-b border-cal-hairline px-4 py-4">
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">

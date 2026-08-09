@@ -158,7 +158,7 @@ export function DocumentsTable({
               key={document.id}
               data-state={isActive ? "selected" : undefined}
               className={cn(
-                "border-cal-hairline bg-white",
+                "border-cal-hairline bg-km-surface",
                 isActive
                   ? "bg-cal-surface-soft/80 hover:bg-cal-surface-soft"
                   : "",

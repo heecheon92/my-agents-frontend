@@ -9,16 +9,17 @@ import {
 } from "lucide-react";
 import type { CSSProperties } from "react";
 import { Toaster as Sonner, type ToasterProps } from "sonner";
+import { useResolvedTheme } from "@/hooks/use-theme";
 
-function Toaster({
-  theme = "light",
-  toastOptions,
-  style,
-  ...props
-}: ToasterProps) {
+function Toaster({ theme, toastOptions, style, ...props }: ToasterProps) {
+  // Was hardcoded to "light", so every toast stayed light regardless of theme.
+  // Tracks the resolved theme rather than `prefers-color-scheme` so it follows
+  // an explicit in-app override too.
+  const resolvedTheme = useResolvedTheme();
+
   return (
     <Sonner
-      theme={theme}
+      theme={theme ?? resolvedTheme}
       className="toaster group"
       icons={{
         success: <CircleCheckIcon className="size-4" />,

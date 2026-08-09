@@ -746,9 +746,32 @@
   },
   "settings": {
     "eyebrow": "Settings",
+    "sectionsLabel": "Settings sections",
     "tabs": {
       "account": "Account",
+      "appearance": "Appearance",
       "experimental": "Experimental"
+    },
+    "appearance": {
+      "title": "Appearance settings",
+      "description": "Choose how bright the interface is. This applies to this device only.",
+      "themeTitle": "Theme",
+      "themeDescription": "Follow your system setting, or pick light or dark yourself.",
+      "themeOptions": {
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "themeOptionHints": {
+        "system": "Matches your device setting.",
+        "light": "Always use the light interface.",
+        "dark": "Always use the dark interface."
+      },
+      "resolvedThemes": {
+        "light": "Light",
+        "dark": "Dark"
+      },
+      "currentThemeLabel": "Currently showing: {theme}"
     },
     "account": {
       "title": "Account settings",
