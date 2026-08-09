@@ -357,14 +357,15 @@
       "max": "Max"
     },
     "reasoningEffortHints": {
-      "none": "Answers immediately, with no thinking step.",
-      "minimal": "Answers almost immediately.",
-      "low": "Takes a quick look before answering.",
-      "medium": "The default.",
-      "high": "Works through the problem before answering.",
-      "xhigh": "Thinks for longer. Answers may be slower.",
-      "max": "Thinks for as long as it can. Answers may be much slower."
-    }
+      "none": "Replies straight away. Good for simple questions.",
+      "minimal": "Replies almost straight away. Good for short questions.",
+      "low": "Replies quickly. Enough for most questions.",
+      "medium": "The default balance of speed and review.",
+      "high": "Works through the problem in steps. Good for complex questions.",
+      "xhigh": "Reviews for longer. Replies take longer.",
+      "max": "Reviews for as long as it can. Replies take much longer."
+    },
+    "reasoningEffortNote": "The same frontier model answers at every level. Effort only sets how long it reviews before replying."
   },
   "admin": {
     "common": {

@@ -20,6 +20,11 @@ test.describe("composer reasoning controls", () => {
     await expect(
       page.getByText(ko.chat.reasoningEffortLabels.medium, { exact: true }),
     ).toBeVisible();
+
+    // The stop names read as a quality scale unless this is stated. A lower
+    // level is a shorter review, not a weaker model, and losing this line
+    // would undersell every level below the top one.
+    await expect(page.getByText(ko.chat.reasoningEffortNote)).toBeVisible();
   });
 
   test("hides the controls when the backend does not serve capabilities", async ({

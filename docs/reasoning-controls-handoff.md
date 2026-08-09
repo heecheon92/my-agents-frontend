@@ -100,6 +100,15 @@ both covered in `tests/reasoning-selection.test.ts`.
 anyway; hiding the controls would imply the product lacks the feature rather
 than that this session cannot use it.
 
+**Effort is framed as deliberation time, not capability.** A seven-stop slider
+named 끄기 → 최대 reads as a quality scale, which is the wrong mental model: the
+same frontier model answers at every level, and `낮음` is still a very capable
+answer. `chat.reasoningEffortNote` states this once, always visible under the
+control, and the per-level hints describe *what kind of question each level
+suits* rather than how hard the model is trying. An e2e assertion pins the note
+in place, because it is the sort of line a later edit would quietly drop as
+redundant. Keep that framing if you rewrite this copy.
+
 ## Still open
 
 - Reasoning tokens count against the existing output ceilings, and codex

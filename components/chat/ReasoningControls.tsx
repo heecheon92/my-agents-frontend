@@ -102,9 +102,20 @@ export function ReasoningControls({
         </span>
       </div>
 
-      <p className="min-w-0 text-xs leading-5 text-cal-muted sm:max-w-64">
-        {lockReason ?? effortHints[selection.effort] ?? ""}
-      </p>
+      <div className="min-w-0 sm:max-w-72">
+        <p className="text-xs leading-5 text-cal-muted">
+          {lockReason ?? effortHints[selection.effort] ?? ""}
+        </p>
+        {/* Stated once, always visible: a lower level is a shorter review, not
+            a weaker model. Without this the stop names read as a quality
+            scale, which is the wrong mental model and undersells every level
+            below the top one. */}
+        {!locked ? (
+          <p className="mt-1 text-xs leading-5 text-cal-muted/80">
+            {localization.reasoningEffortNote}
+          </p>
+        ) : null}
+      </div>
     </div>
   );
 }
