@@ -587,3 +587,105 @@ themes.
 Known follow-ups: 76 unreferenced localization leaf keys need a per-key check
 before deletion (some may be reached by dynamic index); three backend contract
 requests are open with codex.
+
+## 2026-08-12 — chat shell restructure and the onboarding dismiss bug
+
+One bug and three UX corrections that turned out to be one change.
+
+### The bug: `나중에` did not dismiss the tour
+
+Reported as "the dismiss button doesn't work". It only failed for **guest**
+sessions, and the cause was not a missing write — `dismissDecision` did write
+sessionStorage. It was reactivity:
+
+- Authenticated dismissals go through `markDismissed`, which mutates
+  `authDecisions`, which `OnboardingRuntime` subscribes to. The gate
+  re-evaluates. Fine.
+- Guest dismissals wrote sessionStorage only, and the gate read that value once
+  inside a `useMemo` keyed on `[user]` — a structurally-shared React Query
+  object that does not change on dismiss. So `shouldPrompt` stayed `true`
+  forever: `skip()` set `status: "idle"`, the gate recomputed to `true`, and the
+  effect re-opened the card within a frame.
+
+Fixed by mirroring guest decisions into runtime store state (`guestDecisions`,
+seeded from sessionStorage in `onRehydrateStorage`, excluded from `partialize`)
+so both identities flow through one reactive lookup. This also removed an impure
+storage read during render, which was a live hydration-mismatch hazard.
+
+Guest `완료` had the identical latent defect, masked because the existing e2e
+only asserted the step heading disappeared, not the card.
+
+**Verified by reverting.** `e2e/guest-onboarding.spec.ts` now clicks the real
+`나중에`; against the pre-fix source it fails with the card still present
+(`toHaveCount` expected 0, received 1). The other guest specs seeded
+sessionStorage in `addInitScript`, which is precisely what hid this — seeding
+makes the one-shot read return a decision on first render.
+
+### The three UX fixes were one change
+
+1. **Dead composer on first run.** The input rendered `disabled` until a
+   conversation existed, with no CTA. Now the composer is always live and
+   sending the first message creates the conversation
+   (`ensureConversationId`), so bare `/chat` is the new-chat state and `새 대화`
+   is a link rather than a POST — an accidental click can no longer leave an
+   empty conversation behind.
+2. **Source selector ate the transcript.** An always-expanded `<details>` in the
+   panel header with zero responsive classes: the same ~100px at 390px as at
+   1920px. Now a compact trigger in the composer (`KnowledgeScopePicker`)
+   opening a Dialog on desktop and a Drawer on mobile, labelled with the current
+   summary so scope stays readable without opening it.
+3. **Two competing left rails.** The conversation list moved from a route-local
+   grid column into the shell sidebar (`ConversationHistorySidebarGroup`),
+   deleting `ConversationSidebar`, `ConversationBrowserSheet`, and the duplicate
+   mobile panel-left trigger.
+
+They interlock: the history can only leave the route if selection is
+URL-addressable, so `app/(service)/chat/[conversationId]` came first, mirroring
+`/knowledge/[sourceId]`.
+
+### Decisions worth keeping
+
+- **Query cache over context.** The history takes no props; it reads the same
+  `conversations.list()` key. A context would have to wrap `ServiceShell`,
+  leaking chat state onto every service route and re-rendering the streaming
+  subtree. Recorded in DESIGN.md along with the one exception,
+  `chat-activity-store` (`busyConversationId` only).
+- **`hidden`, not `opacity-0`,** on the history group.
+  `e2e/sidebar-persistence.spec.ts` filters by `offsetParent !== null`, which
+  only goes null under `display: none`. That spec passed **unedited**, which was
+  the acceptance test for the whole sidebar move.
+- **Onboarding path matching was a blocker.** `useOnboardingRouteStep` compared
+  routes with exact equality, so on `/chat/<id>` a step would navigate away from
+  the open conversation or cancel the tour. `matchesStepPath` fixes that, and
+  the same latent bug on `/knowledge/[sourceId]`.
+- **The blocker copy stays outside the overlay.** With the picker collapsed,
+  `knowledgeSourceRequired` would have been hidden behind a closed dialog while
+  Send sat greyed out with no stated reason.
+
+### A test that was not testing anything
+
+The first double-submit e2e passed with the guard removed: `setDraft("")` runs
+synchronously and React re-renders before a second keypress, so the second
+submit early-returns on the empty draft. Rewritten to call `requestSubmit()`
+twice in one tick, which keeps the original closure — the actual race
+`creatingConversationRef` exists for. It now fails with 2 creates when the guard
+is removed, and passes with 1.
+
+### Verification
+
+`pnpm lint`, `tsc --noEmit`, 202 vitest, 92 Playwright (2 skipped, env-gated),
+`pnpm build`. Visual evidence re-captured at 390/768/1280 — note the visual spec
+now deep-links `/chat/c-visual`, since bare `/chat` would otherwise photograph
+an empty greeting.
+
+Test churn: `chat-citations` and `group-knowledge-v1` deep-link; the latter also
+drives the new picker. `onboarding-route-step` and `onboarding-store` gained
+cases. `chatworkspace-footer`, `component-public-exports`, and
+`sidebar-persistence` passed unedited by design — `getConversationCardClassName`
+was extracted to a pure module in a no-op first commit specifically so deleting
+`ConversationSidebar` would not touch them.
+
+Known follow-ups: guest onboarding decisions still live in sessionStorage, so a
+dismissal does not survive a new tab — promoting them to localStorage is a
+privacy call, not a bug fix. `e2e/v1-demo.spec.ts` is env-gated and was updated
+blind for the `newButton` link change.

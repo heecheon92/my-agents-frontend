@@ -155,4 +155,40 @@ test("guest users can start and complete the guided tour", async ({ page }) => {
     window.sessionStorage.getItem("my-agents:onboarding:guest:guest:v1"),
   );
   expect(sessionDecision).toContain('"completed":true');
+
+  // The card, not just the step. A guest completion used to be written only to
+  // sessionStorage, which nothing subscribed to, so the prompt could return.
+  await expect(page.getByText(ko.onboarding.guestPromptTitle)).toHaveCount(0);
+});
+
+test("dismissing the guest tour with 나중에 keeps it dismissed", async ({
+  page,
+}) => {
+  await mockGuestWorkspace(page);
+  await page.goto("/chat");
+
+  const promptTitle = page.getByText(ko.onboarding.guestPromptTitle);
+  await expect(promptTitle).toBeVisible();
+
+  // Click the real button. Seeding sessionStorage in `addInitScript` — which is
+  // what the other guest specs do — is exactly what hid this bug: it made the
+  // one-shot read in the gate return a decision on first render, so the
+  // re-prompt loop never ran.
+  await page.getByRole("button", { name: ko.onboarding.notNow }).click();
+  await expect(promptTitle).toHaveCount(0);
+
+  const sessionDecision = await page.evaluate(() =>
+    window.sessionStorage.getItem("my-agents:onboarding:guest:guest:v1"),
+  );
+  expect(sessionDecision).toContain('"dismissed":true');
+
+  // It used to reappear within a frame of being dismissed.
+  await page.waitForTimeout(500);
+  await expect(promptTitle).toHaveCount(0);
+
+  // And it must stay gone across a client navigation, since `ServiceShell`
+  // keeps `OnboardingRuntime` mounted between service routes.
+  await page.getByRole("link", { name: ko.service.nav.knowledge }).click();
+  await expect(page).toHaveURL(/\/knowledge$/);
+  await expect(promptTitle).toHaveCount(0);
 });

@@ -21,6 +21,23 @@ export function getLatestAssistantMessageId(messages: Message[]) {
     ?.id;
 }
 
+/** `conversationCreateRequestSchema` accepts 1–200 characters. */
+const CONVERSATION_TITLE_MAX_LENGTH = 80;
+
+/**
+ * Names a conversation after the message that started it, so the history list
+ * reads as a list of questions rather than a column of timestamps.
+ *
+ * The fallback covers a draft that is only whitespace or punctuation — the
+ * backend rejects an empty title, and an unnamed conversation is worse than a
+ * dated one.
+ */
+export function deriveConversationTitle(draft: string, fallback: string) {
+  const collapsed = draft.replace(/\s+/g, " ").trim();
+  if (!collapsed) return fallback.slice(0, CONVERSATION_TITLE_MAX_LENGTH);
+  return collapsed.slice(0, CONVERSATION_TITLE_MAX_LENGTH);
+}
+
 export function getNextConversationIdAfterDelete(
   conversations: Array<Pick<Conversation, "id">>,
   deletedConversationId: string,

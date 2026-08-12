@@ -6,7 +6,7 @@ import { OnboardingOverlay } from "./OnboardingOverlay";
 import { OnboardingPrompt } from "./OnboardingPrompt";
 import type { OnboardingFlow } from "./onboarding-steps";
 import {
-  getGuestSessionDecision,
+  GUEST_IDENTITY_BUCKET,
   opaqueIdentityBucket,
   useOnboardingStore,
 } from "./onboarding-store";
@@ -14,26 +14,22 @@ import {
 type OnboardingIdentity = {
   flow: OnboardingFlow | null;
   bucket?: string;
-  shouldPrompt: boolean;
 };
 
+/**
+ * Resolves *who* is being onboarded, not whether to prompt them. The decision
+ * itself is read reactively from the store — this memo is keyed on `user`,
+ * which does not change when the user dismisses the tour, so anything decided
+ * here would be frozen for the life of the session.
+ */
 export function useOnboardingIdentity(user?: User): OnboardingIdentity {
   return useMemo(() => {
-    if (!user) return { flow: null, bucket: undefined, shouldPrompt: false };
+    if (!user) return { flow: null, bucket: undefined };
     if (user.is_guest) {
-      const flow: OnboardingFlow = "guest";
-      return {
-        flow,
-        bucket: "guest:session",
-        shouldPrompt: !getGuestSessionDecision(flow),
-      };
+      return { flow: "guest", bucket: GUEST_IDENTITY_BUCKET };
     }
 
-    return {
-      flow: "new-user",
-      bucket: opaqueIdentityBucket(user.id),
-      shouldPrompt: true,
-    };
+    return { flow: "new-user", bucket: opaqueIdentityBucket(user.id) };
   }, [user]);
 }
 
@@ -41,18 +37,27 @@ export function OnboardingRuntime({ user }: { user?: User }) {
   const status = useOnboardingStore((state) => state.status);
   const isHydrated = useOnboardingStore((state) => state.isHydrated);
   const authDecisions = useOnboardingStore((state) => state.authDecisions);
+  const guestDecisions = useOnboardingStore((state) => state.guestDecisions);
   const prompt = useOnboardingStore((state) => state.prompt);
-  const { flow, bucket, shouldPrompt } = useOnboardingIdentity(user);
+  const { flow, bucket } = useOnboardingIdentity(user);
 
-  const authDecision =
-    bucket && flow ? authDecisions[bucket]?.[flow] : undefined;
+  // One decision lookup for both identities. Guest decisions used to live only
+  // in sessionStorage, which nothing subscribed to, so dismissing re-prompted
+  // immediately: `skip()` set status back to "idle", this gate recomputed to
+  // true, and the effect below re-opened the card.
+  const decision = !flow
+    ? undefined
+    : bucket === GUEST_IDENTITY_BUCKET
+      ? guestDecisions[flow]
+      : bucket
+        ? authDecisions[bucket]?.[flow]
+        : undefined;
   const shouldShowPrompt =
     isHydrated &&
     status === "idle" &&
     Boolean(flow) &&
-    shouldPrompt &&
-    !authDecision?.completed &&
-    !authDecision?.dismissed;
+    !decision?.completed &&
+    !decision?.dismissed;
 
   useEffect(() => {
     if (!shouldShowPrompt || !flow) return;

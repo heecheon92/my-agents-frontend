@@ -409,24 +409,41 @@ test("unified knowledge selection sends personal and group sources through one c
   page,
 }) => {
   const requests = await mockGroupKnowledgeApi(page);
-  await page.goto("/chat");
+  // Deep-linked: bare /chat is now the new-conversation state, and this test is
+  // about the selection contract, not about creating a conversation.
+  await page.goto(`/chat/${personalConversation.id}`);
 
-  await page.getByText(ko.chat.knowledgeSourceTitle).click();
-  await page
+  // The source scope is a compact trigger in the composer now, opening a Dialog
+  // on desktop. Its accessible name carries the current summary.
+  const sourceTrigger = page.getByRole("button", {
+    name: new RegExp(ko.chat.knowledgeSourceTitle),
+  });
+  await sourceTrigger.click();
+  const sourceDialog = page.getByRole("dialog");
+  await expect(sourceDialog).toBeVisible();
+
+  await sourceDialog
     .getByRole("button", { name: ko.chat.knowledgeSourceSelected })
     .click();
   await expect(
-    page.getByText(ko.chat.knowledgeSourceBoundaryCopy),
+    sourceDialog.getByText(ko.chat.knowledgeSourceBoundaryCopy),
   ).toBeVisible();
-  await expect(page.getByText("Alpha Shared Knowledge")).toBeVisible();
-  await expect(page.getByText("Beta Shared Knowledge")).toBeVisible();
-  await expect(page.getByText("Published Member Knowledge")).toBeVisible();
-  await expect(page.getByText("Private Notes")).toBeVisible();
+  await expect(sourceDialog.getByText("Alpha Shared Knowledge")).toBeVisible();
+  await expect(sourceDialog.getByText("Beta Shared Knowledge")).toBeVisible();
+  await expect(
+    sourceDialog.getByText("Published Member Knowledge"),
+  ).toBeVisible();
+  await expect(sourceDialog.getByText("Private Notes")).toBeVisible();
 
-  await page.getByText("Alpha Shared Knowledge").click();
-  await page.getByText("Beta Shared Knowledge").click();
-  await page.getByText("Published Member Knowledge").click();
-  await page.getByText("Private Notes").click();
+  await sourceDialog.getByText("Alpha Shared Knowledge").click();
+  await sourceDialog.getByText("Beta Shared Knowledge").click();
+  await sourceDialog.getByText("Published Member Knowledge").click();
+  await sourceDialog.getByText("Private Notes").click();
+
+  // Selection applies immediately; the footer button just dismisses.
+  await sourceDialog.getByRole("button", { name: ko.chat.closeAction }).click();
+  await expect(sourceDialog).toBeHidden();
+
   await page
     .getByPlaceholder(ko.chat.composerPlaceholder)
     .fill("Use selected context");

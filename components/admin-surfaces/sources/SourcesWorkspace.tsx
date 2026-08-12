@@ -4,7 +4,6 @@ import {
   DatabaseIcon,
   FileTextIcon,
   ListTreeIcon,
-  PlusIcon,
   SearchIcon,
   UploadIcon,
 } from "lucide-react";
@@ -181,14 +180,10 @@ export function SourcesWorkspace({
                 <ListTreeIcon />
                 {localization.documents.browseSourceSpacesAction}
               </Button>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={onCreateSourceSpace}
-              >
-                <PlusIcon />
-                {localization.documents.addSourceSpaceAction}
-              </Button>
+              {/* No create button here: the source-space tree in the left pane
+                  already carries a `+` wired to the same `onCreateSourceSpace`,
+                  and two entry points for one action in the same view read as
+                  two different actions. */}
               <OnboardingTarget id="documents.upload-action">
                 <Button
                   type="button"

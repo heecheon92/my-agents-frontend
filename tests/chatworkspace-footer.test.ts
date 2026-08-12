@@ -4,6 +4,7 @@ import {
   CHAT_SCROLL_REGION_CLASS_NAME,
   CHAT_WORKSPACE_PANEL_CLASS_NAME,
   createLiveActivityEvent,
+  deriveConversationTitle,
   getAgentTraceStageKeys,
   getConversationCardClassName,
   getLatestAssistantMessageId,
@@ -361,6 +362,24 @@ describe("ChatWorkspace assistant message footer", () => {
     expect(
       getNextConversationIdAfterDelete([{ id: "only" }], "only", "only"),
     ).toBeUndefined();
+  });
+
+  it("names a new conversation after the message that started it", () => {
+    expect(deriveConversationTitle("배포 절차를 알려주세요", "fallback")).toBe(
+      "배포 절차를 알려주세요",
+    );
+    // Newlines and runs of whitespace would otherwise land in the sidebar.
+    expect(deriveConversationTitle("첫 줄\n\n둘째  줄", "fallback")).toBe(
+      "첫 줄 둘째 줄",
+    );
+    // The backend rejects an empty title, so a whitespace-only draft must not
+    // reach it.
+    expect(deriveConversationTitle("   \n  ", "fallback")).toBe("fallback");
+    expect(deriveConversationTitle("", "fallback")).toBe("fallback");
+    // Well inside the schema's 200-character ceiling.
+    expect(deriveConversationTitle("가".repeat(500), "fallback")).toHaveLength(
+      80,
+    );
   });
 
   it("detects server-active conversation runs for queue fallback", () => {

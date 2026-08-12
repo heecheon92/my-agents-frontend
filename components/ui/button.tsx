@@ -4,7 +4,16 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-[10px] border border-transparent bg-clip-padding text-sm font-semibold whitespace-nowrap transition-[background-color,border-color,color,box-shadow,transform] duration-150 outline-none select-none focus-visible:border-km-accent focus-visible:ring-3 focus-visible:ring-km-accent/20 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:bg-km-primary-disabled disabled:text-km-muted disabled:opacity-100 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  // `cursor-pointer` is not redundant. Browsers render `<button>` with the
+  // default arrow, and Tailwind's Preflight normalizes it to `cursor: default`
+  // besides — so without this every button in the product, including send,
+  // regenerate, and copy, failed to read as clickable on hover. Links and
+  // `<summary>` were unaffected, which is why the inconsistency showed up as
+  // "some things look clickable and some do not".
+  //
+  // No `disabled:` counterpart is needed: `disabled:pointer-events-none` below
+  // means a disabled button never receives hover at all.
+  "group/button inline-flex shrink-0 cursor-pointer items-center justify-center rounded-[10px] border border-transparent bg-clip-padding text-sm font-semibold whitespace-nowrap transition-[background-color,border-color,color,box-shadow,transform] duration-150 outline-none select-none focus-visible:border-km-accent focus-visible:ring-3 focus-visible:ring-km-accent/20 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:bg-km-primary-disabled disabled:text-km-muted disabled:opacity-100 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {

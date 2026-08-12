@@ -182,7 +182,7 @@ export function DocumentsTable({
                 <button
                   type="button"
                   onClick={() => onOpenSourceActions(document.id, "preview")}
-                  className="grid min-w-0 gap-1 text-left"
+                  className="grid min-w-0 cursor-pointer gap-1 text-left"
                   aria-label={localization.documents.openSourceDetails.replace(
                     "{title}",
                     document.title,

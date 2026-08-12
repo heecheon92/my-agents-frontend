@@ -188,6 +188,13 @@
   --km-muted-soft: #8b938e;
   --km-hairline: #d8d5cc;
   --km-hairline-soft: #ebe8df;
+  /*
+   * Scrollbar. A step darker than `hairline` so the thumb reads as a control
+   * rather than another divider, and a step lighter than `muted` so it never
+   * competes with text.
+   */
+  --km-scrollbar-thumb: #c6c1b5;
+  --km-scrollbar-thumb-hover: #a9a396;
   --km-primary: #14213d;
   --km-primary-active: #0b162d;
   --km-primary-disabled: #d8d5cc;
@@ -296,6 +303,9 @@
   --km-muted-soft: #7d776c;
   --km-hairline: #35332e;
   --km-hairline-soft: #26251f;
+  /* Lighter than the surface it sits on, mirroring the light theme's logic. */
+  --km-scrollbar-thumb: #46433c;
+  --km-scrollbar-thumb-hover: #5e5a51;
   --km-primary: #2f4372; /* 9.8:1 with white text */
   --km-primary-active: #3a5189;
   --km-primary-disabled: #302e2a;
@@ -373,6 +383,58 @@
   }
   html {
     @apply font-sans;
+  }
+
+  /*
+   * Canonical scrollbar — global, so every scroll region in the product looks
+   * the same and no component has to opt in.
+   *
+   * The standard properties are the primary implementation, not a progressive
+   * enhancement, and the `::-webkit-` block is deliberately fenced behind
+   * `@supports not`. Giving `::-webkit-scrollbar` a width turns macOS overlay
+   * scrollbars into permanent classic ones that occupy layout width — which on
+   * `/chat` would eat from the transcript and the sidebar on every machine
+   * whose "Show scroll bars" setting is the default. `scrollbar-width: thin`
+   * restyles the overlay without taking the space, so browsers that support it
+   * must never reach the fallback.
+   *
+   * Track is transparent everywhere: a filled track draws a channel down the
+   * side of every panel, which fights DESIGN.md's preference for hairlines.
+   */
+  @supports (scrollbar-width: thin) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--km-scrollbar-thumb) transparent;
+    }
+  }
+
+  @supports not (scrollbar-width: thin) {
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+
+    ::-webkit-scrollbar-track,
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background-color: var(--km-scrollbar-thumb);
+      border-radius: 9999px;
+      /*
+       * A transparent border clipped to the content box insets the thumb, so
+       * it reads as a floating pill with breathing room rather than a bar
+       * welded to the panel edge. This is the only way to pad a webkit
+       * scrollbar thumb — padding does nothing on it.
+       */
+      border: 3px solid transparent;
+      background-clip: content-box;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background-color: var(--km-scrollbar-thumb-hover);
+    }
   }
 
   /*

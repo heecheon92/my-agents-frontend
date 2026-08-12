@@ -21,6 +21,7 @@ export function EvidencePanel({
   isLatestAssistantMessage,
   isStreaming,
   replayButton,
+  copyButton,
   runs,
   events,
   citations,
@@ -30,6 +31,12 @@ export function EvidencePanel({
   isLatestAssistantMessage: boolean;
   isStreaming: boolean;
   replayButton?: ReactNode;
+  /**
+   * Sits beside the replay control. A separate slot rather than a combined
+   * `actions` node so this file, not the caller, owns the order the two
+   * controls appear in.
+   */
+  copyButton?: ReactNode;
   runs: AgentRunSummary[];
   events: Array<AgentEvent | LiveActivityEvent>;
   citations: Citation[];
@@ -51,6 +58,10 @@ export function EvidencePanel({
     >
       <div className="flex min-w-0 flex-wrap items-start gap-2">
         {replayButton}
+        {/* Outside the latest-message branch below: copying an older answer is
+            always meaningful, unlike its citations and activity trail, which
+            the backend only keeps for the most recent run. */}
+        {copyButton}
         {isLatestAssistantMessage || isStreaming ? (
           <>
             {citations.length > 0 ? (

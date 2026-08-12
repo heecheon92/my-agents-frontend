@@ -74,14 +74,7 @@ export function groupManagementHref(
   return `${groupHref(groupId)}/${section}`;
 }
 
-export function decodeRouteSegment(segment?: string) {
-  if (!segment) return undefined;
-  try {
-    return decodeURIComponent(segment);
-  } catch {
-    return segment;
-  }
-}
+export { decodeRouteSegment } from "@/lib/route-segments";
 
 export function extractionRunTone(status: string): StatusTone {
   if (status === "completed") return "green";

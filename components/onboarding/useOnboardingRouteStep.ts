@@ -15,6 +15,17 @@ type OnboardingRouteAction =
   | { type: "navigate"; path: string }
   | { type: "cancel" };
 
+/**
+ * A step declares the route it belongs to (`/chat`, `/knowledge`, …), but the
+ * user may be on a resource under it (`/chat/abc`, `/knowledge/xyz`). Exact
+ * equality treated those as the wrong route, so entering a step would navigate
+ * away from the open conversation — or, if the step was already showing,
+ * cancel the whole tour as if the user had navigated manually.
+ */
+export function matchesStepPath(pathname: string, path: string) {
+  return pathname === path || pathname.startsWith(`${path}/`);
+}
+
 export function resolveOnboardingRouteAction({
   isActive,
   pathname,
@@ -29,7 +40,7 @@ export function resolveOnboardingRouteAction({
   stepKey: string | null;
 }): OnboardingRouteAction {
   if (!isActive || !step || !stepKey) return { type: "none" };
-  if (pathname === step.path) return { type: "none" };
+  if (matchesStepPath(pathname, step.path)) return { type: "none" };
   if (previousStepKey !== stepKey) {
     return { type: "navigate", path: step.path };
   }
@@ -67,7 +78,9 @@ export function useOnboardingRouteStep(identityBucket?: string) {
   );
   const isTargetPending = Boolean(
     isActive &&
-      (!step || pathname !== step.path || (!targetElement && !shouldFallback)),
+      (!step ||
+        !matchesStepPath(pathname, step.path) ||
+        (!targetElement && !shouldFallback)),
   );
 
   useEffect(() => {
@@ -108,7 +121,7 @@ export function useOnboardingRouteStep(identityBucket?: string) {
 
   useEffect(() => {
     if (!isActive || !step || !stepKey) return;
-    if (pathname !== step.path || targetElement) return;
+    if (!matchesStepPath(pathname, step.path) || targetElement) return;
     const timeoutId = window.setTimeout(() => {
       setTimedOutStepKey(stepKey);
     }, step.waitTimeoutMs ?? DEFAULT_ONBOARDING_WAIT_TIMEOUT_MS);

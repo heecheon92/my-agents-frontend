@@ -4,12 +4,15 @@ import {
   FilePlus2Icon,
   LogOutIcon,
   MessageSquareTextIcon,
+  PlusIcon,
   SettingsIcon,
   SparklesIcon,
   UsersRoundIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { ConversationHistorySidebarGroup } from "@/components/chat/ConversationHistorySidebarGroup";
+import { NEW_CHAT_HREF } from "@/components/chat/chat-routes";
 import { OnboardingRuntime } from "@/components/onboarding/OnboardingRuntime";
 import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { ThemeTogglerButton } from "@/components/ThemeTogglerButton";
@@ -72,6 +75,7 @@ export function ServiceShell({
   const logout = useLogout();
   const { localization } = useLocalization((state) => ({
     brand: state.localization.brand,
+    chat: state.localization.chat,
     service: state.localization.service,
   }));
 
@@ -181,8 +185,10 @@ export function ServiceShell({
             </SidebarMenuItem>
           </SidebarMenu>
         </SidebarHeader>
-        <SidebarContent>
-          <SidebarGroup className="py-3 group-data-[collapsible=icon]:px-3">
+        {/* `overflow-hidden` so the conversation history below owns the only
+            scroller in here; otherwise the nav links scroll out of reach. */}
+        <SidebarContent className="overflow-hidden">
+          <SidebarGroup className="shrink-0 py-3 group-data-[collapsible=icon]:px-3">
             <SidebarGroupContent>
               <SidebarMenu className="gap-1">
                 {navRoutes.map((item) => {
@@ -214,6 +220,42 @@ export function ServiceShell({
               </SidebarMenu>
             </SidebarGroupContent>
           </SidebarGroup>
+          {/*
+            Chat-only, and gated by *not rendering* rather than by a CSS hide:
+            `useConversations()` has no `enabled` flag, so mounting the history
+            on /knowledge or /groups would fetch conversations those routes
+            never show.
+          */}
+          {currentRoute.key === "chat" ? (
+            <>
+              <SidebarGroup className="shrink-0 py-0 group-data-[collapsible=icon]:px-3">
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    <SidebarMenuItem>
+                      <OnboardingTarget id="chat.new-conversation">
+                        {/*
+                          A link, not a POST. `/chat` is the new-chat state and
+                          the conversation is created on the first send, so an
+                          accidental click cannot leave an empty conversation
+                          behind. Outside the history group below so it survives
+                          the icon-rail collapse.
+                        */}
+                        <SidebarMenuButton
+                          tooltip={localization.chat.newButton}
+                          className="h-10 rounded-lg text-cal-muted hover:text-cal-ink"
+                          render={<Link href={NEW_CHAT_HREF} />}
+                        >
+                          <PlusIcon />
+                          <span>{localization.chat.newButton}</span>
+                        </SidebarMenuButton>
+                      </OnboardingTarget>
+                    </SidebarMenuItem>
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+              <ConversationHistorySidebarGroup />
+            </>
+          ) : null}
         </SidebarContent>
         <SidebarFooter className="gap-3 border-t border-cal-hairline p-3">
           <OnboardingTarget id="service.guest-session-card">

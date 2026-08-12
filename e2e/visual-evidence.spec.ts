@@ -30,7 +30,11 @@ const ROUTES = [
   { name: "landing", path: "/", anonymous: true },
   { name: "login", path: "/login", anonymous: true },
   { name: "guest", path: "/guest", anonymous: true },
-  { name: "chat", path: "/chat", anonymous: false },
+  // Deep-linked: bare `/chat` is the new-conversation state now, so visiting it
+  // would capture an empty greeting instead of a transcript. The new-chat state
+  // is captured separately by the empty-state pass below.
+  { name: "chat", path: "/chat/c-visual", anonymous: false },
+  { name: "chat-new", path: "/chat", anonymous: false },
   { name: "knowledge", path: "/knowledge", anonymous: false },
   { name: "groups", path: "/groups", anonymous: false },
   { name: "settings-account", path: "/settings/account", anonymous: false },
@@ -71,7 +75,8 @@ for (const viewport of VIEWPORTS) {
       page,
     }) => {
       await mockWorkspace(page);
-      await page.goto("/chat");
+      // A populated transcript, which is what can actually overflow.
+      await page.goto("/chat/c-visual");
       await page.waitForLoadState("networkidle");
       await hideDevIndicators(page);
 

@@ -5,21 +5,45 @@ import { mockWorkspace } from "./helpers/mock-workspace";
 const effortLabel = ko.chat.reasoningEffortLabel;
 const proLabel = ko.chat.reasoningProLabel;
 
+/**
+ * The controls live behind a compact trigger in the composer now, so every
+ * assertion about the slider or the switch has to open it first. The trigger
+ * itself is the one thing that must stay readable without a click — it states
+ * the current level, which is what keeps collapsing them honest.
+ */
+function reasoningTrigger(page: import("@playwright/test").Page) {
+  return page.getByRole("button", { name: new RegExp(effortLabel) });
+}
+
+async function openReasoningControls(page: import("@playwright/test").Page) {
+  await reasoningTrigger(page).click();
+  await expect(page.getByRole("slider")).toBeVisible();
+}
+
 test.describe("composer reasoning controls", () => {
-  test("renders the effort slider and pro toggle for a registered user", async ({
+  test("states the current effort on the trigger without opening it", async ({
     page,
   }) => {
     await mockWorkspace(page);
     await page.goto("/chat");
 
-    await expect(page.getByText(effortLabel)).toBeVisible();
+    // Defaults come from the served capabilities, not a frontend constant.
+    await expect(reasoningTrigger(page)).toContainText(
+      ko.chat.reasoningEffortLabels.medium,
+    );
+    // Collapsed means collapsed: the settings themselves are not on screen.
+    await expect(page.getByRole("slider")).toHaveCount(0);
+  });
+
+  test("renders the effort slider and pro toggle for a registered user", async ({
+    page,
+  }) => {
+    await mockWorkspace(page);
+    await page.goto("/chat");
+    await openReasoningControls(page);
+
     await expect(page.getByRole("slider")).toBeEnabled();
     await expect(page.getByRole("switch", { name: proLabel })).toBeEnabled();
-
-    // Defaults come from the served capabilities, not a frontend constant.
-    await expect(
-      page.getByText(ko.chat.reasoningEffortLabels.medium, { exact: true }),
-    ).toBeVisible();
 
     // The stop names read as a quality scale unless this is stated. A lower
     // level is a shorter review, not a weaker model, and losing this line
@@ -39,17 +63,18 @@ test.describe("composer reasoning controls", () => {
     ).toBeVisible();
   });
 
-  test("reserves two lines for the effort hint so copy cannot reflow the composer", async ({
+  test("reserves two lines for the effort hint so copy cannot reflow the panel", async ({
     page,
   }) => {
-    // Asserting equal composer height across stops is NOT enough: today's
-    // hints all fit one line at every width, so that passes with the fix
-    // removed. What must hold is that the block is explicitly sized for two
-    // lines, so a future longer hint wraps inside reserved space instead of
-    // growing the composer mid-drag. h-10 = 2 x leading-5.
+    // Asserting equal heights across stops is NOT enough: today's hints all fit
+    // one line at every width, so that passes with the fix removed. What must
+    // hold is that the block is explicitly sized for two lines, so a future
+    // longer hint wraps inside reserved space instead of resizing the popover
+    // mid-drag. h-10 = 2 x leading-5.
     await page.setViewportSize({ width: 390, height: 844 });
     await mockWorkspace(page);
     await page.goto("/chat");
+    await openReasoningControls(page);
 
     const hintBlock = page.locator('[data-slot="reasoning-hint"]');
     const slider = page.getByRole("slider");
@@ -67,6 +92,7 @@ test.describe("composer reasoning controls", () => {
     // the class name.
     await mockWorkspace(page);
     await page.goto("/chat");
+    await openReasoningControls(page);
 
     const fill = await page
       .locator(
@@ -89,7 +115,7 @@ test.describe("composer reasoning controls", () => {
     await expect(
       page.getByPlaceholder(ko.chat.composerPlaceholder),
     ).toBeVisible();
-    await expect(page.getByText(effortLabel)).toHaveCount(0);
+    await expect(reasoningTrigger(page)).toHaveCount(0);
     await expect(page.getByRole("slider")).toHaveCount(0);
   });
 
@@ -98,8 +124,8 @@ test.describe("composer reasoning controls", () => {
     // disabled is honest; hiding them would imply the feature is absent.
     await mockWorkspace(page, { guest: true });
     await page.goto("/chat");
+    await openReasoningControls(page);
 
-    await expect(page.getByText(effortLabel)).toBeVisible();
     await expect(page.getByRole("slider")).toBeDisabled();
     await expect(page.getByRole("switch", { name: proLabel })).toBeDisabled();
     await expect(page.getByText(ko.chat.reasoningLockedGuest)).toBeVisible();
@@ -108,17 +134,24 @@ test.describe("composer reasoning controls", () => {
   test("keeps a raised effort after a reload", async ({ page }) => {
     await mockWorkspace(page);
     await page.goto("/chat");
+    await openReasoningControls(page);
 
     const slider = page.getByRole("slider");
     await slider.focus();
     await slider.press("ArrowRight");
+    // Scoped to the panel: the label is deliberately in two places now — here
+    // and on the trigger — so an unscoped match is ambiguous.
     await expect(
-      page.getByText(ko.chat.reasoningEffortLabels.high, { exact: true }),
+      page
+        .locator('[data-slot="popover-content"]')
+        .getByText(ko.chat.reasoningEffortLabels.high, { exact: true }),
     ).toBeVisible();
 
     await page.reload();
-    await expect(
-      page.getByText(ko.chat.reasoningEffortLabels.high, { exact: true }),
-    ).toBeVisible();
+    // Read it off the collapsed trigger — the persisted value has to survive
+    // without the panel being reopened.
+    await expect(reasoningTrigger(page)).toContainText(
+      ko.chat.reasoningEffortLabels.high,
+    );
   });
 });

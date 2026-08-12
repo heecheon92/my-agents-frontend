@@ -1,6 +1,6 @@
 "use client";
 
-import { ListTreeIcon, NetworkIcon, PlusIcon } from "lucide-react";
+import { ListTreeIcon, NetworkIcon } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { EmptyState, Pill } from "@/components/Status";
@@ -190,10 +190,8 @@ export function GroupsWorkspace({
               <ListTreeIcon />
               {localization.groups.browseGroupsAction}
             </Button>
-            <Button type="button" variant="outline" onClick={onCreateGroup}>
-              <PlusIcon />
-              {localization.groups.createButton}
-            </Button>
+            {/* No create button here: the group browser in the left pane
+                already carries a `+` wired to the same `onCreateGroup`. */}
             <Button
               type="button"
               onClick={onInviteMember}

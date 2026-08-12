@@ -1,14 +1,54 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+/**
+ * Tests run in the `node` environment (see `vitest.config.ts`), so there is no
+ * `window` and no storage. The store guards its own calls with `typeof window`,
+ * but zustand's `persist` resolves the bare `localStorage` global **once, at
+ * import time** — so the doubles have to be installed before the module graph
+ * loads, which is what `vi.hoisted` is for. This keeps jsdom out of the
+ * dependency tree for one file.
+ */
+const storageDoubles = vi.hoisted(() => {
+  const createStorageDouble = () => {
+    const entries = new Map<string, string>();
+    return {
+      getItem: (key: string) => entries.get(key) ?? null,
+      setItem: (key: string, value: string) => void entries.set(key, value),
+      removeItem: (key: string) => void entries.delete(key),
+      clear: () => entries.clear(),
+    };
+  };
+  const sessionStorage = createStorageDouble();
+  const localStorage = createStorageDouble();
+  for (const [key, value] of [
+    ["window", { sessionStorage, localStorage }],
+    ["sessionStorage", sessionStorage],
+    ["localStorage", localStorage],
+  ] as const) {
+    Object.defineProperty(globalThis, key, {
+      value,
+      configurable: true,
+      writable: true,
+    });
+  }
+  return { sessionStorage, localStorage };
+});
+
 import {
   ONBOARDING_VERSION,
   onboardingSteps,
   stepsForFlow,
 } from "@/components/onboarding/onboarding-steps";
 import {
+  GUEST_IDENTITY_BUCKET,
+  getGuestSessionDecision,
   guestSessionKey,
+  markGuestSessionDecision,
   type OnboardingStore,
   opaqueIdentityBucket,
+  readGuestSessionDecisions,
   serializeOnboardingPersistence,
+  useOnboardingStore,
 } from "@/components/onboarding/onboarding-store";
 import en from "@/localization/en.json";
 import ko from "@/localization/ko.json";
@@ -97,6 +137,11 @@ describe("onboarding persistence", () => {
       resetRuntime: () => undefined,
       markDismissed: () => undefined,
       markCompleted: () => undefined,
+      guestDecisions: {
+        guest: { dismissed: true, updatedAt: "2026-06-07T00:00:00.000Z" },
+      },
+      markGuestDecision: () => undefined,
+      hydrateGuestDecisions: () => undefined,
     } satisfies OnboardingStore);
 
     expect(persisted).toEqual({
@@ -110,5 +155,68 @@ describe("onboarding persistence", () => {
     expect(JSON.stringify(persisted)).not.toContain("chat.composer");
     expect(JSON.stringify(persisted)).not.toContain("activeStepIndex");
     expect(JSON.stringify(persisted)).not.toContain("targets");
+    // Guest decisions are session-scoped. Persisting them to localStorage
+    // would carry a dismissal into sessions the guest never consented to.
+    expect(JSON.stringify(persisted)).not.toContain("guestDecisions");
+  });
+});
+
+describe("onboarding dismissal", () => {
+  beforeEach(() => {
+    storageDoubles.sessionStorage.clear();
+    storageDoubles.localStorage.clear();
+    useOnboardingStore.setState({
+      activeFlow: null,
+      activeStepIndex: 0,
+      status: "idle",
+      isHydrated: true,
+      authDecisions: {},
+      guestDecisions: {},
+    });
+  });
+
+  it("keeps a guest dismissal in reactive state, not only sessionStorage", () => {
+    // The bug: `skip()` wrote sessionStorage, which no component subscribed to,
+    // so the prompt gate never saw it and re-opened the card immediately.
+    useOnboardingStore.getState().prompt("guest");
+    useOnboardingStore.getState().skip(GUEST_IDENTITY_BUCKET);
+
+    const state = useOnboardingStore.getState();
+    expect(state.status).toBe("idle");
+    expect(state.guestDecisions.guest?.dismissed).toBe(true);
+    expect(getGuestSessionDecision("guest")?.dismissed).toBe(true);
+  });
+
+  it("keeps a guest completion in reactive state too", () => {
+    useOnboardingStore.getState().prompt("guest");
+    useOnboardingStore.getState().complete(GUEST_IDENTITY_BUCKET);
+
+    expect(useOnboardingStore.getState().guestDecisions.guest?.completed).toBe(
+      true,
+    );
+  });
+
+  it("still records authenticated dismissals against the identity bucket", () => {
+    useOnboardingStore.getState().prompt("new-user");
+    useOnboardingStore.getState().skip("auth:abc");
+
+    expect(
+      useOnboardingStore.getState().authDecisions["auth:abc"]?.["new-user"]
+        ?.dismissed,
+    ).toBe(true);
+    expect(useOnboardingStore.getState().guestDecisions).toEqual({});
+  });
+
+  it("seeds guest decisions from storage on hydrate", () => {
+    markGuestSessionDecision("guest", { dismissed: true });
+    useOnboardingStore.setState({ guestDecisions: {} });
+
+    useOnboardingStore
+      .getState()
+      .hydrateGuestDecisions(readGuestSessionDecisions());
+
+    expect(useOnboardingStore.getState().guestDecisions.guest?.dismissed).toBe(
+      true,
+    );
   });
 });

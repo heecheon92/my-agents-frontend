@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { createJSONStorage, persist } from "zustand/middleware";
 import {
+  ONBOARDING_FLOWS,
   ONBOARDING_VERSION,
   type OnboardingFlow,
   type OnboardingStatus,
@@ -28,6 +29,14 @@ type OnboardingRuntimeState = {
   status: OnboardingStatus;
   isHydrated: boolean;
   targets: Record<string, HTMLElement>;
+  /**
+   * Guest decisions live in sessionStorage, which nothing can subscribe to.
+   * Mirroring them here is what makes dismissing the tour actually stick: the
+   * gate in `OnboardingRuntime` re-evaluates when this changes. Runtime-only —
+   * `serializeOnboardingPersistence` must never write it to localStorage, or a
+   * guest decision would outlive the session it was made in.
+   */
+  guestDecisions: Partial<Record<OnboardingFlow, OnboardingDecision>>;
 };
 
 type OnboardingActions = {
@@ -43,6 +52,13 @@ type OnboardingActions = {
   resetRuntime: () => void;
   markDismissed: (flow: OnboardingFlow, identityBucket: string) => void;
   markCompleted: (flow: OnboardingFlow, identityBucket: string) => void;
+  markGuestDecision: (
+    flow: OnboardingFlow,
+    decision: Pick<OnboardingDecision, "completed" | "dismissed">,
+  ) => void;
+  hydrateGuestDecisions: (
+    decisions: Partial<Record<OnboardingFlow, OnboardingDecision>>,
+  ) => void;
 };
 
 export type OnboardingStore = OnboardingPersistentState &
@@ -60,9 +76,16 @@ const initialRuntimeState: OnboardingRuntimeState = {
   status: "idle",
   isHydrated: false,
   targets: {},
+  guestDecisions: {},
 };
 
 const ONBOARDING_IDENTITY_SALT_KEY = "my-agents:onboarding:identity-salt:v1";
+
+/**
+ * Sentinel bucket for guest sessions. Guests have no stable id to hash, so
+ * their decisions are keyed by session rather than identity.
+ */
+export const GUEST_IDENTITY_BUCKET = "guest:session";
 
 function nowIso() {
   return new Date().toISOString();
@@ -131,6 +154,16 @@ export function markGuestSessionDecision(
   );
 }
 
+/** Every guest decision already in storage, for seeding the store on hydrate. */
+export function readGuestSessionDecisions() {
+  const decisions: Partial<Record<OnboardingFlow, OnboardingDecision>> = {};
+  for (const flow of ONBOARDING_FLOWS) {
+    const decision = getGuestSessionDecision(flow);
+    if (decision) decisions[flow] = decision;
+  }
+  return decisions;
+}
+
 export function serializeOnboardingPersistence(state: OnboardingStore) {
   return {
     version: state.version,
@@ -157,8 +190,8 @@ function recordDecision(
 
 function persistDecision(flow: OnboardingFlow, identityBucket?: string) {
   if (!identityBucket) return;
-  if (identityBucket === "guest:session") {
-    markGuestSessionDecision(flow, { completed: true });
+  if (identityBucket === GUEST_IDENTITY_BUCKET) {
+    useOnboardingStore.getState().markGuestDecision(flow, { completed: true });
     return;
   }
   useOnboardingStore.getState().markCompleted(flow, identityBucket);
@@ -166,8 +199,8 @@ function persistDecision(flow: OnboardingFlow, identityBucket?: string) {
 
 function dismissDecision(flow: OnboardingFlow, identityBucket?: string) {
   if (!identityBucket) return;
-  if (identityBucket === "guest:session") {
-    markGuestSessionDecision(flow, { dismissed: true });
+  if (identityBucket === GUEST_IDENTITY_BUCKET) {
+    useOnboardingStore.getState().markGuestDecision(flow, { dismissed: true });
     return;
   }
   useOnboardingStore.getState().markDismissed(flow, identityBucket);
@@ -221,12 +254,31 @@ export const useOnboardingStore = create<OnboardingStore>()(
         set((state) =>
           recordDecision(state, flow, identityBucket, { completed: true }),
         ),
+      // Writes both halves: sessionStorage so the decision survives a reload,
+      // and store state so the gate that reads it actually re-renders.
+      hydrateGuestDecisions: (decisions) => set({ guestDecisions: decisions }),
+      markGuestDecision: (flow, decision) => {
+        markGuestSessionDecision(flow, decision);
+        set((state) => ({
+          guestDecisions: {
+            ...state.guestDecisions,
+            [flow]: { ...decision, updatedAt: nowIso() },
+          },
+        }));
+      },
     }),
     {
       name: "my-agents:onboarding:v1",
       storage: createJSONStorage(() => localStorage),
       partialize: serializeOnboardingPersistence,
-      onRehydrateStorage: () => (state) => state?.setHydrated(true),
+      onRehydrateStorage: () => (state) => {
+        if (!state) return;
+        // Seeded here rather than read during render: the old code called
+        // `getGuestSessionDecision()` inside a `useMemo`, which both skipped
+        // updates and risked an SSR/client hydration mismatch.
+        state.hydrateGuestDecisions(readGuestSessionDecisions());
+        state.setHydrated(true);
+      },
     },
   ),
 );

@@ -1,6 +1,6 @@
 import { RotateCcw, Sparkles } from "lucide-react";
 import type { RefObject } from "react";
-import { EmptyState, ErrorState } from "@/components/Status";
+import { ErrorState } from "@/components/Status";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type {
@@ -9,6 +9,7 @@ import type {
   Citation,
   Message,
 } from "@/model/my-agents";
+import { CopyMessageButton } from "./CopyMessageButton";
 import { CurrentAgentTraceStepPanel, EvidencePanel } from "./EvidencePanel";
 import { MessageBubble } from "./MessageBubble";
 import type { ChatLocalization, LiveActivityEvent } from "./types";
@@ -76,6 +77,7 @@ export function ChatTranscript({
   chatScrollRef,
   onChatScroll,
   onReplayAssistantMessage,
+  bottomInset,
 }: {
   localization: ChatLocalization;
   lang: string;
@@ -95,6 +97,13 @@ export function ChatTranscript({
   chatScrollRef: RefObject<HTMLDivElement | null>;
   onChatScroll: () => void;
   onReplayAssistantMessage: (messageId: string) => void;
+  /**
+   * Height of the composer overlaying the bottom of the panel, in pixels.
+   * Reserved as scrollable padding so the last message can always be scrolled
+   * clear of it — messages pass *behind* the composer, they are not hidden by
+   * it. Measured rather than guessed because the composer grows with the draft.
+   */
+  bottomInset: number;
 }) {
   const displayedMessages = getReplayDisplayedMessages(
     messages,
@@ -110,12 +119,28 @@ export function ChatTranscript({
       onScroll={onChatScroll}
       data-testid="chat-scroll-region"
       className={CHAT_SCROLL_REGION_CLASS_NAME}
+      // Inline, not a class: the value is measured at runtime, and
+      // `CHAT_SCROLL_REGION_CLASS_NAME` is asserted verbatim in
+      // `tests/chatworkspace-footer.test.ts` — including that it contains no
+      // `calc(`.
+      style={{ paddingBottom: bottomInset }}
     >
+      {/*
+        A greeting, not a blocker. The composer below is live in this state —
+        sending the first message creates the conversation — so this must not
+        tell the user to go find a "new conversation" button first.
+      */}
       {!activeId ? (
-        <EmptyState
-          title={localization.noActiveConversationTitle}
-          description={localization.noActiveConversationDescription}
-        />
+        <div className="flex min-h-full items-center justify-center py-8">
+          <div className="max-w-md text-center">
+            <p className="cal-heading text-xl text-cal-ink">
+              {localization.newChatGreeting}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-cal-muted">
+              {localization.newChatGreetingDescription}
+            </p>
+          </div>
+        </div>
       ) : null}
       {messagesError ? <ErrorState error={messagesError} /> : null}
       <div className="grid gap-3">
@@ -186,6 +211,15 @@ export function ChatTranscript({
                         )}
                       />
                     </Button>
+                  }
+                  copyButton={
+                    <CopyMessageButton
+                      localization={localization}
+                      // The text on screen, not the persisted record: mid-replay
+                      // the bubble shows `streamedReply`, and copying something
+                      // other than what is displayed would be a quiet lie.
+                      content={isReplaying ? streamedReply : message.content}
+                    />
                   }
                 />
               ) : null}

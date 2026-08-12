@@ -206,8 +206,8 @@ export async function mockWorkspace(
           "xhigh",
           "max",
         ],
-        chat: { model: "gpt-5.6-sol", pro_supported: true },
-        document_workspace: { model: "gpt-5.6-sol", pro_supported: true },
+        chat: { pro_supported: true },
+        document_workspace: { pro_supported: true },
       });
     }
     if (path === "/memories/settings") {

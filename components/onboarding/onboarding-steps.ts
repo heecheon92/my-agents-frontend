@@ -2,6 +2,10 @@ export const ONBOARDING_VERSION = 1;
 export const DEFAULT_ONBOARDING_WAIT_TIMEOUT_MS = 4000;
 
 export type OnboardingFlow = "guest" | "new-user";
+export const ONBOARDING_FLOWS = [
+  "guest",
+  "new-user",
+] as const satisfies readonly OnboardingFlow[];
 export type OnboardingStatus = "idle" | "prompt" | "active";
 export type OnboardingStep = {
   id: string;

@@ -1,9 +1,16 @@
+import { ArrowUpIcon, SendHorizontalIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { inputClassName } from "@/components/Field";
+import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { ErrorState } from "@/components/Status";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import type { KnowledgeBase, ReasoningEffort } from "@/model/my-agents";
+import type {
+  KnowledgeBase,
+  KnowledgeBaseSelectionMode,
+  ReasoningEffort,
+} from "@/model/my-agents";
+import { KnowledgeScopePicker } from "./KnowledgeScopePicker";
 import { ReasoningControls } from "./ReasoningControls";
 import type { ResolvedReasoning } from "./reasoning-selection";
 import type { ChatLocalization, QueuedMessage } from "./types";
@@ -39,7 +46,6 @@ export function ComposerBar({
   queuedHelper,
   knowledgeBases,
   conversationIsBusy,
-  activeId,
   isCancelling,
   isPrimaryActionDisabled,
   primaryActionLabel,
@@ -57,6 +63,13 @@ export function ComposerBar({
   reasoning,
   onReasoningModeChange,
   onReasoningEffortChange,
+  knowledgeBaseMode,
+  onKnowledgeBaseModeChange,
+  selectedKnowledgeBaseIds,
+  knowledgeBasesLoading,
+  knowledgeBasesError,
+  requiresKnowledgeBaseSelection,
+  onToggleKnowledgeBase,
 }: {
   localization: ChatLocalization;
   draft: string;
@@ -66,7 +79,6 @@ export function ComposerBar({
   queuedHelper: string;
   knowledgeBases: KnowledgeBase[];
   conversationIsBusy: boolean;
-  activeId?: string;
   isCancelling: boolean;
   isPrimaryActionDisabled: boolean;
   primaryActionLabel: string;
@@ -84,6 +96,13 @@ export function ComposerBar({
   reasoning: ResolvedReasoning;
   onReasoningModeChange: (next: "standard" | "pro") => void;
   onReasoningEffortChange: (next: ReasoningEffort) => void;
+  knowledgeBaseMode: KnowledgeBaseSelectionMode;
+  onKnowledgeBaseModeChange: (mode: KnowledgeBaseSelectionMode) => void;
+  selectedKnowledgeBaseIds: string[];
+  knowledgeBasesLoading: boolean;
+  knowledgeBasesError: unknown;
+  requiresKnowledgeBaseSelection: boolean;
+  onToggleKnowledgeBase: (knowledgeBaseId: string) => void;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -113,10 +132,19 @@ export function ComposerBar({
     <form
       ref={formRef}
       onSubmit={onSubmit}
-      // Safe-area padding: on iOS the composer otherwise sits under the home
-      // indicator, which only became visible once the panel was genuinely
-      // viewport-bounded.
-      className="border-t border-cal-hairline bg-cal-surface-card p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+      /*
+       * No border and no background: the composer floats on the panel rather
+       * than sitting in a footer band. The old `border-t` drew a full-width
+       * rule directly above a box that already has its own border, so the
+       * input read as double-framed — a rectangle inside a rectangle inside
+       * the panel. `bg-cal-surface-card` went with it because it resolves to
+       * the same value as the panel behind it and was painting nothing.
+       *
+       * Safe-area padding stays: on iOS the composer otherwise sits under the
+       * home indicator, which only became visible once the panel was genuinely
+       * viewport-bounded.
+       */
+      className="pointer-events-auto px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-4 sm:pb-[max(1rem,env(safe-area-inset-bottom))]"
     >
       <p className="sr-only" aria-live="polite">
         {statusAnnouncement}
@@ -187,62 +215,110 @@ export function ComposerBar({
           </div>
         </div>
       ) : null}
-      <div className="rounded-2xl border border-cal-hairline bg-cal-canvas p-2 shadow-raised sm:grid sm:grid-cols-[minmax(0,1fr)_auto] sm:gap-2 sm:p-3">
+      {/*
+        A stack, not a grid. The send button used to be a column beside the
+        textarea, so a grid stretch made it grow taller as the draft wrapped —
+        a full-height slab of a button next to four lines of text. Controls now
+        sit on their own row under the text, which is why send can stay a fixed
+        circle no matter how tall the input gets.
+      */}
+      <div className="flex flex-col gap-1 rounded-2xl border border-cal-hairline bg-cal-canvas p-2 shadow-raised sm:p-3">
         <textarea
           ref={textareaRef}
           rows={1}
           className={cn(
             inputClassName,
-            "min-h-14 w-full resize-none border-0 bg-transparent px-3 py-3 text-base leading-6 shadow-none focus-visible:ring-0",
+            "min-h-11 w-full resize-none border-0 bg-transparent px-2 py-2 text-base leading-6 shadow-none focus-visible:ring-0",
           )}
           value={draft}
           onChange={(event) => onDraftChange(event.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={composerPlaceholder}
-          disabled={!activeId || isCancelling}
+          // Usable before a conversation exists: sending the first message
+          // creates one. A dead input was the single biggest first-run
+          // confusion, because nothing on screen explained what to click.
+          disabled={isCancelling}
           aria-describedby={
             conversationIsBusy ? "chat-steering-helper" : undefined
           }
         />
-        <div className="mt-2 flex flex-wrap gap-2 sm:mt-0 sm:justify-end">
-          <Button
-            className="w-full px-4 sm:w-auto"
-            type="submit"
-            size="lg"
-            disabled={isPrimaryActionDisabled}
-          >
-            {primaryActionLabel}
-          </Button>
-          {isStreaming ? (
-            <Button
-              className="w-full px-4 sm:w-auto"
-              type="button"
-              size="lg"
-              variant="secondary"
-              onClick={onSendNow}
-              disabled={isSendNowDisabled}
-              aria-describedby="chat-steering-helper"
-            >
-              {localization.sendNow}
-            </Button>
-          ) : null}
-        </div>
-        {/* Inside the input surface, below the text and send cluster. Renders
-            only once the backend has confirmed it accepts these fields, so a
-            deployment without the reasoning migration shows the composer
-            exactly as it looked before. */}
-        {reasoning.available ? (
-          <div className="sm:col-span-2">
-            <ReasoningControls
-              resolved={reasoning}
+        {/*
+          One row: what the answer draws on at the left, how hard it thinks and
+          the send action at the right. Everything here is either a compact
+          trigger or an icon — the settings themselves live behind them.
+        */}
+        <div className="flex items-center gap-1">
+          <OnboardingTarget id="chat.source-selector">
+            <KnowledgeScopePicker
               localization={localization}
-              onModeChange={onReasoningModeChange}
-              onEffortChange={onReasoningEffortChange}
-              disabled={!activeId || isCancelling}
+              knowledgeBaseMode={knowledgeBaseMode}
+              onKnowledgeBaseModeChange={onKnowledgeBaseModeChange}
+              knowledgeBases={knowledgeBases}
+              selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}
+              knowledgeBasesLoading={knowledgeBasesLoading}
+              knowledgeBasesError={knowledgeBasesError}
+              requiresKnowledgeBaseSelection={requiresKnowledgeBaseSelection}
+              onToggleKnowledgeBase={onToggleKnowledgeBase}
+              disabled={isCancelling}
             />
+          </OnboardingTarget>
+          <div className="ml-auto flex shrink-0 items-center gap-1">
+            {/* Renders only once the backend confirms it accepts these fields,
+                so a deployment without the reasoning migration still gets the
+                source picker and send. */}
+            {reasoning.available ? (
+              <ReasoningControls
+                resolved={reasoning}
+                localization={localization}
+                onModeChange={onReasoningModeChange}
+                onEffortChange={onReasoningEffortChange}
+                disabled={isCancelling}
+              />
+            ) : null}
+            {isStreaming ? (
+              <Button
+                type="button"
+                size="icon"
+                variant="secondary"
+                className="size-9 rounded-full"
+                onClick={onSendNow}
+                disabled={isSendNowDisabled}
+                aria-label={localization.sendNow}
+                title={localization.sendNow}
+                aria-describedby="chat-steering-helper"
+              >
+                <SendHorizontalIcon aria-hidden="true" />
+              </Button>
+            ) : null}
+            {/*
+              Icon-only, so the label moves to `aria-label`/`title` rather than
+              being dropped. It still changes with state — "보내기" becomes
+              "대기열에 추가" while a run is in flight.
+            */}
+            <Button
+              type="submit"
+              size="icon"
+              className="size-9 shrink-0 rounded-full"
+              disabled={isPrimaryActionDisabled}
+              aria-label={primaryActionLabel}
+              title={primaryActionLabel}
+            >
+              <ArrowUpIcon aria-hidden="true" />
+            </Button>
           </div>
-        ) : null}
+        </div>
       </div>
+      {/*
+        The blocker, outside the overlay. Send is disabled while a "selected"
+        scope has nothing selected, and with the picker collapsed the
+        explanation would otherwise be hidden behind a closed dialog — a greyed
+        button with no stated reason.
+      */}
+      {requiresKnowledgeBaseSelection ? (
+        <p className="mt-2 text-xs leading-5 text-cal-error">
+          {localization.knowledgeSourceRequired}
+        </p>
+      ) : null}
       {conversationIsBusy ? (
         <p
           id="chat-steering-helper"

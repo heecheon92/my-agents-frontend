@@ -35,7 +35,7 @@ export function ReasoningEffortGuideDialog({
     <Dialog>
       <DialogTrigger
         type="button"
-        className="shrink-0 rounded-control px-1 text-xs text-cal-muted underline underline-offset-2 hover:text-cal-ink"
+        className="shrink-0 cursor-pointer rounded-control px-1 text-xs text-cal-muted underline underline-offset-2 hover:text-cal-ink"
       >
         {localization.reasoningEffortGuideAction}
       </DialogTrigger>

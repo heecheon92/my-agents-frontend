@@ -1,8 +1,12 @@
 "use client";
 
-import { PanelLeftIcon } from "lucide-react";
+import { PlusIcon } from "lucide-react";
+import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 import type {
   AgentRunSummary,
   Citation,
@@ -14,9 +18,7 @@ import type {
 import type { Localization } from "@/utils/localization";
 import { ChatTranscript } from "./ChatTranscript";
 import { ComposerBar } from "./ComposerBar";
-import { ConversationBrowserSheet } from "./ConversationBrowserSheet";
-import { ConversationSidebar } from "./ConversationSidebar";
-import { KnowledgeSourceSelector } from "./KnowledgeSourceSelector";
+import { NEW_CHAT_HREF } from "./chat-routes";
 import type { ResolvedReasoning } from "./reasoning-selection";
 import type { LiveActivityEvent, QueuedMessage } from "./types";
 
@@ -39,16 +41,12 @@ type ChatWorkspaceLayoutProps = {
   composerPlaceholder: string;
   conversation: { data?: Conversation };
   conversationIsBusy: boolean;
-  conversations: { data?: Conversation[]; isLoading: boolean; error: unknown };
-  createConversation: { error: unknown; isPending: boolean };
-  deleteConversation: { error: unknown; isPending: boolean };
   draft: string;
   events: LiveActivityEvent[];
   hasActiveDraft: boolean;
   isCancelling: boolean;
   isPrimaryActionDisabled: boolean;
   isSendNowDisabled: boolean;
-  isConversationBrowserOpen: boolean;
   isStreaming: boolean;
   knowledgeBaseMode: "all" | "selected";
   knowledgeBases: {
@@ -63,14 +61,10 @@ type ChatWorkspaceLayoutProps = {
   messagesError: unknown;
   onCancelQueuedMessage: () => void;
   onChatScroll: () => void;
-  onConversationBrowserOpenChange: (open: boolean) => void;
-  onCreate: () => void;
-  onDeleteConversation: (item: Conversation) => void;
   onDraftChange: (draft: string) => void;
   onEditQueuedMessage: () => void;
   onKnowledgeBaseModeChange: (mode: "all" | "selected") => void;
   onReplayAssistantMessage: (messageId: string) => void;
-  onSelectConversation: (id: string) => void;
   onSendNow: () => void;
   onSendQueuedMessage: () => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
@@ -85,7 +79,6 @@ type ChatWorkspaceLayoutProps = {
   } | null;
   replayingMessageId: string | null;
   requiresKnowledgeBaseSelection: boolean;
-  selectableKnowledgeBases: KnowledgeBase[];
   selectedKnowledgeBaseIds: string[];
   sendNowHelper: string;
   serverActiveRunIsStale: boolean;
@@ -107,13 +100,9 @@ export function ChatWorkspaceLayout({
   composerPlaceholder,
   conversation,
   conversationIsBusy,
-  conversations,
-  createConversation,
-  deleteConversation,
   draft,
   events,
   isCancelling,
-  isConversationBrowserOpen,
   isPrimaryActionDisabled,
   isSendNowDisabled,
   isStreaming,
@@ -126,14 +115,10 @@ export function ChatWorkspaceLayout({
   messagesError,
   onCancelQueuedMessage,
   onChatScroll,
-  onConversationBrowserOpenChange,
-  onCreate,
-  onDeleteConversation,
   onDraftChange,
   onEditQueuedMessage,
   onKnowledgeBaseModeChange,
   onReplayAssistantMessage,
-  onSelectConversation,
   onSendNow,
   onSendQueuedMessage,
   onSubmit,
@@ -144,7 +129,6 @@ export function ChatWorkspaceLayout({
   replayNotice,
   replayingMessageId,
   requiresKnowledgeBaseSelection,
-  selectableKnowledgeBases,
   selectedKnowledgeBaseIds,
   sendNowHelper,
   serverActiveRunIsStale,
@@ -159,20 +143,27 @@ export function ChatWorkspaceLayout({
   visibleCitations,
   visibleQueuedMessage,
 }: ChatWorkspaceLayoutProps) {
-  const conversationListProps = {
-    localization,
-    conversations: conversations.data,
-    activeId,
-    isLoading: conversations.isLoading,
-    error: conversations.error,
-    createError: createConversation.error,
-    deleteError: deleteConversation.error,
-    isDeletePending: deleteConversation.isPending,
-    conversationIsBusy,
-    isCancelling,
-    onSelect: onSelectConversation,
-    onDelete: onDeleteConversation,
-  };
+  const isMobile = useIsMobile();
+  const composerRef = useRef<HTMLDivElement>(null);
+  const [composerHeight, setComposerHeight] = useState(0);
+
+  /**
+   * The composer overlays the transcript, so the transcript has to reserve its
+   * height as padding. Measured, not guessed: the composer grows with the
+   * draft, with a queued-message card, and with error copy, and a fixed inset
+   * would either hide the last message or leave a permanent gap.
+   */
+  useEffect(() => {
+    const node = composerRef.current;
+    if (!node) return;
+    const observer = new ResizeObserver(() => {
+      // `offsetHeight`, not `contentRect`: the border box is what actually
+      // covers the transcript.
+      setComposerHeight(node.offsetHeight);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-4">
@@ -189,72 +180,50 @@ export function ChatWorkspaceLayout({
         </div>
       ) : null}
 
-      <div className="grid min-h-0 flex-1 gap-4 xl:grid-cols-[minmax(16rem,20rem)_minmax(0,1fr)]">
-        {/* Desktop rail. Below `xl` the same component renders inside the
-            sheet, so it is not merely hidden here. */}
-        <ConversationSidebar
-          {...conversationListProps}
-          className="cal-card hidden rounded-card p-4 xl:flex"
-        />
-        <ConversationBrowserSheet
-          {...conversationListProps}
-          open={isConversationBrowserOpen}
-          onOpenChange={onConversationBrowserOpenChange}
-        />
-
+      <div className="grid min-h-0 flex-1">
         <div className="min-h-0 min-w-0">
+          {/* `relative`: the composer is positioned against this panel. */}
           <section
             data-testid="chat-workspace-panel"
-            className={CHAT_WORKSPACE_PANEL_CLASS_NAME}
+            className={cn("relative", CHAT_WORKSPACE_PANEL_CLASS_NAME)}
           >
-            <header className="grid shrink-0 gap-3 border-b border-cal-hairline p-4 sm:p-5">
-              <div className="flex items-start gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-sm"
-                  className="shrink-0 xl:hidden"
-                  onClick={() => onConversationBrowserOpenChange(true)}
-                  aria-label={localization.browseConversationsAction}
-                  title={localization.browseConversationsAction}
-                >
-                  <PanelLeftIcon aria-hidden="true" />
-                </Button>
-                <div className="min-w-0 flex-1">
-                  {/* The route's h1 lives here rather than in the conversation
-                      list, which is inside a closed sheet below `xl`. */}
-                  <h1 className="cal-label">{localization.title}</h1>
-                  <p className="mt-1 break-words text-lg font-medium text-cal-ink">
-                    {conversation.data?.title ??
-                      localization.selectOrCreateConversation}
-                  </p>
-                </div>
+            <header className="flex shrink-0 items-start gap-3 border-b border-cal-hairline p-4 sm:p-5">
+              <div className="min-w-0 flex-1">
+                {/* The route's h1 lives here rather than in the conversation
+                    history, which is inside a closed sheet on mobile. */}
+                <h1 className="cal-label">{localization.title}</h1>
+                <p className="mt-1 break-words text-lg font-medium text-cal-ink">
+                  {conversation.data?.title ?? localization.newChatTitle}
+                </p>
+              </div>
+              {/*
+                Below 768px the whole shell sidebar — and with it the new-chat
+                button that normally carries this spotlight target — is inside a
+                closed Sheet, so the target would never register. A real
+                conditional render, not `md:hidden`: a hidden-but-mounted
+                element would register a target the tour cannot point at.
+
+                Same id on purpose. `registerTarget` is last-write-wins and the
+                two buttons never coexist, so a resize across the breakpoint
+                sequences unregister-then-register in either direction.
+              */}
+              {isMobile ? (
                 <OnboardingTarget id="chat.new-conversation">
                   <Button
-                    size="sm"
+                    variant="outline"
+                    size="icon-sm"
                     className="shrink-0"
-                    onClick={onCreate}
-                    disabled={createConversation.isPending}
+                    aria-label={localization.newButton}
+                    title={localization.newButton}
+                    // Base UI needs telling this is not a native <button>, or
+                    // it warns that the button semantics were dropped.
+                    nativeButton={false}
+                    render={<Link href={NEW_CHAT_HREF} />}
                   >
-                    {localization.newButton}
+                    <PlusIcon aria-hidden="true" />
                   </Button>
                 </OnboardingTarget>
-              </div>
-              <OnboardingTarget id="chat.source-selector">
-                <KnowledgeSourceSelector
-                  localization={localization}
-                  knowledgeBaseMode={knowledgeBaseMode}
-                  onKnowledgeBaseModeChange={onKnowledgeBaseModeChange}
-                  knowledgeBases={selectableKnowledgeBases}
-                  selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}
-                  knowledgeBasesLoading={knowledgeBases.isLoading}
-                  knowledgeBasesError={knowledgeBases.error}
-                  requiresKnowledgeBaseSelection={
-                    requiresKnowledgeBaseSelection
-                  }
-                  onToggleKnowledgeBase={onToggleKnowledgeBase}
-                />
-              </OnboardingTarget>
+              ) : null}
             </header>
             <ChatTranscript
               localization={localization}
@@ -279,37 +248,59 @@ export function ChatWorkspaceLayout({
               chatScrollRef={chatScrollRef}
               onChatScroll={onChatScroll}
               onReplayAssistantMessage={onReplayAssistantMessage}
+              bottomInset={composerHeight}
             />
-            <OnboardingTarget id="chat.composer">
-              <ComposerBar
-                localization={localization}
-                draft={draft}
-                onDraftChange={onDraftChange}
-                onSubmit={onSubmit}
-                visibleQueuedMessage={visibleQueuedMessage}
-                queuedHelper={queuedHelper}
-                knowledgeBases={knowledgeBases.data ?? []}
-                conversationIsBusy={conversationIsBusy}
-                activeId={activeId}
-                isCancelling={isCancelling}
-                isPrimaryActionDisabled={isPrimaryActionDisabled}
-                primaryActionLabel={primaryActionLabel}
-                isStreaming={isStreaming}
-                isSendNowDisabled={isSendNowDisabled}
-                onSendNow={onSendNow}
-                sendNowHelper={sendNowHelper}
-                showGuestNotice={showGuestNotice}
-                reasoning={reasoning}
-                onReasoningModeChange={onReasoningModeChange}
-                onReasoningEffortChange={onReasoningEffortChange}
-                streamError={streamError}
-                statusAnnouncement={statusAnnouncement}
-                onSendQueuedMessage={onSendQueuedMessage}
-                onEditQueuedMessage={onEditQueuedMessage}
-                onCancelQueuedMessage={onCancelQueuedMessage}
-                composerPlaceholder={composerPlaceholder}
-              />
-            </OnboardingTarget>
+            {/*
+              Overlaid, not stacked. The transcript now runs the full height of
+              the panel and messages scroll *behind* the composer, so the
+              composer reads as floating on the conversation rather than as a
+              footer bolted under it. The transcript reserves `composerHeight`
+              as scrollable padding, so nothing is unreachable — the last
+              message still scrolls clear.
+            */}
+            <div
+              ref={composerRef}
+              className="pointer-events-none absolute inset-x-0 bottom-0"
+            >
+              <OnboardingTarget id="chat.composer">
+                <ComposerBar
+                  localization={localization}
+                  draft={draft}
+                  onDraftChange={onDraftChange}
+                  onSubmit={onSubmit}
+                  visibleQueuedMessage={visibleQueuedMessage}
+                  queuedHelper={queuedHelper}
+                  knowledgeBases={knowledgeBases.data ?? []}
+                  conversationIsBusy={conversationIsBusy}
+                  isCancelling={isCancelling}
+                  isPrimaryActionDisabled={isPrimaryActionDisabled}
+                  primaryActionLabel={primaryActionLabel}
+                  isStreaming={isStreaming}
+                  isSendNowDisabled={isSendNowDisabled}
+                  onSendNow={onSendNow}
+                  sendNowHelper={sendNowHelper}
+                  showGuestNotice={showGuestNotice}
+                  reasoning={reasoning}
+                  onReasoningModeChange={onReasoningModeChange}
+                  onReasoningEffortChange={onReasoningEffortChange}
+                  knowledgeBaseMode={knowledgeBaseMode}
+                  onKnowledgeBaseModeChange={onKnowledgeBaseModeChange}
+                  selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}
+                  knowledgeBasesLoading={knowledgeBases.isLoading}
+                  knowledgeBasesError={knowledgeBases.error}
+                  requiresKnowledgeBaseSelection={
+                    requiresKnowledgeBaseSelection
+                  }
+                  onToggleKnowledgeBase={onToggleKnowledgeBase}
+                  streamError={streamError}
+                  statusAnnouncement={statusAnnouncement}
+                  onSendQueuedMessage={onSendQueuedMessage}
+                  onEditQueuedMessage={onEditQueuedMessage}
+                  onCancelQueuedMessage={onCancelQueuedMessage}
+                  composerPlaceholder={composerPlaceholder}
+                />
+              </OnboardingTarget>
+            </div>
           </section>
         </div>
       </div>

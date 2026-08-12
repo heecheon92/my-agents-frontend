@@ -117,6 +117,25 @@ Prefer borders over shadows. A global `prefers-reduced-motion` block collapses
 animation; its `!important` is load-bearing, because Tailwind's `duration-*`
 utilities outrank a universal selector.
 
+### Scrollbars
+
+One canonical scrollbar, applied globally in `app/globals.css` — components do
+not style their own. Thin thumb in `--km-scrollbar-thumb` (a step darker than
+`hairline`, a step lighter than `muted`, defined per theme), transparent track.
+
+**Use the standard properties, not `::-webkit-scrollbar`.** Giving
+`::-webkit-scrollbar` a width opts the element out of macOS overlay scrollbars,
+so it becomes a permanent classic bar that occupies layout width — on `/chat`
+that silently narrows the transcript and the sidebar on every machine left at
+the default "Show scroll bars: automatically". `scrollbar-width: thin` plus
+`scrollbar-color` restyles the scrollbar in both overlay and always-visible
+modes while keeping the gutter at zero.
+
+The `::-webkit-` rules that remain are fenced behind
+`@supports not (scrollbar-width: thin)` and exist only for browsers that
+predate the standard properties. Do not lift them out of that guard to get
+rounder corners; the layout cost is not worth it.
+
 ---
 
 ## Layout architecture
@@ -154,17 +173,117 @@ creating the nested scroll regions `docs/mobile-responsiveness.md` forbids.
 
 ### Compact-screen browsers are Sheets
 
-All three list-plus-detail routes use the same pattern: a persistent browser on
+The admin list-plus-detail routes use the same pattern: a persistent browser on
 wide screens, the same component inside a left `Sheet` below the breakpoint.
 
 | Route | Breakpoint | Sheet |
 |---|---|---|
-| `/chat` | `xl` | `ConversationBrowserSheet` |
 | `/knowledge` | `lg` | `SourceSpaceBrowserSheet` |
 | `/groups` | `lg` | `GroupsChrome` |
 
 The list component takes its chrome via `className` so one implementation
 serves both. Selecting an item closes the sheet.
+
+**`/chat` is no longer one of them.** Its conversation history lives in the
+shell sidebar, which is already a left `Sheet` below `md` — so the route-local
+`ConversationBrowserSheet` and its second panel-left trigger were removed rather
+than maintained alongside the shell's own `SidebarTrigger`.
+
+### Conversation history lives in the shell sidebar
+
+`ServiceShell` renders `ConversationHistorySidebarGroup` under
+`currentRoute.key === "chat"`. Three constraints hold it together; each was a
+real bug or a real test failure.
+
+**It shares the query cache, not a context.** The history takes no props —
+`ChatWorkspace` is its sibling, not its ancestor. Both read
+`MyAgentsQueryKeys.conversations.list()`, and `staleTime: 60_000` means the
+second observer costs no network. A context would have to wrap `ServiceShell`,
+leaking chat state onto `/knowledge`, `/groups`, and `/settings` and re-rendering
+the streaming route subtree on every change. A layout slot would need a parallel
+route to sit above the shell — more machinery than the
+`app/(service)/chat/layout.tsx` already rejected above.
+
+The one exception is `components/chat/chat-activity-store.ts`, a zustand store
+holding **`busyConversationId` and nothing else**, because the delete button
+needs a client-only run state the cache cannot carry. Putting anything
+high-frequency there rebuilds the rejected context with worse ergonomics.
+
+**The history group hides with `hidden`, never `opacity-0`.**
+`e2e/sidebar-persistence.spec.ts` filters sidebar buttons by
+`offsetParent !== null`, which only goes null under `display: none`. An
+opacity-based hide leaves the rows in the collapsed-rail 32×32 assertions.
+`SidebarGroupLabel` uses `opacity-0` — do not copy that idiom here.
+
+**Conversation rows are not `SidebarMenuButton`s.** They keep
+`getConversationCardClassName` (whose token set is asserted in
+`tests/chatworkspace-footer.test.ts`), they contain a nested delete button, and
+they are variable-height. The `새 대화` button *is* a `SidebarMenuButton`, and
+sits outside the hidden group so it survives the icon-rail collapse.
+
+Gating is by not rendering, not by CSS: `useConversations()` has no `enabled`
+flag, so mounting the history on another route would fetch conversations that
+route never shows.
+
+### The composer floats over the transcript
+
+The composer is `absolute inset-x-0 bottom-0` inside the panel, and its
+container is transparent — messages scroll *behind* it. The transcript runs the
+full height beneath the header rather than stopping above a footer band.
+
+Two things keep that honest, and both must move together:
+
+- **The transcript reserves the composer's height as scrollable padding**, set
+  inline from a `ResizeObserver` in `ChatWorkspaceLayout`. Measured, not
+  guessed: the composer grows with the draft, with a queued-message card, and
+  with error copy, so a fixed inset would either hide the last message or leave
+  a permanent gap. The padding is inline because
+  `CHAT_SCROLL_REGION_CLASS_NAME` is asserted verbatim, `calc(`-free, in
+  `tests/chatworkspace-footer.test.ts`.
+- **The wrapper is `pointer-events-none`, the form is `pointer-events-auto`.**
+  Otherwise the transparent band around the input would swallow clicks and text
+  selection on the messages visible through it.
+
+The input box itself keeps an opaque background. Only the container is
+transparent — text must never show through the field you are typing into.
+
+### The composer is a stack, and send is a circle
+
+Textarea on top, one control row beneath it: source scope at the left, effort
+and send at the right. Not a grid with send as a side column — that made the
+button stretch to the height of the text, so a four-line draft got a
+full-height slab of a button beside it.
+
+Everything on the control row is a compact trigger or an icon. Settings live
+one click behind them:
+
+| Control | Collapsed to | Opens |
+|---|---|---|
+| knowledge scope | chip stating the current scope | Dialog (desktop) / Drawer (mobile) |
+| reasoning | ghost trigger stating the current effort | Popover |
+| send | circular icon, fixed `size-9` | — |
+
+The rule is that **a collapsed trigger states its current value**. `보통 ⌄` and
+`문서 3개 ⌄` mean nothing is hidden, only moved; a trigger reading only
+`설정` would be hiding state.
+
+Send is icon-only, so its label moves to `aria-label`/`title` rather than being
+dropped, and it still changes with state — `보내기` becomes `대기열에 추가`
+while a run is in flight.
+
+Use `components/ui/popover.tsx`, not `DropdownMenu`, for panels containing form
+controls. A menu takes over arrow keys for roving focus, which fights the
+effort slider inside it.
+
+### `/chat` is a route, and bare `/chat` is a new conversation
+
+Selection is `app/(service)/chat/[conversationId]`, mirroring
+`/knowledge/[sourceId]`. Bare `/chat` deliberately does **not** fall back to the
+most recent conversation: it is the new-chat state, and the composer stays live
+there — sending the first message creates the conversation
+(`ensureConversationId` in `ChatWorkspace`) and then runs it. `새 대화` is
+therefore a link, not a POST, so an accidental click cannot leave an empty
+conversation behind.
 
 ---
 

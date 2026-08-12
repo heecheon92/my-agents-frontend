@@ -212,25 +212,17 @@ test.describe("V1 seeded demo", () => {
     await page.getByRole("button", { name: ko.admin.common.close }).click();
 
     await page.getByRole("link", { name: ko.service.nav.chat }).click();
-    const activeConversationHeading = page
-      .getByText(ko.chat.activeConversationLabel)
-      .locator("..")
-      .getByRole("heading");
-    const previousConversationTitle =
-      await activeConversationHeading.textContent();
-    await page.getByRole("button", { name: ko.chat.newButton }).click();
-    await expect
-      .poll(() => activeConversationHeading.textContent(), {
-        timeout: 10_000,
-      })
-      .not.toBe(previousConversationTitle);
-    await expect(activeConversationHeading).toBeVisible();
-    const conversationTitle = await activeConversationHeading.textContent();
-    if (!conversationTitle)
-      throw new Error("Created conversation title missing.");
+    // `새 대화` is a link to the empty new-chat state now, not a POST. The
+    // conversation is created by the first send and named after it.
+    await page.getByRole("link", { name: ko.chat.newButton }).first().click();
+    await expect(page).toHaveURL(/\/chat$/);
 
     await page.getByPlaceholder(ko.chat.composerPlaceholder).fill(prompt);
     await page.getByRole("button", { name: ko.chat.send }).click();
+
+    await expect(page).toHaveURL(/\/chat\/[^/]+$/);
+    const conversationUrl = page.url();
+    const conversationTitle = prompt;
 
     await expect(page.getByText(prompt)).toBeVisible();
     await expect(page.getByText(ko.chat.agentComposing)).toBeVisible();
@@ -247,13 +239,17 @@ test.describe("V1 seeded demo", () => {
     await expectChatTranscriptLayoutBounded(page);
     await expectLatestAssistantFooterEvidence(page, "retrieval_completed");
 
+    // The conversation is in the URL now, so a reload restores it rather than
+    // dropping back to the most recent one.
     await page.reload();
-    await page
-      .getByRole("button", {
-        name: new RegExp(escapeRegExp(conversationTitle)),
-      })
-      .click();
-    await expect(activeConversationHeading).toHaveText(conversationTitle);
+    await expect(page).toHaveURL(conversationUrl);
+    await expect(
+      page
+        .getByRole("link", {
+          name: new RegExp(escapeRegExp(conversationTitle)),
+        })
+        .first(),
+    ).toHaveAttribute("aria-current", "page");
     await expectChatTranscriptLayoutBounded(page);
     await expectLatestAssistantFooterEvidence(page, "retrieval_completed");
   });
@@ -341,22 +337,16 @@ test.describe("V1 public visitor smoke", () => {
     await page.getByRole("button", { name: ko.admin.common.close }).click();
 
     await page.getByRole("link", { name: ko.service.nav.chat }).click();
-    const activeConversationHeading = page
-      .getByText(ko.chat.activeConversationLabel)
-      .locator("..")
-      .getByRole("heading");
-    const previousConversationTitle =
-      await activeConversationHeading.textContent();
-    await page.getByRole("button", { name: ko.chat.newButton }).click();
-    await expect
-      .poll(() => activeConversationHeading.textContent(), { timeout: 10_000 })
-      .not.toBe(previousConversationTitle);
-    const conversationTitle = await activeConversationHeading.textContent();
-    if (!conversationTitle)
-      throw new Error("Created public visitor conversation title missing.");
+    // See the authenticated smoke above: `새 대화` navigates, the first send
+    // creates.
+    await page.getByRole("link", { name: ko.chat.newButton }).first().click();
+    await expect(page).toHaveURL(/\/chat$/);
 
     await page.getByPlaceholder(ko.chat.composerPlaceholder).fill(prompt);
     await page.getByRole("button", { name: ko.chat.send }).click();
+    await expect(page).toHaveURL(/\/chat\/[^/]+$/);
+    const conversationUrl = page.url();
+    const conversationTitle = prompt;
     await expect(page.getByText(prompt)).toBeVisible();
     await expect(page.getByText(ko.chat.agentComposing)).toBeHidden({
       timeout: 30_000,
@@ -372,12 +362,14 @@ test.describe("V1 public visitor smoke", () => {
     await expectLatestAssistantFooterEvidence(page, /retrieval_/);
 
     await page.reload();
-    await page
-      .getByRole("button", {
-        name: new RegExp(escapeRegExp(conversationTitle)),
-      })
-      .click();
-    await expect(activeConversationHeading).toHaveText(conversationTitle);
+    await expect(page).toHaveURL(conversationUrl);
+    await expect(
+      page
+        .getByRole("link", {
+          name: new RegExp(escapeRegExp(conversationTitle)),
+        })
+        .first(),
+    ).toHaveAttribute("aria-current", "page");
     await expectChatTranscriptLayoutBounded(page);
     await expectLatestAssistantFooterEvidence(page, /retrieval_/);
     await assertBrowserStorageHasNoSecrets(page);

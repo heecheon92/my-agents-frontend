@@ -4,7 +4,10 @@ import {
   readStoredReasoning,
   resolveReasoning,
 } from "@/components/chat/reasoning-selection";
-import type { ReasoningCapabilities } from "@/model/my-agents";
+import {
+  type ReasoningCapabilities,
+  reasoningCapabilitiesSchema,
+} from "@/model/my-agents";
 
 const capabilities: ReasoningCapabilities = {
   customizable: true,
@@ -20,8 +23,8 @@ const capabilities: ReasoningCapabilities = {
     "xhigh",
     "max",
   ],
-  chat: { model: "gpt-5.6-sol", pro_supported: true },
-  document_workspace: { model: "gpt-5.6-sol", pro_supported: true },
+  chat: { pro_supported: true },
+  document_workspace: { pro_supported: true },
 };
 
 describe("resolveReasoning", () => {
@@ -64,7 +67,7 @@ describe("resolveReasoning", () => {
     // the UI must not send it just because storage remembers it.
     const noPro: ReasoningCapabilities = {
       ...capabilities,
-      chat: { model: "gpt-5.5", pro_supported: false },
+      chat: { pro_supported: false },
     };
     const resolved = resolveReasoning(noPro, { mode: "pro" }, false);
     expect(resolved.selection?.mode).toBe("standard");
@@ -137,5 +140,74 @@ describe("readStoredReasoning", () => {
 
   it("uses a namespaced key so it cannot collide with other app storage", () => {
     expect(REASONING_STORAGE_KEY).toMatch(/^my-agents\./);
+  });
+});
+
+describe("reasoningCapabilitiesSchema", () => {
+  const payloadWithoutModel = {
+    customizable: true,
+    default_mode: "standard",
+    default_effort: "medium",
+    supported_modes: ["standard", "pro"],
+    supported_efforts: ["low", "medium", "high"],
+    chat: { pro_supported: true },
+    document_workspace: { pro_supported: false },
+  };
+
+  it("parses a payload with no model field", () => {
+    // The target contract, once the backend has dropped the raw model IDs.
+    const parsed = reasoningCapabilitiesSchema.parse(payloadWithoutModel);
+    expect(parsed.chat.pro_supported).toBe(true);
+  });
+
+  it("strips model instead of rejecting it, so either repo may deploy first", () => {
+    // This is the property the whole rollout rests on. The schema is not
+    // `.strict()`, so a backend that still reports model parses cleanly and the
+    // value is dropped rather than retained. Adding `.strict()` here would turn
+    // a compatible deploy into a hard failure that errors the capabilities
+    // query and silently strips the composer's reasoning controls.
+    const parsed = reasoningCapabilitiesSchema.parse({
+      ...payloadWithoutModel,
+      chat: { model: "gpt-5.6-sol", pro_supported: true },
+      document_workspace: { model: "gpt-5.6-sol", pro_supported: false },
+    });
+    expect(parsed.chat.pro_supported).toBe(true);
+    expect("model" in parsed.chat).toBe(false);
+    expect("model" in parsed.document_workspace).toBe(false);
+  });
+
+  it("falls back to standard when default_mode is absent", () => {
+    // `default_mode` is the one field the backend does not mark required — it
+    // is a Pydantic field with a default, so it is always sent today. This
+    // covers the endpoint ever being switched to omit unset fields, which would
+    // otherwise fail the whole schema and strip the reasoning controls.
+    const { default_mode: _omitted, ...withoutMode } = payloadWithoutModel;
+    const parsed = reasoningCapabilitiesSchema.parse(withoutMode);
+    expect(parsed.default_mode).toBe("standard");
+  });
+
+  it("keeps the fallback conservative rather than enabling pro", () => {
+    // Falling back may only ever downgrade. Silently defaulting to `pro` would
+    // send a more expensive mode the session never asked for, and one the
+    // backend may reject outright.
+    const { default_mode: _omitted, ...withoutMode } = payloadWithoutModel;
+    const resolved = resolveReasoning(
+      reasoningCapabilitiesSchema.parse(withoutMode),
+      null,
+      false,
+    );
+    expect(resolved.selection?.mode).toBe("standard");
+  });
+
+  it("keeps pro_supported required per surface", () => {
+    // Independently configured surfaces: the backend validates an attachment
+    // run against the document-workspace model. A missing flag must fail loudly
+    // rather than default to offering Pro.
+    expect(() =>
+      reasoningCapabilitiesSchema.parse({
+        ...payloadWithoutModel,
+        chat: {},
+      }),
+    ).toThrow();
   });
 });

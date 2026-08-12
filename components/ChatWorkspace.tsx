@@ -1,15 +1,13 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useReasoningCapabilities } from "@/hooks/use-capabilities";
 import {
   useConversation,
-  useConversations,
   useCreateConversation,
-  useDeleteConversation,
   useMessages,
   useRunDetail,
   useRunEvents,
@@ -17,9 +15,9 @@ import {
 } from "@/hooks/use-conversations";
 import { useKnowledgeBases } from "@/hooks/use-knowledge";
 import { useLocalization } from "@/hooks/useLocalization";
+import { decodeRouteSegment } from "@/lib/route-segments";
 import type {
   Citation,
-  Conversation,
   KnowledgeBaseSelectionMode,
   Message,
 } from "@/model/my-agents";
@@ -29,8 +27,9 @@ import {
   REPLAY_ICON_PENDING_CLASS_NAME,
 } from "./chat/ChatTranscript";
 import { ChatWorkspaceLayout } from "./chat/ChatWorkspaceLayout";
-import { getConversationCardClassName } from "./chat/ConversationSidebar";
-import { DeleteConversationAlertDialog } from "./chat/DeleteConversationAlertDialog";
+import { useChatActivityStore } from "./chat/chat-activity-store";
+import { conversationHref } from "./chat/chat-routes";
+import { getConversationCardClassName } from "./chat/conversation-card";
 import {
   getAgentTraceStageKeys,
   sanitizeActivityEventPayload,
@@ -47,8 +46,8 @@ import { useChatWorkspaceEffects } from "./chat/useChatWorkspaceEffects";
 import { useReplayAssistantMessageHandler } from "./chat/useReplayAssistantMessageHandler";
 import {
   buildActiveKnowledgeBaseSelection,
+  deriveConversationTitle,
   getLatestAssistantMessageId,
-  getNextConversationIdAfterDelete,
   isActiveAgentRunStatus,
   isNearScrollBottom,
   isObservedActiveRunStale,
@@ -61,6 +60,7 @@ export {
   ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
   buildActiveKnowledgeBaseSelection,
   createLiveActivityEvent,
+  deriveConversationTitle,
   getLatestAssistantMessageId,
   getNextConversationIdAfterDelete,
   isActiveAgentRunStatus,
@@ -74,14 +74,25 @@ export {
   sanitizeActivityEventPayload,
 };
 
-export function ChatWorkspace() {
+export function ChatWorkspace({
+  initialConversationId,
+}: {
+  initialConversationId?: string;
+} = {}) {
   const queryClient = useQueryClient();
-  const conversations = useConversations();
   const knowledgeBases = useKnowledgeBases();
   const createConversation = useCreateConversation();
-  const deleteConversation = useDeleteConversation();
-  const [selectedId, setSelectedId] = useState<string>();
-  const activeId = selectedId ?? conversations.data?.[0]?.id;
+  /**
+   * The route is the source of truth for which conversation is open. Bare
+   * `/chat` is the new-conversation state — it deliberately does *not* fall
+   * back to the most recent conversation, which is what makes
+   * auto-create-on-first-send reachable for everyone rather than only for users
+   * with an empty history.
+   */
+  const routeConversationId = decodeRouteSegment(initialConversationId);
+  const [optimisticConversationId, setOptimisticConversationId] =
+    useState<string>();
+  const activeId = optimisticConversationId ?? routeConversationId;
   const conversation = useConversation(activeId);
   const messages = useMessages(activeId);
   const runs = useRuns(activeId);
@@ -161,12 +172,7 @@ export function ChatWorkspace() {
       // session; losing the persistence is not worth surfacing an error.
     }
   }
-  // Compact-screen conversation browser. Lives here, not in the sheet, so
-  // selecting a conversation can close it in the same handler.
-  const [isConversationBrowserOpen, setIsConversationBrowserOpen] =
-    useState(false);
-  const [conversationPendingDelete, setConversationPendingDelete] =
-    useState<Conversation>();
+  const [isCreatingConversation, setIsCreatingConversation] = useState(false);
   const [knowledgeBaseMode, setKnowledgeBaseMode] =
     useState<KnowledgeBaseSelectionMode>("all");
   const [selectedKnowledgeBaseIds, setSelectedKnowledgeBaseIds] = useState<
@@ -179,6 +185,8 @@ export function ChatWorkspace() {
   const queuedMessageRef = useRef<QueuedMessage | null>(null);
   const pendingImmediateMessageRef = useRef<QueuedMessage | null>(null);
   const cancelAcceptedRef = useRef(false);
+  const creatingConversationRef = useRef<Promise<string> | null>(null);
+  const previousActiveIdRef = useRef<string | undefined>(activeId);
   const previousServerActiveRunIdRef = useRef<string | null>(null);
   const autoReplayAttemptedRunIdsRef = useRef<Set<string>>(new Set());
   const { lang, localization } = useLocalization(
@@ -255,65 +263,61 @@ export function ChatWorkspace() {
     );
   }
 
-  async function handleCreate() {
-    try {
+  /**
+   * Resolves the conversation to send into, creating one on the first message
+   * of a new chat. Returns `undefined` only when the create failed — callers
+   * must treat that as "do not send" and give the draft back.
+   */
+  async function ensureConversationId(seedTitle: string) {
+    if (activeId) return activeId;
+    // A ref, not `createConversation.isPending`: mutation state updates
+    // asynchronously, so two submits in the same tick would both start a POST.
+    if (creatingConversationRef.current) return creatingConversationRef.current;
+
+    const pending = (async () => {
       const created = await createConversation.mutateAsync({
-        title: `${localization.newConversationTitle} ${new Date().toLocaleString(lang)}`,
+        title: seedTitle,
       });
-      setSelectedId(created.id);
-      toast.success(localization.createConversationSuccessAnnouncement);
-    } catch {
-      toast.error(localization.createConversationFailedAnnouncement);
-    }
-  }
+      setOptimisticConversationId(created.id);
+      /**
+       * `history.replaceState`, deliberately not `router.push`.
+       *
+       * A router navigation crosses into a different dynamic segment value,
+       * and Next remounts the page component when that changes — verified by
+       * tagging the composer node and watching it get recreated. That tore down
+       * `ChatWorkspace` mid-run and took the optimistic bubble, `isStreaming`,
+       * and the streamed reply with it, while the run loop kept writing to an
+       * unmounted tree. Nothing appeared until the answer landed.
+       *
+       * The native History API updates the URL without a route transition, so
+       * the component stays mounted and the run stays visible. `usePathname`
+       * still tracks it, which is what the sidebar reads to mark the active
+       * row. `replace` rather than `push` because the empty `/chat` this came
+       * from is not a state worth going Back to.
+       */
+      window.history.replaceState(null, "", conversationHref(created.id));
+      return created.id;
+    })();
 
-  function requestDeleteConversation(item: Conversation) {
-    deleteConversation.reset();
-    setConversationPendingDelete(item);
-  }
-
-  function handleDeleteConversationDialogOpenChange(open: boolean) {
-    if (open || deleteConversation.isPending) return;
-    setConversationPendingDelete(undefined);
-    deleteConversation.reset();
-  }
-
-  async function handleDeleteConversation(item: Conversation) {
-    const nextSelectedId = getNextConversationIdAfterDelete(
-      conversations.data ?? [],
-      item.id,
-      activeId,
-    );
+    creatingConversationRef.current = pending;
+    setIsCreatingConversation(true);
     try {
-      await deleteConversation.mutateAsync(item.id);
-      if (activeId === item.id) {
-        setSelectedId(nextSelectedId);
-        setQueuedMessage(null);
-        setStreamError(null);
-        setReplayNotice(null);
-        setLiveActivityEvents([]);
-        setLatestCitations([]);
-        setOptimisticMessage(null);
-      }
-      setStatusAnnouncement(localization.deleteConversationSuccessAnnouncement);
-      setConversationPendingDelete(undefined);
-      toast.success(localization.deleteConversationSuccessAnnouncement);
+      return await pending;
     } catch {
-      setStatusAnnouncement(localization.deleteConversationFailedAnnouncement);
-      toast.error(localization.deleteConversationFailedAnnouncement);
+      return undefined;
+    } finally {
+      creatingConversationRef.current = null;
+      setIsCreatingConversation(false);
     }
   }
 
   async function handleSend(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (
-      !draftMessage ||
-      !activeId ||
-      isCancelling ||
-      requiresKnowledgeBaseSelection
-    )
-      return;
-    if (conversationIsBusy) {
+    // The knowledge-base requirement is checked before the create, so a blocked
+    // send never leaves an empty orphan conversation behind.
+    if (!draftMessage || isCancelling || requiresKnowledgeBaseSelection) return;
+    if (creatingConversationRef.current) return;
+    if (activeId && conversationIsBusy) {
       if (visibleQueuedMessage) {
         setStatusAnnouncement(localization.queueAlreadyExistsAnnouncement);
         return;
@@ -327,12 +331,24 @@ export function ChatWorkspace() {
       setStatusAnnouncement(localization.queuedAnnouncement);
       return;
     }
+
+    const pendingDraft = draftMessage;
+    const pendingSelection = activeKnowledgeBaseSelection;
     setDraft("");
-    await runMessageAndContinue(
-      activeId,
-      draftMessage,
-      activeKnowledgeBaseSelection,
+    const conversationId = await ensureConversationId(
+      deriveConversationTitle(
+        pendingDraft,
+        `${localization.newConversationTitle} ${new Date().toLocaleString(lang)}`,
+      ),
     );
+    if (!conversationId) {
+      // Nothing was sent, so the draft is still the user's work.
+      setDraft(pendingDraft);
+      setStatusAnnouncement(localization.createConversationFailedAnnouncement);
+      toast.error(localization.createConversationFailedAnnouncement);
+      return;
+    }
+    await runMessageAndContinue(conversationId, pendingDraft, pendingSelection);
   }
 
   async function handleSendNow() {
@@ -436,10 +452,13 @@ export function ChatWorkspace() {
   const primaryActionLabel = conversationIsBusy
     ? localization.queueNext
     : localization.send;
+  // No `!activeId`: with no conversation open the composer is still live, and
+  // sending creates one. Only an in-flight create blocks it, so a double submit
+  // cannot start two conversations.
   const isPrimaryActionDisabled =
-    !activeId ||
     !hasActiveDraft ||
     isCancelling ||
+    isCreatingConversation ||
     requiresKnowledgeBaseSelection ||
     (conversationIsBusy && Boolean(visibleQueuedMessage));
   const isSendNowDisabled =
@@ -469,6 +488,72 @@ export function ChatWorkspace() {
     shouldAutoScrollRef.current = isNearScrollBottom(scrollElement);
   }
 
+  /**
+   * Clear the optimistic id only once the route has caught up to it.
+   *
+   * `SourcesSurface` also clears when the route segment goes empty; copying
+   * that here would break the send path, because for at least one render after
+   * `router.push` the route id is still undefined — clearing then would pull
+   * `activeId` out from under a run that is already streaming.
+   */
+  useEffect(() => {
+    if (!optimisticConversationId) return;
+    if (routeConversationId === optimisticConversationId) {
+      setOptimisticConversationId(undefined);
+    }
+  }, [optimisticConversationId, routeConversationId]);
+
+  /**
+   * Evidence is per-conversation, so it must not survive a conversation change.
+   *
+   * This used to live inside the delete handler, which meant switching between
+   * conversations left the previous answer's citations and activity trail on
+   * screen. Keyed on `activeId`, it now covers delete, switch, and starting a
+   * new chat with one rule.
+   *
+   * Deliberately not clearing `queuedMessage`: it is already scoped by
+   * `conversationId` and is meant to survive a detour to another conversation.
+   */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `activeId` is the trigger; the setters are stable and listing the cleared state would re-run this on every change to it.
+  useEffect(() => {
+    const previous = previousActiveIdRef.current;
+    previousActiveIdRef.current = activeId;
+    /**
+     * Only a *switch* between conversations clears evidence.
+     *
+     * `undefined -> id` is a new chat becoming real, which happens in the same
+     * tick as the first send: the run loop has already set the optimistic
+     * bubble and started streaming by the time this runs. Treating that as a
+     * switch wiped both, so the user saw an empty transcript until the answer
+     * arrived. There is nothing stale to clear in that direction anyway —
+     * a brand-new conversation has no prior evidence.
+     */
+    if (previous === undefined) return;
+
+    setStreamError(null);
+    setReplayNotice(null);
+    setLiveActivityEvents([]);
+    setLatestCitations([]);
+    setOptimisticMessage(null);
+  }, [activeId]);
+
+  /**
+   * Publishes which conversation is mid-run so the history list in the shell
+   * sidebar can disable its delete button. It is a sibling of this route, so
+   * props cannot reach it. Flips at most twice per run — never per token.
+   */
+  const setBusyConversationId = useChatActivityStore(
+    (state) => state.setBusyConversationId,
+  );
+  useEffect(() => {
+    setBusyConversationId(
+      activeId && (conversationIsBusy || isCancelling) ? activeId : null,
+    );
+  }, [activeId, conversationIsBusy, isCancelling, setBusyConversationId]);
+  useEffect(() => {
+    return () => setBusyConversationId(null);
+  }, [setBusyConversationId]);
+
   useChatWorkspaceEffects({
     activeId,
     autoReplayAttemptedRunIdsRef,
@@ -492,76 +577,56 @@ export function ChatWorkspace() {
   });
 
   return (
-    <>
-      <ChatWorkspaceLayout
-        activeId={activeId}
-        activeRunId={activeRunId}
-        chatScrollRef={chatScrollRef}
-        composerPlaceholder={composerPlaceholder}
-        conversation={conversation}
-        conversationIsBusy={conversationIsBusy}
-        conversations={conversations}
-        createConversation={createConversation}
-        deleteConversation={deleteConversation}
-        draft={draft}
-        events={visibleActivityEvents}
-        hasActiveDraft={hasActiveDraft}
-        isCancelling={isCancelling}
-        isConversationBrowserOpen={isConversationBrowserOpen}
-        isPrimaryActionDisabled={isPrimaryActionDisabled}
-        isSendNowDisabled={isSendNowDisabled}
-        isStreaming={isStreaming}
-        knowledgeBaseMode={knowledgeBaseMode}
-        knowledgeBases={knowledgeBases}
-        lang={lang}
-        latestAssistantMessageId={latestAssistantMessageId}
-        localization={localization}
-        messages={sortedMessages}
-        messagesError={messages.error}
-        onCancelQueuedMessage={handleCancelQueuedMessage}
-        onChatScroll={handleChatScroll}
-        onConversationBrowserOpenChange={setIsConversationBrowserOpen}
-        onCreate={handleCreate}
-        onDeleteConversation={requestDeleteConversation}
-        onDraftChange={setDraft}
-        onEditQueuedMessage={handleEditQueuedMessage}
-        onKnowledgeBaseModeChange={setKnowledgeBaseMode}
-        onReplayAssistantMessage={handleReplayAssistantMessage}
-        onSelectConversation={setSelectedId}
-        onSendNow={handleSendNow}
-        onSendQueuedMessage={handleSendQueuedMessage}
-        onSubmit={handleSend}
-        onToggleKnowledgeBase={toggleSelectedKnowledgeBase}
-        primaryActionLabel={primaryActionLabel}
-        queuedHelper={queuedHelper}
-        replayAssistantMessage={replayAssistantMessage}
-        replayNotice={replayNotice}
-        replayingMessageId={replayingMessageId}
-        requiresKnowledgeBaseSelection={requiresKnowledgeBaseSelection}
-        selectableKnowledgeBases={selectableKnowledgeBases}
-        selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}
-        sendNowHelper={sendNowHelper}
-        serverActiveRunIsStale={serverActiveRunIsStale}
-        reasoning={reasoning}
-        onReasoningModeChange={(mode) => persistReasoning({ mode })}
-        onReasoningEffortChange={(effort) => persistReasoning({ effort })}
-        showGuestNotice={showGuestNotice}
-        sortedRuns={sortedRuns}
-        statusAnnouncement={statusAnnouncement}
-        streamError={streamError}
-        streamedReply={streamedReply}
-        visibleCitations={visibleCitations}
-        visibleQueuedMessage={visibleQueuedMessage}
-      />
-      <DeleteConversationAlertDialog
-        conversation={conversationPendingDelete}
-        error={deleteConversation.error}
-        isPending={deleteConversation.isPending}
-        localization={localization}
-        onConfirm={(item) => void handleDeleteConversation(item)}
-        onOpenChange={handleDeleteConversationDialogOpenChange}
-        open={Boolean(conversationPendingDelete)}
-      />
-    </>
+    <ChatWorkspaceLayout
+      activeId={activeId}
+      activeRunId={activeRunId}
+      chatScrollRef={chatScrollRef}
+      composerPlaceholder={composerPlaceholder}
+      conversation={conversation}
+      conversationIsBusy={conversationIsBusy}
+      draft={draft}
+      events={visibleActivityEvents}
+      hasActiveDraft={hasActiveDraft}
+      isCancelling={isCancelling}
+      isPrimaryActionDisabled={isPrimaryActionDisabled}
+      isSendNowDisabled={isSendNowDisabled}
+      isStreaming={isStreaming}
+      knowledgeBaseMode={knowledgeBaseMode}
+      knowledgeBases={knowledgeBases}
+      lang={lang}
+      latestAssistantMessageId={latestAssistantMessageId}
+      localization={localization}
+      messages={sortedMessages}
+      messagesError={messages.error}
+      onCancelQueuedMessage={handleCancelQueuedMessage}
+      onChatScroll={handleChatScroll}
+      onDraftChange={setDraft}
+      onEditQueuedMessage={handleEditQueuedMessage}
+      onKnowledgeBaseModeChange={setKnowledgeBaseMode}
+      onReplayAssistantMessage={handleReplayAssistantMessage}
+      onSendNow={handleSendNow}
+      onSendQueuedMessage={handleSendQueuedMessage}
+      onSubmit={handleSend}
+      onToggleKnowledgeBase={toggleSelectedKnowledgeBase}
+      primaryActionLabel={primaryActionLabel}
+      queuedHelper={queuedHelper}
+      replayAssistantMessage={replayAssistantMessage}
+      replayNotice={replayNotice}
+      replayingMessageId={replayingMessageId}
+      requiresKnowledgeBaseSelection={requiresKnowledgeBaseSelection}
+      selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}
+      sendNowHelper={sendNowHelper}
+      serverActiveRunIsStale={serverActiveRunIsStale}
+      reasoning={reasoning}
+      onReasoningModeChange={(mode) => persistReasoning({ mode })}
+      onReasoningEffortChange={(effort) => persistReasoning({ effort })}
+      showGuestNotice={showGuestNotice}
+      sortedRuns={sortedRuns}
+      statusAnnouncement={statusAnnouncement}
+      streamError={streamError}
+      streamedReply={streamedReply}
+      visibleCitations={visibleCitations}
+      visibleQueuedMessage={visibleQueuedMessage}
+    />
   );
 }

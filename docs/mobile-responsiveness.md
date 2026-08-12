@@ -34,7 +34,7 @@ For complex screens, prefer explicit desktop/mobile render branches inside the r
 
 ## Examples In This Repo
 
-- `/chat`: composer, source selector, citations, and activity evidence must remain usable without horizontal overflow.
+- `/chat`: composer, source selector, citations, and activity evidence must remain usable without horizontal overflow. The conversation history is in the shell sidebar (a `Sheet` below `md`), and the source selector is a compact trigger in the composer opening a `Drawer` on mobile and a `Dialog` on desktop — both were previously fixed chrome above the transcript, which on a phone left less height than a single answer.
 - `/knowledge`: source-space navigation can use a persistent desktop tree and compact-screen sheet/browser.
 - `/groups`: group browser and management sections can share data but may need separate desktop overview and mobile stacked branches.
 - Auth routes: login/signup/password flows should stay single-column and keyboard-friendly on mobile while preserving desktop polish.
