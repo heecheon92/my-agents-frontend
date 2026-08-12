@@ -146,7 +146,9 @@
     "logout": "로그아웃",
     "guestSessionLabel": "게스트 세션",
     "sessionEvidenceTitle": "워크스페이스",
-    "toggleSidebar": "사이드바 열고 닫기"
+    "toggleSidebar": "사이드바 열고 닫기",
+    "githubRepository": "GitHub 저장소",
+    "githubRepositoryNewTab": "GitHub 저장소 (새 탭에서 열림)"
   },
   "onboarding": {
     "eyebrow": "사용 안내",

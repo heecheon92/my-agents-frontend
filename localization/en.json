@@ -146,7 +146,9 @@
     "logout": "Log out",
     "guestSessionLabel": "Guest session",
     "sessionEvidenceTitle": "Workspace",
-    "toggleSidebar": "Toggle sidebar"
+    "toggleSidebar": "Toggle sidebar",
+    "githubRepository": "GitHub repository",
+    "githubRepositoryNewTab": "GitHub repository (opens in a new tab)"
   },
   "onboarding": {
     "eyebrow": "Guided tour",

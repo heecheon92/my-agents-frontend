@@ -13,10 +13,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ConversationHistorySidebarGroup } from "@/components/chat/ConversationHistorySidebarGroup";
 import { NEW_CHAT_HREF } from "@/components/chat/chat-routes";
+import { GithubIcon } from "@/components/icons/GithubIcon";
 import { OnboardingRuntime } from "@/components/onboarding/OnboardingRuntime";
 import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { ThemeTogglerButton } from "@/components/ThemeTogglerButton";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Sidebar,
   SidebarContent,
@@ -33,6 +34,7 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GITHUB_REPOSITORY_URL } from "@/constants/links";
 import type { ThemePreference } from "@/constants/theme";
 import { useCurrentUser, useLogout } from "@/hooks/use-auth";
 import { useLocalization } from "@/hooks/useLocalization";
@@ -308,6 +310,31 @@ export function ServiceShell({
               </p>
             </OnboardingTarget>
           </div>
+          {/*
+            Before the theme toggle, so the toggle keeps the far-right position
+            users already reach for.
+
+            A styled `Link`, deliberately not `Button render={<Link/>}` like the
+            nav rows above. Base UI's Button stamps `role="button"` and
+            `tabindex="0"` onto whatever it renders, which would announce a
+            navigation link as a button and hide it from a screen reader's list
+            of links. This is a real link, so it keeps link semantics and only
+            borrows the button's styling.
+
+            `noopener` is the security-relevant half of that pair: without it
+            the opened tab can reach back through `window.opener`.
+          */}
+          <Link
+            href={GITHUB_REPOSITORY_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            // The label announces the new tab; the tooltip stays short.
+            aria-label={localization.service.githubRepositoryNewTab}
+            title={localization.service.githubRepository}
+            className={buttonVariants({ variant: "ghost", size: "icon-sm" })}
+          >
+            <GithubIcon />
+          </Link>
           <ThemeTogglerButton initialPreference={themePreference} />
         </header>
         {/*
