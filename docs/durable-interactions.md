@@ -142,6 +142,23 @@ waiting run id and its detail, neither of which changes when a cancel request
 fails, so it would never restore the card. Cancel therefore disables the card,
 clears only on success, and surfaces localized copy on failure.
 
+**Options are the backend's list; the frontend assembles nothing.** Backend
+`b8ceb91` and `2172757` fix the source boundary: default chat still searches all
+personal and group knowledge bases, an ambiguous document reference enters
+retrieval in that default mode, and clarification counts *only* user-selectable
+personal and group documents. System knowledge stays ambient — it never appears
+as an option — and if exactly one selectable document exists the run resolves
+automatically rather than asking, even when ambient system documents are also in
+scope. A forged `document_id` on resume is rejected server-side.
+
+Nothing in `components/chat/interactions/` reads a local document or knowledge
+base list; every option comes from the response. Keep it that way. Filtering the
+list client-side would duplicate a check that already exists where it counts and
+would give a false sense that the boundary is enforced here — it is not, and it
+should not be. Separately, `ChatWorkspace.tsx` already restricts the scope picker
+to `purpose === "standard"` knowledge bases, so system sources are absent from
+the user's own selection too.
+
 **Expiry changes behaviour, not just copy.** Past `expires_at` the server
 answers a resume with `run_interaction_expired`, so the card disables Choose and
 pagination locally and keeps Cancel live. Nothing pushes an expiry event, and

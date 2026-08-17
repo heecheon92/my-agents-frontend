@@ -133,6 +133,13 @@ conversation for up to 24 hours, the server-side expiry default.
 - **Server truth outlives the stream.** A pending question must be rebuilt from
   the run list on a cold load, and must not be cleared optimistically before a
   cancel succeeds.
+- **Options are the backend's list, never assembled here.** Clarification offers
+  only user-selectable personal and group documents; system knowledge stays
+  ambient and never appears as a choice. The frontend renders the options it is
+  given and adds nothing — do not merge in a local document list, infer a
+  source, or filter the list client-side. The server also rejects a forged
+  selection, so client-side filtering would be a false reassurance on top of the
+  real check.
 
 Read `docs/durable-interactions.md` for the reasoning and the two distinct
 `run_interrupted` contracts before changing any of this.

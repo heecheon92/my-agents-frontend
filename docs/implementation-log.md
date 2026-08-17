@@ -793,3 +793,25 @@ same gap as the paged-options case below.
 
 Still unexercised: a second interrupt within one run, a second page of options
 (and with it the live encoded path above), and guest-specific behaviour.
+
+### Ambient system sources stay out of the choice
+
+Backend `b8ceb91` and `2172757` settle what a clarification may offer. Default
+chat continues to search all personal and group knowledge bases; an ambiguous
+document reference enters retrieval in that default mode rather than forcing a
+narrower scope; and the count that decides whether to ask at all includes only
+user-selectable personal and group documents. System knowledge is ambient: it
+never appears as an option, and a single selectable document resolves
+automatically even when ambient system documents are in scope. Resume rejects a
+forged `document_id`.
+
+No frontend change was needed, and that was checked rather than assumed. Nothing
+under `components/chat/interactions/` reads a local document or knowledge-base
+list — every option is rendered from the response — so there is no client path
+that could reintroduce a system source. `ChatWorkspace.tsx:242` also already
+limits the scope picker to `purpose === "standard"`, which keeps system bases out
+of the user's own selection. Adding a client-side filter would duplicate the
+server check and imply the boundary is enforced here, which it is not.
+
+Rechecked live in the browser on default all-sources mode: exactly Alpha and
+Beta offered, two documents, no system sources present, and cancel succeeded.
