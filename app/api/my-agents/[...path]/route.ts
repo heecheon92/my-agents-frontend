@@ -32,9 +32,18 @@ const LANGUAGE_HEADER_NAMES = [
   "x-my-agents-locale",
 ] as const;
 
+/**
+ * Paths whose response body is Server-Sent Events and must not be buffered.
+ *
+ * Omitting a streaming path here does not fail loudly: the request is still
+ * proxied and still succeeds, but the whole SSE body is buffered and delivered
+ * at once, so the answer appears in a single jump instead of token by token.
+ * Add every new `/stream` endpoint here at the same time as its allowlist rule.
+ */
 export function isStreamPath(path: string) {
   return (
     /^\/conversations\/[^/]+\/runs\/stream$/.test(path) ||
+    /^\/conversations\/[^/]+\/runs\/[^/]+\/resume\/stream$/.test(path) ||
     /^\/conversations\/[^/]+\/messages\/[^/]+\/replay\/stream$/.test(path)
   );
 }

@@ -30,6 +30,13 @@ type UseChatWorkspaceEffectsOptions = {
   ) => Promise<void>;
   selectableKnowledgeBases: KnowledgeBase[];
   serverActiveRunId: string | null;
+  /**
+   * A run suspended on an unanswered question. It produces no output, so it is
+   * not "active", but it does hold the conversation.
+   */
+  serverWaitingRunId: string | null;
+  /** `canDrainQueue(runPhase)` from `run-state.ts`, so the rule lives in one place. */
+  canDrainQueue: boolean;
   setActiveRunClock: (value: number) => void;
   setObservedServerActiveRun: React.Dispatch<
     React.SetStateAction<{ runId: string; observedAt: number } | null>
@@ -57,6 +64,8 @@ export function useChatWorkspaceEffects({
   runMessageAndContinue,
   selectableKnowledgeBases,
   serverActiveRunId,
+  serverWaitingRunId,
+  canDrainQueue,
   setActiveRunClock,
   setObservedServerActiveRun,
   setQueuedMessageState,
@@ -65,15 +74,32 @@ export function useChatWorkspaceEffects({
   shouldAutoScrollRef,
 }: UseChatWorkspaceEffectsOptions) {
   useEffect(() => {
-    if (!activeId || !serverActiveRunId) return;
-    previousServerActiveRunIdRef.current = serverActiveRunId;
-    const intervalId = window.setInterval(() => {
-      void queryClient.invalidateQueries({
-        queryKey: MyAgentsQueryKeys.conversations.runs(activeId),
-      });
-    }, 2000);
+    if (!activeId) return;
+    // Waiting runs are polled too, at a slower cadence. Nothing is streaming,
+    // so there is no output to chase — but the run can be resumed, cancelled,
+    // or expired somewhere else, and none of those reach this tab as an event.
+    // Without a poll the card would sit there after it stopped being real.
+    const pollingRunId = serverActiveRunId ?? serverWaitingRunId;
+    if (!pollingRunId) return;
+    if (serverActiveRunId) {
+      previousServerActiveRunIdRef.current = serverActiveRunId;
+    }
+    const intervalId = window.setInterval(
+      () => {
+        void queryClient.invalidateQueries({
+          queryKey: MyAgentsQueryKeys.conversations.runs(activeId),
+        });
+      },
+      serverActiveRunId ? 2000 : 15000,
+    );
     return () => window.clearInterval(intervalId);
-  }, [activeId, queryClient, previousServerActiveRunIdRef, serverActiveRunId]);
+  }, [
+    activeId,
+    queryClient,
+    previousServerActiveRunIdRef,
+    serverActiveRunId,
+    serverWaitingRunId,
+  ]);
 
   useEffect(() => {
     if (!serverActiveRunId) {
@@ -99,6 +125,13 @@ export function useChatWorkspaceEffects({
 
   useEffect(() => {
     if (!activeId || serverActiveRunId || isStreaming || isCancelling) return;
+    // The queue *pauses* while a question is open; it does not drain. A run
+    // moving from `running` to `waiting_for_input` looks exactly like
+    // completion to the active-run predicate, so without this guard the queued
+    // message would be sent into a conversation the backend will refuse with
+    // the same 409 it uses for a busy one — and the guard below would then
+    // never let it retry.
+    if (!canDrainQueue) return;
     const previousServerActiveRunId = previousServerActiveRunIdRef.current;
     if (!previousServerActiveRunId) return;
     previousServerActiveRunIdRef.current = null;
@@ -129,6 +162,7 @@ export function useChatWorkspaceEffects({
     queuedMessageRef,
     runMessageAndContinue,
     serverActiveRunId,
+    canDrainQueue,
     setQueuedMessageState,
     setStatusAnnouncement,
   ]);

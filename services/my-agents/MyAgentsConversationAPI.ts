@@ -9,18 +9,28 @@ import {
   answerDeltaEventDataSchema,
   type Conversation,
   type ConversationCreateRequest,
+  type ConversationRunInterruptedResponse,
   type ConversationRunRequest,
   type ConversationRunResponse,
+  type ConversationRunResult,
+  type ConversationRunResumeRequest,
+  conversationRunInterruptedResponseSchema,
   conversationRunResponseSchema,
+  conversationRunResultSchema,
+  conversationRunResumeRequestSchema,
   conversationSchema,
+  type DocumentSelectionOptionsPage,
+  documentSelectionOptionsPageSchema,
   type Message,
   type MessageCreateRequest,
   messageSchema,
   type RunCancelledEventData,
   type RunCancelResponse,
+  type RunResumedActivityPayload,
   type RunStartedEventData,
   runCancelledEventDataSchema,
   runCancelResponseSchema,
+  runResumedActivityPayloadSchema,
   runStartedEventDataSchema,
 } from "@/model/my-agents";
 import { type MyAgentsFetchClient, myAgentsFetchClient } from "./fetch-client";
@@ -32,6 +42,8 @@ export type ConversationRunStreamEvent =
   | { event: "answer_delta"; data: AnswerDeltaEventData }
   | { event: "run_cancelled"; data: RunCancelledEventData }
   | { event: "run_completed"; data: ConversationRunResponse }
+  | { event: "run_interrupted"; data: ConversationRunInterruptedResponse }
+  | { event: "run_resumed"; data: RunResumedActivityPayload }
   | { event: string; data: unknown };
 
 function parseStreamEventData(value: string) {
@@ -72,6 +84,26 @@ function parseConversationRunStreamEvent({
     return {
       event,
       data: parseWithSchema(conversationRunResponseSchema, parsedData),
+    };
+  }
+  // The run suspended to ask the user something. The stream sends the *full*
+  // interrupted response — the same body as the HTTP 202, nested `interaction`
+  // and first page of options included — not the thinner persisted activity
+  // payload. Parsing it strictly is therefore correct and does not need the
+  // required fields relaxed.
+  if (event === "run_interrupted") {
+    return {
+      event,
+      data: parseWithSchema(
+        conversationRunInterruptedResponseSchema,
+        parsedData,
+      ),
+    };
+  }
+  if (event === "run_resumed") {
+    return {
+      event,
+      data: parseWithSchema(runResumedActivityPayloadSchema, parsedData),
     };
   }
   return { event, data: parsedData };
@@ -176,13 +208,77 @@ export class MyAgentsConversationAPI {
   async run(
     conversationId: string,
     payload: ConversationRunRequest,
-  ): Promise<ConversationRunResponse> {
+  ): Promise<ConversationRunResult> {
+    // 200 completed or 202 waiting_for_input. `fetchResponse` treats both as
+    // success, so the union is decided by body shape, not status code.
     return parseWithSchema(
-      conversationRunResponseSchema,
+      conversationRunResultSchema,
       await this.client.fetch(API_PATH.conversations.runs(conversationId), {
         method: "POST",
         body: payload,
       }),
+    );
+  }
+
+  async resumeRun(
+    conversationId: string,
+    runId: string,
+    payload: ConversationRunResumeRequest,
+  ): Promise<ConversationRunResult> {
+    return parseWithSchema(
+      conversationRunResultSchema,
+      await this.client.fetch(
+        API_PATH.conversations.resumeRun(conversationId, runId),
+        {
+          method: "POST",
+          body: conversationRunResumeRequestSchema.parse(payload),
+        },
+      ),
+    );
+  }
+
+  async streamResumeRun(
+    conversationId: string,
+    runId: string,
+    payload: ConversationRunResumeRequest,
+  ): Promise<Response> {
+    return this.client.fetchResponse(
+      API_PATH.conversations.resumeRunStream(conversationId, runId),
+      {
+        method: "POST",
+        body: conversationRunResumeRequestSchema.parse(payload),
+        headers: { Accept: TEXT_EVENT_STREAM_CONTENT_TYPE },
+      },
+    );
+  }
+
+  async *streamResumeRunEvents(
+    conversationId: string,
+    runId: string,
+    payload: ConversationRunResumeRequest,
+  ): AsyncGenerator<ConversationRunStreamEvent> {
+    const response = await this.streamResumeRun(conversationId, runId, payload);
+    for await (const event of streamServerSentEvents(response)) {
+      yield parseConversationRunStreamEvent(event);
+    }
+  }
+
+  async interactionOptions(
+    conversationId: string,
+    runId: string,
+    interactionId: string,
+    cursor?: string | null,
+  ): Promise<DocumentSelectionOptionsPage> {
+    const path = API_PATH.conversations.interactionOptions(
+      conversationId,
+      runId,
+      interactionId,
+    );
+    return parseWithSchema(
+      documentSelectionOptionsPageSchema,
+      await this.client.fetch(
+        cursor ? `${path}?cursor=${encodeURIComponent(cursor)}` : path,
+      ),
     );
   }
 
@@ -235,9 +331,11 @@ export class MyAgentsConversationAPI {
   async runDetail(
     conversationId: string,
     runId: string,
-  ): Promise<ConversationRunResponse> {
+  ): Promise<ConversationRunResult> {
+    // The refresh path: a run left waiting reports its pending interaction
+    // here, which is what lets a reload rebuild the card.
     return parseWithSchema(
-      conversationRunResponseSchema,
+      conversationRunResultSchema,
       await this.client.fetch(
         API_PATH.conversations.run(conversationId, runId),
       ),

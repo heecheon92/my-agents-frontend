@@ -318,3 +318,16 @@ Delivery is verified only as far as the provider. Resend accepted the send and
 reported `last_event=delivered` for its own `delivered@resend.dev` test recipient
 — provider acceptance and simulated delivery, not proof that a real inbox
 receives anything. Worth one end-to-end send to a real address after deploying.
+
+## 2026-08-17 — compound interaction id must survive path encoding
+
+Status: resolved — verified backend-side in `my-agents@328d5ca`
+Frontend need: Fetch paged options for a pending interaction via `GET /conversations/{conversation_id}/runs/{run_id}/interactions/{interaction_id}/options`, where `interaction_id` is the compound `<run_id>:document_selection`.
+Current backend behavior: Resolves the encoded form correctly. The BFF re-encodes every path segment (`buildBackendPath`), so the colon reaches the backend percent-encoded as `%3A`. At filing this was unexercised — the allowlist rule passing proves only that the proxy forwards the request, not that the backend resolves the ID. See Resolution below.
+Requested backend contract: Confirm `GET …/interactions/run-1%3Adocument_selection/options` resolves the same interaction as the unencoded form. If it does not, move the interaction ID out of the path — a query parameter on the options endpoint, and the body field that `POST …/resume` already carries.
+Why it matters: A path-encoding mismatch fails as a 404 from the backend, which is indistinguishable in the UI from "this interaction expired". The user would be told their question timed out when it is actually unreachable.
+Resolution: backend commit `328d5ca` extends `test_checkpointed_document_selection_interrupts_and_resumes_same_run` to request the options route with the colon replaced by `%3A`, asserting a 200 and `schema_version: 1`. Starlette therefore resolves the encoded form to the stored colon value. The same test submits the exact v1 resume body and completes the same run.
+
+Evidence pairing: `tests/proxy-policy.test.ts` pins the form the BFF emits (`run-1%3Adocument_selection`) and the backend test pins the form the backend accepts. They are the same string, so the two ends are verified against one another.
+
+Still open: no single request has travelled browser → BFF → backend. Each end is proven separately, not joined. The frontend keeps the raw ID and encodes only at the proxy boundary, so moving the ID to a query parameter or body field would remain a small change if that ever became necessary.

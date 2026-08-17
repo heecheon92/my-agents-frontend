@@ -11,6 +11,10 @@ export type RunOutcome =
   | "completed"
   | "cancelled"
   | "failed"
+  // The run suspended to ask the user something. Distinct from every other
+  // outcome because the conversation is neither free nor producing output: the
+  // queue must hold, and the partial answer must stay on screen.
+  | "interrupted"
   | "active_conflict";
 
 export const CHAT_BOTTOM_THRESHOLD_PX = 96;
@@ -60,8 +64,38 @@ export function getNextConversationIdAfterDelete(
   );
 }
 
+/** A run status the backend serves for a suspended, unanswered interaction. */
+export const WAITING_FOR_INPUT_STATUS = "waiting_for_input";
+
+/**
+ * A run that is actively producing output.
+ *
+ * Deliberately excludes `waiting_for_input`: a suspended run writes nothing, so
+ * treating it as active here would render a stop button offering to interrupt
+ * an answer that is not being written, and would start the streaming-run
+ * staleness clock against a run that is legitimately idle for hours.
+ */
 export function isActiveAgentRunStatus(status: string) {
   return status === "running" || status === "cancelling";
+}
+
+export function isWaitingForInputRunStatus(status: string) {
+  return status === WAITING_FOR_INPUT_STATUS;
+}
+
+/**
+ * A run that prevents starting another one in the same conversation.
+ *
+ * Broader than `isActiveAgentRunStatus`, and the distinction is load-bearing.
+ * The backend refuses a new run while an interaction is unanswered using the
+ * *existing* `conversation_run_already_active` 409 — there is no distinct code
+ * — so the client cannot tell "busy" from "waiting" from the error and has to
+ * know from status. Before this existed, a run moving to `waiting_for_input`
+ * looked exactly like completion, so the composer went idle while every send
+ * was rejected.
+ */
+export function isBlockingAgentRunStatus(status: string) {
+  return isActiveAgentRunStatus(status) || isWaitingForInputRunStatus(status);
 }
 
 export function isObservedActiveRunStale({
@@ -106,8 +140,23 @@ export function createLiveActivityEvent({
   };
 }
 
+/**
+ * The backend's "a run is already outstanding here" 409.
+ *
+ * Matched on the machine-readable `code`, not on the English `detail`. The
+ * previous implementation substring-matched `"conversation run already active"`,
+ * which meant any rewording or localization of the backend's prose would have
+ * silently turned every queue-on-busy into a hard error. `code` is the contract
+ * (`docs/backend-requests.md`), and `errors.byCode` already localizes from it.
+ *
+ * The detail fallback is kept only for a backend old enough to omit `code`.
+ */
 export function isConversationRunAlreadyActiveError(error: unknown) {
   if (!isMyAgentsAPIError(error) || error.status !== 409) return false;
+  if (error.body && typeof error.body === "object") {
+    const code = (error.body as { code?: unknown }).code;
+    if (typeof code === "string") return code === CONVERSATION_RUN_ACTIVE_CODE;
+  }
   const details = [error.detail, error.message];
   if (typeof error.body === "string") {
     details.push(error.body);
@@ -121,6 +170,8 @@ export function isConversationRunAlreadyActiveError(error: unknown) {
     detail?.toLowerCase().includes("conversation run already active"),
   );
 }
+
+const CONVERSATION_RUN_ACTIVE_CODE = "conversation_run_already_active";
 
 export function safeBackendDetail(value: unknown) {
   if (value && typeof value === "object" && "detail" in value) {

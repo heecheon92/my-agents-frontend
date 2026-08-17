@@ -92,6 +92,47 @@ const mockRun = {
   created_at: NOW,
 };
 
+/**
+ * A run suspended on an unanswered document choice, as the run list reports it
+ * after a reload. This is the cold-load recovery fixture: no stream is
+ * involved, so the card must be rebuilt from server state alone.
+ */
+export const mockWaitingRun = {
+  run_id: "run-waiting",
+  conversation_id: mockConversation.id,
+  status: "waiting_for_input",
+  route_label: null,
+  created_at: LATER,
+};
+
+export const mockPendingInteraction = {
+  schema_version: 1,
+  interaction_id: "run-waiting:document_selection",
+  type: "document_selection",
+  reason_code: "ambiguous_document_reference",
+  message_key: "clarification.document_scope.select_source",
+  // Far future so the card is answerable; the expiry spec overrides it.
+  expires_at: "2099-01-01T00:00:00.000Z",
+  option_count: 2,
+  options: [
+    {
+      document_id: "doc-contract",
+      title: "2026 파트너 계약서",
+      source_filename: "partner-contract-2026.pdf",
+      knowledge_base_id: "kb-personal",
+      knowledge_base_name: "개인 자료",
+    },
+    {
+      document_id: "doc-note",
+      title: "온보딩 메모",
+      source_filename: null,
+      knowledge_base_id: null,
+      knowledge_base_name: null,
+    },
+  ],
+  next_cursor: null,
+};
+
 const mockCitation = {
   id: "citation-visual",
   document_id: "doc-contract",
@@ -153,6 +194,17 @@ type RouteOverrides = {
   empty?: boolean;
   /** Serve reasoning capabilities. `false` 404s them, as a backend without the migration does. */
   reasoning?: boolean;
+  /**
+   * Serve a run suspended on a pending interaction, as after a reload.
+   * Omitted entirely by default so every existing spec keeps proving the
+   * flag-off composer is unchanged.
+   */
+  interaction?:
+    | false
+    | "document_selection"
+    | "unsupported_type"
+    | "unsupported_version"
+    | "expired";
 };
 
 export async function mockWorkspace(
@@ -164,7 +216,20 @@ export async function mockWorkspace(
     guest = false,
     empty = false,
     reasoning = true,
+    interaction = false,
   } = overrides;
+  const pendingInteraction = !interaction
+    ? null
+    : interaction === "unsupported_type"
+      ? { ...mockPendingInteraction, type: "approval" }
+      : interaction === "unsupported_version"
+        ? { ...mockPendingInteraction, schema_version: 2 }
+        : interaction === "expired"
+          ? {
+              ...mockPendingInteraction,
+              expires_at: "2020-01-01T00:00:00.000Z",
+            }
+          : mockPendingInteraction;
   const knowledgeBases = empty ? [] : mockKnowledgeBases;
   const documents = empty ? [] : mockDocuments;
   const conversations = empty ? [] : [mockConversation];
@@ -292,7 +357,22 @@ export async function mockWorkspace(
       );
     }
     if (path === `/conversations/${mockConversation.id}/runs`) {
+      if (pendingInteraction) return json([mockWaitingRun, mockRun]);
       return json(empty ? [] : [mockRun]);
+    }
+    if (
+      pendingInteraction &&
+      path ===
+        `/conversations/${mockConversation.id}/runs/${mockWaitingRun.run_id}`
+    ) {
+      // The refresh contract: a waiting run reports its pending interaction
+      // here, which is what lets a reload rebuild the card.
+      return json({
+        status: "waiting_for_input",
+        run_id: mockWaitingRun.run_id,
+        conversation_id: mockConversation.id,
+        interaction: pendingInteraction,
+      });
     }
     if (
       path === `/conversations/${mockConversation.id}/runs/${mockRun.run_id}`

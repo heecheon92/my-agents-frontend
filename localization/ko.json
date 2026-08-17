@@ -381,7 +381,28 @@
       "xhigh": "오래 걸리는 조사에 씁니다. 자료가 많고 한참 파고들어야 하는 질문에만 쓰고, 답이 늦어질 만한 가치가 있는지 먼저 따져 보세요.",
       "max": "가장 복잡한 작업에만 씁니다. 매우 높음으로 부족했던 질문에 한 번 더 시도해 보는 용도입니다."
     },
-    "reasoningEffortGuideCurrent": "지금 선택됨"
+    "reasoningEffortGuideCurrent": "지금 선택됨",
+    "interactionTitle": "어떤 문서를 볼까요?",
+    "interactionDescription": "질문에 맞는 문서가 여러 개입니다. 하나를 고르면 이어서 답변합니다.",
+    "interactionChoose": "이 문서로 답변",
+    "interactionCancel": "질문 취소",
+    "interactionLoadMore": "더 보기",
+    "interactionOptionsFailed": "문서 목록을 불러오지 못했습니다.",
+    "interactionExpiresIn": "{time} 뒤에 만료됩니다",
+    "interactionExpired": "선택 시간이 지났습니다. 질문을 다시 보내 주세요.",
+    "interactionResuming": "선택한 문서로 이어서 답변하는 중입니다.",
+    "interactionQueuePaused": "답변을 기다리는 중이라 예약 메시지는 잠시 멈춰 있습니다.",
+    "interactionCountLabel": "문서 {count}개",
+    "interactionNoKnowledgeBase": "지식 베이스 없음",
+    "interactionUnsupportedTitle": "여기서는 답할 수 없는 요청입니다",
+    "interactionUnsupportedTypeDescription": "이 버전에서 지원하지 않는 확인 요청입니다. 질문을 취소하고 다시 물어봐 주세요.",
+    "interactionUnsupportedVersionDescription": "앱이 오래됐습니다. 새로고침한 뒤 다시 시도해 주세요.",
+    "interactionCancelledAnnouncement": "확인 요청을 취소했습니다.",
+    "interactionResumedAnnouncement": "선택한 문서로 답변을 이어갑니다.",
+    "interactionWaitingAnnouncement": "답변을 이어가려면 문서를 선택해 주세요.",
+    "interactionUnitMinutes": "{n}분",
+    "interactionUnitHours": "{n}시간",
+    "interactionUnitDays": "{n}일"
   },
   "admin": {
     "common": {
@@ -742,7 +763,13 @@
       "unsupported_media_type": "지원하지 않는 파일 형식입니다.",
       "publish_request_already_reviewed": "이미 처리된 요청입니다. 목록을 새로고침해 주세요.",
       "conversation_run_already_active": "이 대화에서 답변이 생성 중입니다. 끝난 뒤에 다시 시도하세요.",
-      "conversation_run_failed": "답변 생성에 실패했습니다. 다시 시도해 주세요."
+      "conversation_run_failed": "답변 생성에 실패했습니다. 다시 시도해 주세요.",
+      "run_not_waiting_for_input": "이 답변은 이미 진행 중입니다. 화면을 새로고침해 주세요.",
+      "run_interaction_mismatch": "다른 질문에 대한 선택입니다. 화면을 새로고침해 주세요.",
+      "run_interaction_expired": "선택 시간이 지났습니다. 질문을 다시 보내 주세요.",
+      "run_selected_document_unavailable": "선택한 문서를 더 이상 볼 수 없습니다. 다른 문서를 골라 주세요.",
+      "run_graph_version_incompatible": "서버가 업데이트됐습니다. 새로고침한 뒤 다시 질문해 주세요.",
+      "langgraph_persistence_unavailable": "지금은 이 기능을 쓸 수 없습니다. 잠시 후 다시 시도해 주세요."
     },
     "csrfMissing": "세션 증명이 없습니다. 다시 로그인해 주세요.",
     "requestFailed": "요청에 실패했습니다",
