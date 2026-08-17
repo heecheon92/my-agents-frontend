@@ -15,6 +15,14 @@ OpenAPI document from backend `feature/langgraph-checkpointer`. Dark in
 production: both backend flags default off, and the composer is byte-identical
 to before until `MY_AGENTS_CHECKPOINTER_ENABLED` is turned on.
 
+Verified end to end in a browser on 2026-08-17 against persistence-enabled
+Postgres: an ambiguous prompt raised the card, a hard reload rebuilt it from run
+detail, choosing a document resumed and completed the same run with a citation,
+and a second waiting run cancelled cleanly. Not yet exercised live: a second
+interrupt within one run, a second page of options, and guest behaviour. See
+`docs/implementation-log.md` for what that leaves open — notably the encoded
+`interaction_id`, which only the paged options route carries.
+
 ## Hard rule: no Zod models from backend source
 
 `AGENTS.md` already says frontend API models come from the backend's hosted

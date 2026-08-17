@@ -769,8 +769,27 @@ completes the run. `tests/proxy-policy.test.ts` pins the string the BFF emits,
 and it is the same string the backend test accepts — so the encoding the proxy
 produces is the encoding the service resolves.
 
-What that does not establish: no single request has travelled browser → BFF →
-backend. Each end is verified against a shared fixture rather than against the
-other in one flight, and every interaction path in this repository is still
-mocked. Also unexercised: a second interrupt within one run, a second page of
-options, and guest behaviour.
+Live smoke, 2026-08-17. Driven in a browser against persistence-enabled
+Postgres — backend in deterministic mode, `MY_AGENTS_CHECKPOINTER_ENABLED=true`,
+HITL wait shortened to 300s. Signup and login through the Next BFF, a selected
+knowledge base with two ingested documents, then an ambiguous prompt: the real
+interaction card appeared, a hard reload rebuilt it from run detail, choosing
+Alpha sent the typed resume through the BFF and completed the *same* run with
+one citation rendered, and a second waiting run cancelled cleanly and released
+the composer.
+
+That closes the joined browser → BFF → backend path for run creation, run
+detail, resume, and cancel — including cold-load recovery, which was previously
+only proven against mocks.
+
+One route inside that path was still not exercised, and it is worth naming
+rather than filing under "smoke passed": the options endpoint is the only one
+carrying the percent-encoded `interaction_id` in its path, and with two options
+delivered inline and `next_cursor: null`, neither the seed fetch nor `loadMore`
+fires. So the encoded segment remains verified at each end separately — backend
+`328d5ca` and `tests/proxy-policy.test.ts` — rather than in one live request.
+Reaching it needs an interaction with more options than fit a page, which is the
+same gap as the paged-options case below.
+
+Still unexercised: a second interrupt within one run, a second page of options
+(and with it the live encoded path above), and guest-specific behaviour.
