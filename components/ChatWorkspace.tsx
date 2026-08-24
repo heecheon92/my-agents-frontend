@@ -72,6 +72,7 @@ export { REPLAY_ICON_PENDING_CLASS_NAME };
 export { CHAT_WORKSPACE_PANEL_CLASS_NAME } from "./chat/ChatWorkspaceLayout";
 export {
   ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
+  appendLiveActivityEvent,
   buildActiveKnowledgeBaseSelection,
   createLiveActivityEvent,
   deriveConversationTitle,

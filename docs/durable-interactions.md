@@ -159,6 +159,16 @@ should not be. Separately, `ChatWorkspace.tsx` already restricts the scope picke
 to `purpose === "standard"` knowledge bases, so system sources are absent from
 the user's own selection too.
 
+**A resumed run continues one activity timeline.** `resumeInteraction` appends
+to the live event list that the interrupted stream already filled rather than
+starting a new one, so live event ids and their displayed ordinals must be
+derived from that list — `appendLiveActivityEvent` numbers from `current`, and
+no stream function owns a counter. The first version gave each stream its own
+`liveSequence` starting at 0, so answering a question re-issued `live-1` and
+React reported duplicate keys on the activity panel, free to drop or duplicate a
+row. This is invisible until a run actually suspends, which is why it survived
+the flags-off suite.
+
 **Expiry changes behaviour, not just copy.** Past `expires_at` the server
 answers a resume with `run_interaction_expired`, so the card disables Choose and
 pagination locally and keeps Cancel live. Nothing pushes an expiry event, and

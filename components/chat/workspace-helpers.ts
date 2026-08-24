@@ -141,6 +141,32 @@ export function createLiveActivityEvent({
 }
 
 /**
+ * Appends a live event, numbering it from the list it is joining.
+ *
+ * The sequence comes from `current`, never from a counter the caller keeps.
+ * One run can emit events from more than one stream: a run that suspends to
+ * ask a question resumes into a second `streamResumeRunEvents` call that
+ * appends to this same list. A per-stream counter restarts at 1 there and
+ * collides with the `live-1` already recorded before the interrupt, which
+ * React reports as two children with the same key and may resolve by dropping
+ * or duplicating a row. Deriving the number from the array makes that class of
+ * drift unrepresentable rather than merely fixed here.
+ */
+export function appendLiveActivityEvent(
+  current: LiveActivityEvent[],
+  { eventType, payload }: { eventType: string; payload: unknown },
+): LiveActivityEvent[] {
+  return [
+    ...current,
+    createLiveActivityEvent({
+      eventType,
+      payload,
+      sequence: current.length + 1,
+    }),
+  ];
+}
+
+/**
  * The backend's "a run is already outstanding here" 409.
  *
  * Matched on the machine-readable `code`, not on the English `detail`. The

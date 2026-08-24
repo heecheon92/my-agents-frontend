@@ -17,7 +17,7 @@ import type {
 import { myAgentsAPI } from "@/services/my-agents";
 import type { LiveActivityEvent, QueuedMessage } from "./types";
 import {
-  createLiveActivityEvent,
+  appendLiveActivityEvent,
   isConversationRunAlreadyActiveError,
   type RunOutcome,
   safeBackendDetail,
@@ -147,7 +147,6 @@ export function useChatRunLoop({
     let partialReplyPersisted = false;
     let interrupted = false;
     let interruptedRunId: string | null = null;
-    let liveSequence = 0;
     try {
       for await (const streamEvent of myAgentsAPI.conversations.streamRunEvents(
         conversationId,
@@ -163,14 +162,12 @@ export function useChatRunLoop({
           continue;
         }
         if (shouldRecordLiveActivityEvent(streamEvent.event)) {
-          const nextLiveSequence = liveSequence + 1;
-          liveSequence = nextLiveSequence;
-          const liveActivityEvent = createLiveActivityEvent({
-            eventType: streamEvent.event,
-            payload: streamEvent.data,
-            sequence: nextLiveSequence,
-          });
-          setLiveActivityEvents((current) => [...current, liveActivityEvent]);
+          setLiveActivityEvents((current) =>
+            appendLiveActivityEvent(current, {
+              eventType: streamEvent.event,
+              payload: streamEvent.data,
+            }),
+          );
         }
         if (streamEvent.event === "run_started") {
           const data = streamEvent.data as { run_id: string };
@@ -343,7 +340,6 @@ export function useChatRunLoop({
     let completed = false;
     let cancelled = false;
     let interrupted = false;
-    let liveSequence = 0;
     try {
       for await (const streamEvent of myAgentsAPI.conversations.streamResumeRunEvents(
         conversationId,
@@ -355,17 +351,15 @@ export function useChatRunLoop({
           setStreamedReply((current) => current + data.delta);
           continue;
         }
+        // Appends to the list the interrupted stream already filled: this is
+        // a continuation of the same run, not a new timeline.
         if (shouldRecordLiveActivityEvent(streamEvent.event)) {
-          const nextLiveSequence = liveSequence + 1;
-          liveSequence = nextLiveSequence;
-          setLiveActivityEvents((current) => [
-            ...current,
-            createLiveActivityEvent({
+          setLiveActivityEvents((current) =>
+            appendLiveActivityEvent(current, {
               eventType: streamEvent.event,
               payload: streamEvent.data,
-              sequence: nextLiveSequence,
             }),
-          ]);
+          );
         }
         if (streamEvent.event === "run_resumed") {
           // The question is answered; the card comes down and the partial
