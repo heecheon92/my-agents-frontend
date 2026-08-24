@@ -44,6 +44,7 @@ export function ComposerBar({
   onSubmit,
   visibleQueuedMessage,
   queuedHelper,
+  pendingInteractionSlot,
   knowledgeBases,
   conversationIsBusy,
   isCancelling,
@@ -77,6 +78,12 @@ export function ComposerBar({
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
   visibleQueuedMessage: QueuedMessage | null;
   queuedHelper: string;
+  /**
+   * The pending durable interaction, already rendered. Passed as a node rather
+   * than as data so the composer stays unaware of interaction types — the
+   * registry owns that mapping.
+   */
+  pendingInteractionSlot?: React.ReactNode;
   knowledgeBases: KnowledgeBase[];
   conversationIsBusy: boolean;
   isCancelling: boolean;
@@ -149,6 +156,9 @@ export function ComposerBar({
       <p className="sr-only" aria-live="polite">
         {statusAnnouncement}
       </p>
+      {/* Above the queue card: answering this is what unblocks everything
+          else, so it should not sit below a message that cannot send yet. */}
+      {pendingInteractionSlot}
       {visibleQueuedMessage ? (
         <div className="mb-3 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm text-cal-body">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

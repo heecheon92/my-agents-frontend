@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { reasoningEffortSchema, reasoningModeSchema } from "./capabilities";
 import { routeDecisionSchema } from "./common";
+import { pendingInteractionSchema } from "./interactions";
 import { citationSchema } from "./knowledge";
 
 /**
@@ -97,6 +98,39 @@ export const conversationRunResponseSchema = z
   .merge(runSourceContextSchema)
   .merge(runReasoningSchema);
 
+/**
+ * A run that stopped to ask the user something.
+ *
+ * Served on run creation (HTTP 202), on resume, and on `GET .../runs/{run_id}`
+ * after a refresh — which is what makes a pending question survive a reload.
+ */
+export const conversationRunInterruptedResponseSchema = z.object({
+  status: z.literal("waiting_for_input"),
+  run_id: z.string().min(1),
+  conversation_id: z.string().min(1),
+  interaction: pendingInteractionSchema,
+});
+
+/**
+ * Every run outcome, as one value.
+ *
+ * A plain `z.union`, not `z.discriminatedUnion`: `status` is absent on a
+ * completed response from a backend predating this contract (the field carries
+ * a server-side default and is not in `required`), and a discriminated union
+ * cannot match a missing discriminator. Interrupted is tried first because it
+ * requires `interaction`, so a completed payload cannot satisfy it by accident.
+ */
+export const conversationRunResultSchema = z.union([
+  conversationRunInterruptedResponseSchema,
+  conversationRunResponseSchema,
+]);
+
+export function isRunInterrupted(
+  result: ConversationRunResult,
+): result is ConversationRunInterruptedResponse {
+  return "interaction" in result;
+}
+
 export const runStartedEventDataSchema = z
   .object({
     run_id: z.string().min(1),
@@ -179,3 +213,7 @@ export type RunCancelledEventData = z.infer<typeof runCancelledEventDataSchema>;
 export type RunCancelResponse = z.infer<typeof runCancelResponseSchema>;
 export type AgentRunSummary = z.infer<typeof agentRunSummarySchema>;
 export type AgentEvent = z.infer<typeof agentEventSchema>;
+export type ConversationRunInterruptedResponse = z.infer<
+  typeof conversationRunInterruptedResponseSchema
+>;
+export type ConversationRunResult = z.infer<typeof conversationRunResultSchema>;

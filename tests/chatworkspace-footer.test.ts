@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
+  appendLiveActivityEvent,
   CHAT_SCROLL_REGION_CLASS_NAME,
   CHAT_WORKSPACE_PANEL_CLASS_NAME,
-  createLiveActivityEvent,
   deriveConversationTitle,
   getAgentTraceStageKeys,
   getConversationCardClassName,
@@ -14,8 +14,10 @@ import {
   isObservedActiveRunStale,
   REPLAY_ICON_PENDING_CLASS_NAME,
   sanitizeActivityEventPayload,
+  seedLiveActivityEvents,
   shouldRecordLiveActivityEvent,
 } from "@/components/ChatWorkspace";
+import type { LiveActivityEvent } from "@/components/chat/types";
 import en from "@/localization/en.json";
 import ko from "@/localization/ko.json";
 import type { Message } from "@/model/my-agents";
@@ -121,30 +123,118 @@ describe("ChatWorkspace assistant message footer", () => {
   });
 
   it("keeps same-tick queued live activity IDs unique", () => {
-    let liveSequence = 0;
-    const queuedUpdates: Array<
-      (
-        current: ReturnType<typeof createLiveActivityEvent>[],
-      ) => ReturnType<typeof createLiveActivityEvent>[]
-    > = [];
+    // Drives the production appender through React's queued-updater shape.
+    // The version of this test that re-implemented the caller's counter
+    // passed while the real one drifted, so keep the helper in the loop.
+    const queuedUpdates = ["run_started", "retrieval_completed"].map(
+      (eventType) => (current: LiveActivityEvent[]) =>
+        appendLiveActivityEvent(current, { eventType, payload: {} }),
+    );
 
-    for (const eventType of ["run_started", "retrieval_completed"]) {
-      const nextLiveSequence = liveSequence + 1;
-      liveSequence = nextLiveSequence;
-      const liveActivityEvent = createLiveActivityEvent({
-        eventType,
-        payload: {},
-        sequence: nextLiveSequence,
-      });
-      queuedUpdates.push((current) => [...current, liveActivityEvent]);
-    }
-
-    const events = queuedUpdates.reduce<
-      ReturnType<typeof createLiveActivityEvent>[]
-    >((current, update) => update(current), []);
+    const events = queuedUpdates.reduce<LiveActivityEvent[]>(
+      (current, update) => update(current),
+      [],
+    );
 
     expect(events.map((event) => event.id)).toEqual(["live-1", "live-2"]);
     expect(new Set(events.map((event) => event.id)).size).toBe(events.length);
+  });
+
+  it("numbers a resumed run's events after the interrupted stream's", () => {
+    // The HITL path. A run that suspends to ask a document-source question
+    // resumes into a second stream that appends to the list the first one
+    // filled. A counter scoped to each stream restarts at 1 and re-issues
+    // `live-1`, which React reports as a duplicate key and may resolve by
+    // dropping or duplicating an activity row.
+    const beforeInterrupt = [
+      "run_started",
+      "retrieval_completed",
+      "run_interrupted",
+    ].reduce<LiveActivityEvent[]>(
+      (current, eventType) =>
+        appendLiveActivityEvent(current, { eventType, payload: {} }),
+      [],
+    );
+
+    const afterResume = ["run_resumed", "run_completed"].reduce(
+      (current, eventType) =>
+        appendLiveActivityEvent(current, { eventType, payload: {} }),
+      beforeInterrupt,
+    );
+
+    expect(afterResume.map((event) => event.id)).toEqual([
+      "live-1",
+      "live-2",
+      "live-3",
+      "live-4",
+      "live-5",
+    ]);
+    expect(new Set(afterResume.map((event) => event.id)).size).toBe(
+      afterResume.length,
+    );
+    // The displayed ordinal continues too; a restart would number the
+    // resumed half "1." under rows already numbered 1-3.
+    expect(afterResume.map((event) => event.sequence)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("seeds a cold-loaded run's stored events before the resume appends", () => {
+    // After a reload the live list is empty and the run's earlier activity
+    // exists only server-side. Without the seed the panel shows the resumed
+    // tail alone, and keeps showing it: `visibleActivityEvents` prefers a
+    // non-empty live list, so the full server list that arrives once the run
+    // completes never gets displayed.
+    const stored: LiveActivityEvent[] = [
+      { id: "srv-a", sequence: 7, event_type: "run_started", payload: {} },
+      { id: "srv-b", sequence: 8, event_type: "answer_delta", payload: {} },
+      {
+        id: "srv-c",
+        sequence: 9,
+        event_type: "retrieval_completed",
+        payload: {},
+      },
+      { id: "srv-d", sequence: 10, event_type: "run_interrupted", payload: {} },
+    ];
+
+    const seeded = seedLiveActivityEvents([], stored);
+
+    // `answer_delta` is dropped, matching what the live path records.
+    expect(seeded.map((event) => event.event_type)).toEqual([
+      "run_started",
+      "retrieval_completed",
+      "run_interrupted",
+    ]);
+    // Renumbered contiguously so the panel's printed ordinals read 1..n.
+    expect(seeded.map((event) => event.sequence)).toEqual([1, 2, 3]);
+
+    const resumed = ["run_resumed", "run_completed"].reduce(
+      (current, eventType) =>
+        appendLiveActivityEvent(current, { eventType, payload: {} }),
+      seeded,
+    );
+
+    expect(resumed.map((event) => event.id)).toEqual([
+      "srv-a",
+      "srv-c",
+      "srv-d",
+      "live-4",
+      "live-5",
+    ]);
+    expect(new Set(resumed.map((event) => event.id)).size).toBe(resumed.length);
+    expect(resumed.map((event) => event.sequence)).toEqual([1, 2, 3, 4, 5]);
+  });
+
+  it("leaves an already-populated live list alone when seeding", () => {
+    // A session that never reloaded already streamed these events. Seeding
+    // there would duplicate the run's whole timeline.
+    const live = appendLiveActivityEvent([], {
+      eventType: "run_started",
+      payload: {},
+    });
+    const stored: LiveActivityEvent[] = [
+      { id: "srv-a", sequence: 1, event_type: "run_started", payload: {} },
+    ];
+
+    expect(seedLiveActivityEvents(live, stored)).toBe(live);
   });
 
   it("summarizes agentic run events into localized compact trace stages", () => {

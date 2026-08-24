@@ -71,6 +71,7 @@ type ChatWorkspaceLayoutProps = {
   onToggleKnowledgeBase: (knowledgeBaseId: string) => void;
   primaryActionLabel: string;
   queuedHelper: string;
+  pendingInteractionSlot?: React.ReactNode;
   replayAssistantMessage: { isPending: boolean };
   replayNotice: {
     messageId: string;
@@ -125,6 +126,7 @@ export function ChatWorkspaceLayout({
   onToggleKnowledgeBase,
   primaryActionLabel,
   queuedHelper,
+  pendingInteractionSlot,
   replayAssistantMessage,
   replayNotice,
   replayingMessageId,
@@ -270,6 +272,7 @@ export function ChatWorkspaceLayout({
                   onSubmit={onSubmit}
                   visibleQueuedMessage={visibleQueuedMessage}
                   queuedHelper={queuedHelper}
+                  pendingInteractionSlot={pendingInteractionSlot}
                   knowledgeBases={knowledgeBases.data ?? []}
                   conversationIsBusy={conversationIsBusy}
                   isCancelling={isCancelling}

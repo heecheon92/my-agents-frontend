@@ -112,6 +112,37 @@ Read the relevant repo-local guide before modifying code in that area:
 - `docs/frontend-architecture.md` for feature folders, routes, endpoint coverage, and integration shape.
 - `docs/security-and-backend-boundary.md` for frontend/backend scope and safe auth/session handling.
 - `docs/verification-runbook.md` for validation commands and evidence expectations.
+- `docs/durable-interactions.md` before touching `components/chat/interactions/`, `components/chat/run-state.ts`, or `model/my-agents/interactions.ts`.
+
+## Durable interaction invariants
+
+A run can suspend mid-answer to ask the user something and resume when answered.
+Four rules hold whenever that is true. Breaking any one of them strands a
+conversation for up to 24 hours, the server-side expiry default.
+
+- **An unrenderable interaction still renders.** The interaction union is open,
+  and unknown types and versions fall back to a card that can still cancel. A
+  suspended run blocks every further message, so a card that fails to appear
+  leaves the user with a composer that silently refuses to send.
+- **Type and version are one support decision.** The card, the registry, and the
+  submit handler all gate on `isDocumentSelection`. Checking `type` alone lets a
+  future version be answered over the current contract.
+- **Blocking and stopping are different questions.** A suspended run blocks new
+  runs but produces no output, so it must not offer a stop control, and the
+  queue pauses rather than drains. Derive all three from `run-state.ts`.
+- **Server truth outlives the stream.** A pending question must be rebuilt from
+  the run list on a cold load, and must not be cleared optimistically before a
+  cancel succeeds.
+- **Options are the backend's list, never assembled here.** Clarification offers
+  only user-selectable personal and group documents; system knowledge stays
+  ambient and never appears as a choice. The frontend renders the options it is
+  given and adds nothing — do not merge in a local document list, infer a
+  source, or filter the list client-side. The server also rejects a forged
+  selection, so client-side filtering would be a false reassurance on top of the
+  real check.
+
+Read `docs/durable-interactions.md` for the reasoning and the two distinct
+`run_interrupted` contracts before changing any of this.
 
 ## UI behavior priorities
 

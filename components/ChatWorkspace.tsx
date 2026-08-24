@@ -3,6 +3,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useReasoningCapabilities } from "@/hooks/use-capabilities";
 import {
@@ -16,12 +17,17 @@ import {
 import { useKnowledgeBases } from "@/hooks/use-knowledge";
 import { useLocalization } from "@/hooks/useLocalization";
 import { decodeRouteSegment } from "@/lib/route-segments";
-import type {
-  Citation,
-  KnowledgeBaseSelectionMode,
-  Message,
+import {
+  type Citation,
+  INTERACTION_SCHEMA_VERSION,
+  isDocumentSelection,
+  isRunInterrupted,
+  type KnowledgeBaseSelectionMode,
+  type Message,
+  type PendingInteraction,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
+import { resolveErrorMessage } from "@/utils/error-message";
 import {
   CHAT_SCROLL_REGION_CLASS_NAME,
   REPLAY_ICON_PENDING_CLASS_NAME,
@@ -34,12 +40,19 @@ import {
   getAgentTraceStageKeys,
   sanitizeActivityEventPayload,
 } from "./chat/EvidencePanel";
+import { PendingInteractionSlot } from "./chat/interactions/PendingInteractionSlot";
 import {
   REASONING_STORAGE_KEY,
   type ReasoningSelection,
   readStoredReasoning,
   resolveReasoning,
 } from "./chat/reasoning-selection";
+import {
+  blocksNewRun,
+  canDrainQueue,
+  deriveRunPhase,
+  showsStopControl,
+} from "./chat/run-state";
 import type { LiveActivityEvent, QueuedMessage } from "./chat/types";
 import { useChatRunLoop } from "./chat/useChatRunLoop";
 import { useChatWorkspaceEffects } from "./chat/useChatWorkspaceEffects";
@@ -51,6 +64,8 @@ import {
   isActiveAgentRunStatus,
   isNearScrollBottom,
   isObservedActiveRunStale,
+  isWaitingForInputRunStatus,
+  seedLiveActivityEvents,
 } from "./chat/workspace-helpers";
 
 export { CHAT_SCROLL_REGION_CLASS_NAME };
@@ -58,14 +73,18 @@ export { REPLAY_ICON_PENDING_CLASS_NAME };
 export { CHAT_WORKSPACE_PANEL_CLASS_NAME } from "./chat/ChatWorkspaceLayout";
 export {
   ACTIVE_RUN_STALE_NOTICE_AFTER_MS,
+  appendLiveActivityEvent,
   buildActiveKnowledgeBaseSelection,
   createLiveActivityEvent,
   deriveConversationTitle,
   getLatestAssistantMessageId,
   getNextConversationIdAfterDelete,
   isActiveAgentRunStatus,
+  isBlockingAgentRunStatus,
   isConversationRunAlreadyActiveError,
   isObservedActiveRunStale,
+  isWaitingForInputRunStatus,
+  seedLiveActivityEvents,
   shouldRecordLiveActivityEvent,
 } from "./chat/workspace-helpers";
 export {
@@ -107,13 +126,39 @@ export function ChatWorkspace({
     isActiveAgentRunStatus(run.status),
   );
   const serverActiveRunId = serverActiveRun?.run_id ?? null;
-  const latestTerminalRun = serverActiveRun ? undefined : sortedRuns[0];
+  // A run suspended on an unanswered question. It is not "active" — it writes
+  // nothing — but it does hold the conversation, and it is how a pending
+  // question survives a reload: the run list is server state, so it is still
+  // here after a refresh when no stream is.
+  const serverWaitingRun = sortedRuns.find((run) =>
+    isWaitingForInputRunStatus(run.status),
+  );
+  const serverWaitingRunId = serverWaitingRun?.run_id ?? null;
+  const latestTerminalRun =
+    serverActiveRun || serverWaitingRun ? undefined : sortedRuns[0];
   const latestCompletedRunId =
     latestTerminalRun?.status === "completed"
       ? latestTerminalRun.run_id
       : undefined;
-  const latestRunEventId = latestTerminalRun?.run_id;
+  /**
+   * Which run's stored events the activity panel falls back to.
+   *
+   * An *active* run is excluded because its stream is already filling the live
+   * list; querying would duplicate it. A *waiting* run is the opposite case and
+   * must not be excluded with it: it is the one state that outlives its stream,
+   * so after a reload nothing else can supply the activity it already produced
+   * and the panel would sit empty behind the question card.
+   */
+  const latestRunEventId = serverActiveRun
+    ? undefined
+    : (serverWaitingRunId ?? latestTerminalRun?.run_id);
   const runDetail = useRunDetail(activeId, latestCompletedRunId);
+  // Fetched only when a waiting run exists, and only to recover the pending
+  // interaction after a cold load. The live path gets it from the stream.
+  const waitingRunDetail = useRunDetail(
+    activeId,
+    serverWaitingRunId ?? undefined,
+  );
   const events = useRunEvents(activeId, latestRunEventId);
   const [draft, setDraft] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
@@ -125,6 +170,14 @@ export function ChatWorkspace({
     null,
   );
   const [statusAnnouncement, setStatusAnnouncement] = useState("");
+  const [pendingInteraction, setPendingInteractionState] =
+    useState<PendingInteraction | null>(null);
+  const pendingInteractionRef = useRef<PendingInteraction | null>(null);
+  const [isCancellingInteraction, setIsCancellingInteraction] = useState(false);
+  function setPendingInteraction(next: PendingInteraction | null) {
+    pendingInteractionRef.current = next;
+    setPendingInteractionState(next);
+  }
   const [activeRunClock, setActiveRunClock] = useState(() => Date.now());
   const [observedServerActiveRun, setObservedServerActiveRun] = useState<{
     runId: string;
@@ -192,6 +245,9 @@ export function ChatWorkspace({
   const { lang, localization } = useLocalization(
     (state) => state.localization.chat,
   );
+  const { localization: fullLocalization } = useLocalization(
+    (state) => state.localization,
+  );
   const visibleQueuedMessage =
     queuedMessage?.conversationId === activeId ? queuedMessage : null;
   const draftMessage = draft.trim();
@@ -206,41 +262,58 @@ export function ChatWorkspace({
   });
   const requiresKnowledgeBaseSelection =
     knowledgeBaseMode === "selected" && selectedKnowledgeBaseIds.length === 0;
-  const conversationIsBusy = isStreaming || Boolean(serverActiveRun);
+  // One derived phase, three decisions. A pending question holds the
+  // conversation without producing output, so "busy" and "showing a stop
+  // button" stop being the same question — see `run-state.ts`.
+  const hasPendingInteraction = Boolean(pendingInteraction);
+  const runPhase = deriveRunPhase({
+    isStreaming,
+    hasPendingInteraction,
+    hasServerActiveRun: Boolean(serverActiveRun),
+    hasServerWaitingRun: Boolean(serverWaitingRun),
+  });
+  const conversationIsBusy = blocksNewRun(runPhase);
+  const showsStopButton = showsStopControl(runPhase);
   const serverActiveRunIsStale = isObservedActiveRunStale({
     activeRunId: serverActiveRunId,
     observedRunId: observedServerActiveRun?.runId ?? null,
     observedAt: observedServerActiveRun?.observedAt ?? null,
     now: activeRunClock,
   });
-  const { resetImmediateState, runMessageAndContinue, setQueuedMessage } =
-    useChatRunLoop({
-      activeRunIdRef,
-      cancelAcceptedRef,
-      getReasoning: () =>
-        reasoning.selection
-          ? {
-              reasoning_mode: reasoning.selection.mode,
-              reasoning_effort: reasoning.selection.effort,
-            }
-          : null,
-      isStreamingRef,
-      localization,
-      pendingImmediateMessageRef,
-      queryClient,
-      queuedMessageRef,
-      setActiveRunId,
-      setDraft,
-      setIsCancelling,
-      setIsStreaming,
-      setLatestCitations,
-      setLiveActivityEvents,
-      setOptimisticMessage,
-      setQueuedMessageState,
-      setStatusAnnouncement,
-      setStreamError,
-      setStreamedReply,
-    });
+  const {
+    resetImmediateState,
+    resumeInteraction,
+    runMessageAndContinue,
+    setQueuedMessage,
+  } = useChatRunLoop({
+    activeRunIdRef,
+    cancelAcceptedRef,
+    getReasoning: () =>
+      reasoning.selection
+        ? {
+            reasoning_mode: reasoning.selection.mode,
+            reasoning_effort: reasoning.selection.effort,
+          }
+        : null,
+    isStreamingRef,
+    localization,
+    pendingImmediateMessageRef,
+    queryClient,
+    queuedMessageRef,
+    setActiveRunId,
+    setDraft,
+    setIsCancelling,
+    setIsStreaming,
+    setLatestCitations,
+    setLiveActivityEvents,
+    setOptimisticMessage,
+    setQueuedMessageState,
+    setStatusAnnouncement,
+    setStreamError,
+    setStreamedReply,
+    setPendingInteraction,
+    pendingInteractionRef,
+  });
   const {
     handleReplayAssistantMessage,
     replayAssistantMessage,
@@ -351,6 +424,98 @@ export function ChatWorkspace({
     await runMessageAndContinue(conversationId, pendingDraft, pendingSelection);
   }
 
+  /**
+   * Rebuilds the pending question after a cold load.
+   *
+   * The stream is gone after a refresh, so without this a reload during a
+   * pending question would leave the composer looking idle while the backend
+   * refused every message — for up to 24 hours, the server-side expiry default.
+   * The run list survives a reload, so a waiting run there is the recovery
+   * signal, and its detail response carries the full interaction.
+   */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `setPendingInteraction` and `setActiveRunId` are recreated on every render; including them would re-run this on every commit. The recovery is keyed on the waiting run and its detail, which is what should trigger it.
+  useEffect(() => {
+    if (!serverWaitingRunId) return;
+    const detail = waitingRunDetail.data;
+    if (!detail || !isRunInterrupted(detail)) return;
+    if (
+      pendingInteractionRef.current?.interaction_id ===
+      detail.interaction.interaction_id
+    )
+      return;
+    setPendingInteraction(detail.interaction);
+    setActiveRunId(detail.run_id);
+    activeRunIdRef.current = detail.run_id;
+  }, [serverWaitingRunId, waitingRunDetail.data]);
+
+  /**
+   * Clears the card once the server stops reporting a waiting run.
+   *
+   * Covers cancellation from another tab and server-side expiry, neither of
+   * which produces an event in this client.
+   */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: same reason as the recovery effect above — the trigger is server truth, not the setters.
+  useEffect(() => {
+    if (serverWaitingRunId || isStreaming) return;
+    if (!pendingInteractionRef.current) return;
+    if (runs.isFetching) return;
+    setPendingInteraction(null);
+  }, [serverWaitingRunId, isStreaming, runs.isFetching]);
+
+  async function handleChooseInteractionOption(documentId: string) {
+    const interaction = pendingInteraction;
+    const runId = activeRunId ?? serverWaitingRunId;
+    if (!activeId || !interaction || !runId) return;
+    // The same type+version decision the card and the registry make. Checking
+    // `type` alone would let a v2 `document_selection` — which renders as the
+    // unsupported card — still be answered through the v1 resume contract.
+    if (!isDocumentSelection(interaction)) return;
+    // Carry the run's stored activity into the live list before the resume
+    // appends to it. After a cold load the live list is empty and this run's
+    // earlier events exist only on the server; `events` is keyed to the
+    // waiting run precisely so they are here to hand over. A no-op in a
+    // session that never reloaded.
+    setLiveActivityEvents((current) =>
+      seedLiveActivityEvents(current, events.data ?? []),
+    );
+    await resumeInteraction(activeId, runId, {
+      schema_version: INTERACTION_SCHEMA_VERSION,
+      interaction_id: interaction.interaction_id,
+      type: "document_selection",
+      document_id: documentId,
+    });
+  }
+
+  async function handleCancelInteraction() {
+    const runId = activeRunId ?? serverWaitingRunId;
+    if (!activeId || !runId) {
+      // No run to cancel server-side: this card is local-only, so dropping it
+      // strands nothing.
+      setPendingInteraction(null);
+      setStatusAnnouncement(localization.interactionCancelledAnnouncement);
+      return;
+    }
+    // The card is the *only* way out of a suspended run, so it must survive a
+    // failed cancel. Clearing optimistically would leave the backend run
+    // blocked with nothing on screen to retry from: the cold-load effect keys
+    // on `serverWaitingRunId` and the run detail, neither of which changes when
+    // the cancel request fails, so it would never restore the card.
+    setIsCancellingInteraction(true);
+    try {
+      await myAgentsAPI.conversations.cancelRun(activeId, runId);
+      setPendingInteraction(null);
+      setStatusAnnouncement(localization.interactionCancelledAnnouncement);
+    } catch (error) {
+      // Localized from the backend's `code`; the raw detail is never rendered.
+      toast.error(resolveErrorMessage(error, fullLocalization));
+    } finally {
+      setIsCancellingInteraction(false);
+      await queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.conversations.runs(activeId),
+      });
+    }
+  }
+
   async function handleSendNow() {
     // Steering acts on whatever is pending: the queued message if one is held,
     // otherwise the draft. Previously this was draft-only and was disabled
@@ -438,10 +603,12 @@ export function ChatWorkspace({
   }, [activeId, messages.data, optimisticMessage]);
   const visibleActivityEvents =
     liveActivityEvents.length > 0 ? liveActivityEvents : (events.data ?? []);
+  const completedRunDetail =
+    runDetail.data && !isRunInterrupted(runDetail.data) ? runDetail.data : null;
   const visibleCitations =
     latestCitations.length > 0
       ? latestCitations
-      : (runDetail.data?.citations ?? []);
+      : (completedRunDetail?.citations ?? []);
   const latestAssistantMessageId = getLatestAssistantMessageId(sortedMessages);
   const autoScrollTrigger = `${sortedMessages.length}:${streamedReply.length}`;
   const composerPlaceholder = conversationIsBusy
@@ -478,9 +645,14 @@ export function ChatWorkspace({
           ? localization.sendNowWaitingForRun
           : localization.sendNowHelper;
   const queuedHelper =
-    streamError && !isStreaming
-      ? localization.queuedAfterFailureHelper
-      : localization.queuedHelper;
+    // A queued message under an open question is not "waiting for the current
+    // answer" — nothing is being answered. Saying so avoids the impression that
+    // it will send itself shortly.
+    hasPendingInteraction || serverWaitingRun
+      ? localization.interactionQueuePaused
+      : streamError && !isStreaming
+        ? localization.queuedAfterFailureHelper
+        : localization.queuedHelper;
 
   function handleChatScroll() {
     const scrollElement = chatScrollRef.current;
@@ -568,6 +740,8 @@ export function ChatWorkspace({
     runMessageAndContinue,
     selectableKnowledgeBases,
     serverActiveRunId,
+    serverWaitingRunId,
+    canDrainQueue: canDrainQueue(runPhase),
     setActiveRunClock,
     setObservedServerActiveRun,
     setQueuedMessageState,
@@ -590,7 +764,9 @@ export function ChatWorkspace({
       isCancelling={isCancelling}
       isPrimaryActionDisabled={isPrimaryActionDisabled}
       isSendNowDisabled={isSendNowDisabled}
-      isStreaming={isStreaming}
+      // The stop button follows the derived phase, not the raw streaming flag:
+      // a suspended run must not offer to stop an answer nobody is writing.
+      isStreaming={showsStopButton}
       knowledgeBaseMode={knowledgeBaseMode}
       knowledgeBases={knowledgeBases}
       lang={lang}
@@ -610,6 +786,19 @@ export function ChatWorkspace({
       onToggleKnowledgeBase={toggleSelectedKnowledgeBase}
       primaryActionLabel={primaryActionLabel}
       queuedHelper={queuedHelper}
+      pendingInteractionSlot={
+        pendingInteraction ? (
+          <PendingInteractionSlot
+            interaction={pendingInteraction}
+            conversationId={activeId}
+            runId={activeRunId ?? serverWaitingRunId}
+            localization={localization}
+            isResuming={isStreaming || isCancellingInteraction}
+            onChoose={handleChooseInteractionOption}
+            onCancel={handleCancelInteraction}
+          />
+        ) : null
+      }
       replayAssistantMessage={replayAssistantMessage}
       replayNotice={replayNotice}
       replayingMessageId={replayingMessageId}

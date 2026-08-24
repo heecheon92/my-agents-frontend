@@ -40,6 +40,22 @@ export const API_PATH = {
     cancelRun(conversationId: string, runId: string) {
       return `${this.run(conversationId, runId)}/cancel`;
     },
+    resumeRun(conversationId: string, runId: string) {
+      return `${this.run(conversationId, runId)}/resume`;
+    },
+    resumeRunStream(conversationId: string, runId: string) {
+      return `${this.resumeRun(conversationId, runId)}/stream`;
+    },
+    // `interactionId` is compound (`<run_id>:<type>`). It is interpolated raw
+    // here and encoded once at the proxy boundary by `buildBackendPath`;
+    // encoding it here as well would double-encode the colon.
+    interactionOptions(
+      conversationId: string,
+      runId: string,
+      interactionId: string,
+    ) {
+      return `${this.run(conversationId, runId)}/interactions/${interactionId}/options`;
+    },
     runStream(conversationId: string) {
       return `${this.runs(conversationId)}/stream`;
     },

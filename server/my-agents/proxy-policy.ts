@@ -131,6 +131,34 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "runs.cancel",
   },
   {
+    // Resume answers a run that stopped to ask the user something. It is a
+    // control input rather than a new turn, so it is not a message-create and
+    // does not consume a guest prompt — but it is still an authenticated
+    // mutation and deliberately stays outside `isCsrfExemptPath`.
+    method: "POST",
+    pattern: new RegExp(`^/conversations/${uuidLike}/runs/${uuidLike}/resume$`),
+    name: "runs.resume",
+  },
+  {
+    // Must also be listed in `isStreamPath` in the route handler, or the SSE
+    // body is buffered and the resumed answer arrives in one lump at the end.
+    method: "POST",
+    pattern: new RegExp(
+      `^/conversations/${uuidLike}/runs/${uuidLike}/resume/stream$`,
+    ),
+    name: "runs.resume.stream",
+  },
+  {
+    // Paged options for a pending interaction. `uuidLike` is `[^/]+`, a segment
+    // matcher rather than a UUID matcher, so it already covers the compound
+    // `<run_id>:<interaction_type>` interaction ID.
+    method: "GET",
+    pattern: new RegExp(
+      `^/conversations/${uuidLike}/runs/${uuidLike}/interactions/${uuidLike}/options$`,
+    ),
+    name: "runs.interactions.options",
+  },
+  {
     method: "POST",
     pattern: new RegExp(`^/conversations/${uuidLike}/runs/stream$`),
     name: "runs.stream",

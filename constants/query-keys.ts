@@ -47,6 +47,20 @@ export const MyAgentsQueryKeys = {
         runId,
       ] as const;
     },
+    interactionOptions(
+      conversationId: string,
+      runId: string,
+      interactionId: string,
+    ) {
+      return [
+        "my-agents",
+        "conversations",
+        "interaction-options",
+        conversationId,
+        runId,
+        interactionId,
+      ] as const;
+    },
     events(conversationId: string, runId: string) {
       return [
         "my-agents",

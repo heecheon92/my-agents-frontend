@@ -257,6 +257,8 @@
       "graph_invoked": "Preparing work",
       "retrieval_completed": "Document search finished",
       "answer_composed": "Answer composed",
+      "run_interrupted": "Waiting for confirmation",
+      "run_resumed": "Answer resumed",
       "run_cancel_requested": "Stop requested",
       "run_cancelled": "Run cancelled",
       "run_failed": "Run failed",
@@ -381,7 +383,28 @@
       "xhigh": "For long-running research. Use it only when there is a lot of material to work through, and check the extra wait is worth it.",
       "max": "For the most complex work only. Use it to retry a question that Very high could not settle."
     },
-    "reasoningEffortGuideCurrent": "Currently selected"
+    "reasoningEffortGuideCurrent": "Currently selected",
+    "interactionTitle": "Which document should I use?",
+    "interactionDescription": "Several documents match your question. Pick one and I'll continue the answer.",
+    "interactionChoose": "Answer from this",
+    "interactionCancel": "Cancel question",
+    "interactionLoadMore": "Show more",
+    "interactionOptionsFailed": "Could not load the document list.",
+    "interactionExpiresIn": "Expires in {time}",
+    "interactionExpired": "This choice timed out. Please ask again.",
+    "interactionResuming": "Continuing with the document you chose.",
+    "interactionQueuePaused": "Your queued message is paused while this question is open.",
+    "interactionCountLabel": "{count} documents",
+    "interactionNoKnowledgeBase": "No knowledge base",
+    "interactionUnsupportedTitle": "This request can't be answered here",
+    "interactionUnsupportedTypeDescription": "This version doesn't support that kind of confirmation. Cancel the question and ask again.",
+    "interactionUnsupportedVersionDescription": "This app is out of date. Reload and try again.",
+    "interactionCancelledAnnouncement": "Question cancelled.",
+    "interactionResumedAnnouncement": "Continuing with the document you chose.",
+    "interactionWaitingAnnouncement": "Choose a document to continue the answer.",
+    "interactionUnitMinutes": "{n} min",
+    "interactionUnitHours": "{n} hr",
+    "interactionUnitDays": "{n} days"
   },
   "admin": {
     "common": {
@@ -742,7 +765,13 @@
       "unsupported_media_type": "That file type is not supported.",
       "publish_request_already_reviewed": "This request was already handled. Refresh the list.",
       "conversation_run_already_active": "An answer is still being generated in this conversation.",
-      "conversation_run_failed": "The answer could not be generated. Try again."
+      "conversation_run_failed": "The answer could not be generated. Try again.",
+      "run_not_waiting_for_input": "This answer is already running. Refresh the page.",
+      "run_interaction_mismatch": "That choice belongs to a different question. Refresh the page.",
+      "run_interaction_expired": "This choice timed out. Please ask again.",
+      "run_selected_document_unavailable": "That document is no longer available to you. Pick another one.",
+      "run_graph_version_incompatible": "The server was updated. Reload and ask again.",
+      "langgraph_persistence_unavailable": "This feature is unavailable right now. Try again shortly."
     },
     "csrfMissing": "Session proof is missing. Please sign in again.",
     "requestFailed": "Request failed",

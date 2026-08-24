@@ -157,6 +157,59 @@ describe("proxy policy", () => {
     ).toBe(true);
   });
 
+  it("allowlists the durable-interaction resume and options endpoints", () => {
+    // A missing rule here is rejected by the proxy as a 404 `path_not_allowed`
+    // before the request ever reaches the backend, which reads as "the backend
+    // does not implement this" — the exact confusion the reasoning endpoint
+    // caused on its first deploy.
+    expect(
+      isAllowedBackendPath("POST", "/conversations/abc/runs/run-1/resume")
+        .allowed,
+    ).toBe(true);
+    expect(
+      isAllowedBackendPath(
+        "POST",
+        "/conversations/abc/runs/run-1/resume/stream",
+      ).allowed,
+    ).toBe(true);
+    expect(
+      isAllowedBackendPath(
+        "GET",
+        "/conversations/abc/runs/run-1/interactions/run-1:document_selection/options",
+      ).allowed,
+    ).toBe(true);
+    // Resume is a mutation. Offering it over GET would put a state change
+    // behind a link.
+    expect(
+      isAllowedBackendPath("GET", "/conversations/abc/runs/run-1/resume"),
+    ).toMatchObject({ allowed: false, code: "path_not_allowed" });
+    // Resume must not become CSRF-exempt: it is authenticated and mutating.
+    expect(isCsrfExemptPath("/conversations/abc/runs/run-1/resume")).toBe(
+      false,
+    );
+  });
+
+  it("keeps a compound interaction id addressable through path encoding", () => {
+    // `buildBackendPath` re-encodes every segment, so the colon in
+    // `<run_id>:<interaction_type>` reaches the backend percent-encoded. That
+    // is legal and the allowlist still matches, but it is a real difference
+    // between what the frontend holds and what the backend receives, so pin it
+    // rather than assume it round-trips.
+    const built = buildBackendPath([
+      "conversations",
+      "abc",
+      "runs",
+      "run-1",
+      "interactions",
+      "run-1:document_selection",
+      "options",
+    ]);
+    expect(built).toBe(
+      "/conversations/abc/runs/run-1/interactions/run-1%3Adocument_selection/options",
+    );
+    expect(isAllowedBackendPath("GET", built).allowed).toBe(true);
+  });
+
   it("blocks direct member creation, legacy assistant chat, and unknown paths before forwarding", () => {
     expect(
       isAllowedBackendPath("POST", "/groups/group-1/members"),

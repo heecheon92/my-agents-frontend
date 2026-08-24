@@ -689,3 +689,129 @@ Known follow-ups: guest onboarding decisions still live in sessionStorage, so a
 dismissal does not survive a new tab — promoting them to localStorage is a
 privacy call, not a bug fix. `e2e/v1-demo.spec.ts` is env-gated and was updated
 blind for the `newButton` link change.
+
+## 2026-08-17 — Durable document-source choice
+
+A run can now suspend mid-answer to ask which document was meant, and resume
+when told. Backend contract from the hosted OpenAPI of
+`my-agents@feature/langgraph-checkpointer`; both backend flags default off, so
+this is invisible in production until the checkpointer is enabled.
+
+### The shape of the problem
+
+A suspended run is neither in flight nor finished, and the existing code had no
+third option. `isActiveAgentRunStatus` knew only `running` and `cancelling`, so
+a run moving to `waiting_for_input` looked exactly like completion: the composer
+went idle while the backend refused every send with the same
+`conversation_run_already_active` 409 it uses for a busy conversation, and the
+queue drained one message into that refusal before its own guard stopped it.
+
+Three decisions had been one boolean. They are now derived from one phase in
+`components/chat/run-state.ts`: `blocksNewRun` (a suspended run holds the
+conversation), `showsStopControl` (it produces nothing, so no stop button), and
+`canDrainQueue` (the queue pauses rather than drains). The module stores nothing
+— the phase is derived per render from streaming, the pending interaction, and
+the server run list.
+
+### Things that were wrong on the first pass
+
+**A thin SSE payload that does not exist.** The OpenAPI component
+`RunInterruptedEventPayload` describes the *persisted activity event*. The live
+stream sends `ConversationRunInterruptedResponse.model_dump()` — the full body,
+nested interaction and first options page included. Having read the component
+schema first, the known interaction parser was loosened (`reason_code` and
+`message_key` made optional) to fit a payload that is never sent. Reverted; both
+contracts now have their own schema.
+
+**A version-permissive union.** `schema_version: z.number().int()` on the known
+branch let a v2 `document_selection` match as v1, since that branch is tried
+first — so a future payload would have rendered in the v1 card and been answered
+over the v1 resume contract, silently bypassing the unsupported fallback. Now
+`z.literal` on all three known schemas. The type guard needed the same fix twice
+over: `type` alone passes for a v2 body, and Zod strips unknown keys, so a body
+that fell through to the unsupported branch keeps its type while losing
+everything the card renders. `isDocumentSelection` checks type, version, and a
+structural field, and the submit handler uses that same guard.
+
+**An optimistic cancel that could strand the run.** Clearing the card before the
+cancel succeeded would leave the backend run blocked with nothing on screen: the
+recovery effect keys on the waiting run id and its detail, neither of which
+changes when the request fails. Cancel now disables the card, clears on success,
+and shows localized copy on failure.
+
+**Expiry that was only text.** The countdown changed wording but left Choose
+live past `expires_at`, where the server answers `run_interaction_expired`. The
+card now disables Choose and pagination locally and keeps Cancel enabled.
+
+**A registry that resolved `"constructor"`.** `registry[type] ?? fallback`
+returns an inherited function for `"constructor"` and `"toString"`, and the type
+string is backend-controlled. `Object.hasOwn` now.
+
+### Verification
+
+`pnpm lint`, `tsc --noEmit`, 237 vitest, 106 Playwright (2 skipped, env-gated),
+`pnpm build`.
+
+Guards were checked by reverting the fix, not by watching them pass. The three
+BFF tests fail without the allowlist and `isStreamPath` entries. Of the eight
+cases in `e2e/durable-source-choice.spec.ts` — seven interaction-dependent, one
+flags-off parity — disabling the cold-load recovery effect fails six. The two
+survivors are informative rather than weak: the parity case must keep passing,
+and the queue-paused case reads the waiting run from the run list rather than
+from the rebuilt card, so it is guarding the drain rule, not the recovery.
+
+Contract evidence, and its limit. The two contract risks are now closed from
+both ends. Backend commit `my-agents@328d5ca` extends
+`test_checkpointed_document_selection_interrupts_and_resumes_same_run` to call
+the options route with the colon percent-encoded as `%3A`, asserting 200 and
+`schema_version: 1`; the same test submits the exact v1 resume body and
+completes the run. `tests/proxy-policy.test.ts` pins the string the BFF emits,
+and it is the same string the backend test accepts — so the encoding the proxy
+produces is the encoding the service resolves.
+
+Live smoke, 2026-08-17. Driven in a browser against persistence-enabled
+Postgres — backend in deterministic mode, `MY_AGENTS_CHECKPOINTER_ENABLED=true`,
+HITL wait shortened to 300s. Signup and login through the Next BFF, a selected
+knowledge base with two ingested documents, then an ambiguous prompt: the real
+interaction card appeared, a hard reload rebuilt it from run detail, choosing
+Alpha sent the typed resume through the BFF and completed the *same* run with
+one citation rendered, and a second waiting run cancelled cleanly and released
+the composer.
+
+That closes the joined browser → BFF → backend path for run creation, run
+detail, resume, and cancel — including cold-load recovery, which was previously
+only proven against mocks.
+
+One route inside that path was still not exercised, and it is worth naming
+rather than filing under "smoke passed": the options endpoint is the only one
+carrying the percent-encoded `interaction_id` in its path, and with two options
+delivered inline and `next_cursor: null`, neither the seed fetch nor `loadMore`
+fires. So the encoded segment remains verified at each end separately — backend
+`328d5ca` and `tests/proxy-policy.test.ts` — rather than in one live request.
+Reaching it needs an interaction with more options than fit a page, which is the
+same gap as the paged-options case below.
+
+Still unexercised: a second interrupt within one run, a second page of options
+(and with it the live encoded path above), and guest-specific behaviour.
+
+### Ambient system sources stay out of the choice
+
+Backend `b8ceb91` and `2172757` settle what a clarification may offer. Default
+chat continues to search all personal and group knowledge bases; an ambiguous
+document reference enters retrieval in that default mode rather than forcing a
+narrower scope; and the count that decides whether to ask at all includes only
+user-selectable personal and group documents. System knowledge is ambient: it
+never appears as an option, and a single selectable document resolves
+automatically even when ambient system documents are in scope. Resume rejects a
+forged `document_id`.
+
+No frontend change was needed, and that was checked rather than assumed. Nothing
+under `components/chat/interactions/` reads a local document or knowledge-base
+list — every option is rendered from the response — so there is no client path
+that could reintroduce a system source. `ChatWorkspace.tsx:242` also already
+limits the scope picker to `purpose === "standard"`, which keeps system bases out
+of the user's own selection. Adding a client-side filter would duplicate the
+server check and imply the boundary is enforced here, which it is not.
+
+Rechecked live in the browser on default all-sources mode: exactly Alpha and
+Beta offered, two documents, no system sources present, and cancel succeeded.
