@@ -65,6 +65,7 @@ import {
   isNearScrollBottom,
   isObservedActiveRunStale,
   isWaitingForInputRunStatus,
+  seedLiveActivityEvents,
 } from "./chat/workspace-helpers";
 
 export { CHAT_SCROLL_REGION_CLASS_NAME };
@@ -83,6 +84,7 @@ export {
   isConversationRunAlreadyActiveError,
   isObservedActiveRunStale,
   isWaitingForInputRunStatus,
+  seedLiveActivityEvents,
   shouldRecordLiveActivityEvent,
 } from "./chat/workspace-helpers";
 export {
@@ -138,7 +140,18 @@ export function ChatWorkspace({
     latestTerminalRun?.status === "completed"
       ? latestTerminalRun.run_id
       : undefined;
-  const latestRunEventId = latestTerminalRun?.run_id;
+  /**
+   * Which run's stored events the activity panel falls back to.
+   *
+   * An *active* run is excluded because its stream is already filling the live
+   * list; querying would duplicate it. A *waiting* run is the opposite case and
+   * must not be excluded with it: it is the one state that outlives its stream,
+   * so after a reload nothing else can supply the activity it already produced
+   * and the panel would sit empty behind the question card.
+   */
+  const latestRunEventId = serverActiveRun
+    ? undefined
+    : (serverWaitingRunId ?? latestTerminalRun?.run_id);
   const runDetail = useRunDetail(activeId, latestCompletedRunId);
   // Fetched only when a waiting run exists, and only to recover the pending
   // interaction after a cold load. The live path gets it from the stream.
@@ -457,6 +470,14 @@ export function ChatWorkspace({
     // `type` alone would let a v2 `document_selection` — which renders as the
     // unsupported card — still be answered through the v1 resume contract.
     if (!isDocumentSelection(interaction)) return;
+    // Carry the run's stored activity into the live list before the resume
+    // appends to it. After a cold load the live list is empty and this run's
+    // earlier events exist only on the server; `events` is keyed to the
+    // waiting run precisely so they are here to hand over. A no-op in a
+    // session that never reloaded.
+    setLiveActivityEvents((current) =>
+      seedLiveActivityEvents(current, events.data ?? []),
+    );
     await resumeInteraction(activeId, runId, {
       schema_version: INTERACTION_SCHEMA_VERSION,
       interaction_id: interaction.interaction_id,

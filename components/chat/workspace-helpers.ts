@@ -167,6 +167,35 @@ export function appendLiveActivityEvent(
 }
 
 /**
+ * Seeds the live list from a run's stored events, once, before a resume.
+ *
+ * A run recovered after a reload has produced activity that exists only
+ * server-side: there was no stream in this page's lifetime to record it. The
+ * resume that follows appends to the live list, and `visibleActivityEvents`
+ * prefers a non-empty live list over the query, so without seeding the panel
+ * would show the resumed tail alone and keep showing it even after the
+ * completed run's full event list lands in the cache.
+ *
+ * Returns `current` untouched when it already holds events — in a session that
+ * never reloaded, the original stream filled it and the server copy would be a
+ * duplicate.
+ *
+ * Server ids are UUIDs so they cannot collide with the `live-N` ids appended
+ * afterwards. The sequence is renumbered contiguously so the ordinals the panel
+ * prints stay 1..n across both halves; only that display ordering depends on
+ * it.
+ */
+export function seedLiveActivityEvents(
+  current: LiveActivityEvent[],
+  serverEvents: LiveActivityEvent[],
+): LiveActivityEvent[] {
+  if (current.length > 0) return current;
+  return serverEvents
+    .filter((event) => shouldRecordLiveActivityEvent(event.event_type))
+    .map((event, index) => ({ ...event, sequence: index + 1 }));
+}
+
+/**
  * The backend's "a run is already outstanding here" 409.
  *
  * Matched on the machine-readable `code`, not on the English `detail`. The

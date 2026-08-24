@@ -257,6 +257,8 @@
       "graph_invoked": "Preparing work",
       "retrieval_completed": "Document search finished",
       "answer_composed": "Answer composed",
+      "run_interrupted": "Waiting for confirmation",
+      "run_resumed": "Answer resumed",
       "run_cancel_requested": "Stop requested",
       "run_cancelled": "Run cancelled",
       "run_failed": "Run failed",

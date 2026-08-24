@@ -383,6 +383,37 @@ export async function mockWorkspace(
         citations: [mockCitation],
       });
     }
+    // The suspended run's stored activity. It exists server-side but has no
+    // stream behind it after a reload, so this is the only source the panel
+    // has while the question is open.
+    if (
+      path ===
+      `/conversations/${mockConversation.id}/runs/${mockWaitingRun.run_id}/events`
+    ) {
+      return json([
+        {
+          id: "waiting-event-1",
+          run_id: mockWaitingRun.run_id,
+          sequence: 1,
+          event_type: "run_started",
+          payload: { knowledge_base_selection: { mode: "all" } },
+        },
+        {
+          id: "waiting-event-2",
+          run_id: mockWaitingRun.run_id,
+          sequence: 2,
+          event_type: "retrieval_completed",
+          payload: { matched_documents: 2 },
+        },
+        {
+          id: "waiting-event-3",
+          run_id: mockWaitingRun.run_id,
+          sequence: 3,
+          event_type: "run_interrupted",
+          payload: { reason_code: "ambiguous_document_reference" },
+        },
+      ]);
+    }
     if (
       path ===
       `/conversations/${mockConversation.id}/runs/${mockRun.run_id}/events`

@@ -257,6 +257,8 @@
       "graph_invoked": "작업 준비",
       "retrieval_completed": "문서 검색 완료",
       "answer_composed": "답변 작성 완료",
+      "run_interrupted": "확인 요청 대기",
+      "run_resumed": "답변 재개",
       "run_cancel_requested": "중지 요청",
       "run_cancelled": "실행 취소됨",
       "run_failed": "실행 실패",

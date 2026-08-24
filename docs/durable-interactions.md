@@ -169,6 +169,17 @@ React reported duplicate keys on the activity panel, free to drop or duplicate a
 row. This is invisible until a run actually suspends, which is why it survived
 the flags-off suite.
 
+**A waiting run is not an active run for the events query.** An active run is
+excluded from `latestRunEventId` because its stream is already filling the live
+list. A waiting run is the opposite case and must not be folded into the same
+exclusion: it is the one state that outlives its stream, so after a reload the
+stored events are the only source the activity panel has. Excluding it left the
+panel blank behind an open question. On resume, `seedLiveActivityEvents` carries
+those stored events into the live list before the resume appends, because
+`visibleActivityEvents` prefers a non-empty live list and would otherwise show
+the resumed tail alone — permanently, since the completed run's full list lands
+in the cache but never wins the ternary.
+
 **Expiry changes behaviour, not just copy.** Past `expires_at` the server
 answers a resume with `run_interaction_expired`, so the card disables Choose and
 pagination locally and keeps Cancel live. Nothing pushes an expiry event, and

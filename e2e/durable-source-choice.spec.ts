@@ -126,6 +126,30 @@ test.describe("durable document-source choice", () => {
     await expect(page.getByText(chat.interactionQueuePaused)).toBeVisible();
   });
 
+  test("shows the suspended run's stored activity after a cold load", async ({
+    page,
+  }) => {
+    // The waiting run is excluded from the "active run" branch because it has
+    // no stream — which is exactly why its stored events are the only source
+    // the panel has here. Excluding it from the events query too left the
+    // activity trail blank behind an open question.
+    await mockWorkspace(page, { interaction: "document_selection" });
+    await page.goto(CONVERSATION_URL);
+
+    await expect(page.locator('[data-slot="interaction-card"]')).toBeVisible();
+    await page
+      .getByRole("group")
+      .filter({ hasText: chat.responseEvidence })
+      .first()
+      .getByText(chat.responseEvidence)
+      .click();
+
+    await expect(page.getByText(chat.noEventsTitle)).toHaveCount(0);
+    await expect(
+      page.getByText(chat.eventTypes.run_interrupted, { exact: false }).first(),
+    ).toBeVisible();
+  });
+
   test("leaves the composer untouched when no interaction is pending", async ({
     page,
   }) => {
