@@ -24,10 +24,32 @@ async function expectLatestAssistantFooterEvidence(
     page.locator("aside").filter({ hasText: ko.chat.latestCitations }),
   ).toHaveCount(0);
 
+  // Either label, because the disclosure is named for what the run reported:
+  // an attributed run lists consulted sources, a pre-attribution one lists
+  // citations. The demo runs against a live backend that may be either.
   await footer
-    .getByLabel(new RegExp(escapeRegExp(ko.chat.viewCitationDetails)))
+    .getByLabel(
+      new RegExp(
+        `${escapeRegExp(ko.chat.viewCitationDetails)}|${escapeRegExp(
+          ko.chat.viewConsultedDetails,
+        )}`,
+      ),
+    )
     .click();
-  await expect(footer.getByText(ko.chat.documentLabel).first()).toBeVisible();
+  // The panel lists documents by name now. It deliberately shows no
+  // `document_id`, `chunk_id` or snippet, so the old assertion on
+  // `chat.documentLabel` was asserting the presence of something removed.
+  await expect(
+    footer
+      .getByText(
+        new RegExp(
+          `${escapeRegExp(ko.chat.citationSourcesTitle)}|${escapeRegExp(
+            ko.chat.consultedSourcesTitle,
+          )}`,
+        ),
+      )
+      .first(),
+  ).toBeVisible();
   await footer
     .getByLabel(new RegExp(escapeRegExp(ko.chat.viewResponseEvidence)))
     .click();

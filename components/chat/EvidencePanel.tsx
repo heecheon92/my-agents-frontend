@@ -2,6 +2,10 @@ import type { ReactNode } from "react";
 import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import type { AgentEvent, AgentRunSummary, Citation } from "@/model/my-agents";
 import {
+  buildEvidenceSources,
+  groupSourcesByDocument,
+} from "./evidence-panel/evidence-sources";
+import {
   CitationSourcesDetails,
   EvidenceDetails,
 } from "./evidence-panel/sections";
@@ -25,6 +29,7 @@ export function EvidencePanel({
   runs,
   events,
   citations,
+  consultedSources,
 }: {
   localization: ChatLocalization;
   lang: string;
@@ -40,12 +45,33 @@ export function EvidencePanel({
   runs: AgentRunSummary[];
   events: Array<AgentEvent | LiveActivityEvent>;
   citations: Citation[];
+  /**
+   * Every user-visible source given to answer composition, a superset of
+   * `citations`. `null`/absent means the run predates citation attribution —
+   * not that nothing was consulted. See `evidence-sources.ts`.
+   */
+  consultedSources?: Citation[] | null;
 }) {
   const evidenceCount = runs.length + events.length;
-  const citationSummary = localization.citationSummary.replace(
-    "{count}",
-    String(citations.length),
-  );
+  const evidence = buildEvidenceSources({ citations, consultedSources });
+  // The panel counts and lists *documents*. A document contributes several
+  // chunks routinely, and one row each made a single source look like four.
+  const documents = groupSourcesByDocument(evidence.items);
+  /*
+   * Counted from the rendered rows, not from `citations.length`. In attributed
+   * mode the list is the consulted superset, so the old count would have
+   * labelled a four-source disclosure "인용 1개" and hidden three of them
+   * behind a number that did not describe the contents.
+   */
+  const sourcesSummary = (
+    evidence.mode === "attributed"
+      ? localization.consultedSummary
+      : localization.citationSummary
+  ).replace("{count}", String(documents.length));
+  const viewSourcesLabel =
+    evidence.mode === "attributed"
+      ? localization.viewConsultedDetails
+      : localization.viewCitationDetails;
 
   return (
     // A `<fieldset>` announces a group of form controls; this is a set of
@@ -64,16 +90,25 @@ export function EvidencePanel({
         {copyButton}
         {isLatestAssistantMessage || isStreaming ? (
           <>
-            {citations.length > 0 ? (
+            {/*
+              Gated on the rendered rows, not on `citations.length`. Attribution
+              is deliberately conservative, so an answer with zero verified
+              sources but several consulted ones is expected and common — the
+              old gate would have made the evidence disclosure disappear on
+              exactly those answers, which reads as a regression rather than as
+              honesty.
+            */}
+            {documents.length > 0 ? (
               <details className="group/citations min-w-0 rounded-lg border border-cal-hairline bg-km-surface/70 text-cal-ink open:w-full open:bg-km-surface">
                 <summary
-                  aria-label={`${localization.viewCitationDetails} (${citations.length})`}
+                  aria-label={`${viewSourcesLabel} (${documents.length})`}
                   className="flex min-h-9 cursor-pointer list-none items-center gap-2 px-3 text-xs font-semibold marker:hidden hover:text-cal-primary"
                 >
-                  <span>{citationSummary}</span>
+                  <span>{sourcesSummary}</span>
                 </summary>
                 <CitationSourcesDetails
-                  citations={citations}
+                  documents={documents}
+                  mode={evidence.mode}
                   localization={localization}
                 />
               </details>

@@ -1,60 +1,50 @@
 import { EmptyState, Pill } from "@/components/Status";
-import type { AgentEvent, AgentRunSummary, Citation } from "@/model/my-agents";
+import type { AgentEvent, AgentRunSummary } from "@/model/my-agents";
 import type { ChatLocalization, LiveActivityEvent } from "../types";
+import type { EvidenceDocument, EvidenceSourceMode } from "./evidence-sources";
 import { AgentTraceSummary, formatActivityEventPayload } from "./trace";
 
-function citationTitle(citation: Citation, localization: ChatLocalization) {
-  const filename =
-    citation.source_filename ?? localization.sourceUnavailableLabel;
-  const page = citation.source_page ? ` · p. ${citation.source_page}` : "";
-  return `${filename}${page}`;
-}
-
-function CitationSourceCard({
-  citation,
+/**
+ * One row per document.
+ *
+ * Deliberately carries no snippet and no identifiers. Passage text duplicated
+ * the answer while adding nothing the reader could act on, and `document_id`,
+ * `knowledge_base_id` and `chunk_id` are internal handles that meant nothing to
+ * a user — they were the bulk of what the old 상세 정보 disclosure contained, so
+ * the disclosure went with them. `document_id` survives only as the grouping
+ * key in `groupSourcesByDocument`; it never reaches the DOM.
+ */
+function DocumentSourceRow({
+  source,
   localization,
 }: {
-  citation: Citation;
+  source: EvidenceDocument;
   localization: ChatLocalization;
 }) {
-  const hasAdvancedDetails = Boolean(
-    citation.document_id || citation.knowledge_base_id || citation.chunk_id,
-  );
+  const pages =
+    source.pages.length > 0
+      ? localization.citationPages.replace("{pages}", source.pages.join(", "))
+      : null;
 
   return (
-    <article className="rounded-lg border border-km-accent/20 bg-km-accent/10 p-3 text-sm text-cal-ink">
-      <p className="break-words font-medium">
-        {citationTitle(citation, localization)}
+    <article className="rounded-lg border border-km-accent/20 bg-km-accent/10 px-3 py-2 text-sm text-cal-ink">
+      <p className="flex flex-wrap items-baseline gap-1.5">
+        {source.isSupported ? (
+          <span
+            data-slot="supported-source-badge"
+            className="shrink-0 rounded-full bg-cal-primary/12 px-2 py-0.5 text-[11px] font-semibold text-cal-primary"
+          >
+            {localization.supportedSourceBadge}
+          </span>
+        ) : null}
+        <span className="min-w-0 break-words font-medium">
+          {source.displayName ?? localization.sourceUnavailableLabel}
+        </span>
       </p>
-      <p className="mt-1 break-words text-cal-body">{citation.snippet}</p>
-      {hasAdvancedDetails ? (
-        <details className="mt-2 rounded-md border border-cal-hairline bg-cal-canvas p-2 text-xs text-cal-muted">
-          <summary className="cursor-pointer font-medium text-cal-ink">
-            {localization.advancedDetails}
-          </summary>
-          <dl className="mt-2 grid gap-1 font-mono">
-            <div className="grid gap-0.5">
-              <dt className="font-sans font-semibold text-cal-ink">
-                {localization.documentLabel}
-              </dt>
-              <dd className="break-all">{citation.document_id}</dd>
-            </div>
-            {citation.knowledge_base_id ? (
-              <div className="grid gap-0.5">
-                <dt className="font-sans font-semibold text-cal-ink">
-                  {localization.knowledgeBaseLabel}
-                </dt>
-                <dd className="break-all">{citation.knowledge_base_id}</dd>
-              </div>
-            ) : null}
-            <div className="grid gap-0.5">
-              <dt className="font-sans font-semibold text-cal-ink">
-                {localization.chunkLabel}
-              </dt>
-              <dd className="break-all">{citation.chunk_id}</dd>
-            </div>
-          </dl>
-        </details>
+      {source.knowledgeBaseName || pages ? (
+        <p className="mt-0.5 break-words text-xs text-cal-muted">
+          {[source.knowledgeBaseName, pages].filter(Boolean).join(" · ")}
+        </p>
       ) : null}
     </article>
   );
@@ -181,24 +171,54 @@ function ActivitySection({
 }
 
 export function CitationSourcesDetails({
-  citations,
+  documents,
+  mode,
   localization,
 }: {
-  citations: Citation[];
+  documents: EvidenceDocument[];
+  mode: EvidenceSourceMode;
   localization: ChatLocalization;
 }) {
+  const isAttributed = mode === "attributed";
+  const supportedCount = documents.filter(
+    (document) => document.isSupported,
+  ).length;
   return (
     <div className="grid max-h-72 gap-2 overflow-auto border-t border-cal-hairline p-3">
       <p className="text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
-        {localization.citationSourcesTitle}
+        {isAttributed
+          ? localization.consultedSourcesTitle
+          : localization.citationSourcesTitle}
       </p>
-      {citations.map((citation) => (
-        <CitationSourceCard
-          key={citation.id}
-          citation={citation}
+      {/*
+        Lead with the honest statement when nothing was verified. The backend's
+        selector is deliberately conservative, so this is an expected outcome
+        for a paraphrased answer rather than an error — but a list of sources
+        with no explanation would read as "the answer cited these", which is
+        the overclaim this whole feature removes.
+      */}
+      {isAttributed && supportedCount === 0 && documents.length > 0 ? (
+        <p
+          data-slot="no-supported-source"
+          className="text-xs leading-5 text-cal-muted"
+        >
+          {localization.noSupportedSourceHint}
+        </p>
+      ) : null}
+      {documents.map((document) => (
+        <DocumentSourceRow
+          key={document.documentId}
+          // Never badge in legacy mode: those runs predate attribution, so a
+          // badge would claim a check that never ran.
+          source={isAttributed ? document : { ...document, isSupported: false }}
           localization={localization}
         />
       ))}
+      {isAttributed && supportedCount > 0 ? (
+        <p className="text-xs leading-5 text-cal-muted">
+          {localization.supportedSourceHint}
+        </p>
+      ) : null}
     </div>
   );
 }

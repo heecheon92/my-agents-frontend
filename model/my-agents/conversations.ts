@@ -88,6 +88,18 @@ export const conversationRunResponseSchema = z
     answer_mode: z.string().optional(),
     document_scope: z.string().optional(),
     citations: z.array(citationSchema).default([]),
+    /**
+     * Every user-visible source handed to answer composition — a superset of
+     * `citations`, which is the conservative answer-supported subset.
+     *
+     * `.nullish()` because the served contract is `anyOf [array, null]` and the
+     * property is not required, so absent, `null` and `[]` are three distinct
+     * states on the wire. Absent/`null` means the run predates attribution and
+     * its `citations` were never verified; `[]` means attribution ran and found
+     * nothing. Collapsing those with `.default([])` would erase the difference
+     * and let old runs claim a check that never happened.
+     */
+    consulted_sources: z.array(citationSchema).nullish(),
     warnings: z.array(conversationRunWarningSchema).default([]),
     agent_trace: z.array(agentTraceStepSchema).default([]),
     knowledge_base_selection: knowledgeBaseSelectionSchema.default({

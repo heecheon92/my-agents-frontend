@@ -852,3 +852,160 @@ Verified: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (240
 passed), `pnpm exec playwright test` (110 passed, 2 skipped), `pnpm build`.
 Not verified: behaviour against a real backend paging a second page into the
 bounded list — the same live gap noted above, since the checkpointer flag is off.
+
+### Evidence panel: consulted sources, ahead of the backend field
+
+Built against the contract pinned with the backend on 2026-08-25 (see
+`docs/backend-requests.md`). Citations today are every positive-score chunk
+admitted to composition, so the panel presents consulted sources as cited ones.
+The backend is adding `consulted_sources` as a nullable superset of `citations`;
+this is the frontend half, built ahead of the hosted OpenAPI document.
+
+The design decision that drove the shape: backend expects "no source verifiably
+supported this answer" to be **common**, not rare, because the attribution
+selector is deliberately conservative and paraphrased summaries rarely match
+lexically. So the panel is one list of consulted sources with the verified
+subset badged `근거`, not two sections — a separate "used" section would sit
+empty most of the time, and `EvidencePanel.tsx`'s old `citations.length > 0`
+gate would have made the whole disclosure *vanish* on exactly those answers,
+which reads as a regression rather than as honesty. The gate now counts rendered
+rows, and the summary count follows the rendered list rather than
+`citations.length` — otherwise a four-source disclosure would be labelled
+`인용 1개` with three sources hidden behind a number that did not describe it.
+
+`buildEvidenceSources` (`components/chat/evidence-panel/evidence-sources.ts`)
+owns the merge. Three rules it encodes, each of which was a real decision:
+
+- **`null` is not `[]`.** A run predating attribution reports `null` and renders
+  legacy — flat list, nothing badged. Badging it would claim a verification that
+  never ran, putting a stronger claim on old answers than on new ones. This is
+  why the backend dropped its original plan to backfill `used_in_answer = true`;
+  a run-level `citation_attribution_version` marks the distinction instead.
+- **The join is by `id` alone.** The contract guarantees a source in both arrays
+  is the identical persisted row with the identical `id`. Matching on
+  `chunk_id`, title or snippet would double-render on any collision.
+- **A cited source missing from the consulted superset is kept, not dropped.**
+  That state is a contract violation, but dropping it would hide the strongest
+  evidence the answer has.
+
+**Coverage boundary, stated honestly.** The merge logic has 7 unit tests. The
+*rendering* has none: `vitest.config.ts` is `environment: "node"` with no jsdom
+and `include: ["tests/**/*.test.ts"]`, so component render tests are not
+possible in this repo, and Playwright cannot reach attributed mode because the
+zod schema strips the unknown `consulted_sources` key. Both modes were therefore
+verified by temporarily injecting a payload at the `EvidencePanel` call site and
+screenshotting the result — zero-supported renders the explanatory line above
+the list, and the badged variant puts the `근거` pill before the title. That
+injection was reverted; no trace remains in the tree.
+
+### Wiring it to the real contract
+
+Completed the same day against the backend's served OpenAPI document at
+`http://127.0.0.1:8000/openapi.json`, per `AGENTS.md` — not from the backend
+author's description of it, precise though that was. The served property is
+`anyOf [array of CitationResponse, null]` and is **not** required, so absent,
+`null` and `[]` are three distinct wire states; `.nullish()` covers all three
+and `.default([])` would have collapsed the first two into the third. The
+document was re-fetched after a backend restart and confirmed byte-identical.
+
+`hasLiveEvidence` in `ChatWorkspace.tsx` is the subtle part. The previous
+condition was `latestCitations.length > 0`, choosing between live stream values
+and the server's run detail. Under attribution that breaks: a completed run can
+legitimately have zero citations and several consulted sources, so the emptiness
+of one array no longer means "no live evidence", and keying on it alone would
+pair the live consulted list with the server's citation list — badging whichever
+rows happened to match. The pair is now read from one source. A legacy run never
+sets `latestConsultedSources`, so the condition reduces to the old one exactly.
+
+**A pre-existing fixture bug surfaced here.** `mockWorkspace`'s run-detail
+response omitted `route` and `handled_by`, both required by
+`conversationRunResponseSchema`, so the response never parsed and the evidence
+panel silently rendered no sources at all. No spec had noticed because
+`e2e/chat-citations.spec.ts` builds its own mock. Any future assertion about
+citations through `mockWorkspace` would have failed for this reason rather than
+the one under test.
+
+Coverage now includes the rendering that was previously unreachable:
+`e2e/citation-attribution.spec.ts` covers badged, zero-supported, and legacy.
+The zero-supported case was verified to **fail** against the old
+`citations.length > 0` gate before being kept.
+
+Verified: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (247
+passed, 36 files), `pnpm exec playwright test` (113 passed, 2 skipped),
+`pnpm build`. Not verified: a real backend response through this path — every
+test is mocked, and no run has been driven against the live attributed backend.
+
+### New chat kept showing the conversation you just left
+
+Reported from use: clicking 새 대화 from an existing conversation frequently did
+not clear the workspace. Intermittent because it depended on *how* you got to
+the conversation.
+
+`ensureConversationId` moves the URL with `history.replaceState` rather than
+`router.push`, deliberately — a real navigation crosses a dynamic segment and
+remounts the workspace mid-run, which is the frozen-chat bug fixed earlier. The
+cost, unaccounted for at the time: `replaceState` performs no route transition,
+so Next's route `params` keep reporting the value the page was loaded with.
+
+`ChatWorkspace` derived `routeConversationId` from those params. The effect that
+clears `optimisticConversationId` fires only when `routeConversationId ===
+optimisticConversationId`, which after a `replaceState` can never happen — so
+the optimistic id was never cleared, and since `activeId =
+optimisticConversationId ?? routeConversationId` it outranked the now-empty
+route. Clicking 새 대화 moved the URL to `/chat` correctly and left the
+transcript showing the previous conversation.
+
+Intermittent because a conversation reached by *clicking the sidebar* is a real
+navigation that remounts the workspace and resets the optimistic state; only a
+conversation the composer had auto-created carried a stale id. So it reproduced
+exactly when you sent a first message and then started another new chat.
+
+`ConversationHistorySidebarGroup` already read `usePathname` for precisely this
+reason, with a comment saying route params do not track `replaceState`. The two
+components disagreed about the same question. Both now go through
+`conversationIdFromPathname` in `chat-routes.ts`, so they cannot drift again.
+
+`e2e/new-conversation-reset.spec.ts` drives the real sequence — send, auto-create
+by `replaceState`, then 새 대화 — and asserts the transcript is empty, scoped to
+the transcript because the title legitimately remains in the sidebar history. It
+was confirmed to fail against the unfixed component first.
+
+### Citation panel: one row per document
+
+Product decision, relayed 2026-08-25: the panel lists documents, not retrieved
+passages. A document routinely contributes several chunks, so a row each made
+one source look like four, with near-identical snippets under each.
+
+Backend added nullable `document_title` and `knowledge_base_name` to
+`CitationResponse` on both arrays; both were read from the served OpenAPI
+document at `http://127.0.0.1:8000/openapi.json` before the schema was touched.
+`groupSourcesByDocument` collapses by `document_id`, marks a document supported
+when *any* of its chunks is, deduplicates and sorts page numbers, and prefers
+`source_filename` over `document_title` because a filename is what the reader
+recognises. Backend ordering is preserved — re-sorting would invent a ranking
+the frontend has no basis for.
+
+Snippets, `document_id`, `knowledge_base_id` and `chunk_id` are gone from the
+panel **entirely**, not collapsed: they were most of what the old 상세 정보
+disclosure held, so the disclosure went with them. `document_id` survives only
+as the grouping key and never reaches the DOM. The tests assert
+`toHaveCount(0)` rather than `toBeHidden` for exactly that reason. Chunk-level
+provenance is unchanged server-side; the run row's 상세 정보, which shows
+`run_id`, is the audit surface and was left alone.
+
+Two specs asserted the old behaviour and were updated to the new guarantee:
+`e2e/chat-citations.spec.ts` (was asserting the snippet visible and
+`document_id` revealed by 상세 정보) and the env-gated `e2e/v1-demo.spec.ts`
+(was asserting `chat.documentLabel`, and now tolerates either the citation or
+consulted disclosure label since it runs against a live backend that may be
+either).
+
+Left in place deliberately: `chat.documentLabel`, `chat.knowledgeBaseLabel` and
+`chat.chunkLabel` are now unused by any component. Removing them is a copy
+cleanup rather than part of this change, and `chat.chunkLabel` is referenced by
+a rule in `tests/knowledge-copy.test.ts`, so it is reported rather than removed.
+
+Verified: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (254
+passed, 36 files), `pnpm exec playwright test` (114 passed, 2 skipped),
+`pnpm build`. Both panel states inspected in a browser. Not verified: a real
+backend response through either path — every test is mocked.

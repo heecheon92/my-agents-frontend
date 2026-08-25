@@ -336,7 +336,7 @@ Still open: the encoded segment is verified at each end separately — backend `
 
 ## 2026-08-25 — citations must distinguish "used for the answer" from "provided to the model"
 
-Status: open — filed from a frontend observation, backend fix not yet started
+Status: contract pinned and both sides implemented 2026-08-25 — backend local-only, not yet deployed; frontend consumes it. See Pinned contract below.
 Frontend need: Render the evidence panel as two distinct groups — the sources the answer actually drew on, and the sources that were merely consulted — instead of one flat list that implies every entry was cited.
 Current backend behavior: They are the same set by construction. `run_lifecycle.py:596` creates one `CitationModel` per chunk in the list it receives, and that list is `used_chunks` from `chunks_used_for_answer` → `is_relevant_retrieval_result` (`knowledge/routing.py:270`), which reduces to `score > 0` plus one rule excluding `document_fallback` outside `retrieval_required`. Nothing in that chain consults the generated answer, so "cited" currently means "retrieved with a positive score". `agents/rag_agent/verifier.py:80` then *enforces* the identity (`citation count must match cited chunk count`), so this is a guarded invariant rather than an oversight — changing it is not a small patch.
 
@@ -350,3 +350,23 @@ Why it matters: the citation panel is the product's honesty surface. Presenting 
 Frontend position: no frontend change is possible before part 1. `useChatRunLoop.ts:187` passes `data.citations` through verbatim and `citationSchema` (`model/my-agents/knowledge.ts:127`) carries no field that could separate the two. Filtering client-side would be wrong for the same reason it is wrong for interaction options: the frontend has no basis for the distinction and would be inventing one. Once the field exists the UI change is small — an optional schema field, two groups in the evidence panel, and Korean copy per `docs/korean-copy-guide.md`.
 
 Not verified: this is read from backend source, not reproduced against a running backend. It matches a user report that citations listed documents the answer had not used.
+
+### Pinned contract, 2026-08-25
+
+Backend confirmed the reading above — citations currently equal all positive-score chunks admitted to composition, and `DeterministicRagAgentGroundingVerifier` enforces that identity deliberately. Settled shape after frontend review:
+
+**Wire.** `ConversationRunResponse.consulted_sources`: nullable array of the existing `CitationResponse` schema. `citations` stays an array of `CitationResponse` and becomes the answer-supported subset. Same shape both sides, so `citationSchema` is reused unchanged.
+
+**`null` means legacy, `[]` means genuinely none.** The frontend objected to backfilling `used_in_answer = true`: that relabels unverified legacy rows as answer-supported, irreversibly, which is the same overclaiming the change exists to remove. Backend's resolution is better than the age-gate the frontend proposed — a nullable `AgentRunModel.citation_attribution_version` marks whether attribution ran at all. Legacy runs (`null`) serialize `consulted_sources: null` and keep their flat `citations` list; new runs set `version = 1` and serialize `[]` when nothing was consulted. `CitationModel.used_in_answer` stays nullable with **no** backfill, so no legacy row ever claims verification it did not get.
+
+**`consulted_sources` is a superset, joined by `id`.** A source appearing in both arrays is the identical persisted `CitationModel` row, so `id` (and `chunk_id`) match exactly. The frontend renders "consulted but not used" by subtracting `citations` from `consulted_sources` by `id`. This was pinned explicitly because a silent id mismatch would render every used source twice — easy to ship, hard to notice.
+
+**Zero-cited will be common, and that drives the design.** With a conservative lexical/phrase selector, "no support match" is expected to be nontrivial and possibly common for paraphrased summaries. So `consulted_sources` is the primary reliable evidence surface and `citations` is the narrower verified claim on top — not the other way round. `EvidencePanel.tsx:67` currently gates the whole block on `citations.length > 0`, which would make the panel vanish on exactly those runs; that gate has to go.
+
+**All delivery routes get parity tests.** Backend will lock sync and SSE `run_completed`, the resume stream, replay, and `GET .../runs/{run_id}`. The frontend consumes citations at three points — `useChatRunLoop.ts:187`, the separate resume-stream handler at `:375`, and the refresh-safe path at `ChatWorkspace.tsx:611` — and a field missing from any one of them shows up as evidence silently disappearing after a reload.
+
+**Attribution method.** Conservative post-hoc snippet/phrase matching promoted from `agent_runtime/evals.py`, chosen over answer-model structured output because the latter would require buffering and reworking the stream contract. Backend will document the heuristic and its limitations, and will leave `citations` empty rather than overclaim when no support match is found.
+
+Resolved: the backend was served locally and the frontend schema was written from `http://127.0.0.1:8000/openapi.json`, not from this description. The served property is `anyOf [array of CitationResponse, null]`, not required. Frontend is complete and consumes it.
+
+Still open: **deployment**. The backend change is local-only and carries an Alembic migration; nothing has been pushed or deployed, and the hosted OpenAPI document at the public URL still predates the field. Production is unaffected in the meantime — a deployed frontend against the current production backend sees no `consulted_sources`, parses it as absent, and renders the legacy panel exactly as before. The two sides can therefore ship in either order.

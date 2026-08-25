@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
@@ -34,7 +35,11 @@ import {
 } from "./chat/ChatTranscript";
 import { ChatWorkspaceLayout } from "./chat/ChatWorkspaceLayout";
 import { useChatActivityStore } from "./chat/chat-activity-store";
-import { conversationHref } from "./chat/chat-routes";
+import {
+  conversationHref,
+  conversationIdFromPathname,
+  isChatPathname,
+} from "./chat/chat-routes";
 import { getConversationCardClassName } from "./chat/conversation-card";
 import {
   getAgentTraceStageKeys,
@@ -108,7 +113,25 @@ export function ChatWorkspace({
    * auto-create-on-first-send reachable for everyone rather than only for users
    * with an empty history.
    */
-  const routeConversationId = decodeRouteSegment(initialConversationId);
+  /*
+   * Derived from the pathname, not from the route params this component is
+   * handed.
+   *
+   * `ensureConversationId` moves the URL with `history.replaceState`, which
+   * performs no route transition — so `initialConversationId` still reports the
+   * value the page was loaded with, forever. That made the clearing effect
+   * below unreachable: `routeConversationId` could never become the optimistic
+   * id, so the optimistic id was never dropped, and it outranked the empty
+   * route when the user then started a new chat. The workspace kept showing the
+   * conversation they had just left.
+   *
+   * `usePathname` tracks `replaceState`, which is why the sidebar already read
+   * it. Both now go through one helper so they cannot disagree again.
+   */
+  const pathname = usePathname();
+  const routeConversationId = isChatPathname(pathname)
+    ? decodeRouteSegment(conversationIdFromPathname(pathname))
+    : decodeRouteSegment(initialConversationId);
   const [optimisticConversationId, setOptimisticConversationId] =
     useState<string>();
   const activeId = optimisticConversationId ?? routeConversationId;
@@ -190,6 +213,14 @@ export function ChatWorkspace({
     null,
   );
   const [latestCitations, setLatestCitations] = useState<Citation[]>([]);
+  /**
+   * `null` means the run did not report attribution, which is not the same as
+   * reporting an empty list. Kept separate from `latestCitations` for that
+   * reason — a single array could not express "unverified".
+   */
+  const [latestConsultedSources, setLatestConsultedSources] = useState<
+    Citation[] | null
+  >(null);
   // Derived from the session, not from `?guest=1`. The query param survives
   // only until the first navigation, so the old derivation dropped the notice
   // while the session was still a guest session.
@@ -305,6 +336,7 @@ export function ChatWorkspace({
     setIsCancelling,
     setIsStreaming,
     setLatestCitations,
+    setLatestConsultedSources,
     setLiveActivityEvents,
     setOptimisticMessage,
     setQueuedMessageState,
@@ -605,10 +637,26 @@ export function ChatWorkspace({
     liveActivityEvents.length > 0 ? liveActivityEvents : (events.data ?? []);
   const completedRunDetail =
     runDetail.data && !isRunInterrupted(runDetail.data) ? runDetail.data : null;
-  const visibleCitations =
-    latestCitations.length > 0
-      ? latestCitations
-      : (completedRunDetail?.citations ?? []);
+  /*
+   * Read as a pair, from one source.
+   *
+   * The old test was `latestCitations.length > 0`. Under attribution that
+   * breaks: a completed run can legitimately have zero citations and several
+   * consulted sources, so the emptiness of one array no longer means "no live
+   * evidence". Keying on it alone would pair the live consulted list with the
+   * server's citation list and badge whichever rows happened to match.
+   *
+   * A legacy run never sets `latestConsultedSources`, so this reduces to the
+   * previous condition exactly and that path is unchanged.
+   */
+  const hasLiveEvidence =
+    latestCitations.length > 0 || latestConsultedSources !== null;
+  const visibleCitations = hasLiveEvidence
+    ? latestCitations
+    : (completedRunDetail?.citations ?? []);
+  const visibleConsultedSources = hasLiveEvidence
+    ? latestConsultedSources
+    : (completedRunDetail?.consulted_sources ?? null);
   const latestAssistantMessageId = getLatestAssistantMessageId(sortedMessages);
   const autoScrollTrigger = `${sortedMessages.length}:${streamedReply.length}`;
   const composerPlaceholder = conversationIsBusy
@@ -706,6 +754,7 @@ export function ChatWorkspace({
     setReplayNotice(null);
     setLiveActivityEvents([]);
     setLatestCitations([]);
+    setLatestConsultedSources(null);
     setOptimisticMessage(null);
   }, [activeId]);
 
@@ -815,6 +864,7 @@ export function ChatWorkspace({
       streamError={streamError}
       streamedReply={streamedReply}
       visibleCitations={visibleCitations}
+      visibleConsultedSources={visibleConsultedSources}
       visibleQueuedMessage={visibleQueuedMessage}
     />
   );

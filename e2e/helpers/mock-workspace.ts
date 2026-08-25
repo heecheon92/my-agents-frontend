@@ -156,12 +156,48 @@ export const mockManyOptionInteraction = {
 const mockCitation = {
   id: "citation-visual",
   document_id: "doc-contract",
+  document_title: "2026 파트너 계약서",
   knowledge_base_id: "kb-personal",
+  knowledge_base_name: "개인 자료",
   chunk_id: "chunk-4",
   snippet:
     "갱신 통지는 만료 60일 전까지 서면으로 이루어져야 하며, 통지가 없으면 1년 자동 연장된다.",
   source_page: 4,
   source_filename: "partner-contract-2026.pdf",
+};
+
+/**
+ * A second chunk of the *same* document, on a different page.
+ *
+ * Without this the grouping is untestable: every fixture document contributed
+ * exactly one chunk, so one-row-per-chunk and one-row-per-document produced
+ * identical output.
+ */
+const mockSecondChunkOfCitedDocument = {
+  ...mockCitation,
+  id: "citation-visual-2",
+  chunk_id: "chunk-9",
+  snippet: "위약금은 잔여 계약 기간의 30퍼센트로 한다.",
+  source_page: 9,
+};
+
+/**
+ * A source given to composition that the answer did not verifiably use.
+ *
+ * Deliberately absent from `citations`: the whole point of the attributed mode
+ * is that consulted is a superset, so a fixture where the two lists are equal
+ * would prove nothing.
+ */
+const mockConsultedOnlySource = {
+  id: "citation-consulted-only",
+  document_id: "doc-roadmap",
+  document_title: "제품 로드맵 2026",
+  knowledge_base_id: "kb-personal",
+  knowledge_base_name: "개인 자료",
+  chunk_id: "chunk-11",
+  snippet: "2분기 목표는 파트너 채널 확대와 온보딩 자동화입니다.",
+  source_page: 11,
+  source_filename: "product-roadmap-2026.pdf",
 };
 
 const mockMember = {
@@ -219,6 +255,13 @@ type RouteOverrides = {
    * Omitted entirely by default so every existing spec keeps proving the
    * flag-off composer is unchanged.
    */
+  /**
+   * How the completed run reports citation attribution.
+   * `false` omits `consulted_sources` entirely, as a backend without the
+   * attribution migration does — that is the default so every existing spec
+   * keeps proving the legacy panel is unchanged.
+   */
+  attribution?: false | "supported" | "none";
   interaction?:
     | false
     | "document_selection"
@@ -237,8 +280,15 @@ export async function mockWorkspace(
     guest = false,
     empty = false,
     reasoning = true,
+    attribution = false,
     interaction = false,
   } = overrides;
+  const consultedSources = !attribution
+    ? undefined
+    : [mockCitation, mockSecondChunkOfCitedDocument, mockConsultedOnlySource];
+  // "none" is the case the backend expects to be common: sources were read, but
+  // the conservative selector matched none of them to the answer.
+  const attributedCitations = attribution === "none" ? [] : [mockCitation];
   const pendingInteraction = !interaction
     ? null
     : interaction === "many_options"
@@ -403,7 +453,18 @@ export async function mockWorkspace(
       return json({
         ...mockRun,
         reply: "갱신 통지 기한이 가장 큰 위험입니다.",
-        citations: [mockCitation],
+        // `route` and `handled_by` are required by
+        // `conversationRunResponseSchema`. Without them the whole response
+        // failed to parse and the evidence panel silently rendered no sources
+        // at all — which is why no spec using this fixture had ever asserted
+        // on a citation.
+        route: {
+          label: mockRun.route_label,
+          explanation: "문서 근거가 필요한 질문으로 판단했습니다.",
+        },
+        handled_by: "personal_assistant_graph",
+        citations: attribution ? attributedCitations : [mockCitation],
+        ...(consultedSources ? { consulted_sources: consultedSources } : {}),
       });
     }
     // The suspended run's stored activity. It exists server-side but has no

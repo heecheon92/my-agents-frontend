@@ -70,6 +70,7 @@ export function ChatTranscript({
   sortedRuns,
   visibleActivityEvents,
   visibleCitations,
+  visibleConsultedSources,
   latestAssistantMessageId,
   replayingMessageId,
   replayDisabled,
@@ -90,6 +91,7 @@ export function ChatTranscript({
   sortedRuns: AgentRunSummary[];
   visibleActivityEvents: Array<AgentEvent | LiveActivityEvent>;
   visibleCitations: Citation[];
+  visibleConsultedSources: Citation[] | null;
   latestAssistantMessageId?: string;
   replayingMessageId: string | null;
   replayDisabled: boolean;
@@ -184,6 +186,7 @@ export function ChatTranscript({
                   runs={sortedRuns}
                   events={visibleActivityEvents}
                   citations={visibleCitations}
+                  consultedSources={visibleConsultedSources}
                   replayButton={
                     <Button
                       type="button"
@@ -271,6 +274,7 @@ export function ChatTranscript({
               runs={sortedRuns}
               events={visibleActivityEvents}
               citations={visibleCitations}
+              consultedSources={visibleConsultedSources}
             />
           </MessageBubble>
         ) : null}

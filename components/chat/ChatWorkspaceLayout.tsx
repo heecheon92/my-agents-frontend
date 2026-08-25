@@ -92,6 +92,7 @@ type ChatWorkspaceLayoutProps = {
   streamError: unknown;
   streamedReply: string;
   visibleCitations: Citation[];
+  visibleConsultedSources: Citation[] | null;
   visibleQueuedMessage: QueuedMessage | null;
 };
 
@@ -143,6 +144,7 @@ export function ChatWorkspaceLayout({
   streamError,
   streamedReply,
   visibleCitations,
+  visibleConsultedSources,
   visibleQueuedMessage,
 }: ChatWorkspaceLayoutProps) {
   const isMobile = useIsMobile();
@@ -239,6 +241,7 @@ export function ChatWorkspaceLayout({
               sortedRuns={sortedRuns}
               visibleActivityEvents={events}
               visibleCitations={visibleCitations}
+              visibleConsultedSources={visibleConsultedSources}
               latestAssistantMessageId={latestAssistantMessageId}
               replayingMessageId={replayingMessageId}
               replayDisabled={

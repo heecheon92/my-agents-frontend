@@ -63,6 +63,9 @@ type UseChatRunLoopOptions = {
   setIsCancelling: (isCancelling: boolean) => void;
   setIsStreaming: (isStreaming: boolean) => void;
   setLatestCitations: React.Dispatch<React.SetStateAction<Citation[]>>;
+  setLatestConsultedSources: React.Dispatch<
+    React.SetStateAction<Citation[] | null>
+  >;
   setLiveActivityEvents: React.Dispatch<
     React.SetStateAction<LiveActivityEvent[]>
   >;
@@ -95,6 +98,7 @@ export function useChatRunLoop({
   setIsCancelling,
   setIsStreaming,
   setLatestCitations,
+  setLatestConsultedSources,
   setLiveActivityEvents,
   setOptimisticMessage,
   setQueuedMessageState,
@@ -133,6 +137,7 @@ export function useChatRunLoop({
     setCurrentRunId(null);
     setLiveActivityEvents([]);
     setLatestCitations([]);
+    setLatestConsultedSources(null);
     setOptimisticMessage({
       id: `optimistic-${Date.now()}`,
       conversation_id: conversationId,
@@ -185,6 +190,9 @@ export function useChatRunLoop({
           completed = true;
           setStreamedReply(data.reply);
           setLatestCitations(data.citations ?? []);
+          // `?? null`, never `?? []`: a backend without attribution omits the
+          // field, and that is "unverified", not "nothing consulted".
+          setLatestConsultedSources(data.consulted_sources ?? null);
         }
         // The run stopped to ask something. This is a *terminal* event for this
         // stream but not for the run: the run stays open server-side and holds
@@ -373,6 +381,9 @@ export function useChatRunLoop({
           completed = true;
           setStreamedReply(data.reply);
           setLatestCitations(data.citations ?? []);
+          // `?? null`, never `?? []`: a backend without attribution omits the
+          // field, and that is "unverified", not "nothing consulted".
+          setLatestConsultedSources(data.consulted_sources ?? null);
           setPendingInteraction(null);
         }
         // A resumed run can suspend again — a second ambiguous reference in
