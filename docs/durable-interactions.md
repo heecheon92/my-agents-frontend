@@ -185,6 +185,23 @@ answers a resume with `run_interaction_expired`, so the card disables Choose and
 pagination locally and keeps Cancel live. Nothing pushes an expiry event, and
 the default window is 24 hours, so a local clock is the only way the UI learns.
 
+**The option list is bounded, and the list is what scrolls.** The card renders
+inside the composer, which is absolutely positioned against the panel at
+`bottom-0`, and the panel is `overflow-hidden`. An uncapped list therefore grows
+the composer *upward* until it covers the transcript and then spills past the
+panel's top edge, where it is clipped with nothing to scroll it back — measured
+at 1049px of lost card on desktop and 1801px on a 390px phone with one full
+backend page of 20 options. That is an ordinary ambiguous reference, not an edge
+case, so the cap is not defensive polish.
+
+The cap belongs on the `<ul>` (`data-slot="interaction-options"`), never on the
+card: the title, the expiry notice and above all **Cancel** must stay pinned,
+because a suspended run blocks the whole conversation and cancel is the release
+valve. Bounding the card instead would scroll the one control that must never
+become unreachable. `e2e/durable-source-choice.spec.ts` asserts both halves — the
+card starting at or below the panel top at two viewports, and the list being the
+element that overflows.
+
 ## Rollout
 
 Both backend flags (`MY_AGENTS_CHECKPOINTER_ENABLED`, `MY_AGENTS_MEMORY_STORE_ENABLED`)

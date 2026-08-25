@@ -64,7 +64,21 @@ export function DocumentSelectionCard({
         {localization.interactionDescription}
       </p>
 
-      <ul className="mt-3 flex flex-col gap-2">
+      {/*
+        The list is the scroller, and it is bounded.
+        Uncapped, this grew the composer — which is absolutely positioned
+        against the panel at `bottom-0` — upward past the panel's top edge,
+        where `overflow-hidden` clipped the title and the first options away
+        with no way to reach them. A full backend page is 20 options, so this
+        was reachable with one ordinary ambiguous reference, not an edge case.
+        Bounding the list rather than the card keeps the title, the expiry
+        notice and Cancel pinned: a suspended run blocks the conversation, so
+        Cancel must never be the thing that scrolls out of reach.
+      */}
+      <ul
+        data-slot="interaction-options"
+        className="mt-3 flex max-h-[min(16rem,28dvh)] flex-col gap-2 overflow-y-auto overscroll-contain pr-1"
+      >
         {options.map((option) => (
           <li
             key={option.document_id}

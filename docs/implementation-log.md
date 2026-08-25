@@ -815,3 +815,40 @@ server check and imply the boundary is enforced here, which it is not.
 
 Rechecked live in the browser on default all-sources mode: exactly Alpha and
 Beta offered, two documents, no system sources present, and cancel succeeded.
+
+### A long option list clipped itself out of the panel
+
+Reported from use: with many options to choose from, the choice card blocked
+scrolling. The mechanism turned out to be worse than "blocked".
+
+The card renders inside the composer, which is `absolute inset-x-0 bottom-0`
+against a panel that is `overflow-hidden`. The option `<ul>` had no height cap,
+so it grew the composer upward until it covered the transcript entirely — the
+reported symptom, since every wheel event then landed on a card that had nothing
+to scroll — and then kept going past the panel's top edge, where the overflow was
+clipped away with no scroller anywhere in the subtree to bring it back. Measured
+against one full backend page of 20 options: **1049px** of card lost above the
+panel at 1280×720, **1801px** at 390×844. The title, the description and roughly
+the first fifteen options were simply not on screen and not reachable.
+
+Every fixture in `e2e/durable-source-choice.spec.ts` carried two options, which
+is why eleven passing interaction tests said nothing about this. The new
+`many_options` fixture in `e2e/helpers/mock-workspace.ts` serves a full page of
+20 with a `next_cursor`, matching what the backend actually pages at.
+
+The fix bounds the list — `max-h-[min(16rem,28dvh)] overflow-y-auto
+overscroll-contain`, tagged `data-slot="interaction-options"` — and not the card.
+That distinction is the whole point: bounding the card would scroll **Cancel**
+out of reach, and a suspended run blocks the entire conversation for up to 24
+hours, so cancel is the release valve and must stay pinned along with the title
+and the expiry notice. `28dvh` rather than a fixed height because the mobile
+panel is where the overflow was worst.
+
+Both new cases were confirmed to fail against the unfixed component before being
+kept, at both viewports. `expectNoNestedChatScroll` is unaffected: it walks the
+transcript's *ancestor* chain, and the list is a sibling subtree.
+
+Verified: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (240
+passed), `pnpm exec playwright test` (110 passed, 2 skipped), `pnpm build`.
+Not verified: behaviour against a real backend paging a second page into the
+bounded list — the same live gap noted above, since the checkpointer flag is off.

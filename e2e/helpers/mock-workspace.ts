@@ -133,6 +133,26 @@ export const mockPendingInteraction = {
   next_cursor: null,
 };
 
+/**
+ * The same question with a list long enough to outgrow the panel.
+ *
+ * The backend pages at 20, and `option_count` is unbounded — a vague reference
+ * across a large knowledge base legitimately produces a full page. Every other
+ * fixture here has two options, which is why nothing caught the overflow.
+ */
+export const mockManyOptionInteraction = {
+  ...mockPendingInteraction,
+  option_count: 40,
+  options: Array.from({ length: 20 }, (_, index) => ({
+    document_id: `doc-many-${index}`,
+    title: `자료 ${index + 1}`,
+    source_filename: `source-${index + 1}.pdf`,
+    knowledge_base_id: "kb-personal",
+    knowledge_base_name: "개인 자료",
+  })),
+  next_cursor: "cursor-page-2",
+};
+
 const mockCitation = {
   id: "citation-visual",
   document_id: "doc-contract",
@@ -202,6 +222,7 @@ type RouteOverrides = {
   interaction?:
     | false
     | "document_selection"
+    | "many_options"
     | "unsupported_type"
     | "unsupported_version"
     | "expired";
@@ -220,16 +241,18 @@ export async function mockWorkspace(
   } = overrides;
   const pendingInteraction = !interaction
     ? null
-    : interaction === "unsupported_type"
-      ? { ...mockPendingInteraction, type: "approval" }
-      : interaction === "unsupported_version"
-        ? { ...mockPendingInteraction, schema_version: 2 }
-        : interaction === "expired"
-          ? {
-              ...mockPendingInteraction,
-              expires_at: "2020-01-01T00:00:00.000Z",
-            }
-          : mockPendingInteraction;
+    : interaction === "many_options"
+      ? mockManyOptionInteraction
+      : interaction === "unsupported_type"
+        ? { ...mockPendingInteraction, type: "approval" }
+        : interaction === "unsupported_version"
+          ? { ...mockPendingInteraction, schema_version: 2 }
+          : interaction === "expired"
+            ? {
+                ...mockPendingInteraction,
+                expires_at: "2020-01-01T00:00:00.000Z",
+              }
+            : mockPendingInteraction;
   const knowledgeBases = empty ? [] : mockKnowledgeBases;
   const documents = empty ? [] : mockDocuments;
   const conversations = empty ? [] : [mockConversation];

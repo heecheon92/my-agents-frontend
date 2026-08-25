@@ -150,6 +150,70 @@ test.describe("durable document-source choice", () => {
     ).toBeVisible();
   });
 
+  for (const viewport of [
+    { name: "mobile", width: 390, height: 844 },
+    { name: "desktop", width: 1280, height: 720 },
+  ]) {
+    test(`keeps the panel usable when the option list is long (${viewport.name})`, async ({
+      page,
+    }) => {
+      await page.setViewportSize(viewport);
+      // The regression this guards. The card renders inside the composer, which
+      // is absolutely positioned against the panel at `bottom-0`; the panel is
+      // `overflow-hidden`. An uncapped option list therefore grows the composer
+      // upward until it covers the transcript entirely and then spills past the
+      // panel's top edge, where it is clipped away with no way to scroll it back
+      // — the card's own title and first options become unreachable.
+      await mockWorkspace(page, { interaction: "many_options" });
+      await page.goto(CONVERSATION_URL);
+
+      const card = page.locator('[data-slot="interaction-card"]');
+      await expect(card).toBeVisible();
+
+      const panelBox = await page
+        .getByTestId("chat-workspace-panel")
+        .boundingBox();
+      const cardBox = await card.boundingBox();
+      if (!panelBox || !cardBox) throw new Error("expected both boxes");
+
+      // Nothing may sit above the panel, because the panel clips it.
+      expect(
+        cardBox.y,
+        `the card starts ${Math.round(panelBox.y - cardBox.y)}px above the panel, where overflow-hidden clips it`,
+      ).toBeGreaterThanOrEqual(panelBox.y);
+
+      // And the transcript must keep a usable strip rather than being covered.
+      expect(
+        cardBox.height,
+        "the option card must not consume the whole panel",
+      ).toBeLessThan(panelBox.height * 0.7);
+    });
+  }
+
+  test("scrolls a long option list inside the card", async ({ page }) => {
+    // The list is the scroller, not the card and not the composer: the title,
+    // the expiry notice and — critically — Cancel must stay put, because a
+    // suspended run blocks the conversation and cancel is the release valve.
+    await mockWorkspace(page, { interaction: "many_options" });
+    await page.goto(CONVERSATION_URL);
+
+    const list = page.locator('[data-slot="interaction-options"]');
+    await expect(list).toBeVisible();
+
+    const overflows = await list.evaluate((node) => {
+      const style = window.getComputedStyle(node);
+      return {
+        scrolls: style.overflowY === "auto" || style.overflowY === "scroll",
+        clipped: node.scrollHeight > node.clientHeight + 1,
+      };
+    });
+    expect(overflows).toEqual({ scrolls: true, clipped: true });
+
+    await expect(
+      page.getByRole("button", { name: chat.interactionCancel }),
+    ).toBeVisible();
+  });
+
   test("leaves the composer untouched when no interaction is pending", async ({
     page,
   }) => {

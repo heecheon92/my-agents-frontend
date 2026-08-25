@@ -333,3 +333,20 @@ Evidence pairing: `tests/proxy-policy.test.ts` pins the form the BFF emits (`run
 Live smoke, 2026-08-17: a browser session against persistence-enabled Postgres drove run creation, cold-load recovery from run detail, resume, and cancel through the Next BFF end to end. That closes the joined path for every route except this one. The options endpoint is the only route carrying the encoded `interaction_id` in its path, and it is called only when the inline first page is short of `option_count`; the smoke used a two-document knowledge base with `next_cursor: null`, so it never fired.
 
 Still open: the encoded segment is verified at each end separately — backend `328d5ca` accepts it, `tests/proxy-policy.test.ts` pins that the BFF emits exactly it — but no single live request has carried it through the proxy. Closing this needs an interaction with more options than fit one page. The frontend keeps the raw ID and encodes only at the proxy boundary, so moving the ID to a query parameter or body field would remain a small change if that ever became necessary.
+
+## 2026-08-25 — citations must distinguish "used for the answer" from "provided to the model"
+
+Status: open — filed from a frontend observation, backend fix not yet started
+Frontend need: Render the evidence panel as two distinct groups — the sources the answer actually drew on, and the sources that were merely consulted — instead of one flat list that implies every entry was cited.
+Current backend behavior: They are the same set by construction. `run_lifecycle.py:596` creates one `CitationModel` per chunk in the list it receives, and that list is `used_chunks` from `chunks_used_for_answer` → `is_relevant_retrieval_result` (`knowledge/routing.py:270`), which reduces to `score > 0` plus one rule excluding `document_fallback` outside `retrieval_required`. Nothing in that chain consults the generated answer, so "cited" currently means "retrieved with a positive score". `agents/rag_agent/verifier.py:80` then *enforces* the identity (`citation count must match cited chunk count`), so this is a guarded invariant rather than an oversight — changing it is not a small patch.
+
+Requested backend contract, in two separable parts:
+
+1. **Expose both sets.** Keep `citations` as what the answer used, and add a separate consulted/provided list to `ConversationRunResponse`. Additive and optional, so a frontend built against the current contract keeps parsing. This part alone unblocks the UI and preserves the provenance the flat list gives today.
+2. **Populate "used" from the answer, not from a retrieval score.** Either have the answering model emit the chunk ids it drew on (accurate; needs structured output and a rewrite of the verifier invariant above), or match post hoc — `agent_runtime/evals.py:19` already has `evaluate_grounded_citations` doing snippet overlap, which could be promoted from eval to pipeline. Cheaper and approximate.
+
+Why it matters: the citation panel is the product's honesty surface. Presenting every retrieved chunk as a citation overstates grounding — a user checking the answer against a listed source may find it was never used, which reads as the assistant fabricating provenance. It also buries the sources that did matter among ones that did not.
+
+Frontend position: no frontend change is possible before part 1. `useChatRunLoop.ts:187` passes `data.citations` through verbatim and `citationSchema` (`model/my-agents/knowledge.ts:127`) carries no field that could separate the two. Filtering client-side would be wrong for the same reason it is wrong for interaction options: the frontend has no basis for the distinction and would be inventing one. Once the field exists the UI change is small — an optional schema field, two groups in the evidence panel, and Korean copy per `docs/korean-copy-guide.md`.
+
+Not verified: this is read from backend source, not reproduced against a running backend. It matches a user report that citations listed documents the answer had not used.
