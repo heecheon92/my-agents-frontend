@@ -10,7 +10,7 @@ import type {
   Message,
 } from "@/model/my-agents";
 import { CopyMessageButton } from "./CopyMessageButton";
-import { CurrentAgentTraceStepPanel, EvidencePanel } from "./EvidencePanel";
+import { EvidencePanel } from "./EvidencePanel";
 import { MessageBubble } from "./MessageBubble";
 import type { ChatLocalization, LiveActivityEvent } from "./types";
 
@@ -65,6 +65,7 @@ export function ChatTranscript({
   messagesError,
   messages,
   conversationIsBusy,
+  isProducingOutput,
   streamedReply,
   serverActiveRunIsStale,
   sortedRuns,
@@ -86,6 +87,7 @@ export function ChatTranscript({
   messagesError: unknown;
   messages: Message[];
   conversationIsBusy: boolean;
+  isProducingOutput: boolean;
   streamedReply: string;
   serverActiveRunIsStale: boolean;
   sortedRuns: AgentRunSummary[];
@@ -111,9 +113,9 @@ export function ChatTranscript({
     messages,
     replayingMessageId,
   );
-  const shouldRenderBusyBubble = conversationIsBusy && !replayingMessageId;
+  const shouldRenderBusyBubble = isProducingOutput && !replayingMessageId;
   const shouldRenderSeparateStreamingBubble =
-    !replayingMessageId && (shouldRenderBusyBubble || Boolean(streamedReply));
+    !replayingMessageId && (conversationIsBusy || Boolean(streamedReply));
 
   return (
     <div
@@ -168,13 +170,6 @@ export function ChatTranscript({
                   label={localization.agentComposing}
                 />
               ) : null}
-              {isReplaying ? (
-                <CurrentAgentTraceStepPanel
-                  localization={localization}
-                  lang={lang}
-                  events={visibleActivityEvents}
-                />
-              ) : null}
               {isAssistant ? (
                 <EvidencePanel
                   localization={localization}
@@ -184,7 +179,11 @@ export function ChatTranscript({
                   }
                   isStreaming={isReplaying}
                   runs={sortedRuns}
-                  events={visibleActivityEvents}
+                  events={
+                    conversationIsBusy && !isReplaying
+                      ? []
+                      : visibleActivityEvents
+                  }
                   citations={visibleCitations}
                   consultedSources={visibleConsultedSources}
                   replayButton={
@@ -259,18 +258,11 @@ export function ChatTranscript({
                 label={localization.agentComposing}
               />
             ) : null}
-            {shouldRenderBusyBubble ? (
-              <CurrentAgentTraceStepPanel
-                localization={localization}
-                lang={lang}
-                events={visibleActivityEvents}
-              />
-            ) : null}
             <EvidencePanel
               localization={localization}
               lang={lang}
               isLatestAssistantMessage={true}
-              isStreaming={shouldRenderBusyBubble}
+              isStreaming={isProducingOutput}
               runs={sortedRuns}
               events={visibleActivityEvents}
               citations={visibleCitations}

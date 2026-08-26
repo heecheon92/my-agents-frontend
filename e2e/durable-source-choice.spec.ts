@@ -1,6 +1,10 @@
 import { expect, test } from "@playwright/test";
 import ko from "@/localization/ko.json";
-import { mockWorkspace } from "./helpers/mock-workspace";
+import {
+  dismissOnboarding,
+  hideDevIndicators,
+  mockWorkspace,
+} from "./helpers/mock-workspace";
 
 const chat = ko.chat;
 const CONVERSATION_URL = "/chat/c-visual";
@@ -34,6 +38,12 @@ test.describe("durable document-source choice", () => {
     await page.goto(CONVERSATION_URL);
 
     await expect(page.locator('[data-slot="interaction-card"]')).toBeVisible();
+    await expect(page.getByLabel(chat.agentComposing)).toHaveCount(0);
+    const process = page.getByTestId("agent-process-panel");
+    await expect(process).toBeVisible();
+    await expect(
+      process.locator('[data-terminal="waitingForConfirmation"]'),
+    ).toContainText(chat.agentTrace.terminals.waiting);
     await expect(
       page.getByRole("button", { name: chat.sendNow, exact: true }),
     ).toHaveCount(0);
@@ -42,6 +52,74 @@ test.describe("durable document-source choice", () => {
       0,
     );
   });
+
+  for (const viewport of [
+    { name: "mobile", width: 390, height: 844 },
+    { name: "desktop", width: 1280, height: 900 },
+  ]) {
+    test(`becomes a streaming answer immediately after choosing (${viewport.name})`, async ({
+      page,
+    }, testInfo) => {
+      await page.setViewportSize(viewport);
+      await mockWorkspace(page, { interaction: "document_selection" });
+      let releaseResume: (() => void) | undefined;
+      const resumeGate = new Promise<void>((resolve) => {
+        releaseResume = resolve;
+      });
+      await page.route("**/api/my-agents/**/resume/stream", async (route) => {
+        await resumeGate;
+        await route.fulfill({
+          status: 200,
+          contentType: "text/event-stream",
+          body:
+            'event: run_resumed\ndata: {"run_id":"run-waiting","status":"running","interaction_id":"run-waiting:document_selection","interaction_schema_version":1,"interaction_type":"document_selection"}\n\n' +
+            'event: run_failed\ndata: {"run_id":"run-waiting","safe_error_type":"TestEnd"}\n\n',
+        });
+      });
+      await page.goto(CONVERSATION_URL);
+      await hideDevIndicators(page);
+      await page.waitForTimeout(350);
+      await dismissOnboarding(page);
+
+      await page
+        .getByRole("button", { name: chat.interactionChoose })
+        .first()
+        .click();
+
+      // This is deliberately before the first resume-stream event. Choosing
+      // is control input, so the card and waiting terminal must disappear
+      // immediately rather than staying frozen for the backend's re-plan.
+      await expect(page.locator('[data-slot="interaction-card"]')).toHaveCount(
+        0,
+        { timeout: 750 },
+      );
+      await expect(
+        page.locator('[data-terminal="waitingForConfirmation"]'),
+      ).toHaveCount(0, { timeout: 750 });
+      await expect(
+        page.getByRole("button", { name: chat.sendNow, exact: true }),
+      ).toBeVisible({ timeout: 750 });
+      const composer = page.getByPlaceholder(chat.streamingComposerPlaceholder);
+      await expect(composer).toBeVisible({ timeout: 750 });
+      await expect(page.getByTestId("agent-process-panel")).toBeVisible({
+        timeout: 750,
+      });
+
+      await page.screenshot({
+        path: testInfo.outputPath(`slow-resume-${viewport.width}.png`),
+        fullPage: false,
+      });
+
+      await composer.fill("후속 질문을 예약합니다");
+      await expect(
+        page.getByRole("button", { name: chat.sendNow, exact: true }),
+      ).toBeEnabled();
+      await composer.press("Enter");
+      await expect(page.getByText(chat.queuedTitle)).toBeVisible();
+
+      releaseResume?.();
+    });
+  }
 
   test("keeps cancel available so the waiting run can be released", async ({
     page,
@@ -137,17 +215,11 @@ test.describe("durable document-source choice", () => {
     await page.goto(CONVERSATION_URL);
 
     await expect(page.locator('[data-slot="interaction-card"]')).toBeVisible();
-    await page
-      .getByRole("group")
-      .filter({ hasText: chat.responseEvidence })
-      .first()
-      .getByText(chat.responseEvidence)
-      .click();
-
-    await expect(page.getByText(chat.noEventsTitle)).toHaveCount(0);
+    const process = page.getByTestId("agent-process-panel");
+    await expect(process).toBeVisible();
     await expect(
-      page.getByText(chat.eventTypes.run_interrupted, { exact: false }).first(),
-    ).toBeVisible();
+      process.locator('[data-terminal="waitingForConfirmation"]'),
+    ).toContainText(chat.agentTrace.terminals.waiting);
   });
 
   for (const viewport of [

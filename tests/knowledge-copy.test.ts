@@ -148,8 +148,8 @@ const JARGON_RULINGS: Record<string, JargonRuling> = {
   },
   청크: {
     allowed: true,
-    paths: /^admin\.common\.chunks$|^chat\.chunkLabel$/,
-    why: "citation and extraction detail",
+    paths: /^admin\.common\.chunks$/,
+    why: "extraction detail",
   },
   엔티티: {
     allowed: true,
@@ -179,8 +179,9 @@ const JARGON_RULINGS: Record<string, JargonRuling> = {
   },
   에이전트: {
     allowed: true,
-    paths: /^chat\.agentTrace\./,
-    why: "the agent trace is the product's evidence surface",
+    paths:
+      /^chat\.agentTrace\.|^chat\.messageEvidenceUnavailable$|^onboarding\.steps\.(guestEvidenceBody|newReviewEvidenceBody)$/,
+    why: "the agent process is the product's evidence surface and onboarding names it directly",
   },
 
   // Banned: implementation vocabulary with no meaning for a reader.

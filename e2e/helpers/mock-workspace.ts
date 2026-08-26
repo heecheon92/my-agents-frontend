@@ -262,6 +262,12 @@ type RouteOverrides = {
    * keeps proving the legacy panel is unchanged.
    */
   attribution?: false | "supported" | "none";
+  processState?:
+    | "completed"
+    | "failed"
+    | "cancelled"
+    | "needs_evidence"
+    | "no_events";
   interaction?:
     | false
     | "document_selection"
@@ -281,6 +287,7 @@ export async function mockWorkspace(
     empty = false,
     reasoning = true,
     attribution = false,
+    processState = "completed",
     interaction = false,
   } = overrides;
   const consultedSources = !attribution
@@ -307,6 +314,199 @@ export async function mockWorkspace(
   const documents = empty ? [] : mockDocuments;
   const conversations = empty ? [] : [mockConversation];
   const groups = empty ? [] : [mockGroup];
+  const processRun = {
+    ...mockRun,
+    status:
+      processState === "failed"
+        ? "failed"
+        : processState === "cancelled"
+          ? "cancelled"
+          : "completed",
+  };
+  const traceStep = (
+    id: string,
+    eventType: string,
+    koTitle: string,
+    enTitle: string,
+    koDescription: string,
+    enDescription: string,
+    status: "completed" | "waiting" = "completed",
+  ) => ({
+    id,
+    event_type: eventType,
+    status,
+    title: { ko: koTitle, en: enTitle },
+    description: { ko: koDescription, en: enDescription },
+    evidence: {},
+  });
+  const retrievalTrace = [
+    traceStep(
+      "query_cartographer",
+      "query_planned",
+      "질문 의도 정리",
+      "Mapped the question",
+      "계약 갱신 조건을 찾도록 질문 범위를 정했습니다.",
+      "Scoped the question to contract renewal terms.",
+    ),
+    traceStep(
+      "source_warden",
+      "sources_authorized",
+      "문서 범위 확인",
+      "Checked document scope",
+      "선택한 지식 베이스에서 사용할 문서를 확인했습니다.",
+      "Checked usable documents in the selected knowledge bases.",
+    ),
+    traceStep(
+      "candidate_scouts",
+      "candidates_retrieved",
+      "관련 문서 탐색",
+      "Found relevant documents",
+      "질문과 관련된 문서 후보를 찾았습니다.",
+      "Found document candidates relevant to the question.",
+    ),
+    traceStep(
+      "context_curator",
+      "context_prepared",
+      "답변 자료 구성",
+      "Prepared answer context",
+      "답변에 사용할 문서 내용을 정리했습니다.",
+      "Prepared document context for the answer.",
+    ),
+  ];
+  const processEvents =
+    processState === "no_events"
+      ? []
+      : processState === "failed"
+        ? [
+            {
+              id: "event-1",
+              run_id: mockRun.run_id,
+              sequence: 1,
+              event_type: "run_started",
+              payload: { knowledge_base_selection: { mode: "all" } },
+            },
+            {
+              id: "event-2",
+              run_id: mockRun.run_id,
+              sequence: 2,
+              event_type: "retrieval_completed",
+              payload: { documents: 2, agent_trace: retrievalTrace },
+            },
+            {
+              id: "event-3",
+              run_id: mockRun.run_id,
+              sequence: 3,
+              event_type: "run_failed",
+              payload: {},
+            },
+          ]
+        : processState === "cancelled"
+          ? [
+              {
+                id: "event-1",
+                run_id: mockRun.run_id,
+                sequence: 1,
+                event_type: "run_started",
+                payload: { knowledge_base_selection: { mode: "all" } },
+              },
+              {
+                id: "event-2",
+                run_id: mockRun.run_id,
+                sequence: 2,
+                event_type: "graph_invoked",
+                payload: {
+                  agent_trace: [
+                    traceStep(
+                      "assistant_graph",
+                      "answer_drafting",
+                      "답변 구성 시작",
+                      "Started drafting",
+                      "확인한 문서 내용으로 답변을 구성했습니다.",
+                      "Started composing from the checked document context.",
+                      "waiting",
+                    ),
+                  ],
+                },
+              },
+              {
+                id: "event-3",
+                run_id: mockRun.run_id,
+                sequence: 3,
+                event_type: "run_cancelled",
+                payload: {},
+              },
+            ]
+          : processState === "needs_evidence"
+            ? [
+                {
+                  id: "event-1",
+                  run_id: mockRun.run_id,
+                  sequence: 1,
+                  event_type: "run_started",
+                  payload: { knowledge_base_selection: { mode: "all" } },
+                },
+                {
+                  id: "event-2",
+                  run_id: mockRun.run_id,
+                  sequence: 2,
+                  event_type: "retrieval_completed",
+                  payload: {
+                    insufficient_evidence: true,
+                    agent_trace: retrievalTrace,
+                  },
+                },
+                {
+                  id: "event-3",
+                  run_id: mockRun.run_id,
+                  sequence: 3,
+                  event_type: "run_completed",
+                  payload: {},
+                },
+              ]
+            : [
+                {
+                  id: "event-1",
+                  run_id: mockRun.run_id,
+                  sequence: 1,
+                  event_type: "run_started",
+                  payload: { knowledge_base_selection: { mode: "all" } },
+                },
+                {
+                  id: "event-2",
+                  run_id: mockRun.run_id,
+                  sequence: 2,
+                  event_type: "retrieval_completed",
+                  payload: { documents: 2, agent_trace: retrievalTrace },
+                },
+                {
+                  id: "event-3",
+                  run_id: mockRun.run_id,
+                  sequence: 3,
+                  event_type: "run_completed",
+                  payload: {
+                    citations: [{ id: mockCitation.id }],
+                    agent_trace: [
+                      ...retrievalTrace,
+                      traceStep(
+                        "evidence_judge",
+                        "citations_checked",
+                        "근거 연결 확인",
+                        "Checked evidence links",
+                        "답변과 문서 근거의 연결을 확인했습니다.",
+                        "Checked links between the answer and document evidence.",
+                      ),
+                      traceStep(
+                        "answer_composer",
+                        "answer_composed",
+                        "답변 작성 완료",
+                        "Completed the answer",
+                        "확인한 근거를 바탕으로 답변을 마쳤습니다.",
+                        "Completed the answer from the checked evidence.",
+                      ),
+                    ],
+                  },
+                },
+              ];
 
   await page.route("**/api/my-agents/**", async (route) => {
     const request = route.request();
@@ -431,7 +631,7 @@ export async function mockWorkspace(
     }
     if (path === `/conversations/${mockConversation.id}/runs`) {
       if (pendingInteraction) return json([mockWaitingRun, mockRun]);
-      return json(empty ? [] : [mockRun]);
+      return json(empty ? [] : [processRun]);
     }
     if (
       pendingInteraction &&
@@ -487,7 +687,7 @@ export async function mockWorkspace(
           run_id: mockWaitingRun.run_id,
           sequence: 2,
           event_type: "retrieval_completed",
-          payload: { matched_documents: 2 },
+          payload: { matched_documents: 2, agent_trace: retrievalTrace },
         },
         {
           id: "waiting-event-3",
@@ -502,29 +702,7 @@ export async function mockWorkspace(
       path ===
       `/conversations/${mockConversation.id}/runs/${mockRun.run_id}/events`
     ) {
-      return json([
-        {
-          id: "event-1",
-          run_id: mockRun.run_id,
-          sequence: 1,
-          event_type: "run_started",
-          payload: { knowledge_base_selection: { mode: "all" } },
-        },
-        {
-          id: "event-2",
-          run_id: mockRun.run_id,
-          sequence: 2,
-          event_type: "retrieval_completed",
-          payload: { documents: 2 },
-        },
-        {
-          id: "event-3",
-          run_id: mockRun.run_id,
-          sequence: 3,
-          event_type: "run_completed",
-          payload: { citations: [{ id: mockCitation.id }] },
-        },
-      ]);
+      return json(processEvents);
     }
 
     return json([]);

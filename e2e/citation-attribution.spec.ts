@@ -25,6 +25,14 @@ test.describe("citation attribution", () => {
       chat.consultedSummary.replace("{count}", "2"),
     );
     await expect(summary).toBeVisible();
+    await expect(page.getByText("응답 근거", { exact: true })).toHaveCount(0);
+    await expect(page.getByText("작업 내역", { exact: true })).toHaveCount(0);
+    await expect(
+      page.locator('[data-onboarding-target="chat.response-evidence"]'),
+    ).toHaveCount(0);
+    await expect(
+      page.locator('[data-onboarding-target="chat.agent-process"]'),
+    ).toBeVisible();
     await summary.click();
 
     // Two documents from three chunks: the cited document contributed two, and
@@ -48,7 +56,6 @@ test.describe("citation attribution", () => {
     );
     await expect(panel.getByText("doc-contract")).toHaveCount(0);
     await expect(panel.getByText("chunk-4")).toHaveCount(0);
-    await expect(panel.getByText(chat.advancedDetails)).toHaveCount(0);
   });
 
   test("keeps the panel and explains itself when nothing matched", async ({

@@ -1,8 +1,5 @@
-import { EmptyState, Pill } from "@/components/Status";
-import type { AgentEvent, AgentRunSummary } from "@/model/my-agents";
-import type { ChatLocalization, LiveActivityEvent } from "../types";
+import type { ChatLocalization } from "../types";
 import type { EvidenceDocument, EvidenceSourceMode } from "./evidence-sources";
-import { AgentTraceSummary, formatActivityEventPayload } from "./trace";
 
 /**
  * One row per document.
@@ -47,126 +44,6 @@ function DocumentSourceRow({
         </p>
       ) : null}
     </article>
-  );
-}
-
-function RunHistorySection({
-  localization,
-  lang,
-  runs,
-}: {
-  localization: ChatLocalization;
-  lang: string;
-  runs: AgentRunSummary[];
-}) {
-  return (
-    <section className="grid min-w-0 gap-2">
-      <h4 className="text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
-        {localization.runHistory}
-      </h4>
-      {runs.length === 0 ? (
-        <EmptyState
-          title={localization.noRunsTitle}
-          description={localization.noRunsDescription}
-        />
-      ) : null}
-      {runs.map((run) => (
-        <article
-          key={run.run_id}
-          className="rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-sm"
-        >
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Pill tone={run.status === "completed" ? "green" : "rose"}>
-              {localization.runStatuses[
-                run.status as keyof typeof localization.runStatuses
-              ] ?? run.status}
-            </Pill>
-            <span className="text-xs text-cal-muted">
-              {new Date(run.created_at).toLocaleString(lang)}
-            </span>
-          </div>
-          <p className="mt-2 text-cal-muted">{localization.runEvidenceLabel}</p>
-          <details className="mt-2 rounded-md border border-cal-hairline bg-cal-surface-soft p-2 text-xs text-cal-muted">
-            <summary className="cursor-pointer font-medium text-cal-ink">
-              {localization.advancedDetails}
-            </summary>
-            <p className="mt-2 break-all font-mono">{run.run_id}</p>
-          </details>
-        </article>
-      ))}
-    </section>
-  );
-}
-
-/**
- * Turns a backend event enum into readable copy.
- *
- * Event rows used to render the raw enum (`retrieval_completed`) directly into
- * a Korean UI. The backend does not publish a closed set — that contract is
- * requested in `docs/backend-requests.md` — so unknown types degrade to a
- * de-snaked, sentence-cased form rather than disappearing or throwing.
- */
-export function describeEventType(
-  eventType: string,
-  localization: ChatLocalization,
-) {
-  const known = (
-    localization.eventTypes as Record<string, string> | undefined
-  )?.[eventType];
-  if (known) return known;
-  const humanized = eventType.replace(/_/g, " ").trim();
-  return humanized.charAt(0).toUpperCase() + humanized.slice(1);
-}
-
-function ActivitySection({
-  localization,
-  events,
-  citationCount,
-}: {
-  localization: ChatLocalization;
-  events: Array<AgentEvent | LiveActivityEvent>;
-  citationCount: number;
-}) {
-  return (
-    <section className="grid min-w-0 gap-2">
-      <h4 className="text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
-        {localization.activityEvents}
-      </h4>
-      {events.length === 0 ? (
-        <EmptyState
-          title={localization.noEventsTitle}
-          description={localization.noEventsDescription}
-        />
-      ) : (
-        <AgentTraceSummary
-          localization={localization}
-          events={events}
-          citationCount={citationCount}
-        />
-      )}
-      {events.map((event) => (
-        <article
-          key={event.id}
-          className="rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-sm"
-        >
-          <p className="break-words font-medium text-cal-ink">
-            {event.sequence}.{" "}
-            {describeEventType(event.event_type, localization)}
-          </p>
-          <details className="mt-2 rounded-md border border-cal-hairline bg-cal-surface-soft p-2 text-xs text-cal-muted">
-            <summary className="cursor-pointer font-medium text-cal-ink">
-              {localization.activityRawPayload}
-            </summary>
-            <pre className="mt-2 max-h-40 overflow-auto rounded-xl border border-cal-hairline bg-km-surface p-3 font-mono text-xs text-cal-muted">
-              {formatActivityEventPayload(
-                event.payload,
-                localization.activityPayloadHidden,
-              )}
-            </pre>
-          </details>
-        </article>
-      ))}
-    </section>
   );
 }
 
@@ -219,31 +96,6 @@ export function CitationSourcesDetails({
           {localization.supportedSourceHint}
         </p>
       ) : null}
-    </div>
-  );
-}
-
-export function EvidenceDetails({
-  localization,
-  lang,
-  runs,
-  events,
-  citationCount,
-}: {
-  localization: ChatLocalization;
-  lang: string;
-  runs: AgentRunSummary[];
-  events: Array<AgentEvent | LiveActivityEvent>;
-  citationCount: number;
-}) {
-  return (
-    <div className="grid max-h-80 gap-4 overflow-auto border-t border-cal-hairline p-3 lg:grid-cols-2">
-      <RunHistorySection localization={localization} lang={lang} runs={runs} />
-      <ActivitySection
-        localization={localization}
-        events={events}
-        citationCount={citationCount}
-      />
     </div>
   );
 }

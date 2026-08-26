@@ -41,10 +41,7 @@ import {
   isChatPathname,
 } from "./chat/chat-routes";
 import { getConversationCardClassName } from "./chat/conversation-card";
-import {
-  getAgentTraceStageKeys,
-  sanitizeActivityEventPayload,
-} from "./chat/EvidencePanel";
+import { getAgentTraceStageKeys } from "./chat/EvidencePanel";
 import { PendingInteractionSlot } from "./chat/interactions/PendingInteractionSlot";
 import {
   REASONING_STORAGE_KEY,
@@ -92,11 +89,7 @@ export {
   seedLiveActivityEvents,
   shouldRecordLiveActivityEvent,
 } from "./chat/workspace-helpers";
-export {
-  getAgentTraceStageKeys,
-  getConversationCardClassName,
-  sanitizeActivityEventPayload,
-};
+export { getAgentTraceStageKeys, getConversationCardClassName };
 
 export function ChatWorkspace({
   initialConversationId,
@@ -467,7 +460,10 @@ export function ChatWorkspace({
    */
   // biome-ignore lint/correctness/useExhaustiveDependencies: `setPendingInteraction` and `setActiveRunId` are recreated on every render; including them would re-run this on every commit. The recovery is keyed on the waiting run and its detail, which is what should trigger it.
   useEffect(() => {
-    if (!serverWaitingRunId) return;
+    // The runs cache can still say `waiting_for_input` while a resume request
+    // is already in flight. Rebuilding from that stale row would put the frozen
+    // card back over an answer that is producing output again.
+    if (!serverWaitingRunId || isStreaming) return;
     const detail = waitingRunDetail.data;
     if (!detail || !isRunInterrupted(detail)) return;
     if (
@@ -478,7 +474,7 @@ export function ChatWorkspace({
     setPendingInteraction(detail.interaction);
     setActiveRunId(detail.run_id);
     activeRunIdRef.current = detail.run_id;
-  }, [serverWaitingRunId, waitingRunDetail.data]);
+  }, [serverWaitingRunId, waitingRunDetail.data, isStreaming]);
 
   /**
    * Clears the card once the server stops reporting a waiting run.
@@ -510,6 +506,10 @@ export function ChatWorkspace({
     setLiveActivityEvents((current) =>
       seedLiveActivityEvents(current, events.data ?? []),
     );
+    // Choosing is control input, not another conversational turn. The run
+    // leaves the suspended presentation immediately; if the request fails,
+    // the server waiting row/detail recovery above restores this exact card.
+    setPendingInteraction(null);
     await resumeInteraction(activeId, runId, {
       schema_version: INTERACTION_SCHEMA_VERSION,
       interaction_id: interaction.interaction_id,
@@ -687,11 +687,13 @@ export function ChatWorkspace({
     ? localization.stoppingCurrentAnswer
     : visibleQueuedMessage
       ? localization.sendNowQueuedBlocked
-      : serverActiveRunIsStale
-        ? localization.activeRunStaleHelper
-        : !activeRunId && isStreaming
-          ? localization.sendNowWaitingForRun
-          : localization.sendNowHelper;
+      : runPhase === "waiting"
+        ? localization.interactionSendHelper
+        : serverActiveRunIsStale
+          ? localization.activeRunStaleHelper
+          : !activeRunId && isStreaming
+            ? localization.sendNowWaitingForRun
+            : localization.sendNowHelper;
   const queuedHelper =
     // A queued message under an open question is not "waiting for the current
     // answer" — nothing is being answered. Saying so avoids the impression that

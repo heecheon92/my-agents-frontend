@@ -1,7 +1,8 @@
 # Frontend roadmap — answer transparency surface
 
-Recorded 2026-08-25. **Not started.** Nothing in this document has been
-implemented; it exists so the work can be picked up cold.
+Recorded 2026-08-25. **Implemented and verified locally on 2026-08-26.** The provider-independent frontend surface is complete. The optional
+backend operational-summary contract remains proposed and waits for hosted
+OpenAPI.
 
 Priority: **not urgent, but do it in the next available slot.** None of it is a
 defect. It is a coherent rethink of how the product shows its work, and the
@@ -22,13 +23,12 @@ Current state of the assistant message footer, top to bottom:
 | Surface | Korean label | What it holds | Fate |
 |---|---|---|---|
 | Sources disclosure | `참고한 출처` | One row per document: name, knowledge base, pages, `근거` badge | **Keep.** Confirmed good. |
-| Evidence disclosure | `응답 근거` | Run rows + `작업 내역` + agent trace summary | **Remove entirely** (item 1) |
-| Live step strip | — | `CurrentAgentTraceStepPanel`, one line, current stage only | **Grow into item 3** |
+| Evidence disclosure | `응답 근거` | Run rows + `작업 내역` + agent trace summary | **Removed** (item 1) |
+| Agent process | `에이전트 흐름` | Reached phases, backend-authored dynamic steps, honest terminal state, quiet run-ID copy | **Implemented** (item 3) |
 
-> **Uncommitted.** As of writing, the source-grouping work, the
-> `consulted_sources` wiring, and the new-chat fix are all in the working tree
-> and unpushed. Land those before starting here, or this roadmap is being
-> written against a tree that may still move.
+> The source-grouping, `consulted_sources` wiring, and new-chat fix are the
+> pushed `ad9f7fb` baseline for this work. The roadmap implementation itself is
+> intentionally uncommitted until user authorization.
 
 > **Backend not deployed.** `consulted_sources`, `document_title` and
 > `knowledge_base_name` exist on the locally served OpenAPI document only. The
@@ -37,7 +37,7 @@ Current state of the assistant message footer, top to bottom:
 
 ---
 
-## Item 1 — Remove `응답 근거`
+## Item 1 — Remove `응답 근거` — implemented
 
 Delete the second disclosure. Its contents either move (item 3) or go.
 
@@ -48,12 +48,11 @@ Delete the second disclosure. Its contents either move (item 3) or go.
 - `작업 내역` — the activity event list. Moves to item 3.
 - `AgentTraceSummary` — the staged trace. Moves to item 3.
 
-Decide explicitly what happens to **`run_id`**. It is the only handle that ties
-a visible answer to a server-side run, which makes it the one thing worth
-keeping for support and debugging — and also the least meaningful thing on
-screen for an ordinary reader. Options: drop it, keep it behind a much quieter
-affordance, or surface it only for staff. Do not let it survive by accident
-just because deleting it felt risky.
+**Resolved:** keep `run_id` behind a quiet copy affordance for support and
+debugging. Do not render the raw value in the ordinary reading path. Reuse the
+existing copy-control behavior and announce success separately; if clipboard
+access fails, reveal the raw ID as the fallback so the only support handle does
+not become unreachable.
 
 **Blocking dependency: the onboarding tour.** `chat.response-evidence` is a
 registered `OnboardingTarget` referenced twice in
@@ -75,7 +74,7 @@ Touches: `components/chat/EvidencePanel.tsx`,
 
 ---
 
-## Item 2 — Show the document id beside the document name
+## Item 2 — Document identity decision — resolved without code
 
 In `참고한 출처`, put the document id next to the name.
 
@@ -96,8 +95,14 @@ The reason it might belong now: with `응답 근거` gone, there is no remaining
 place to identify a document unambiguously — and two documents can legitimately
 share a filename.
 
-**Resolve which problem this is solving before implementing**, because the
-answer changes the design:
+**Resolved product decision:** this is a human-disambiguation problem, not a
+server-lookup or developer-debugging affordance. Keep raw document IDs out of
+the product UI and close this item without code because the current row already
+shows document name, knowledge-base name, and deduplicated pages. The existing
+`toHaveCount(0)` identifier assertions remain correct and protect that decision.
+
+The alternatives remain recorded because they explain why the raw ID was not
+reintroduced:
 
 - *"I need to tell two same-named documents apart"* → a disambiguator is the
   fix, not an id. Show the knowledge base, the page range, or a short hash — and
@@ -106,10 +111,9 @@ answer changes the design:
   copy-to-clipboard affordance or a staff-only view, not in the reading line.
 - *"I want to see it while building"* → a dev-only display, not product copy.
 
-If the answer is genuinely "show the id, always, next to the name", that is a
-legitimate call — just make it deliberately, update the spec with a comment
-explaining the reversal so the next reader is not misled by the old rationale,
-and note it in `docs/implementation-log.md`.
+Known limitation: two documents with the same filename in the same knowledge
+base and identical or absent page metadata still render identically. Record it
+as a future disambiguation case rather than leaking an internal identifier now.
 
 Touches: `components/chat/evidence-panel/sections.tsx` (`DocumentSourceRow`),
 `components/chat/evidence-panel/evidence-sources.ts` (`EvidenceDocument`
@@ -118,7 +122,7 @@ grouping key), and `e2e/chat-citations.spec.ts`.
 
 ---
 
-## Item 3 — Live agent process UI, with a reasoning summary
+## Item 3 — Live agent process UI — frontend implemented; backend summary pending
 
 The largest of the three, and the reason the other two exist.
 
@@ -143,23 +147,21 @@ stage only, no history, no motion, no reasoning. Item 3 is largely *growing that
 component*, not building a new one. Reuse the stage vocabulary in
 `localization.agentTrace.stages` rather than inventing a second one.
 
-### Design questions to settle first
+### Settled design
 
-- **Progress vs. log.** A stepper that advances and settles, or a streaming list
-  that accumulates? The stepper suits a bounded pipeline; the list suits
-  variable agent work. The existing `AGENT_TRACE_STAGE_ORDER` implies a bounded
-  pipeline, which points at a stepper.
-- **What survives completion.** Does the strip persist under the finished answer
-  as a record, or collapse away? If it persists, it has absorbed `응답 근거`
-  and item 1 is genuinely complete rather than a deletion that lost something.
-- **Motion budget.** `DESIGN.md` governs this, and `prefers-reduced-motion` must
-  be honoured. Animation here is meant to communicate progress, not decorate —
-  a spinner that conveys nothing is worse than static text.
-- **Failure and suspension.** A run can fail, be cancelled, or suspend on a
-  durable interaction. All three need a resting state in this UI. See
-  `docs/durable-interactions.md` — a suspended run produces no output but blocks
-  the conversation, so "still working" would be an actively misleading thing to
-  animate.
+- Render only stages the backend has actually reported. Do not show a total,
+  percentage, future pending stages, or “N of M”; skipped stages and the final
+  `answerReady` versus `needsEvidence` branch are unknowable until observed.
+- Reached stages accumulate live and persist as a compact static record for the
+  latest completed answer only. Older answers keep explicit unavailable copy.
+- Completed stages are static. The current stage receives restrained progress
+  emphasis, and `prefers-reduced-motion` removes pulse and transition.
+- Failed and cancelled runs retain reached stages and end in truthful static
+  terminals. Suspended runs freeze immediately at `확인 요청 대기`; the durable
+  interaction card remains the action surface. Insufficient/zero-result runs
+  reuse the existing `근거 필요` stage.
+- Empty/no-event state renders no process timeline. The existing generating and
+  stale-run states remain responsible for those cases.
 
 ### Backend dependency — reasoning summary
 
@@ -195,10 +197,9 @@ document.
 
 ## Open questions
 
-- What happens to `run_id`? (item 1)
-- Which problem is the document id solving? (item 2)
-- Stepper or log, and does it persist after the answer? (item 3)
-- What exactly is a "reasoning summary", and who redacts it? (item 3, backend)
+- Operational summary delivery remains open: the provider-independent semantic
+  contract is filed in `docs/backend-requests.md`, but frontend model work waits
+  for hosted OpenAPI.
 
 ## Housekeeping this touches
 

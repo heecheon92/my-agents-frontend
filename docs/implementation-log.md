@@ -1009,3 +1009,81 @@ Verified: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (254
 passed, 36 files), `pnpm exec playwright test` (114 passed, 2 skipped),
 `pnpm build`. Both panel states inspected in a browser. Not verified: a real
 backend response through either path — every test is mocked.
+
+## 2026-08-26 — Live agent process replaces retrospective response evidence
+
+The answer footer now explains work while it happens instead of hiding it in
+`응답 근거`. `AgentProcessPanel` renders reached phases only—never a total,
+percentage, or invented future step—and retains a compact one-line record on
+the latest completed answer. Failed, cancelled, insufficient-evidence, and
+durably suspended runs preserve reached work and end in distinct static states.
+A waiting interaction freezes at `확인 요청 대기`, shows no composing spinner,
+and leaves the interaction card as the action surface.
+
+The stable phase spine now keeps the backend's actual localized trace titles as
+ordered dynamic detail. Valid unknown agent IDs use the same safe fallback phase
+in both spine and detail instead of disappearing. A `run_started` event with no
+trace renders `답변 준비 중`; it does not fabricate a planning step to fill the
+quiet interval before retrieval reports. Detail reveal is staggered but
+persistent, and only phase transitions enter the live region.
+
+Successful completion collapses to `에이전트 흐름` plus the reached-step count.
+The quiet copy control beside it preserves `run_id` for support without putting
+the raw value in the reading path; clipboard failure reveals the ID as the only
+fallback. `응답 근거`, raw activity payloads, run rows, and their chat-localized
+copy were removed from the DOM. Onboarding now targets `chat.agent-process`, and
+older answers say that sources and the agent process are latest-answer-only.
+
+The operational-summary backend request is provider-independent: semantic keys
+and allowlisted parameters must come from deterministic backend facts. OpenAI
+`reasoning.summary` and assistant `phase` were investigated separately.
+Provider-generated reasoning prose has weaker truth status and is deferred to a
+later product decision; it has no slot or unavailable placeholder in this UI.
+
+Test-first evidence: the process-state tests failed 7/7 before the derivation
+existed; two dynamic-detail tests failed before `getAgentProcessDetails`; the
+single-unknown-agent regression reproduced the spine/detail disagreement; and
+the suspended browser test was deliberately run against the old busy-state
+wiring and failed because the composing indicator returned. Playwright captures
+starting, running, completed, failed, cancelled, suspended, `근거 필요`, and
+no-event states at 390/768/1280, plus reduced-motion and isolated process-panel
+frames. All evidence is mocked; live backend/OpenAPI verification remains open.
+
+Final local verification: `pnpm lint`, `pnpm exec tsc --noEmit`, and
+`pnpm exec vitest run` passed (261 tests, 36 files); full Playwright passed 137
+with 2 environment-gated skips; `pnpm build` completed all 17 routes; and
+`git diff --check` passed.
+
+## 2026-08-26 — Document choice resumes into live output immediately
+
+Reported from use: after choosing a document in the durable interaction card,
+the UI stayed frozen until the full summary arrived. The apparent frontend
+state leads were not the root cause. `resumeInteraction` already set streaming
+state synchronously, and a cached waiting run resolves to `resuming` while that
+flag is true.
+
+The backend `/resume/stream` adapter was buffered: it called sync resume to
+completion before yielding its first byte, emitted no `run_resumed` or progress,
+and then split the finished reply into artificial deltas. Backend resume now
+claims the run once, emits `run_resumed` first, streams LangGraph messages and
+updates, and checks cancellation between steps.
+
+Frontend transition behavior is explicit as well. Choosing clears the answered
+card before awaiting the first event. Waiting-run recovery is suppressed while
+resume is active, so stale query data cannot freeze the card again. If resume
+fails and the server still reports waiting, the existing recovery effect
+restores it. The process-state derivation also treats an in-flight resume as
+active rather than retaining the `확인 요청 대기` terminal.
+
+The new Playwright regression deliberately withholds the first resume response
+event. It failed at 390 and 1280 before the fix because the interaction card
+remained mounted. During that same interval it now verifies no card or waiting
+terminal, visible process progress and steering control, an editable composer,
+and a queueable follow-up. Screenshots capture the interval itself rather than
+the final resumed answer.
+
+Final cross-repo verification after the resume fix: frontend lint and TypeScript
+passed, Vitest passed 262 tests across 36 files, full Playwright passed 139 with
+2 environment-gated skips, and the production build completed all 17 routes.
+The backend passed 534 tests with 2 skipped; Ruff lint/format and both diff
+checks passed. Live hosted deployment remains unverified.

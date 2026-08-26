@@ -370,3 +370,63 @@ Backend confirmed the reading above — citations currently equal all positive-s
 Resolved: the backend was served locally and the frontend schema was written from `http://127.0.0.1:8000/openapi.json`, not from this description. The served property is `anyOf [array of CitationResponse, null]`, not required. Frontend is complete and consumes it.
 
 Still open: **deployment**. The backend change is local-only and carries an Alembic migration; nothing has been pushed or deployed, and the hosted OpenAPI document at the public URL still predates the field. Production is unaffected in the meantime — a deployed frontend against the current production backend sees no `consulted_sources`, parses it as absent, and renders the legacy panel exactly as before. The two sides can therefore ship in either order.
+
+## 2026-08-26 — backend-owned per-stage operational summaries
+
+Status: proposed — product direction selected; backend contract and hosted OpenAPI not implemented
+
+Frontend need: Grow the current one-line live agent step into a reached-stage process timeline that explains the work while an answer is produced and retains a compact record for the latest completed answer. Each observed stage needs one short operational summary. This is a transparency surface, not chain-of-thought.
+
+Current backend behavior: `AgentTraceStep` already supplies a stable stage identity, status, localized title/description, and allowlisted evidence. Existing SSE activity payloads and refresh-safe run detail/events carry trace arrays, but there is no contract for a run-specific explanation of why a stage ran or what safe operational conclusion it reached. The frontend can name stages; it cannot invent a reasoning summary from raw payloads safely.
+
+Requested backend contract:
+
+1. Add one **optional, versioned operational-summary object per `AgentTraceStep`**. It must describe only a redacted operational decision or result for that stage. It must never expose hidden chain-of-thought, raw prompts, document body text, retrieved snippets, provider traces, credentials, private identifiers, or arbitrary model output.
+2. Prefer a backend-selected semantic message key plus a closed, event-specific allowlist of scalar/count parameters over unrestricted prose. The backend owns which key and parameters are safe; the frontend only localizes the approved semantic contract. If the backend instead returns localized display text, it must provide both Korean and English using the existing trace-text shape and apply the same serializer allowlist before either string leaves the service.
+3. Deliver the summary inside the existing `agent_trace` arrays on the activity events that advance a stage. Do not add a second parallel progress stream unless the existing event timing cannot represent the transition. Persist the same summary so SSE completion, resume SSE, replay, and `GET /conversations/{conversation_id}/runs/{run_id}` reconstruct the same stepper after refresh.
+4. Keep terminal and suspended states explicit. Completed, failed, cancelled, and waiting-for-input runs must serialize a truthful resting state. A waiting interaction must stop progress motion and say that user confirmation is required; it must not claim the agent is still working. Resume continues the same ordered timeline.
+5. The backend serializer is the redaction boundary. Frontend code must not receive a raw reasoning field and then decide what to hide. Unknown summary versions or keys must be safely ignorable without making the run or pending interaction unrenderable.
+6. Publish the exact optionality, discriminator/version, message-key enum, parameter schemas, and delivery locations in the **served OpenAPI document**. Frontend Zod models will not change until that hosted document is available.
+
+Product decisions already made:
+
+- Use per-stage summaries, not one rolling summary.
+- Keep `run_id` behind a quiet copy affordance for support; it is separate from the operational-summary contract.
+- The frontend renders reached stages only. It must not infer a total, percentage, future pending stages, or “N of M” because skipped stages and the terminal path are unknowable until observed.
+- The process timeline persists only for the latest answer, matching the backend's existing evidence boundary. Older answers keep explicit unavailable copy rather than implying lost history.
+- Suspended runs use the established `확인 요청` vocabulary (`확인 요청 대기`), freeze all progress motion, and leave the durable interaction card as the action surface.
+- `근거 필요` reuses the existing trace-stage key for insufficient-evidence and zero-result terminals.
+
+Why it matters: The current live line shows that work is happening but not what each stage safely accomplished. The retrospective `작업 내역` disclosure is planned for removal only after the live surface absorbs its useful operational information. Without a backend-owned redaction contract, a field called “reasoning summary” risks turning a trust feature into chain-of-thought or private-source leakage.
+
+Frontend workaround, if any: Keep using the existing stage titles and deterministic statuses. Do not synthesize summaries from event payloads, and do not remove the retrospective evidence panel until the replacement surface can preserve completed, failed, cancelled, and suspended state honestly.
+
+Delivery dependency: the earlier `consulted_sources`/citation-attribution backend is pushed but not deployed, and its migration/OpenAPI still gate live verification. Land and expose that contract before stacking this second frontend model dependency in a shared environment.
+
+### Provider-native candidates reviewed on 2026-08-26
+
+The official OpenAI reasoning guide exposes two useful but distinct primitives:
+
+- `reasoning.summary: "auto"` opts a Responses API call into a model-generated reasoning summary. The response carries `summary_text` inside a `type: "reasoning"` output item; raw reasoning tokens remain unavailable. This is one provider-response summary, not an application-stage timeline. Treat the raw summary as backend-internal generated text until the serializer applies the redaction/semantic boundary above. At most, it can support the answer-composer stage or a post-completion explanation.
+- Assistant-message `phase` distinguishes `commentary` intermediate updates from the `final_answer`. This is the better candidate for live provider updates because the backend can route commentary away from answer deltas instead of concatenating preambles into the final answer. `phase` classifies output; it does not make arbitrary commentary safe, so backend redaction still applies.
+
+Neither primitive replaces the application-owned stage events. Retrieval, permission checks, citation attribution, failure, cancellation, and durable suspension occur outside one final model response. The process timeline remains event-derived; provider commentary may enrich only the stage that owns that provider call.
+
+Compatibility limits to verify before implementation:
+
+- The guide demonstrates reasoning summaries with `gpt-5.6`, but says support is model-dependent. The configured `gpt-5.6-sol` model page confirms Responses and streaming support without explicitly listing summary support. Run a credentialed non-production smoke before making it contractual; organization verification may also be required.
+- The guide recommends `phase` for long-running/tool-heavy GPT-5.5 and GPT-5.4 flows. It does not establish GPT-5.6 Sol behavior. Confirm the configured model and the installed LangChain adapter preserve `phase` on streamed content blocks.
+- The current backend text collectors concatenate every text block they receive. Before enabling provider commentary, they must separate `commentary` from `final_answer`, emit a dedicated redacted progress event, and keep only final-answer text in persisted assistant messages and `answer_delta`.
+
+### Truth-status boundary and scope decision
+
+The provider-native research does **not** replace or block the operational-summary contract above. These are two different claims and must never share one visual register:
+
+1. **System operational summary:** backend-selected semantic key plus allowlisted parameters derived from deterministic application events. This is a verifiable record of authorization, retrieval, citation checks, interruption, cancellation, and completion. It is provider-independent and remains the item 3 contract.
+2. **Model reasoning summary:** generated prose describing how the model says it reasoned. It is a model-authored account, not evidence of what the application did, and may be incomplete or wrong while sounding authoritative.
+
+Item 3 ships **only the system operational summary**. It must remain complete and useful when no provider summary exists. Do not reserve an empty slot, render “summary unavailable,” or imply a model-dependent feature is missing.
+
+Provider reasoning summaries are deferred to a separate product decision after model-support and organization-verification smoke tests. If later approved, they require their own contract and review gate, must be visibly separated from the stage timeline, and must be attributed as the model's account rather than the system's record. They may not reuse the verified-step styling or inherit its evidentiary meaning.
+
+Assistant `phase` remains a candidate for routing intermediate provider commentary away from final-answer text, not a source of deterministic stage facts. Any future commentary UI is likewise separate from the verified operational timeline and requires backend redaction before delivery.

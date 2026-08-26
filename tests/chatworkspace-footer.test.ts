@@ -13,7 +13,6 @@ import {
   isConversationRunAlreadyActiveError,
   isObservedActiveRunStale,
   REPLAY_ICON_PENDING_CLASS_NAME,
-  sanitizeActivityEventPayload,
   seedLiveActivityEvents,
   shouldRecordLiveActivityEvent,
 } from "@/components/ChatWorkspace";
@@ -61,7 +60,7 @@ describe("ChatWorkspace assistant message footer", () => {
       "replayLoading",
       "messageFooterLabel",
       "viewCitationDetails",
-      "viewResponseEvidence",
+      "copyRunIdAction",
       "deleteConversationAction",
     ] as const;
 
@@ -78,41 +77,6 @@ describe("ChatWorkspace assistant message footer", () => {
     expect(ko.chat.citationSummary).toContain("{count}");
     expect(en.chat.deleteConversationConfirm).toContain("{title}");
     expect(ko.chat.deleteConversationConfirm).toContain("{title}");
-
-    // Run status vocabulary must cover every status the UI can render.
-    const runStatusKeys = [
-      "completed",
-      "failed",
-      "cancelled",
-      "cancelling",
-      "running",
-      "pending",
-    ] as const;
-    for (const key of runStatusKeys) {
-      expect(en.chat.runStatuses[key].trim().length).toBeGreaterThan(0);
-      expect(ko.chat.runStatuses[key].trim().length).toBeGreaterThan(0);
-    }
-  });
-
-  it("hides internal route details from activity evidence payloads", () => {
-    const sanitized = sanitizeActivityEventPayload({
-      route: { label: "general_assistant", explanation: "test" },
-      retrieval_route: "retrieval_required",
-      handled_by: "personal_assistant_graph",
-      route_label: "general_assistant",
-      reply: "Visible answer",
-      nested: { route: "internal", safe: "kept" },
-    });
-
-    expect(JSON.stringify(sanitized)).not.toMatch(
-      /route|retrieval_route|handled_by|general_assistant|personal_assistant_graph/,
-    );
-    expect(sanitized).toEqual({
-      reply: "Visible answer",
-      nested: { safe: "kept" },
-    });
-    expect(en.chat.runEvidenceLabel.trim().length).toBeGreaterThan(0);
-    expect(ko.chat.activityPayloadHidden).toMatch(/[가-힣]/);
   });
 
   it("keeps answer deltas out of visible live activity history", () => {
@@ -359,7 +323,7 @@ describe("ChatWorkspace assistant message footer", () => {
           },
         ],
       }),
-    ).toEqual(["planning", "answerReady"]);
+    ).toEqual(["planning", "draftingAnswer", "answerReady"]);
   });
 
   it("keeps terminal failures visible after partial backend traces", () => {

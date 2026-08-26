@@ -121,6 +121,19 @@ blocks new runs but produces nothing, so it must not show a stop button. Folding
 `waiting_for_input` into the existing single `isActiveAgentRunStatus` predicate
 gets this wrong.
 
+**Answering control input ends suspension immediately.** Choosing a document is
+not a new conversational turn. Before the first resume-stream event arrives,
+the frontend clears the answered card, treats the run as producing output,
+shows steering controls, accepts a queued follow-up, and advances the process
+surface. A stale `waiting_for_input` row in the runs-query cache must not rebuild
+the card while `isStreaming` is true. If resume fails and server truth still
+says waiting, cold-load recovery restores the same card.
+
+The backend resume stream begins with `run_resumed`, followed by actual
+retrieval/graph progress and answer deltas. A transport that executes sync
+resume to completion and replays the finished answer as fake deltas violates
+this transition even if its final transcript is correct.
+
 **The queue pauses; it does not drain.** The backend answers a new run in a
 conversation holding an unanswered interaction with the *existing*
 `conversation_run_already_active` 409 — there is no distinct code (confirmed

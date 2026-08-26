@@ -1,20 +1,23 @@
+import { HashIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import type { AgentEvent, AgentRunSummary, Citation } from "@/model/my-agents";
+import { CopyTextButton } from "./CopyMessageButton";
 import {
   buildEvidenceSources,
   groupSourcesByDocument,
 } from "./evidence-panel/evidence-sources";
+import { CitationSourcesDetails } from "./evidence-panel/sections";
 import {
-  CitationSourcesDetails,
-  EvidenceDetails,
-} from "./evidence-panel/sections";
+  AgentProcessPanel,
+  getAgentProcessState,
+} from "./evidence-panel/trace";
 
 export {
-  CurrentAgentTraceStepPanel,
+  AgentProcessPanel,
+  getAgentProcessDetails,
+  getAgentProcessState,
   getAgentTraceStageKeys,
-  getCurrentAgentTraceStep,
-  sanitizeActivityEventPayload,
 } from "./evidence-panel/trace";
 
 import type { ChatLocalization, LiveActivityEvent } from "./types";
@@ -52,7 +55,13 @@ export function EvidencePanel({
    */
   consultedSources?: Citation[] | null;
 }) {
-  const evidenceCount = runs.length + events.length;
+  const latestRunId = runs[0]?.run_id;
+  const processState = getAgentProcessState({
+    events,
+    citationCount: citations.length,
+    isStreaming,
+  });
+  const hasCompactCompletedProcess = processState.terminal === "completed";
   const evidence = buildEvidenceSources({ citations, consultedSources });
   // The panel counts and lists *documents*. A document contributes several
   // chunks routinely, and one row each made a single source look like four.
@@ -90,6 +99,48 @@ export function EvidencePanel({
         {copyButton}
         {isLatestAssistantMessage || isStreaming ? (
           <>
+            {events.length > 0 ? (
+              <OnboardingTarget
+                id="chat.agent-process"
+                className={hasCompactCompletedProcess ? "max-w-full" : "w-full"}
+              >
+                <div
+                  className={
+                    hasCompactCompletedProcess
+                      ? "inline-flex max-w-full min-w-0 items-start gap-1"
+                      : "flex w-full min-w-0 items-start gap-1"
+                  }
+                >
+                  <div
+                    className={
+                      hasCompactCompletedProcess ? "min-w-0" : "min-w-0 flex-1"
+                    }
+                  >
+                    <AgentProcessPanel
+                      localization={localization}
+                      lang={lang}
+                      events={events}
+                      citationCount={citations.length}
+                      isStreaming={isStreaming}
+                    />
+                  </div>
+                  {latestRunId ? (
+                    <CopyTextButton
+                      content={latestRunId}
+                      actionLabel={localization.copyRunIdAction}
+                      copiedAnnouncement={localization.runIdCopiedAnnouncement}
+                      copyFailedAnnouncement={
+                        localization.runIdCopyFailedAnnouncement
+                      }
+                      revealOnFailure={true}
+                      fallbackLabel={localization.runIdFallbackLabel}
+                      idleIcon={<HashIcon aria-hidden="true" />}
+                      className="shrink-0"
+                    />
+                  ) : null}
+                </div>
+              </OnboardingTarget>
+            ) : null}
             {/*
               Gated on the rendered rows, not on `citations.length`. Attribution
               is deliberately conservative, so an answer with zero verified
@@ -113,26 +164,6 @@ export function EvidencePanel({
                 />
               </details>
             ) : null}
-            <OnboardingTarget id="chat.response-evidence">
-              <details className="group/evidence min-w-0 rounded-lg border border-cal-hairline bg-km-surface/70 text-cal-ink open:w-full open:bg-km-surface">
-                <summary
-                  aria-label={`${localization.viewResponseEvidence} (${evidenceCount})`}
-                  className="flex min-h-9 cursor-pointer list-none items-center gap-2 px-3 text-xs font-semibold marker:hidden hover:text-cal-primary"
-                >
-                  <span>{localization.responseEvidence}</span>
-                  <span className="rounded-full bg-cal-surface-soft px-2 py-0.5 text-[11px] text-cal-muted">
-                    {evidenceCount}
-                  </span>
-                </summary>
-                <EvidenceDetails
-                  localization={localization}
-                  lang={lang}
-                  runs={runs}
-                  events={events}
-                  citationCount={citations.length}
-                />
-              </details>
-            </OnboardingTarget>
           </>
         ) : (
           <p className="self-center text-xs leading-5 text-cal-muted">

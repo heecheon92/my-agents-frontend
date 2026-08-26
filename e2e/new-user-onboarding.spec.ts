@@ -76,7 +76,8 @@ async function mockNewUserWorkspace(page: import("@playwright/test").Page) {
           id: "m-assistant",
           conversation_id: conversation.id,
           role: "assistant",
-          content: "답변 옆의 인용과 작업 내역에서 근거를 확인할 수 있습니다.",
+          content:
+            "답변 옆의 출처와 에이전트 흐름에서 근거를 확인할 수 있습니다.",
         },
       ]);
     }
@@ -89,7 +90,7 @@ async function mockNewUserWorkspace(page: import("@playwright/test").Page) {
     ) {
       return json({
         ...run,
-        reply: "답변 옆의 인용과 작업 내역에서 근거를 확인할 수 있습니다.",
+        reply: "답변 옆의 출처와 에이전트 흐름에서 근거를 확인할 수 있습니다.",
         handled_by: "rag_agent",
         citations: [
           {
@@ -97,7 +98,7 @@ async function mockNewUserWorkspace(page: import("@playwright/test").Page) {
             document_id: "doc-new-user-tour",
             knowledge_base_id: knowledgeBase.id,
             chunk_id: "chunk-new-user-tour",
-            snippet: "인용과 작업 내역에서 근거를 확인합니다.",
+            snippet: "출처와 에이전트 흐름에서 근거를 확인합니다.",
             source_filename: "product-guide.md",
             source_page: null,
           },

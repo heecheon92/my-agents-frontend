@@ -26,17 +26,20 @@ from the wish list.
 
 A calm, citation-forward AI workspace. Editorial rather than dashboard-noisy:
 dense information is fine, but hierarchy must feel curated. The metaphor is
-**instrument panel + knowledge dossier** — transcripts, citations, activity,
-documents, and permissions read as connected operational evidence.
+**instrument panel + knowledge dossier** — transcripts, document-level sources,
+the reached-stage agent process, documents, and permissions read as connected
+operational evidence.
 
 **Trust signals.** Provenance sits next to answers. Backend-owned limits are
 stated honestly. Errors explain the next safe step without exposing internals.
 
 **Audience.** Readers are technically literate and want to see *how* an answer
 was produced, not only that it appeared. That is a design
-input, not just context: the retrieval pipeline, agent trace, citation chunks,
-and extraction stages are **evidence of how the system works, and should stay
-legible rather than be smoothed away**. Name the pipeline accurately in
+input, not just context: the retrieval pipeline, backend-authored agent steps,
+document provenance, and extraction stages are **evidence of how the system
+works, and should stay legible rather than be smoothed away**. Chunk-level
+provenance remains an audit boundary; the primary answer surface groups it by
+document. Name the pipeline accurately in
 inspection surfaces — `임베딩`, `청크`, `엔티티`, `색인` are correct there, and
 `docs/korean-copy-guide.md` records the boundary. This never licenses leaking
 internals: raw enums, identifiers in a primary reading path, stack traces, and

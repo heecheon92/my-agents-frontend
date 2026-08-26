@@ -236,6 +236,7 @@ export function ChatWorkspaceLayout({
               messagesError={messagesError}
               messages={messages}
               conversationIsBusy={conversationIsBusy}
+              isProducingOutput={isStreaming}
               streamedReply={streamedReply}
               serverActiveRunIsStale={serverActiveRunIsStale}
               sortedRuns={sortedRuns}
@@ -265,6 +266,7 @@ export function ChatWorkspaceLayout({
             */}
             <div
               ref={composerRef}
+              data-slot="chat-composer-overlay"
               className="pointer-events-none absolute inset-x-0 bottom-0"
             >
               <OnboardingTarget id="chat.composer">

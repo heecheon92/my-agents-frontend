@@ -16,13 +16,9 @@ function latestAssistantFooter(page: import("@playwright/test").Page) {
 
 async function expectLatestAssistantFooterEvidence(
   page: import("@playwright/test").Page,
-  eventName: string | RegExp,
 ) {
   const footer = latestAssistantFooter(page);
   await expect(footer).toBeVisible();
-  await expect(
-    page.locator("aside").filter({ hasText: ko.chat.latestCitations }),
-  ).toHaveCount(0);
 
   // Either label, because the disclosure is named for what the run reported:
   // an attributed run lists consulted sources, a pre-attribution one lists
@@ -36,9 +32,9 @@ async function expectLatestAssistantFooterEvidence(
       ),
     )
     .click();
-  // The panel lists documents by name now. It deliberately shows no
-  // `document_id`, `chunk_id` or snippet, so the old assertion on
-  // `chat.documentLabel` was asserting the presence of something removed.
+  // The panel lists documents by name now. It deliberately shows no internal
+  // identifiers, snippets, raw event names, or retrospective work-history
+  // disclosure.
   await expect(
     footer
       .getByText(
@@ -50,13 +46,7 @@ async function expectLatestAssistantFooterEvidence(
       )
       .first(),
   ).toBeVisible();
-  await footer
-    .getByLabel(new RegExp(escapeRegExp(ko.chat.viewResponseEvidence)))
-    .click();
-  await expect(
-    footer.getByText(ko.chat.runStatuses.completed).first(),
-  ).toBeVisible();
-  await expect(footer.getByText(eventName).first()).toBeVisible();
+  await expect(footer.getByTestId("agent-process-panel")).toBeVisible();
 }
 
 function escapeRegExp(value: string) {
@@ -259,7 +249,7 @@ test.describe("V1 seeded demo", () => {
 
     await expect(latestAssistantFooter(page)).toBeVisible({ timeout: 15_000 });
     await expectChatTranscriptLayoutBounded(page);
-    await expectLatestAssistantFooterEvidence(page, "retrieval_completed");
+    await expectLatestAssistantFooterEvidence(page);
 
     // The conversation is in the URL now, so a reload restores it rather than
     // dropping back to the most recent one.
@@ -273,7 +263,7 @@ test.describe("V1 seeded demo", () => {
         .first(),
     ).toHaveAttribute("aria-current", "page");
     await expectChatTranscriptLayoutBounded(page);
-    await expectLatestAssistantFooterEvidence(page, "retrieval_completed");
+    await expectLatestAssistantFooterEvidence(page);
   });
 });
 
@@ -381,7 +371,7 @@ test.describe("V1 public visitor smoke", () => {
 
     await expect(latestAssistantFooter(page)).toBeVisible({ timeout: 20_000 });
     await expectChatTranscriptLayoutBounded(page);
-    await expectLatestAssistantFooterEvidence(page, /retrieval_/);
+    await expectLatestAssistantFooterEvidence(page);
 
     await page.reload();
     await expect(page).toHaveURL(conversationUrl);
@@ -393,7 +383,7 @@ test.describe("V1 public visitor smoke", () => {
         .first(),
     ).toHaveAttribute("aria-current", "page");
     await expectChatTranscriptLayoutBounded(page);
-    await expectLatestAssistantFooterEvidence(page, /retrieval_/);
+    await expectLatestAssistantFooterEvidence(page);
     await assertBrowserStorageHasNoSecrets(page);
   });
 });
