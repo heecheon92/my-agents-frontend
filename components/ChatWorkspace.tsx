@@ -658,7 +658,13 @@ export function ChatWorkspace({
     ? latestConsultedSources
     : (completedRunDetail?.consulted_sources ?? null);
   const latestAssistantMessageId = getLatestAssistantMessageId(sortedMessages);
-  const autoScrollTrigger = `${sortedMessages.length}:${streamedReply.length}`;
+  const latestActivityEvent = visibleActivityEvents.at(-1);
+  // The transcript grows from process events before the first answer token,
+  // not only from messages and reply text. Event identity/sequence changes for
+  // every appended phase, including one event that reveals several trace steps
+  // in a burst. The scroll effect still checks `shouldAutoScrollRef`, so this
+  // never pulls a reader back down after they intentionally scroll upward.
+  const autoScrollTrigger = `${sortedMessages.length}:${streamedReply.length}:${visibleActivityEvents.length}:${latestActivityEvent?.id ?? ""}:${latestActivityEvent?.sequence ?? ""}`;
   const composerPlaceholder = conversationIsBusy
     ? visibleQueuedMessage
       ? localization.queuedComposerPlaceholder

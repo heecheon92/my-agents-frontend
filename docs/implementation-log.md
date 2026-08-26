@@ -1087,3 +1087,24 @@ passed, Vitest passed 262 tests across 36 files, full Playwright passed 139 with
 2 environment-gated skips, and the production build completed all 17 routes.
 The backend passed 534 tests with 2 skipped; Ruff lint/format and both diff
 checks passed. Live hosted deployment remains unverified.
+
+### Follow-up: process growth now participates in transcript auto-scroll
+
+The newly useful pre-answer interval exposed a second-order layout defect: the
+process panel accumulated stages while `sortedMessages.length` and
+`streamedReply.length` stayed unchanged, so the transcript's auto-scroll effect
+did not run. At 390 and 1280 the current stage ended behind the floating
+composer.
+
+`autoScrollTrigger` now includes the visible activity-event count plus the
+latest event identity and sequence. Every appended event therefore rechecks the
+bottom position after render, including a single event that reveals several
+trace steps at once. The existing `shouldAutoScrollRef` guard remains the final
+authority, so a reader who scrolls upward is not pulled back down.
+
+The geometric regression failed before the fix at both widths: the current row
+ended at 828.5px versus a 649px composer top on mobile, and 772.5px versus 697px
+on desktop. It now requires the full current row to stay above the composer.
+A separate test moves the reader away from the bottom and verifies process
+growth leaves `scrollTop` unchanged. Updated interval screenshots include
+several accumulated dynamic steps at both widths.

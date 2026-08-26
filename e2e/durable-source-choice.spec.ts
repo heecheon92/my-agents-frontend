@@ -104,6 +104,17 @@ test.describe("durable document-source choice", () => {
       await expect(page.getByTestId("agent-process-panel")).toBeVisible({
         timeout: 750,
       });
+      const currentStageBox = await page
+        .locator('[data-current="true"]')
+        .boundingBox();
+      const composerBox = await page
+        .locator('[data-slot="chat-composer-overlay"]')
+        .boundingBox();
+      expect(currentStageBox).not.toBeNull();
+      expect(composerBox).not.toBeNull();
+      expect(
+        (currentStageBox?.y ?? 0) + (currentStageBox?.height ?? 0),
+      ).toBeLessThanOrEqual(composerBox?.y ?? 0);
 
       await page.screenshot({
         path: testInfo.outputPath(`slow-resume-${viewport.width}.png`),
@@ -120,6 +131,49 @@ test.describe("durable document-source choice", () => {
       releaseResume?.();
     });
   }
+
+  test("does not steal scroll position when a reader moved away from the bottom", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mockWorkspace(page, { interaction: "document_selection" });
+    let releaseResume: (() => void) | undefined;
+    const resumeGate = new Promise<void>((resolve) => {
+      releaseResume = resolve;
+    });
+    await page.route("**/api/my-agents/**/resume/stream", async (route) => {
+      await resumeGate;
+      await route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        body:
+          'event: run_resumed\ndata: {"run_id":"run-waiting","status":"running","interaction_id":"run-waiting:document_selection","interaction_schema_version":1,"interaction_type":"document_selection"}\n\n' +
+          'event: run_failed\ndata: {"run_id":"run-waiting","safe_error_type":"TestEnd"}\n\n',
+      });
+    });
+    await page.goto(CONVERSATION_URL);
+    await page.waitForTimeout(350);
+    await dismissOnboarding(page);
+    const scrollRegion = page.getByTestId("chat-scroll-region");
+    await scrollRegion.evaluate((element) => {
+      element.scrollTop = 0;
+      element.dispatchEvent(new Event("scroll"));
+    });
+
+    await page
+      .getByRole("button", { name: chat.interactionChoose })
+      .first()
+      .click();
+    await expect(page.locator('[data-slot="interaction-card"]')).toHaveCount(
+      0,
+      {
+        timeout: 750,
+      },
+    );
+    await page.waitForTimeout(100);
+    expect(await scrollRegion.evaluate((element) => element.scrollTop)).toBe(0);
+    releaseResume?.();
+  });
 
   test("keeps cancel available so the waiting run can be released", async ({
     page,
