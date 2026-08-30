@@ -262,6 +262,8 @@ type RouteOverrides = {
    * keeps proving the legacy panel is unchanged.
    */
   attribution?: false | "supported" | "none";
+  /** Add refresh-safe comprehensive-document coverage to the completed run. */
+  documentCoverage?: false | "complete" | "partial";
   processState?:
     | "completed"
     | "failed"
@@ -287,6 +289,7 @@ export async function mockWorkspace(
     empty = false,
     reasoning = true,
     attribution = false,
+    documentCoverage = false,
     processState = "completed",
     interaction = false,
   } = overrides;
@@ -296,6 +299,17 @@ export async function mockWorkspace(
   // "none" is the case the backend expects to be common: sources were read, but
   // the conservative selector matched none of them to the answer.
   const attributedCitations = attribution === "none" ? [] : [mockCitation];
+  const coverage = !documentCoverage
+    ? null
+    : {
+        mode: documentCoverage,
+        document_id: mockCitation.document_id,
+        title: "2026 파트너 계약서",
+        source_filename: mockCitation.source_filename,
+        start_offset: 0,
+        end_offset: documentCoverage === "complete" ? 8_400 : 12_000,
+        total_chars: documentCoverage === "complete" ? 8_400 : 32_000,
+      };
   const pendingInteraction = !interaction
     ? null
     : interaction === "many_options"
@@ -665,6 +679,7 @@ export async function mockWorkspace(
         handled_by: "personal_assistant_graph",
         citations: attribution ? attributedCitations : [mockCitation],
         ...(consultedSources ? { consulted_sources: consultedSources } : {}),
+        ...(documentCoverage ? { document_coverage: coverage } : {}),
       });
     }
     // The suspended run's stored activity. It exists server-side but has no

@@ -175,7 +175,7 @@
       "guestAddSourcesTitle": "Add sources when you need evidence",
       "guestAddSourcesBody": "You can upload a set number of documents from the knowledge base screen. Limits apply automatically.",
       "guestEvidenceTitle": "Check sources and progress beside answers",
-      "guestEvidenceBody": "When an answer uses documents, consulted sources and the agent process appear beside it.",
+      "guestEvidenceBody": "When an answer uses documents, consulted sources and the answer process appear beside it.",
       "newKnowledgeSpaceTitle": "Create or choose a knowledge base",
       "newKnowledgeSpaceBody": "Use this one Sources page to give your files and notes a clear home before you ask questions from them.",
       "newSourceDestinationTitle": "Choose where sources belong",
@@ -189,7 +189,7 @@
       "newAskQuestionTitle": "Ask a focused question",
       "newAskQuestionBody": "Write the question here. The answer appears in the transcript and can stream as the run progresses.",
       "newReviewEvidenceTitle": "Review answer sources and progress",
-      "newReviewEvidenceBody": "When an answer uses documents, consulted sources and the agent process appear beside it."
+      "newReviewEvidenceBody": "When an answer uses documents, consulted sources and the answer process appear beside it."
     }
   },
   "status": {
@@ -249,7 +249,7 @@
     "immediateFailedAnnouncement": "Could not stop the current answer. Your message was restored to the composer.",
     "runFailed": "Could not complete the answer.",
     "agentTrace": {
-      "title": "Agent trace",
+      "title": "Answer process",
       "currentStep": "Current step",
       "starting": "Preparing the answer",
       "completedSummary": "Completed stages: {count}",
@@ -268,7 +268,7 @@
       }
     },
     "messageFooterLabel": "Answer actions and sources",
-    "messageEvidenceUnavailable": "Sources and the agent process are shown only for the latest answer.",
+    "messageEvidenceUnavailable": "Sources and the answer process are shown only for the latest answer.",
     "roles": {
       "user": "You",
       "assistant": "AI",
@@ -318,6 +318,10 @@
     "supportedSourceHint": "A supported source is one where a passage directly matching the answer was found.",
     "noSupportedSourceHint": "No source was found to directly match the answer. These sources were consulted.",
     "sourceUnavailableLabel": "Source details unavailable",
+    "documentCoverageSummary": "Document coverage",
+    "viewDocumentCoverage": "View document coverage",
+    "documentCoverageComplete": "Answered after reading the full document · {title}",
+    "documentCoveragePartial": "Answered after reading part of the document · {title} · characters {start}–{end} / {total} total",
     "changeSourcesAction": "Change",
     "closeAction": "Close",
     "privateChatPill": "Private chat",

@@ -175,7 +175,7 @@
       "guestAddSourcesTitle": "근거가 필요하면 문서를 추가하세요",
       "guestAddSourcesBody": "지식 베이스 화면에서 정해진 개수만큼 문서를 올릴 수 있습니다. 제한은 자동으로 적용됩니다.",
       "guestEvidenceTitle": "답변 옆에서 출처와 흐름을 확인하세요",
-      "guestEvidenceBody": "답변이 문서를 사용하면 참고한 출처와 에이전트 흐름이 답변 옆에 표시됩니다.",
+      "guestEvidenceBody": "답변이 문서를 사용하면 참고한 출처와 답변 과정이 답변 옆에 표시됩니다.",
       "newKnowledgeSpaceTitle": "지식 베이스를 만들거나 선택하세요",
       "newKnowledgeSpaceBody": "파일과 메모를 둘 지식 베이스를 먼저 정하세요. 그다음 질문을 시작할 수 있습니다.",
       "newSourceDestinationTitle": "문서를 넣을 위치를 고르세요",
@@ -189,7 +189,7 @@
       "newAskQuestionTitle": "구체적인 질문을 입력하세요",
       "newAskQuestionBody": "여기에 질문을 작성하세요. 답변은 대화에 표시되고 실행 중에는 스트리밍될 수 있습니다.",
       "newReviewEvidenceTitle": "답변의 출처와 흐름을 확인하세요",
-      "newReviewEvidenceBody": "답변이 문서를 사용하면 참고한 출처와 에이전트 흐름이 답변 옆에 표시됩니다."
+      "newReviewEvidenceBody": "답변이 문서를 사용하면 참고한 출처와 답변 과정이 답변 옆에 표시됩니다."
     }
   },
   "status": {
@@ -249,7 +249,7 @@
     "immediateFailedAnnouncement": "현재 답변을 중지하지 못했습니다. 메시지를 입력창으로 복원했습니다.",
     "runFailed": "답변을 만들지 못했습니다.",
     "agentTrace": {
-      "title": "에이전트 흐름",
+      "title": "답변 과정",
       "currentStep": "현재 단계",
       "starting": "답변 준비 중",
       "completedSummary": "완료한 단계: {count}개",
@@ -268,7 +268,7 @@
       }
     },
     "messageFooterLabel": "답변 작업과 출처",
-    "messageEvidenceUnavailable": "출처와 에이전트 흐름은 가장 최근 답변에만 표시됩니다.",
+    "messageEvidenceUnavailable": "출처와 답변 과정은 가장 최근 답변에만 표시됩니다.",
     "roles": {
       "user": "나",
       "assistant": "AI",
@@ -318,6 +318,10 @@
     "supportedSourceHint": "근거 표시는 답변과 직접 일치하는 부분이 확인된 출처입니다.",
     "noSupportedSourceHint": "답변과 직접 일치하는 출처를 찾지 못했습니다. 아래 출처를 참고했습니다.",
     "sourceUnavailableLabel": "출처 정보 없음",
+    "documentCoverageSummary": "문서 검토 범위",
+    "viewDocumentCoverage": "문서 검토 범위 보기",
+    "documentCoverageComplete": "문서 전체를 읽고 답했습니다 · {title}",
+    "documentCoveragePartial": "문서 일부만 읽고 답했습니다 · {title} · {start}–{end}자 / 전체 {total}자",
     "changeSourcesAction": "변경",
     "closeAction": "닫기",
     "privateChatPill": "비공개 채팅",

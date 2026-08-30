@@ -130,6 +130,49 @@ describe("getAgentProcessState", () => {
     expect(state.currentStage).toBeNull();
   });
 
+  it("keeps a waiting answer composer in the drafting stage", () => {
+    const state = getAgentProcessState({
+      events: [
+        event(1, "run_started"),
+        event(2, "graph_invoked", {
+          agent_trace: [
+            {
+              id: "answer_composer",
+              event_type: "answer_composing",
+              status: "waiting",
+              title: { ko: "답변 작성 중", en: "Drafting answer" },
+              description: {
+                ko: "답변을 작성 중입니다.",
+                en: "Drafting the answer.",
+              },
+              evidence: {},
+            },
+          ],
+        }),
+      ],
+      citationCount: 0,
+      isStreaming: true,
+    });
+
+    expect(state.stages).toEqual(["draftingAnswer"]);
+    expect(state.currentStage).toBe("draftingAnswer");
+    expect(state.terminal).toBeNull();
+  });
+
+  it("lets a later failure override earlier insufficient evidence", () => {
+    const state = getAgentProcessState({
+      events: [
+        event(1, "retrieval_completed", { insufficient_evidence: true }),
+        event(2, "run_failed"),
+      ],
+      citationCount: 0,
+      isStreaming: false,
+    });
+
+    expect(state.terminal).toBe("failed");
+    expect(state.currentStage).toBeNull();
+  });
+
   it("returns no process surface when no event has been observed", () => {
     expect(
       getAgentProcessState({

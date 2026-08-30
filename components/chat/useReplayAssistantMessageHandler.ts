@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useReplayAssistantMessage } from "@/hooks/use-conversations";
+import type { ConversationRunResponse } from "@/model/my-agents";
 import { isMyAgentsAPIError } from "@/services/my-agents/MyAgentsAPIError";
 import type { Localization } from "@/utils/localization";
 
@@ -17,6 +18,7 @@ type UseReplayAssistantMessageHandlerOptions = {
   isCancelling: boolean;
   localization: Localization["chat"];
   setStatusAnnouncement: (message: string) => void;
+  onReplayResult: (result: ConversationRunResponse) => void;
 };
 
 export function useReplayAssistantMessageHandler({
@@ -25,6 +27,7 @@ export function useReplayAssistantMessageHandler({
   isCancelling,
   localization,
   setStatusAnnouncement,
+  onReplayResult,
 }: UseReplayAssistantMessageHandlerOptions) {
   const replayAssistantMessage = useReplayAssistantMessage(activeId);
   const [replayingMessageId, setReplayingMessageId] = useState<string | null>(
@@ -48,6 +51,7 @@ export function useReplayAssistantMessageHandler({
 
     try {
       const replayResult = await replayAssistantMessage.mutateAsync(messageId);
+      onReplayResult(replayResult);
       const hasUnavailableSources = replayResult.warnings.some(
         (warning) => warning.code === "regeneration_sources_unavailable",
       );

@@ -177,12 +177,8 @@ const JARGON_RULINGS: Record<string, JargonRuling> = {
     paths: /^admin\.documents\.stages\./,
     why: "ingestion stage",
   },
-  에이전트: {
-    allowed: true,
-    paths:
-      /^chat\.agentTrace\.|^chat\.messageEvidenceUnavailable$|^onboarding\.steps\.(guestEvidenceBody|newReviewEvidenceBody)$/,
-    why: "the agent process is the product's evidence surface and onboarding names it directly",
-  },
+  // The process surface names the work, not the implementation role doing it.
+  에이전트: { allowed: false, instead: "AI 또는 답변 과정" },
 
   // Banned: implementation vocabulary with no meaning for a reader.
   옵트인: { allowed: false, instead: "직접 켠 / 사용 설정한" },

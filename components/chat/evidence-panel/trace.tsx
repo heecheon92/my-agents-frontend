@@ -178,11 +178,11 @@ function stageKeysFromBackendAgentTrace(
       if (step.id === "answer_composer") {
         hasCompletedAnswerComposer = step.status === "completed";
         stageKeys.add("draftingAnswer");
-        stageKeys.add(
-          hasCompletedAnswerComposer && !hasInsufficientEvidence
-            ? "answerReady"
-            : "needsEvidence",
-        );
+        if (hasCompletedAnswerComposer && !hasInsufficientEvidence) {
+          stageKeys.add("answerReady");
+        } else if (hasInsufficientEvidence) {
+          stageKeys.add("needsEvidence");
+        }
         continue;
       }
       stageKeys.add(phaseForTraceStep(step, event.event_type.toLowerCase()));
@@ -232,14 +232,14 @@ export function getAgentProcessState({
     .at(-1)?.event_type;
 
   let terminal: AgentProcessTerminal | null = null;
-  if (hasInsufficientEvidence) {
-    terminal = "needsEvidence";
-  } else if (lifecycleEvent && /run_(failed|error)$/.test(lifecycleEvent)) {
+  if (lifecycleEvent && /run_(failed|error)$/.test(lifecycleEvent)) {
     terminal = "failed";
   } else if (lifecycleEvent?.endsWith("run_cancelled")) {
     terminal = "cancelled";
   } else if (lifecycleEvent?.endsWith("run_interrupted")) {
     terminal = "waitingForConfirmation";
+  } else if (hasInsufficientEvidence) {
+    terminal = "needsEvidence";
   } else if (lifecycleEvent?.endsWith("run_completed")) {
     terminal = "completed";
   }
@@ -539,25 +539,22 @@ export function AgentProcessPanel({
     </ol>
   );
 
-  const liveAnnouncement = isStarting
-    ? localization.agentTrace.starting
-    : state.currentStage
-      ? `${localization.agentTrace.currentStep}: ${localization.agentTrace.stages[state.currentStage]}`
-      : terminalText;
+  const liveAnnouncement =
+    headline.current && !isStarting
+      ? `${localization.agentTrace.currentStep}: ${headline.label}`
+      : headline.label;
 
   return (
     <div className="w-full min-w-0">
       <details
         data-testid="agent-process-panel"
+        aria-label={localization.agentTrace.title}
         // The accent tint is kept when open. The step chips are `bg-km-surface`,
         // so swapping the open panel to that same token erased them in both
         // themes — they only read as chips against the tint.
         className="group/process w-full min-w-0 rounded-lg border border-km-accent/20 bg-km-accent/10 text-cal-ink"
       >
         <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 marker:hidden">
-          <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
-            {localization.agentTrace.title}
-          </span>
           <span
             data-current={headline.current ? "true" : undefined}
             data-terminal={headline.terminal ?? undefined}
@@ -598,7 +595,11 @@ export function AgentProcessPanel({
         accessibility tree, so a live region inside it would never announce a
         step change to a reader who left the panel collapsed.
       */}
-      <span aria-live="polite" className="sr-only">
+      <span
+        aria-live="polite"
+        data-slot="agent-process-announcement"
+        className="sr-only"
+      >
         {liveAnnouncement}
       </span>
     </div>

@@ -33,6 +33,13 @@ operational evidence.
 **Trust signals.** Provenance sits next to answers. Backend-owned limits are
 stated honestly. Errors explain the next safe step without exposing internals.
 
+**Document coverage is retrieval provenance, not a citation.** A comprehensive
+answer may disclose that the backend read a complete document or one bounded
+range. That row lives inside the source disclosure but does not increase the
+source count, inherit a support badge, or imply that every read passage supports
+the answer. Partial coverage states the served character range without a
+percentage, progress affordance, or promise that another range is reachable.
+
 **The agent process heads the answer it describes.** It reports work that
 precedes the answer, so it sits at the top of the assistant message rather than
 in its footer, collapsed to the run's current step with the full step list one

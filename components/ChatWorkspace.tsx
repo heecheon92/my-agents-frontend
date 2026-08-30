@@ -20,6 +20,7 @@ import { useLocalization } from "@/hooks/useLocalization";
 import { decodeRouteSegment } from "@/lib/route-segments";
 import {
   type Citation,
+  type DocumentCoverage,
   INTERACTION_SCHEMA_VERSION,
   isDocumentSelection,
   isRunInterrupted,
@@ -214,6 +215,17 @@ export function ChatWorkspace({
   const [latestConsultedSources, setLatestConsultedSources] = useState<
     Citation[] | null
   >(null);
+  /**
+   * Tri-state by design: `undefined` means no local run owns this surface yet,
+   * so refresh-safe run detail may supply coverage. `null` means the current
+   * run explicitly reported no coverage. An object is the bounded range read.
+   */
+  const [latestDocumentCoverage, setLatestDocumentCoverage] = useState<
+    DocumentCoverage | null | undefined
+  >(undefined);
+  const [latestRunResultId, setLatestRunResultId] = useState<string | null>(
+    null,
+  );
   // Derived from the session, not from `?guest=1`. The query param survives
   // only until the first navigation, so the old derivation dropped the notice
   // while the session was still a guest session.
@@ -330,6 +342,8 @@ export function ChatWorkspace({
     setIsStreaming,
     setLatestCitations,
     setLatestConsultedSources,
+    setLatestDocumentCoverage,
+    setLatestRunResultId,
     setLiveActivityEvents,
     setOptimisticMessage,
     setQueuedMessageState,
@@ -351,6 +365,12 @@ export function ChatWorkspace({
     isCancelling,
     localization,
     setStatusAnnouncement,
+    onReplayResult: (result) => {
+      setLatestCitations(result.citations ?? []);
+      setLatestConsultedSources(result.consulted_sources ?? null);
+      setLatestDocumentCoverage(result.document_coverage ?? null);
+      setLatestRunResultId(result.run_id);
+    },
   });
 
   function toggleSelectedKnowledgeBase(knowledgeBaseId: string) {
@@ -646,17 +666,31 @@ export function ChatWorkspace({
    * evidence". Keying on it alone would pair the live consulted list with the
    * server's citation list and badge whichever rows happened to match.
    *
-   * A legacy run never sets `latestConsultedSources`, so this reduces to the
-   * previous condition exactly and that path is unchanged.
+   * Busy state owns the surface before a result exists; afterward the coverage
+   * tri-state owns it. This suppresses stale evidence while a run is active,
+   * preserves explicit empty legacy completions, and lets a failed run reveal
+   * the previous completed answer's evidence again.
    */
+  const localRunOwnsEvidence =
+    conversationIsBusy || latestDocumentCoverage !== undefined;
   const hasLiveEvidence =
-    latestCitations.length > 0 || latestConsultedSources !== null;
+    localRunOwnsEvidence ||
+    latestCitations.length > 0 ||
+    latestConsultedSources !== null;
   const visibleCitations = hasLiveEvidence
     ? latestCitations
     : (completedRunDetail?.citations ?? []);
   const visibleConsultedSources = hasLiveEvidence
     ? latestConsultedSources
     : (completedRunDetail?.consulted_sources ?? null);
+  const visibleDocumentCoverage = localRunOwnsEvidence
+    ? (latestDocumentCoverage ?? null)
+    : (completedRunDetail?.document_coverage ?? null);
+  // Live events without a completed local result belong to a newer attempt than
+  // the cached run list. Do not pair them with the previous completed run ID.
+  const latestRunId =
+    latestRunResultId ??
+    (liveActivityEvents.length === 0 ? (latestCompletedRunId ?? null) : null);
   const latestAssistantMessageId = getLatestAssistantMessageId(sortedMessages);
   const latestActivityEvent = visibleActivityEvents.at(-1);
   // The transcript grows from process events before the first answer token,
@@ -763,6 +797,8 @@ export function ChatWorkspace({
     setLiveActivityEvents([]);
     setLatestCitations([]);
     setLatestConsultedSources(null);
+    setLatestDocumentCoverage(undefined);
+    setLatestRunResultId(null);
     setOptimisticMessage(null);
   }, [activeId]);
 
@@ -828,6 +864,7 @@ export function ChatWorkspace({
       knowledgeBases={knowledgeBases}
       lang={lang}
       latestAssistantMessageId={latestAssistantMessageId}
+      latestRunId={latestRunId}
       localization={localization}
       messages={sortedMessages}
       messagesError={messages.error}
@@ -867,12 +904,12 @@ export function ChatWorkspace({
       onReasoningModeChange={(mode) => persistReasoning({ mode })}
       onReasoningEffortChange={(effort) => persistReasoning({ effort })}
       showGuestNotice={showGuestNotice}
-      sortedRuns={sortedRuns}
       statusAnnouncement={statusAnnouncement}
       streamError={streamError}
       streamedReply={streamedReply}
       visibleCitations={visibleCitations}
       visibleConsultedSources={visibleConsultedSources}
+      visibleDocumentCoverage={visibleDocumentCoverage}
       visibleQueuedMessage={visibleQueuedMessage}
     />
   );

@@ -1,7 +1,7 @@
 # Document coverage disclosure — work plan
 
 **Branch:** `feature/document-coverage-disclosure`, cut from `develop` @ `98d3391`.
-**Status:** not started. Blocked on one thing — see *The blocker*.
+**Status:** implemented and locally verified on 2026-08-31.
 **Written:** 2026-08-24.
 
 This document exists because the working notes lived in `/tmp/agent-handoff/`,
@@ -10,22 +10,28 @@ external file is required.
 
 ---
 
-## The blocker
+## Contract verification — resolved
 
-**There is no hosted backend OpenAPI URL for the merged
-`feature/full-document-retrieval` branch.**
+The backend PR branch was served locally and its live contract was read from
+`http://127.0.0.1:8765/openapi.json` before the frontend model changed.
 
 `AGENTS.md` forbids deriving frontend request/response models from backend
 source inspection; API models come from the backend's hosted OpenAPI document.
-Every backend detail quoted below was read from `../my-agents` as *behavioral
-context*, which is permitted — but none of it may be turned into a Zod schema.
+The served schema confirmed an optional and nullable
+`ConversationRunResponse.document_coverage`, with a strict
+`DocumentCoverageResponse`: required `mode`, `document_id`, `title`,
+`start_offset`, `end_offset`, and `total_chars`; optional nullable
+`source_filename`; `complete | partial`; and nonnegative integer offsets. The
+frontend Zod schema was written from that response rather than backend source.
 
-**To unblock:** run the backend on the merged branch and open
-`http://localhost:8000/openapi.json` (or `/docs`). Then `documentCoverageSchema`
-can be written from the served document.
-
-Do not start by writing the schema from the table in this file. The table is
-here so you know what to *expect*, not to copy.
+```mermaid
+flowchart LR
+    API["Backend run_completed or run detail"] --> Parse["conversationRunResponseSchema"]
+    Parse --> State["Tri-state coverage state"]
+    State -->|object| Row["Coverage row inside source disclosure"]
+    State -->|null| None["No coverage row for this run"]
+    State -->|undefined| Detail["Refresh fallback to latest run detail"]
+```
 
 ---
 
@@ -183,17 +189,18 @@ yields an English notice. Independent of who owns the disclosure.
 
 ---
 
-## Where to touch
+## Implemented surface
 
-- `model/my-agents/conversations.ts` — add optional `document_coverage` to the
-  run response schema. It is not `.strict()`, so this is additive.
-- `model/my-agents/` — new `documentCoverageSchema`, exported from the barrel.
-- `components/chat/EvidencePanel.tsx` — the disclosure currently renders only
-  when `citations.length > 0` (`:67`). Coverage needs to reach the panel
-  regardless of citation count.
-- `components/chat/evidence-panel/sections.tsx` — the coverage row itself.
-- `localization/{ko,en}.json` — copy at key parity.
-- `e2e/helpers/mock-workspace.ts` — a coverage fixture on the completed run.
+- `model/my-agents/conversations.ts` parses the optional/nullable coverage
+  object from every sync, SSE, replay, resume, and run-detail response path.
+- `ChatWorkspace` keeps `undefined`, `null`, and object states distinct so an
+  earlier run's coverage cannot reappear on a new ordinary answer.
+- `EvidencePanel` renders coverage as its own row inside the source disclosure;
+  it is not a source, citation, support badge, or count.
+- `localization/{ko,en}.json` owns the complete/partial copy.
+- Vitest covers schema and mode-authoritative formatting. Playwright covers
+  complete, partial, ordinary/null, source-count parity, and narrow-width
+  overflow.
 
 No BFF or proxy work: coverage rides on run responses through routes that are
 already allowlisted.
@@ -205,7 +212,8 @@ pnpm lint && pnpm exec tsc --noEmit && pnpm exec vitest run
 pnpm exec playwright test && pnpm build
 ```
 
-Then check the rendered result in a browser against the copy above.
+The focused browser checks pass at 390px and 1280px. Full-suite verification is
+recorded in `docs/implementation-log.md`.
 
 ---
 

@@ -7,6 +7,7 @@ import type {
   ConversationRunInterruptedResponse,
   ConversationRunResponse,
   ConversationRunResumeRequest,
+  DocumentCoverage,
   KnowledgeBaseSelection,
   Message,
   PendingInteraction,
@@ -66,6 +67,10 @@ type UseChatRunLoopOptions = {
   setLatestConsultedSources: React.Dispatch<
     React.SetStateAction<Citation[] | null>
   >;
+  setLatestDocumentCoverage: React.Dispatch<
+    React.SetStateAction<DocumentCoverage | null | undefined>
+  >;
+  setLatestRunResultId: (runId: string | null) => void;
   setLiveActivityEvents: React.Dispatch<
     React.SetStateAction<LiveActivityEvent[]>
   >;
@@ -99,6 +104,8 @@ export function useChatRunLoop({
   setIsStreaming,
   setLatestCitations,
   setLatestConsultedSources,
+  setLatestDocumentCoverage,
+  setLatestRunResultId,
   setLiveActivityEvents,
   setOptimisticMessage,
   setQueuedMessageState,
@@ -138,6 +145,11 @@ export function useChatRunLoop({
     setLiveActivityEvents([]);
     setLatestCitations([]);
     setLatestConsultedSources(null);
+    // Until completion, busy-state ownership suppresses stale run-detail
+    // evidence. Keep this `undefined` so a failed run can reveal the previous
+    // completed answer's evidence again once the busy state ends.
+    setLatestDocumentCoverage(undefined);
+    setLatestRunResultId(null);
     setOptimisticMessage({
       id: `optimistic-${Date.now()}`,
       conversation_id: conversationId,
@@ -193,6 +205,8 @@ export function useChatRunLoop({
           // `?? null`, never `?? []`: a backend without attribution omits the
           // field, and that is "unverified", not "nothing consulted".
           setLatestConsultedSources(data.consulted_sources ?? null);
+          setLatestDocumentCoverage(data.document_coverage ?? null);
+          setLatestRunResultId(data.run_id);
         }
         // The run stopped to ask something. This is a *terminal* event for this
         // stream but not for the run: the run stays open server-side and holds
@@ -384,6 +398,8 @@ export function useChatRunLoop({
           // `?? null`, never `?? []`: a backend without attribution omits the
           // field, and that is "unverified", not "nothing consulted".
           setLatestConsultedSources(data.consulted_sources ?? null);
+          setLatestDocumentCoverage(data.document_coverage ?? null);
+          setLatestRunResultId(data.run_id);
           setPendingInteraction(null);
         }
         // A resumed run can suspend again — a second ambiguous reference in

@@ -77,7 +77,7 @@ async function mockGuestWorkspace(page: import("@playwright/test").Page) {
           conversation_id: conversation.id,
           role: "assistant",
           content:
-            "게스트 이용에서는 출처와 에이전트 흐름을 함께 확인할 수 있습니다.",
+            "게스트 이용에서는 출처와 답변 과정을 함께 확인할 수 있습니다.",
         },
       ]);
     }
@@ -90,8 +90,7 @@ async function mockGuestWorkspace(page: import("@playwright/test").Page) {
     ) {
       return json({
         ...run,
-        reply:
-          "게스트 이용에서는 출처와 에이전트 흐름을 함께 확인할 수 있습니다.",
+        reply: "게스트 이용에서는 출처와 답변 과정을 함께 확인할 수 있습니다.",
         handled_by: "rag_agent",
         citations: [
           {

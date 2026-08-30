@@ -1,6 +1,6 @@
 import { HashIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import type { AgentEvent, AgentRunSummary, Citation } from "@/model/my-agents";
+import type { AgentEvent, Citation, DocumentCoverage } from "@/model/my-agents";
 import { CopyTextButton } from "./CopyMessageButton";
 import {
   buildEvidenceSources,
@@ -24,10 +24,11 @@ export function EvidencePanel({
   isStreaming,
   replayButton,
   copyButton,
-  runs,
+  runId,
   events,
   citations,
   consultedSources,
+  documentCoverage,
 }: {
   localization: ChatLocalization;
   isLatestAssistantMessage: boolean;
@@ -39,7 +40,7 @@ export function EvidencePanel({
    * controls appear in.
    */
   copyButton?: ReactNode;
-  runs: AgentRunSummary[];
+  runId?: string | null;
   events: Array<AgentEvent | LiveActivityEvent>;
   citations: Citation[];
   /**
@@ -48,8 +49,8 @@ export function EvidencePanel({
    * not that nothing was consulted. See `evidence-sources.ts`.
    */
   consultedSources?: Citation[] | null;
+  documentCoverage?: DocumentCoverage | null;
 }) {
-  const latestRunId = runs[0]?.run_id;
   const evidence = buildEvidenceSources({ citations, consultedSources });
   // The panel counts and lists *documents*. A document contributes several
   // chunks routinely, and one row each made a single source look like four.
@@ -69,6 +70,13 @@ export function EvidencePanel({
     evidence.mode === "attributed"
       ? localization.viewConsultedDetails
       : localization.viewCitationDetails;
+  const hasSources = documents.length > 0;
+  const disclosureSummary = hasSources
+    ? sourcesSummary
+    : localization.documentCoverageSummary;
+  const disclosureLabel = hasSources
+    ? `${viewSourcesLabel} (${documents.length})`
+    : localization.viewDocumentCoverage;
 
   return (
     // A `<fieldset>` announces a group of form controls; this is a set of
@@ -91,9 +99,9 @@ export function EvidencePanel({
                 handle stays here with the other per-message actions. It is
                 still gated on events because a message with no recorded
                 activity has no run worth quoting. */}
-            {events.length > 0 && latestRunId ? (
+            {events.length > 0 && runId ? (
               <CopyTextButton
-                content={latestRunId}
+                content={runId}
                 actionLabel={localization.copyRunIdAction}
                 copiedAnnouncement={localization.runIdCopiedAnnouncement}
                 copyFailedAnnouncement={
@@ -113,17 +121,18 @@ export function EvidencePanel({
               exactly those answers, which reads as a regression rather than as
               honesty.
             */}
-            {documents.length > 0 ? (
+            {hasSources || documentCoverage ? (
               <details className="group/citations min-w-0 rounded-lg border border-cal-hairline bg-km-surface/70 text-cal-ink open:w-full open:bg-km-surface">
                 <summary
-                  aria-label={`${viewSourcesLabel} (${documents.length})`}
+                  aria-label={disclosureLabel}
                   className="flex min-h-9 cursor-pointer list-none items-center gap-2 px-3 text-xs font-semibold marker:hidden hover:text-cal-primary"
                 >
-                  <span>{sourcesSummary}</span>
+                  <span>{disclosureSummary}</span>
                 </summary>
                 <CitationSourcesDetails
                   documents={documents}
                   mode={evidence.mode}
+                  documentCoverage={documentCoverage}
                   localization={localization}
                 />
               </details>

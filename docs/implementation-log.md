@@ -1027,7 +1027,7 @@ trace renders `답변 준비 중`; it does not fabricate a planning step to fill
 quiet interval before retrieval reports. Detail reveal is staggered but
 persistent, and only phase transitions enter the live region.
 
-Successful completion collapses to `에이전트 흐름` plus the reached-step count.
+Successful completion collapses to the reached-step count.
 The quiet copy control beside it preserves `run_id` for support without putting
 the raw value in the reading path; clipboard failure reveals the ID as the only
 fallback. `응답 근거`, raw activity payloads, run rows, and their chat-localized
@@ -1193,5 +1193,41 @@ page instead of inside the footer.
 Visual checks were made from the Playwright review frames at 390, 768, and
 1280 in light mode: collapsed and expanded, for completed, running, failed,
 cancelled, suspended, and needs-evidence. Dark mode was not inspected
-in both themes, expanded, which is how the vanishing chips were caught. The
+in separate state matrices; the expanded panel was inspected in both themes,
+which is how the vanishing chips were caught. The
 dark-mode AA contrast gate on `/chat` also passed.
+
+## 2026-08-31 — Comprehensive-document coverage reaches the answer surface
+
+The backend PR branch was hosted locally and its live `/openapi.json` removed
+the plan's API-model blocker. The frontend now parses optional/nullable
+`document_coverage` from the shared completed-run schema, so sync run, resume,
+replay, every `run_completed` stream, and refresh-safe run detail use one
+contract.
+
+Coverage uses a tri-state local value. `undefined` permits cold-load fallback
+to run detail, `null` means the current result has no coverage, and an object is
+the served bounded range. This distinction also stops citations or coverage
+from the previous run appearing while a new run owns the live answer surface.
+Replay results update the same state immediately.
+
+The UI adds one compact row inside the existing source disclosure. Complete and
+partial copy branch only on the backend mode; offsets never infer completion.
+The row does not change the document-source count, receive a support badge, or
+promise additional ranges. The backend's duplicate partial-review prose remains
+for the coordinated release as the safer compatibility boundary.
+
+The PR review fixes landed with the same pass: the run-id action takes the
+active run instead of stale run-list data, a waiting answer composer stays in
+the drafting stage, final failure overrides an earlier insufficient-evidence
+signal, and the external live region announces completed and needs-evidence
+outcomes instead of becoming empty.
+
+The visible `에이전트 흐름` prefix was removed after visual review. The
+collapsed panel now leads directly with the current or terminal step; its
+group keeps the quieter `답변 과정` accessible label for assistive technology.
+
+Focused evidence before the full gate: TypeScript passed; 54 targeted Vitest
+tests passed; and 29 focused Playwright tests passed across process states,
+active run IDs, accessibility announcements, complete/partial coverage,
+ordinary-answer parity, source counts, and 390px overflow.

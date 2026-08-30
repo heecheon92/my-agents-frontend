@@ -80,7 +80,21 @@ for (const viewport of VIEWPORTS) {
         // Collapsed in every state, running included. The headline carries the
         // run's current step; the list is one disclosure away.
         await expect(process).not.toHaveAttribute("open", "");
-        await expect(process).toContainText(chat.agentTrace.title);
+        await expect(process).toHaveAttribute(
+          "aria-label",
+          chat.agentTrace.title,
+        );
+        await expect(process).not.toContainText(chat.agentTrace.title);
+        const announcement = page.locator(
+          '[data-slot="agent-process-announcement"]',
+        );
+        if (fixture.state === "completed") {
+          await expect(announcement).toContainText("완료한 단계");
+        } else if (fixture.state === "needs_evidence") {
+          await expect(announcement).toHaveText(
+            chat.agentTrace.stages.needsEvidence,
+          );
+        }
         if (fixture.terminal) {
           await expect(
             process.locator(`[data-terminal="${fixture.terminal}"]`),
@@ -290,6 +304,55 @@ test("copies the quiet answer handle without rendering the raw id", async ({
   await expect
     .poll(() => page.evaluate(() => navigator.clipboard.readText()))
     .toBe("run-visual");
+});
+
+test("copies the active run handle while the runs query is still stale", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await mockWorkspace(page);
+  await page.addInitScript(() => {
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = async (...args) => {
+      const target =
+        typeof args[0] === "string"
+          ? args[0]
+          : args[0] instanceof Request
+            ? args[0].url
+            : String(args[0]);
+      if (!target.includes("/runs/stream")) return nativeFetch(...args);
+
+      const encoder = new TextEncoder();
+      return new Response(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              encoder.encode(
+                'event: run_started\ndata: {"run_id":"run-active","conversation_id":"c-visual","status":"running"}\n\n',
+              ),
+            );
+          },
+        }),
+        { headers: { "Content-Type": "text/event-stream" }, status: 200 },
+      );
+    };
+  });
+  await page.goto(CONVERSATION_URL);
+
+  const composer = page.getByPlaceholder(chat.composerPlaceholder);
+  await composer.fill("새 답변을 시작합니다");
+  await composer.press("Enter");
+
+  const copyRunId = page.getByRole("button", {
+    name: chat.copyRunIdAction,
+    exact: true,
+  });
+  await expect(copyRunId).toHaveCount(1);
+  await copyRunId.click();
+  await expect
+    .poll(() => page.evaluate(() => navigator.clipboard.readText()))
+    .toBe("run-active");
 });
 
 test("reveals the answer handle only when clipboard access fails", async ({

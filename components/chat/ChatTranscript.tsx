@@ -6,8 +6,8 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type {
   AgentEvent,
-  AgentRunSummary,
   Citation,
+  DocumentCoverage,
   Message,
 } from "@/model/my-agents";
 import { CopyMessageButton } from "./CopyMessageButton";
@@ -95,17 +95,19 @@ export function ChatTranscript({
   localization,
   lang,
   activeId,
+  activeRunId,
   messagesError,
   messages,
   conversationIsBusy,
   isProducingOutput,
   streamedReply,
   serverActiveRunIsStale,
-  sortedRuns,
   visibleActivityEvents,
   visibleCitations,
   visibleConsultedSources,
+  visibleDocumentCoverage,
   latestAssistantMessageId,
+  latestRunId,
   replayingMessageId,
   replayDisabled,
   replayNotice,
@@ -117,17 +119,19 @@ export function ChatTranscript({
   localization: ChatLocalization;
   lang: string;
   activeId?: string;
+  activeRunId: string | null;
   messagesError: unknown;
   messages: Message[];
   conversationIsBusy: boolean;
   isProducingOutput: boolean;
   streamedReply: string;
   serverActiveRunIsStale: boolean;
-  sortedRuns: AgentRunSummary[];
   visibleActivityEvents: Array<AgentEvent | LiveActivityEvent>;
   visibleCitations: Citation[];
   visibleConsultedSources: Citation[] | null;
+  visibleDocumentCoverage: DocumentCoverage | null;
   latestAssistantMessageId?: string;
+  latestRunId: string | null;
   replayingMessageId: string | null;
   replayDisabled: boolean;
   replayNotice: ReplayNotice | null;
@@ -227,10 +231,11 @@ export function ChatTranscript({
                     message.id === latestAssistantMessageId
                   }
                   isStreaming={isReplaying}
-                  runs={sortedRuns}
+                  runId={isReplaying ? null : latestRunId}
                   events={messageEvents}
                   citations={visibleCitations}
                   consultedSources={visibleConsultedSources}
+                  documentCoverage={visibleDocumentCoverage}
                   replayButton={
                     <Button
                       type="button"
@@ -316,10 +321,11 @@ export function ChatTranscript({
               localization={localization}
               isLatestAssistantMessage={true}
               isStreaming={isProducingOutput}
-              runs={sortedRuns}
+              runId={activeRunId}
               events={visibleActivityEvents}
               citations={visibleCitations}
               consultedSources={visibleConsultedSources}
+              documentCoverage={visibleDocumentCoverage}
             />
           </MessageBubble>
         ) : null}

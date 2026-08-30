@@ -1,5 +1,46 @@
+import type { DocumentCoverage } from "@/model/my-agents";
 import type { ChatLocalization } from "../types";
 import type { EvidenceDocument, EvidenceSourceMode } from "./evidence-sources";
+
+export function formatDocumentCoverage(
+  coverage: DocumentCoverage,
+  localization: ChatLocalization,
+) {
+  const template =
+    coverage.mode === "complete"
+      ? localization.documentCoverageComplete
+      : localization.documentCoveragePartial;
+  const values = {
+    title: coverage.title,
+    start: String(coverage.start_offset),
+    end: String(coverage.end_offset),
+    total: String(coverage.total_chars),
+  };
+  return template.replace(
+    /\{(title|start|end|total)\}/g,
+    (_token, key: keyof typeof values) => values[key],
+  );
+}
+
+function DocumentCoverageRow({
+  coverage,
+  localization,
+}: {
+  coverage: DocumentCoverage;
+  localization: ChatLocalization;
+}) {
+  return (
+    <article
+      data-slot="document-coverage"
+      data-coverage-mode={coverage.mode}
+      className="rounded-lg border border-cal-primary/20 bg-cal-primary/8 px-3 py-2 text-sm leading-6 text-cal-ink"
+    >
+      <p className="break-words font-medium">
+        {formatDocumentCoverage(coverage, localization)}
+      </p>
+    </article>
+  );
+}
 
 /**
  * One row per document.
@@ -50,10 +91,12 @@ function DocumentSourceRow({
 export function CitationSourcesDetails({
   documents,
   mode,
+  documentCoverage,
   localization,
 }: {
   documents: EvidenceDocument[];
   mode: EvidenceSourceMode;
+  documentCoverage?: DocumentCoverage | null;
   localization: ChatLocalization;
 }) {
   const isAttributed = mode === "attributed";
@@ -62,11 +105,19 @@ export function CitationSourcesDetails({
   ).length;
   return (
     <div className="grid max-h-72 gap-2 overflow-auto border-t border-cal-hairline p-3">
-      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
-        {isAttributed
-          ? localization.consultedSourcesTitle
-          : localization.citationSourcesTitle}
-      </p>
+      {documentCoverage ? (
+        <DocumentCoverageRow
+          coverage={documentCoverage}
+          localization={localization}
+        />
+      ) : null}
+      {documents.length > 0 ? (
+        <p className="text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
+          {isAttributed
+            ? localization.consultedSourcesTitle
+            : localization.citationSourcesTitle}
+        </p>
+      ) : null}
       {/*
         Lead with the honest statement when nothing was verified. The backend's
         selector is deliberately conservative, so this is an expected outcome
