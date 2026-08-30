@@ -33,6 +33,15 @@ operational evidence.
 **Trust signals.** Provenance sits next to answers. Backend-owned limits are
 stated honestly. Errors explain the next safe step without exposing internals.
 
+**The agent process heads the answer it describes.** It reports work that
+precedes the answer, so it sits at the top of the assistant message rather than
+in its footer, collapsed to the run's current step with the full step list one
+disclosure away. Collapsed is the default in every state, running included: a
+single live row is enough to follow a run, and the reader who wants the whole
+trail opens it. Never show a percentage, a step total, or a progress bar there
+— the reachable stages are derived from events as they arrive, so any total
+would be invented.
+
 **Audience.** Readers are technically literate and want to see *how* an answer
 was produced, not only that it appeared. That is a design
 input, not just context: the retrieval pipeline, backend-authored agent steps,

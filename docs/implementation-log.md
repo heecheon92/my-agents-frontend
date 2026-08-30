@@ -1108,3 +1108,90 @@ on desktop. It now requires the full current row to stay above the composer.
 A separate test moves the reader away from the bottom and verifies process
 growth leaves `scrollTop` unchanged. Updated interval screenshots include
 several accumulated dynamic steps at both widths.
+
+## The agent process moved to the head of the answer
+
+The panel lived in the message footer, below the answer, and was permanently
+expanded while a run was working. Both properties fought the thing it is for.
+
+Position first. The panel describes work that happens *before* the answer
+exists, so reading it after the answer reversed the order it reports. It also
+grew downward from under the answer while the run progressed, which pushed the
+composer's neighbourhood around and made the panel read as a retrospective log
+of something already finished. It now sits at the top of the assistant bubble,
+between the role label and the answer text, in a fixed place the growing answer
+never moves.
+
+Shape second. Every state is now one `<details>`, collapsed by default,
+including the running state. Collapsed it is a single row — the run's current
+step, or its terminal outcome — and expanding it reveals the full step list
+unchanged. A reader who never opens it still learns what the run is doing right
+now, which the old permanently-expanded block bought at the cost of several
+rows of vertical space on every answer.
+
+Two things in that are easy to get wrong.
+
+**Exactly one element carries `data-current`/`data-terminal`, and it is the
+headline.** Marking both the headline and its matching row inside the list
+would make `locator('[data-current="true"]')` ambiguous under Playwright's
+strict mode, and — worse — a marker on a row inside a *closed* `<details>` has
+no box, so `boundingBox()` returns null and the composer-overlap regression in
+`e2e/durable-source-choice.spec.ts` would fail on a geometry it never actually
+measured. The list rows keep their visual treatment through local variables
+instead of data attributes.
+
+**The `aria-live` region sits outside the `<details>`.** A closed disclosure is
+removed from the accessibility tree, so a live region inside it announces
+nothing to the reader most likely to be relying on it — the one who left the
+panel collapsed.
+
+`getAgentProcessHeadline` is exported and unit-tested rather than inlined,
+because its branch order is load-bearing: `needsEvidence` is a terminal that
+`terminalLabel` deliberately returns `null` for, so without an explicit branch
+it falls through to the generic last-stage case and silently loses its warning
+treatment. Seven cases cover live, starting, each labelled terminal,
+`needsEvidence`, completed, the lifecycle-less cold load, and empty.
+
+Animation is CSS only. The headline label is keyed on its own text so React
+remounts it on a step change and replays the enter transition; without the key
+the text swaps in place with no motion at all. The chevron rotates on
+`group-open/process`. Both are `motion-safe:`, and the global
+`prefers-reduced-motion` block in `app/globals.css` already neutralises them
+with `!important` — no second opt-out was added.
+
+The panel keeps its accent tint when open. The old completed-state disclosure
+switched to `bg-km-surface` on open, which is the same token the step chips
+use — so every chip vanished into the background the moment the panel was
+expanded, in both themes. That was invisible while only the completed state
+collapsed; unifying every state onto one `<details>` would have spread it to
+all of them.
+
+The run-id handle stayed in the footer with the other per-message actions
+rather than following the panel up. It is an audit affordance, not part of the
+process narrative, and it is still gated on recorded events.
+
+### Verification
+
+Biome check passed 261 files, `tsc --noEmit` was clean, Vitest passed 269 tests
+across 36 files (7 new), and the production build completed all 17 routes.
+Playwright passed 142 with the 2 environment-gated `v1-demo` skips.
+
+New coverage: `heads the answer instead of trailing it` asserts the panel's
+bottom edge is above the answer text's top edge and that the answer precedes
+the footer — the reposition itself, which no existing assertion could have
+caught. `expands the full step list from the collapsed current step` drives the
+disclosure both ways. The per-state loop now asserts collapsed-by-default in
+every state, opens each one, and captures an expanded review frame alongside
+the collapsed one at all three widths.
+
+One existing assertion was relaxed rather than deleted: the expanded check is
+now on the step list, not on a specific step title. A cancelled run can end
+before the backend emits any trace step, and the disclosure still has to open
+onto its terminal row. `e2e/v1-demo.spec.ts` now looks for the panel on the
+page instead of inside the footer.
+
+Visual checks were made from the Playwright review frames at 390, 768, and
+1280 in light mode: collapsed and expanded, for completed, running, failed,
+cancelled, suspended, and needs-evidence. Dark mode was not inspected
+in both themes, expanded, which is how the vanishing chips were caught. The
+dark-mode AA contrast gate on `/chat` also passed.

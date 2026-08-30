@@ -46,7 +46,9 @@ async function expectLatestAssistantFooterEvidence(
       )
       .first(),
   ).toBeVisible();
-  await expect(footer.getByTestId("agent-process-panel")).toBeVisible();
+  // The process panel heads the answer now instead of trailing it, so it is
+  // asserted against the page rather than the footer.
+  await expect(page.getByTestId("agent-process-panel").last()).toBeVisible();
 }
 
 function escapeRegExp(value: string) {

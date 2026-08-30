@@ -77,10 +77,10 @@ for (const viewport of VIEWPORTS) {
         await expect(process).toHaveCount(0);
       } else {
         await expect(process).toBeVisible();
-        if (fixture.state === "completed") {
-          await expect(process).not.toHaveAttribute("open", "");
-          await expect(process).toContainText(chat.agentTrace.title);
-        }
+        // Collapsed in every state, running included. The headline carries the
+        // run's current step; the list is one disclosure away.
+        await expect(process).not.toHaveAttribute("open", "");
+        await expect(process).toContainText(chat.agentTrace.title);
         if (fixture.terminal) {
           await expect(
             process.locator(`[data-terminal="${fixture.terminal}"]`),
@@ -111,13 +111,24 @@ for (const viewport of VIEWPORTS) {
         `${fixture.state} process @ ${viewport.width}px`,
       );
       await captureGateB(page, testInfo, `${fixture.state}-${viewport.width}`);
-      if (fixture.state === "completed") {
+      if (fixture.state !== "no_events") {
         await process.locator("summary").click();
-        await expect(process.getByText("질문 의도 정리")).toBeVisible();
+        await expect(process).toHaveAttribute("open", "");
+        // The step list, not a specific step: a cancelled run can end before
+        // the backend emits any trace step, and the disclosure still has to
+        // open onto its terminal row.
+        await expect(process.locator("ol")).toBeVisible();
+        if (fixture.state === "completed") {
+          await expect(process.getByText("질문 의도 정리")).toBeVisible();
+        }
         await captureProcessPanel(
           process,
           testInfo,
-          `completed-expanded-${viewport.width}`,
+          `${fixture.state}-expanded-${viewport.width}`,
+        );
+        await expectNoHorizontalOverflow(
+          page,
+          `${fixture.state} process expanded @ ${viewport.width}px`,
         );
       }
     });
@@ -186,6 +197,16 @@ for (const viewport of VIEWPORTS) {
       chat.agentTrace.stages.searchingKnowledge,
     );
     await captureProcessPanel(process, testInfo, `running-${viewport.width}`);
+    // Expanding mid-run must reveal the steps reached so far without
+    // interrupting the headline.
+    await process.locator("summary").click();
+    await expect(process.getByText("관련 문서 탐색")).toBeVisible();
+    await captureProcessPanel(
+      process,
+      testInfo,
+      `running-expanded-${viewport.width}`,
+    );
+    await process.locator("summary").click();
     await expectNoHorizontalOverflow(
       page,
       `running process @ ${viewport.width}px`,
@@ -207,6 +228,51 @@ for (const viewport of VIEWPORTS) {
     }
   });
 }
+
+test("heads the answer instead of trailing it", async ({ page }) => {
+  // The reposition itself. The panel describes work that precedes the answer,
+  // so a footer position made it read as a retrospective log of something the
+  // reader had already finished reading.
+  await mockWorkspace(page);
+  await page.goto(CONVERSATION_URL);
+
+  const process = page.getByTestId("agent-process-panel");
+  const answer = page.getByText("갱신 통지 기한이 가장 큰 위험입니다.").first();
+  const footer = page.getByTestId("assistant-message-footer").last();
+  await expect(process).toBeVisible();
+  await expect(answer).toBeVisible();
+
+  const processBox = await process.boundingBox();
+  const answerBox = await answer.boundingBox();
+  const footerBox = await footer.boundingBox();
+  expect(processBox).not.toBeNull();
+  expect(answerBox).not.toBeNull();
+  expect(footerBox).not.toBeNull();
+  expect((processBox?.y ?? 0) + (processBox?.height ?? 0)).toBeLessThanOrEqual(
+    answerBox?.y ?? 0,
+  );
+  expect(answerBox?.y ?? 0).toBeLessThan(footerBox?.y ?? 0);
+});
+
+test("expands the full step list from the collapsed current step", async ({
+  page,
+}) => {
+  await mockWorkspace(page);
+  await page.goto(CONVERSATION_URL);
+
+  const process = page.getByTestId("agent-process-panel");
+  const firstStepDetail = process.getByText("질문 의도 정리");
+  await expect(process).not.toHaveAttribute("open", "");
+  await expect(firstStepDetail).toBeHidden();
+
+  await process.locator("summary").click();
+  await expect(process).toHaveAttribute("open", "");
+  await expect(firstStepDetail).toBeVisible();
+
+  await process.locator("summary").click();
+  await expect(process).not.toHaveAttribute("open", "");
+  await expect(firstStepDetail).toBeHidden();
+});
 
 test("copies the quiet answer handle without rendering the raw id", async ({
   page,

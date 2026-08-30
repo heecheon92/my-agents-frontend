@@ -1,3 +1,5 @@
+import { ChevronDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { AgentEvent, AgentTraceStep } from "@/model/my-agents";
 import type { ChatLocalization, LiveActivityEvent } from "../types";
 
@@ -28,6 +30,22 @@ export type AgentProcessDetail = {
   title: string;
   description: string;
   status: AgentTraceStep["status"];
+};
+
+/**
+ * The single row the collapsed panel shows.
+ *
+ * Exactly one element in the panel carries `data-current`/`data-terminal`, and
+ * it is this one. Two would make the state assertions ambiguous, and a marker
+ * on a row inside a closed `<details>` has no box for a geometric assertion to
+ * measure.
+ */
+export type AgentProcessHeadline = {
+  label: string;
+  /** Drives the pulsing dot: the run is still working on this row. */
+  isLive: boolean;
+  current: boolean;
+  terminal: AgentProcessTerminal | null;
 };
 
 const AGENT_TRACE_STAGE_ORDER: AgentTraceStageKey[] = [
@@ -319,9 +337,90 @@ function terminalDotClass(terminal: AgentProcessTerminal | null) {
   if (terminal === "failed") return "bg-cal-error";
   if (terminal === "cancelled") return "bg-cal-muted";
   if (terminal === "waitingForConfirmation") return "bg-cal-warning";
+  if (terminal === "needsEvidence") return "bg-cal-warning";
   return "bg-km-accent";
 }
 
+export function getAgentProcessHeadline({
+  state,
+  localization,
+  isStarting,
+}: {
+  state: AgentProcessState;
+  localization: ChatLocalization;
+  isStarting: boolean;
+}): AgentProcessHeadline | null {
+  if (isStarting) {
+    return {
+      label: localization.agentTrace.starting,
+      isLive: true,
+      current: true,
+      terminal: null,
+    };
+  }
+
+  const terminalText = state.terminal
+    ? terminalLabel(state.terminal, localization)
+    : null;
+  if (state.terminal && terminalText) {
+    return {
+      label: terminalText,
+      isLive: false,
+      current: false,
+      terminal: state.terminal,
+    };
+  }
+  // `needsEvidence` is a terminal with no terminal label: the backend reports
+  // it as a stage the run reached, so the headline names the stage and keeps
+  // the warning treatment rather than inventing a second vocabulary for it.
+  if (state.terminal === "needsEvidence") {
+    return {
+      label: localization.agentTrace.stages.needsEvidence,
+      isLive: false,
+      current: false,
+      terminal: "needsEvidence",
+    };
+  }
+  if (state.currentStage) {
+    return {
+      label: localization.agentTrace.stages[state.currentStage],
+      isLive: true,
+      current: true,
+      terminal: null,
+    };
+  }
+  if (state.terminal === "completed") {
+    return {
+      label: localization.agentTrace.completedSummary.replace(
+        "{count}",
+        String(state.stages.length),
+      ),
+      isLive: false,
+      current: false,
+      terminal: null,
+    };
+  }
+  // Stages without a lifecycle event: a cold load of a run whose terminal event
+  // never arrived. Name the furthest stage reached rather than claiming a
+  // completion the events do not support.
+  const lastStage = state.stages.at(-1);
+  if (!lastStage) return null;
+  return {
+    label: localization.agentTrace.stages[lastStage],
+    isLive: false,
+    current: false,
+    terminal: null,
+  };
+}
+
+/**
+ * Sits at the top of the answer it describes, collapsed to the run's current
+ * step. The full step list is one disclosure away.
+ *
+ * It is one `<details>` in every state, running included. The running state
+ * used to be a permanently expanded block below the answer, which pushed the
+ * answer down as it grew and read as retrospective once the run finished.
+ */
 export function AgentProcessPanel({
   localization,
   lang,
@@ -347,6 +446,9 @@ export function AgentProcessPanel({
     state.terminal === null;
   if (state.stages.length === 0 && !terminalText && !isStarting) return null;
 
+  const headline = getAgentProcessHeadline({ state, localization, isStarting });
+  if (!headline) return null;
+
   const processList = (
     <ol className="grid min-w-0 gap-2">
       {isStarting ? (
@@ -365,6 +467,8 @@ export function AgentProcessPanel({
       ) : null}
       {state.stages.map((stage) => {
         const isCurrent = stage === state.currentStage;
+        const isUnmetEvidence =
+          stage === "needsEvidence" && state.terminal === "needsEvidence";
         const stageDetails = details.filter((detail) => detail.phase === stage);
         const latestDetail = stageDetails.at(-1);
         const showLatestDescription =
@@ -374,24 +478,18 @@ export function AgentProcessPanel({
         return (
           <li
             key={stage}
-            data-current={isCurrent ? "true" : "false"}
-            data-terminal={
-              stage === "needsEvidence" && state.terminal === "needsEvidence"
-                ? "needsEvidence"
-                : undefined
-            }
             className="grid min-w-0 grid-cols-[0.75rem_minmax(0,1fr)] items-start gap-2 text-sm"
           >
             <span
               aria-hidden="true"
-              className={
+              className={cn(
+                "mt-1.5 size-2.5 rounded-full",
                 isCurrent
-                  ? "mt-1.5 size-2.5 rounded-full bg-cal-primary motion-safe:animate-pulse"
-                  : stage === "needsEvidence" &&
-                      state.terminal === "needsEvidence"
-                    ? "mt-1.5 size-2.5 rounded-full bg-cal-warning"
-                    : "mt-1.5 size-2.5 rounded-full bg-km-accent"
-              }
+                  ? "bg-cal-primary motion-safe:animate-pulse"
+                  : isUnmetEvidence
+                    ? "bg-cal-warning"
+                    : "bg-km-accent",
+              )}
             />
             <div className="min-w-0">
               <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
@@ -430,10 +528,7 @@ export function AgentProcessPanel({
         );
       })}
       {terminalText ? (
-        <li
-          data-terminal={state.terminal}
-          className="grid min-w-0 grid-cols-[0.75rem_minmax(0,1fr)] items-start gap-2 text-sm font-semibold"
-        >
+        <li className="grid min-w-0 grid-cols-[0.75rem_minmax(0,1fr)] items-start gap-2 text-sm font-semibold">
           <span
             aria-hidden="true"
             className={`mt-1.5 size-2.5 rounded-full ${terminalDotClass(state.terminal)}`}
@@ -443,48 +538,70 @@ export function AgentProcessPanel({
       ) : null}
     </ol>
   );
+
   const liveAnnouncement = isStarting
     ? localization.agentTrace.starting
     : state.currentStage
       ? `${localization.agentTrace.currentStep}: ${localization.agentTrace.stages[state.currentStage]}`
       : terminalText;
 
-  if (state.terminal === "completed") {
-    return (
+  return (
+    <div className="w-full min-w-0">
       <details
         data-testid="agent-process-panel"
-        className="group/process w-fit max-w-full min-w-0 rounded-lg border border-km-accent/20 bg-km-accent/10 text-cal-ink open:bg-km-surface"
+        // The accent tint is kept when open. The step chips are `bg-km-surface`,
+        // so swapping the open panel to that same token erased them in both
+        // themes — they only read as chips against the tint.
+        className="group/process w-full min-w-0 rounded-lg border border-km-accent/20 bg-km-accent/10 text-cal-ink"
       >
-        <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center justify-between gap-2 px-3 text-xs marker:hidden">
-          <span className="font-semibold uppercase tracking-[0.08em] text-cal-muted">
+        <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 marker:hidden">
+          <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
             {localization.agentTrace.title}
           </span>
-          <span className="text-cal-muted">
-            {localization.agentTrace.completedSummary.replace(
-              "{count}",
-              String(state.stages.length),
-            )}
+          <span
+            data-current={headline.current ? "true" : undefined}
+            data-terminal={headline.terminal ?? undefined}
+            className="flex min-w-0 flex-1 items-center gap-2 text-sm"
+          >
+            <span
+              aria-hidden="true"
+              className={cn(
+                "size-2.5 shrink-0 rounded-full",
+                headline.isLive
+                  ? "bg-cal-primary motion-safe:animate-pulse"
+                  : terminalDotClass(headline.terminal),
+              )}
+            />
+            {/*
+              Keyed on the label so React remounts the node when the run moves
+              to another step, which replays the enter animation. Without the
+              key the text swaps in place with no transition.
+            */}
+            <span
+              key={headline.label}
+              className="min-w-0 truncate font-semibold motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-bottom-1 motion-safe:duration-[var(--duration-panel)]"
+            >
+              {headline.label}
+            </span>
           </span>
+          <ChevronDown
+            aria-hidden="true"
+            className="size-4 shrink-0 text-cal-muted transition-transform duration-[var(--duration-fast)] ease-[var(--ease-standard)] group-open/process:rotate-180"
+          />
         </summary>
-        <div className="border-t border-km-accent/20 p-3">{processList}</div>
+        <div className="border-t border-km-accent/20 p-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1 motion-safe:duration-[var(--duration-panel)]">
+          {processList}
+        </div>
       </details>
-    );
-  }
-
-  return (
-    <section
-      data-testid="agent-process-panel"
-      className="w-full min-w-0 rounded-lg border border-km-accent/20 bg-km-accent/10 p-3 text-cal-ink"
-      aria-label={localization.agentTrace.title}
-    >
-      <p className="text-xs font-semibold uppercase tracking-[0.08em] text-cal-muted">
-        {localization.agentTrace.title}
-      </p>
-      <div className="mt-2">{processList}</div>
+      {/*
+        Outside the `<details>`: a closed disclosure is hidden from the
+        accessibility tree, so a live region inside it would never announce a
+        step change to a reader who left the panel collapsed.
+      */}
       <span aria-live="polite" className="sr-only">
         {liveAnnouncement}
       </span>
-    </section>
+    </div>
   );
 }
 

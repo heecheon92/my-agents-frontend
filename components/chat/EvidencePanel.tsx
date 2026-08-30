@@ -1,6 +1,5 @@
 import { HashIcon } from "lucide-react";
 import type { ReactNode } from "react";
-import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import type { AgentEvent, AgentRunSummary, Citation } from "@/model/my-agents";
 import { CopyTextButton } from "./CopyMessageButton";
 import {
@@ -8,14 +7,11 @@ import {
   groupSourcesByDocument,
 } from "./evidence-panel/evidence-sources";
 import { CitationSourcesDetails } from "./evidence-panel/sections";
-import {
-  AgentProcessPanel,
-  getAgentProcessState,
-} from "./evidence-panel/trace";
 
 export {
   AgentProcessPanel,
   getAgentProcessDetails,
+  getAgentProcessHeadline,
   getAgentProcessState,
   getAgentTraceStageKeys,
 } from "./evidence-panel/trace";
@@ -24,7 +20,6 @@ import type { ChatLocalization, LiveActivityEvent } from "./types";
 
 export function EvidencePanel({
   localization,
-  lang,
   isLatestAssistantMessage,
   isStreaming,
   replayButton,
@@ -35,7 +30,6 @@ export function EvidencePanel({
   consultedSources,
 }: {
   localization: ChatLocalization;
-  lang: string;
   isLatestAssistantMessage: boolean;
   isStreaming: boolean;
   replayButton?: ReactNode;
@@ -56,12 +50,6 @@ export function EvidencePanel({
   consultedSources?: Citation[] | null;
 }) {
   const latestRunId = runs[0]?.run_id;
-  const processState = getAgentProcessState({
-    events,
-    citationCount: citations.length,
-    isStreaming,
-  });
-  const hasCompactCompletedProcess = processState.terminal === "completed";
   const evidence = buildEvidenceSources({ citations, consultedSources });
   // The panel counts and lists *documents*. A document contributes several
   // chunks routinely, and one row each made a single source look like four.
@@ -99,47 +87,23 @@ export function EvidencePanel({
         {copyButton}
         {isLatestAssistantMessage || isStreaming ? (
           <>
-            {events.length > 0 ? (
-              <OnboardingTarget
-                id="chat.agent-process"
-                className={hasCompactCompletedProcess ? "max-w-full" : "w-full"}
-              >
-                <div
-                  className={
-                    hasCompactCompletedProcess
-                      ? "inline-flex max-w-full min-w-0 items-start gap-1"
-                      : "flex w-full min-w-0 items-start gap-1"
-                  }
-                >
-                  <div
-                    className={
-                      hasCompactCompletedProcess ? "min-w-0" : "min-w-0 flex-1"
-                    }
-                  >
-                    <AgentProcessPanel
-                      localization={localization}
-                      lang={lang}
-                      events={events}
-                      citationCount={citations.length}
-                      isStreaming={isStreaming}
-                    />
-                  </div>
-                  {latestRunId ? (
-                    <CopyTextButton
-                      content={latestRunId}
-                      actionLabel={localization.copyRunIdAction}
-                      copiedAnnouncement={localization.runIdCopiedAnnouncement}
-                      copyFailedAnnouncement={
-                        localization.runIdCopyFailedAnnouncement
-                      }
-                      revealOnFailure={true}
-                      fallbackLabel={localization.runIdFallbackLabel}
-                      idleIcon={<HashIcon aria-hidden="true" />}
-                      className="shrink-0"
-                    />
-                  ) : null}
-                </div>
-              </OnboardingTarget>
+            {/* The agent process moved to the top of the message; the run
+                handle stays here with the other per-message actions. It is
+                still gated on events because a message with no recorded
+                activity has no run worth quoting. */}
+            {events.length > 0 && latestRunId ? (
+              <CopyTextButton
+                content={latestRunId}
+                actionLabel={localization.copyRunIdAction}
+                copiedAnnouncement={localization.runIdCopiedAnnouncement}
+                copyFailedAnnouncement={
+                  localization.runIdCopyFailedAnnouncement
+                }
+                revealOnFailure={true}
+                fallbackLabel={localization.runIdFallbackLabel}
+                idleIcon={<HashIcon aria-hidden="true" />}
+                className="shrink-0"
+              />
             ) : null}
             {/*
               Gated on the rendered rows, not on `citations.length`. Attribution

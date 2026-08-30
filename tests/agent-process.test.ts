@@ -1,9 +1,19 @@
 import { describe, expect, it } from "vitest";
+import type {
+  AgentProcessState,
+  AgentProcessTerminal,
+  AgentTraceStageKey,
+} from "@/components/chat/evidence-panel/trace";
 import {
   getAgentProcessDetails,
+  getAgentProcessHeadline,
   getAgentProcessState,
 } from "@/components/chat/evidence-panel/trace";
-import type { LiveActivityEvent } from "@/components/chat/types";
+import type {
+  ChatLocalization,
+  LiveActivityEvent,
+} from "@/components/chat/types";
+import ko from "@/localization/ko.json";
 
 function event(
   sequence: number,
@@ -239,5 +249,107 @@ describe("getAgentProcessDetails", () => {
       title: "Drafted answer",
       status: "completed",
     });
+  });
+});
+
+describe("getAgentProcessHeadline", () => {
+  const localization = ko.chat as unknown as ChatLocalization;
+
+  function headlineFor(state: Partial<AgentProcessState>, isStarting = false) {
+    return getAgentProcessHeadline({
+      state: {
+        stages: [],
+        currentStage: null,
+        terminal: null,
+        ...state,
+      },
+      localization,
+      isStarting,
+    });
+  }
+
+  it("names the step being worked on and marks it live", () => {
+    expect(
+      headlineFor({
+        stages: ["planning", "searchingKnowledge"],
+        currentStage: "searchingKnowledge",
+      }),
+    ).toEqual({
+      label: ko.chat.agentTrace.stages.searchingKnowledge,
+      isLive: true,
+      current: true,
+      terminal: null,
+    });
+  });
+
+  it("shows the starting label before any stage is derivable", () => {
+    expect(headlineFor({}, true)).toEqual({
+      label: ko.chat.agentTrace.starting,
+      isLive: true,
+      current: true,
+      terminal: null,
+    });
+  });
+
+  it("carries the terminal marker rather than a live step", () => {
+    const terminals: Array<[AgentProcessTerminal, string]> = [
+      ["failed", ko.chat.agentTrace.terminals.failed],
+      ["cancelled", ko.chat.agentTrace.terminals.cancelled],
+      ["waitingForConfirmation", ko.chat.agentTrace.terminals.waiting],
+    ];
+    for (const [terminal, label] of terminals) {
+      expect(headlineFor({ stages: ["planning"], terminal })).toEqual({
+        label,
+        isLive: false,
+        current: false,
+        terminal,
+      });
+    }
+  });
+
+  it("names the reached stage for a terminal with no terminal label", () => {
+    // `needsEvidence` is reported as a stage, not as an outcome sentence, so
+    // the headline must not fall through to the generic last-stage branch and
+    // silently drop the warning treatment.
+    expect(
+      headlineFor({
+        stages: ["planning", "needsEvidence"],
+        terminal: "needsEvidence",
+      }),
+    ).toEqual({
+      label: ko.chat.agentTrace.stages.needsEvidence,
+      isLive: false,
+      current: false,
+      terminal: "needsEvidence",
+    });
+  });
+
+  it("summarises a completed run by its step count", () => {
+    const stages: AgentTraceStageKey[] = [
+      "planning",
+      "searchingKnowledge",
+      "answerReady",
+    ];
+    expect(headlineFor({ stages, terminal: "completed" })).toEqual({
+      label: ko.chat.agentTrace.completedSummary.replace("{count}", "3"),
+      isLive: false,
+      current: false,
+      terminal: null,
+    });
+  });
+
+  it("names the furthest stage when no lifecycle event arrived", () => {
+    // A cold load of a run whose terminal event was never stored. Claiming
+    // completion here would overstate what the events support.
+    expect(headlineFor({ stages: ["planning", "draftingAnswer"] })).toEqual({
+      label: ko.chat.agentTrace.stages.draftingAnswer,
+      isLive: false,
+      current: false,
+      terminal: null,
+    });
+  });
+
+  it("has nothing to show without stages or a terminal", () => {
+    expect(headlineFor({})).toBeNull();
   });
 });
