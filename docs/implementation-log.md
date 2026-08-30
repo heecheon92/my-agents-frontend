@@ -1231,3 +1231,11 @@ Focused evidence before the full gate: TypeScript passed; 54 targeted Vitest
 tests passed; and 29 focused Playwright tests passed across process states,
 active run IDs, accessibility announcements, complete/partial coverage,
 ordinary-answer parity, source counts, and 390px overflow.
+
+Final pre-publication verification on the integrated branch: Biome checked 263
+files, TypeScript passed, Vitest passed 275 tests across 37 files, and full
+Playwright passed 147 tests with 2 environment-gated V1 demo skips. The native
+checkout production build compiled and generated all 17 routes. Playwright CLI
+visual review covered the expanded partial-coverage disclosure at desktop and
+390px; the mobile row wrapped without horizontal overflow, remained reachable
+above the floating composer, and produced no console errors.
