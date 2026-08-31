@@ -212,8 +212,10 @@ describe("ChatWorkspace assistant message footer", () => {
       "needsEvidence",
     ] as const;
     for (const key of stageKeys) {
-      expect(en.chat.agentTrace.stages[key].trim().length).toBeGreaterThan(0);
-      expect(ko.chat.agentTrace.stages[key]).toMatch(/[가-힣]/);
+      expect(en.chat.answerProcess.stages[key].trim().length).toBeGreaterThan(
+        0,
+      );
+      expect(ko.chat.answerProcess.stages[key]).toMatch(/[가-힣]/);
     }
 
     expect(

@@ -248,7 +248,7 @@
     "immediateStartedAnnouncement": "Sending your immediate message now.",
     "immediateFailedAnnouncement": "Could not stop the current answer. Your message was restored to the composer.",
     "runFailed": "Could not complete the answer.",
-    "agentTrace": {
+    "answerProcess": {
       "title": "Answer process",
       "currentStep": "Current step",
       "starting": "Preparing the answer",

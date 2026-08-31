@@ -43,7 +43,7 @@ test.describe("durable document-source choice", () => {
     await expect(process).toBeVisible();
     await expect(
       process.locator('[data-terminal="waitingForConfirmation"]'),
-    ).toContainText(chat.agentTrace.terminals.waiting);
+    ).toContainText(chat.answerProcess.terminals.waiting);
     await expect(
       page.getByRole("button", { name: chat.sendNow, exact: true }),
     ).toHaveCount(0);
@@ -273,7 +273,7 @@ test.describe("durable document-source choice", () => {
     await expect(process).toBeVisible();
     await expect(
       process.locator('[data-terminal="waitingForConfirmation"]'),
-    ).toContainText(chat.agentTrace.terminals.waiting);
+    ).toContainText(chat.answerProcess.terminals.waiting);
   });
 
   for (const viewport of [

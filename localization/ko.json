@@ -248,7 +248,7 @@
     "immediateStartedAnnouncement": "즉시 메시지를 지금 보냅니다.",
     "immediateFailedAnnouncement": "현재 답변을 중지하지 못했습니다. 메시지를 입력창으로 복원했습니다.",
     "runFailed": "답변을 만들지 못했습니다.",
-    "agentTrace": {
+    "answerProcess": {
       "title": "답변 과정",
       "currentStep": "현재 단계",
       "starting": "답변 준비 중",

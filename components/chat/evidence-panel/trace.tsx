@@ -324,11 +324,11 @@ function terminalLabel(
   localization: ChatLocalization,
 ) {
   if (terminal === "waitingForConfirmation") {
-    return localization.agentTrace.terminals.waiting;
+    return localization.answerProcess.terminals.waiting;
   }
-  if (terminal === "failed") return localization.agentTrace.terminals.failed;
+  if (terminal === "failed") return localization.answerProcess.terminals.failed;
   if (terminal === "cancelled") {
-    return localization.agentTrace.terminals.cancelled;
+    return localization.answerProcess.terminals.cancelled;
   }
   return null;
 }
@@ -352,7 +352,7 @@ export function getAgentProcessHeadline({
 }): AgentProcessHeadline | null {
   if (isStarting) {
     return {
-      label: localization.agentTrace.starting,
+      label: localization.answerProcess.starting,
       isLive: true,
       current: true,
       terminal: null,
@@ -375,7 +375,7 @@ export function getAgentProcessHeadline({
   // the warning treatment rather than inventing a second vocabulary for it.
   if (state.terminal === "needsEvidence") {
     return {
-      label: localization.agentTrace.stages.needsEvidence,
+      label: localization.answerProcess.stages.needsEvidence,
       isLive: false,
       current: false,
       terminal: "needsEvidence",
@@ -383,7 +383,7 @@ export function getAgentProcessHeadline({
   }
   if (state.currentStage) {
     return {
-      label: localization.agentTrace.stages[state.currentStage],
+      label: localization.answerProcess.stages[state.currentStage],
       isLive: true,
       current: true,
       terminal: null,
@@ -391,7 +391,7 @@ export function getAgentProcessHeadline({
   }
   if (state.terminal === "completed") {
     return {
-      label: localization.agentTrace.completedSummary.replace(
+      label: localization.answerProcess.completedSummary.replace(
         "{count}",
         String(state.stages.length),
       ),
@@ -406,7 +406,7 @@ export function getAgentProcessHeadline({
   const lastStage = state.stages.at(-1);
   if (!lastStage) return null;
   return {
-    label: localization.agentTrace.stages[lastStage],
+    label: localization.answerProcess.stages[lastStage],
     isLive: false,
     current: false,
     terminal: null,
@@ -458,9 +458,9 @@ export function AgentProcessPanel({
             className="mt-1.5 size-2.5 rounded-full bg-cal-primary motion-safe:animate-pulse"
           />
           <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5 font-semibold">
-            <span>{localization.agentTrace.starting}</span>
+            <span>{localization.answerProcess.starting}</span>
             <span className="text-xs font-normal text-cal-muted">
-              {localization.agentTrace.currentStep}
+              {localization.answerProcess.currentStep}
             </span>
           </span>
         </li>
@@ -494,11 +494,11 @@ export function AgentProcessPanel({
             <div className="min-w-0">
               <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 <span className={isCurrent ? "font-semibold" : "font-medium"}>
-                  {localization.agentTrace.stages[stage]}
+                  {localization.answerProcess.stages[stage]}
                 </span>
                 {isCurrent ? (
                   <span className="text-xs text-cal-muted">
-                    {localization.agentTrace.currentStep}
+                    {localization.answerProcess.currentStep}
                   </span>
                 ) : null}
               </span>
@@ -541,14 +541,14 @@ export function AgentProcessPanel({
 
   const liveAnnouncement =
     headline.current && !isStarting
-      ? `${localization.agentTrace.currentStep}: ${headline.label}`
+      ? `${localization.answerProcess.currentStep}: ${headline.label}`
       : headline.label;
 
   return (
     <div className="w-full min-w-0">
       <details
         data-testid="agent-process-panel"
-        aria-label={localization.agentTrace.title}
+        aria-label={localization.answerProcess.title}
         // The accent tint is kept when open. The step chips are `bg-km-surface`,
         // so swapping the open panel to that same token erased them in both
         // themes — they only read as chips against the tint.

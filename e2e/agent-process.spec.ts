@@ -82,9 +82,9 @@ for (const viewport of VIEWPORTS) {
         await expect(process).not.toHaveAttribute("open", "");
         await expect(process).toHaveAttribute(
           "aria-label",
-          chat.agentTrace.title,
+          chat.answerProcess.title,
         );
-        await expect(process).not.toContainText(chat.agentTrace.title);
+        await expect(process).not.toContainText(chat.answerProcess.title);
         const announcement = page.locator(
           '[data-slot="agent-process-announcement"]',
         );
@@ -92,7 +92,7 @@ for (const viewport of VIEWPORTS) {
           await expect(announcement).toContainText("완료한 단계");
         } else if (fixture.state === "needs_evidence") {
           await expect(announcement).toHaveText(
-            chat.agentTrace.stages.needsEvidence,
+            chat.answerProcess.stages.needsEvidence,
           );
         }
         if (fixture.terminal) {
@@ -204,11 +204,11 @@ for (const viewport of VIEWPORTS) {
 
     const process = page.getByTestId("agent-process-panel");
     await expect(process).toBeVisible();
-    await expect(process).toContainText(chat.agentTrace.starting);
+    await expect(process).toContainText(chat.answerProcess.starting);
     await captureProcessPanel(process, testInfo, `starting-${viewport.width}`);
     await captureGateB(page, testInfo, `starting-${viewport.width}`);
     await expect(process.locator('[data-current="true"]')).toContainText(
-      chat.agentTrace.stages.searchingKnowledge,
+      chat.answerProcess.stages.searchingKnowledge,
     );
     await captureProcessPanel(process, testInfo, `running-${viewport.width}`);
     // Expanding mid-run must reveal the steps reached so far without

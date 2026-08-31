@@ -318,7 +318,7 @@ describe("getAgentProcessHeadline", () => {
         currentStage: "searchingKnowledge",
       }),
     ).toEqual({
-      label: ko.chat.agentTrace.stages.searchingKnowledge,
+      label: ko.chat.answerProcess.stages.searchingKnowledge,
       isLive: true,
       current: true,
       terminal: null,
@@ -327,7 +327,7 @@ describe("getAgentProcessHeadline", () => {
 
   it("shows the starting label before any stage is derivable", () => {
     expect(headlineFor({}, true)).toEqual({
-      label: ko.chat.agentTrace.starting,
+      label: ko.chat.answerProcess.starting,
       isLive: true,
       current: true,
       terminal: null,
@@ -336,9 +336,9 @@ describe("getAgentProcessHeadline", () => {
 
   it("carries the terminal marker rather than a live step", () => {
     const terminals: Array<[AgentProcessTerminal, string]> = [
-      ["failed", ko.chat.agentTrace.terminals.failed],
-      ["cancelled", ko.chat.agentTrace.terminals.cancelled],
-      ["waitingForConfirmation", ko.chat.agentTrace.terminals.waiting],
+      ["failed", ko.chat.answerProcess.terminals.failed],
+      ["cancelled", ko.chat.answerProcess.terminals.cancelled],
+      ["waitingForConfirmation", ko.chat.answerProcess.terminals.waiting],
     ];
     for (const [terminal, label] of terminals) {
       expect(headlineFor({ stages: ["planning"], terminal })).toEqual({
@@ -360,7 +360,7 @@ describe("getAgentProcessHeadline", () => {
         terminal: "needsEvidence",
       }),
     ).toEqual({
-      label: ko.chat.agentTrace.stages.needsEvidence,
+      label: ko.chat.answerProcess.stages.needsEvidence,
       isLive: false,
       current: false,
       terminal: "needsEvidence",
@@ -374,7 +374,7 @@ describe("getAgentProcessHeadline", () => {
       "answerReady",
     ];
     expect(headlineFor({ stages, terminal: "completed" })).toEqual({
-      label: ko.chat.agentTrace.completedSummary.replace("{count}", "3"),
+      label: ko.chat.answerProcess.completedSummary.replace("{count}", "3"),
       isLive: false,
       current: false,
       terminal: null,
@@ -385,7 +385,7 @@ describe("getAgentProcessHeadline", () => {
     // A cold load of a run whose terminal event was never stored. Claiming
     // completion here would overstate what the events support.
     expect(headlineFor({ stages: ["planning", "draftingAnswer"] })).toEqual({
-      label: ko.chat.agentTrace.stages.draftingAnswer,
+      label: ko.chat.answerProcess.stages.draftingAnswer,
       isLive: false,
       current: false,
       terminal: null,
