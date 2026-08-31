@@ -1,6 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
+import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
@@ -19,10 +20,14 @@ import { useLocalization } from "@/hooks/useLocalization";
 import { decodeRouteSegment } from "@/lib/route-segments";
 import {
   type Citation,
+  type ConversationRunResumeRequest,
+  type DocumentCoverage,
   INTERACTION_SCHEMA_VERSION,
   isDocumentSelection,
+  isDocumentSelectionV2,
   isRunInterrupted,
   type KnowledgeBaseSelectionMode,
+  LEGACY_INTERACTION_SCHEMA_VERSION,
   type Message,
   type PendingInteraction,
 } from "@/model/my-agents";
@@ -34,12 +39,13 @@ import {
 } from "./chat/ChatTranscript";
 import { ChatWorkspaceLayout } from "./chat/ChatWorkspaceLayout";
 import { useChatActivityStore } from "./chat/chat-activity-store";
-import { conversationHref } from "./chat/chat-routes";
-import { getConversationCardClassName } from "./chat/conversation-card";
 import {
-  getAgentTraceStageKeys,
-  sanitizeActivityEventPayload,
-} from "./chat/EvidencePanel";
+  conversationHref,
+  conversationIdFromPathname,
+  isChatPathname,
+} from "./chat/chat-routes";
+import { getConversationCardClassName } from "./chat/conversation-card";
+import { getAgentTraceStageKeys } from "./chat/EvidencePanel";
 import { PendingInteractionSlot } from "./chat/interactions/PendingInteractionSlot";
 import {
   REASONING_STORAGE_KEY,
@@ -54,7 +60,10 @@ import {
   showsStopControl,
 } from "./chat/run-state";
 import type { LiveActivityEvent, QueuedMessage } from "./chat/types";
-import { useChatRunLoop } from "./chat/useChatRunLoop";
+import {
+  useChatRunLoop,
+  waitingInteractionAnnouncement,
+} from "./chat/useChatRunLoop";
 import { useChatWorkspaceEffects } from "./chat/useChatWorkspaceEffects";
 import { useReplayAssistantMessageHandler } from "./chat/useReplayAssistantMessageHandler";
 import {
@@ -87,11 +96,7 @@ export {
   seedLiveActivityEvents,
   shouldRecordLiveActivityEvent,
 } from "./chat/workspace-helpers";
-export {
-  getAgentTraceStageKeys,
-  getConversationCardClassName,
-  sanitizeActivityEventPayload,
-};
+export { getAgentTraceStageKeys, getConversationCardClassName };
 
 export function ChatWorkspace({
   initialConversationId,
@@ -108,7 +113,25 @@ export function ChatWorkspace({
    * auto-create-on-first-send reachable for everyone rather than only for users
    * with an empty history.
    */
-  const routeConversationId = decodeRouteSegment(initialConversationId);
+  /*
+   * Derived from the pathname, not from the route params this component is
+   * handed.
+   *
+   * `ensureConversationId` moves the URL with `history.replaceState`, which
+   * performs no route transition — so `initialConversationId` still reports the
+   * value the page was loaded with, forever. That made the clearing effect
+   * below unreachable: `routeConversationId` could never become the optimistic
+   * id, so the optimistic id was never dropped, and it outranked the empty
+   * route when the user then started a new chat. The workspace kept showing the
+   * conversation they had just left.
+   *
+   * `usePathname` tracks `replaceState`, which is why the sidebar already read
+   * it. Both now go through one helper so they cannot disagree again.
+   */
+  const pathname = usePathname();
+  const routeConversationId = isChatPathname(pathname)
+    ? decodeRouteSegment(conversationIdFromPathname(pathname))
+    : decodeRouteSegment(initialConversationId);
   const [optimisticConversationId, setOptimisticConversationId] =
     useState<string>();
   const activeId = optimisticConversationId ?? routeConversationId;
@@ -190,6 +213,25 @@ export function ChatWorkspace({
     null,
   );
   const [latestCitations, setLatestCitations] = useState<Citation[]>([]);
+  /**
+   * `null` means the run did not report attribution, which is not the same as
+   * reporting an empty list. Kept separate from `latestCitations` for that
+   * reason — a single array could not express "unverified".
+   */
+  const [latestConsultedSources, setLatestConsultedSources] = useState<
+    Citation[] | null
+  >(null);
+  /**
+   * Tri-state by design: `undefined` means no local run owns this surface yet,
+   * so refresh-safe run detail may supply coverage. `null` means the current
+   * run explicitly reported no coverage. An object is the bounded range read.
+   */
+  const [latestDocumentCoverage, setLatestDocumentCoverage] = useState<
+    DocumentCoverage | null | undefined
+  >(undefined);
+  const [latestRunResultId, setLatestRunResultId] = useState<string | null>(
+    null,
+  );
   // Derived from the session, not from `?guest=1`. The query param survives
   // only until the first navigation, so the old derivation dropped the notice
   // while the session was still a guest session.
@@ -305,6 +347,9 @@ export function ChatWorkspace({
     setIsCancelling,
     setIsStreaming,
     setLatestCitations,
+    setLatestConsultedSources,
+    setLatestDocumentCoverage,
+    setLatestRunResultId,
     setLiveActivityEvents,
     setOptimisticMessage,
     setQueuedMessageState,
@@ -326,6 +371,12 @@ export function ChatWorkspace({
     isCancelling,
     localization,
     setStatusAnnouncement,
+    onReplayResult: (result) => {
+      setLatestCitations(result.citations ?? []);
+      setLatestConsultedSources(result.consulted_sources ?? null);
+      setLatestDocumentCoverage(result.document_coverage ?? null);
+      setLatestRunResultId(result.run_id);
+    },
   });
 
   function toggleSelectedKnowledgeBase(knowledgeBaseId: string) {
@@ -435,7 +486,10 @@ export function ChatWorkspace({
    */
   // biome-ignore lint/correctness/useExhaustiveDependencies: `setPendingInteraction` and `setActiveRunId` are recreated on every render; including them would re-run this on every commit. The recovery is keyed on the waiting run and its detail, which is what should trigger it.
   useEffect(() => {
-    if (!serverWaitingRunId) return;
+    // The runs cache can still say `waiting_for_input` while a resume request
+    // is already in flight. Rebuilding from that stale row would put the frozen
+    // card back over an answer that is producing output again.
+    if (!serverWaitingRunId || isStreaming) return;
     const detail = waitingRunDetail.data;
     if (!detail || !isRunInterrupted(detail)) return;
     if (
@@ -446,7 +500,10 @@ export function ChatWorkspace({
     setPendingInteraction(detail.interaction);
     setActiveRunId(detail.run_id);
     activeRunIdRef.current = detail.run_id;
-  }, [serverWaitingRunId, waitingRunDetail.data]);
+    setStatusAnnouncement(
+      waitingInteractionAnnouncement(detail.interaction, localization),
+    );
+  }, [serverWaitingRunId, waitingRunDetail.data, isStreaming]);
 
   /**
    * Clears the card once the server stops reporting a waiting run.
@@ -462,13 +519,12 @@ export function ChatWorkspace({
     setPendingInteraction(null);
   }, [serverWaitingRunId, isStreaming, runs.isFetching]);
 
-  async function handleChooseInteractionOption(documentId: string) {
+  async function answerPendingInteraction(
+    payload: ConversationRunResumeRequest,
+  ) {
     const interaction = pendingInteraction;
     const runId = activeRunId ?? serverWaitingRunId;
     if (!activeId || !interaction || !runId) return;
-    // The same type+version decision the card and the registry make. Checking
-    // `type` alone would let a v2 `document_selection` — which renders as the
-    // unsupported card — still be answered through the v1 resume contract.
     if (!isDocumentSelection(interaction)) return;
     // Carry the run's stored activity into the live list before the resume
     // appends to it. After a cold load the live list is empty and this run's
@@ -478,11 +534,51 @@ export function ChatWorkspace({
     setLiveActivityEvents((current) =>
       seedLiveActivityEvents(current, events.data ?? []),
     );
-    await resumeInteraction(activeId, runId, {
+    // A final selection leaves the suspended presentation immediately. A
+    // refinement keeps the card mounted and disabled while the backend tries
+    // the clue, then replaces it with the next attempt if needed.
+    if (!("kind" in payload && payload.kind === "refine")) {
+      setPendingInteraction(null);
+    }
+    await resumeInteraction(activeId, runId, payload);
+  }
+
+  async function handleChooseInteractionOption(documentId: string) {
+    const interaction = pendingInteraction;
+    if (!interaction || !isDocumentSelection(interaction)) return;
+    await answerPendingInteraction(
+      isDocumentSelectionV2(interaction)
+        ? {
+            schema_version: INTERACTION_SCHEMA_VERSION,
+            interaction_id: interaction.interaction_id,
+            type: "document_selection",
+            kind: "select",
+            document_id: documentId,
+          }
+        : {
+            schema_version: LEGACY_INTERACTION_SCHEMA_VERSION,
+            interaction_id: interaction.interaction_id,
+            type: "document_selection",
+            document_id: documentId,
+          },
+    );
+  }
+
+  async function handleRefineInteraction(text: string) {
+    const interaction = pendingInteraction;
+    if (
+      !interaction ||
+      !isDocumentSelection(interaction) ||
+      !isDocumentSelectionV2(interaction) ||
+      !interaction.refinement.allowed
+    )
+      return;
+    await answerPendingInteraction({
       schema_version: INTERACTION_SCHEMA_VERSION,
       interaction_id: interaction.interaction_id,
       type: "document_selection",
-      document_id: documentId,
+      kind: "refine",
+      text,
     });
   }
 
@@ -605,12 +701,48 @@ export function ChatWorkspace({
     liveActivityEvents.length > 0 ? liveActivityEvents : (events.data ?? []);
   const completedRunDetail =
     runDetail.data && !isRunInterrupted(runDetail.data) ? runDetail.data : null;
-  const visibleCitations =
-    latestCitations.length > 0
-      ? latestCitations
-      : (completedRunDetail?.citations ?? []);
+  /*
+   * Read as a pair, from one source.
+   *
+   * The old test was `latestCitations.length > 0`. Under attribution that
+   * breaks: a completed run can legitimately have zero citations and several
+   * consulted sources, so the emptiness of one array no longer means "no live
+   * evidence". Keying on it alone would pair the live consulted list with the
+   * server's citation list and badge whichever rows happened to match.
+   *
+   * Busy state owns the surface before a result exists; afterward the coverage
+   * tri-state owns it. This suppresses stale evidence while a run is active,
+   * preserves explicit empty legacy completions, and lets a failed run reveal
+   * the previous completed answer's evidence again.
+   */
+  const localRunOwnsEvidence =
+    conversationIsBusy || latestDocumentCoverage !== undefined;
+  const hasLiveEvidence =
+    localRunOwnsEvidence ||
+    latestCitations.length > 0 ||
+    latestConsultedSources !== null;
+  const visibleCitations = hasLiveEvidence
+    ? latestCitations
+    : (completedRunDetail?.citations ?? []);
+  const visibleConsultedSources = hasLiveEvidence
+    ? latestConsultedSources
+    : (completedRunDetail?.consulted_sources ?? null);
+  const visibleDocumentCoverage = localRunOwnsEvidence
+    ? (latestDocumentCoverage ?? null)
+    : (completedRunDetail?.document_coverage ?? null);
+  // Live events without a completed local result belong to a newer attempt than
+  // the cached run list. Do not pair them with the previous completed run ID.
+  const latestRunId =
+    latestRunResultId ??
+    (liveActivityEvents.length === 0 ? (latestCompletedRunId ?? null) : null);
   const latestAssistantMessageId = getLatestAssistantMessageId(sortedMessages);
-  const autoScrollTrigger = `${sortedMessages.length}:${streamedReply.length}`;
+  const latestActivityEvent = visibleActivityEvents.at(-1);
+  // The transcript grows from process events before the first answer token,
+  // not only from messages and reply text. Event identity/sequence changes for
+  // every appended phase, including one event that reveals several trace steps
+  // in a burst. The scroll effect still checks `shouldAutoScrollRef`, so this
+  // never pulls a reader back down after they intentionally scroll upward.
+  const autoScrollTrigger = `${sortedMessages.length}:${streamedReply.length}:${visibleActivityEvents.length}:${latestActivityEvent?.id ?? ""}:${latestActivityEvent?.sequence ?? ""}`;
   const composerPlaceholder = conversationIsBusy
     ? visibleQueuedMessage
       ? localization.queuedComposerPlaceholder
@@ -639,11 +771,13 @@ export function ChatWorkspace({
     ? localization.stoppingCurrentAnswer
     : visibleQueuedMessage
       ? localization.sendNowQueuedBlocked
-      : serverActiveRunIsStale
-        ? localization.activeRunStaleHelper
-        : !activeRunId && isStreaming
-          ? localization.sendNowWaitingForRun
-          : localization.sendNowHelper;
+      : runPhase === "waiting"
+        ? localization.interactionSendHelper
+        : serverActiveRunIsStale
+          ? localization.activeRunStaleHelper
+          : !activeRunId && isStreaming
+            ? localization.sendNowWaitingForRun
+            : localization.sendNowHelper;
   const queuedHelper =
     // A queued message under an open question is not "waiting for the current
     // answer" — nothing is being answered. Saying so avoids the impression that
@@ -706,6 +840,9 @@ export function ChatWorkspace({
     setReplayNotice(null);
     setLiveActivityEvents([]);
     setLatestCitations([]);
+    setLatestConsultedSources(null);
+    setLatestDocumentCoverage(undefined);
+    setLatestRunResultId(null);
     setOptimisticMessage(null);
   }, [activeId]);
 
@@ -771,6 +908,7 @@ export function ChatWorkspace({
       knowledgeBases={knowledgeBases}
       lang={lang}
       latestAssistantMessageId={latestAssistantMessageId}
+      latestRunId={latestRunId}
       localization={localization}
       messages={sortedMessages}
       messagesError={messages.error}
@@ -795,6 +933,7 @@ export function ChatWorkspace({
             localization={localization}
             isResuming={isStreaming || isCancellingInteraction}
             onChoose={handleChooseInteractionOption}
+            onRefine={handleRefineInteraction}
             onCancel={handleCancelInteraction}
           />
         ) : null
@@ -810,11 +949,12 @@ export function ChatWorkspace({
       onReasoningModeChange={(mode) => persistReasoning({ mode })}
       onReasoningEffortChange={(effort) => persistReasoning({ effort })}
       showGuestNotice={showGuestNotice}
-      sortedRuns={sortedRuns}
       statusAnnouncement={statusAnnouncement}
       streamError={streamError}
       streamedReply={streamedReply}
       visibleCitations={visibleCitations}
+      visibleConsultedSources={visibleConsultedSources}
+      visibleDocumentCoverage={visibleDocumentCoverage}
       visibleQueuedMessage={visibleQueuedMessage}
     />
   );

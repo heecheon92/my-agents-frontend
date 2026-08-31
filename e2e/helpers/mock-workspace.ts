@@ -133,15 +133,134 @@ export const mockPendingInteraction = {
   next_cursor: null,
 };
 
+export const mockPendingInteractionV2 = {
+  schema_version: 2,
+  interaction_id: "4a0b7c65-7c47-4bb3-9618-51ec95291843",
+  type: "document_selection",
+  reason_code: "ambiguous_document_reference",
+  message_key: "clarification.document_scope.select_source",
+  expires_at: "2099-01-01T00:00:00.000Z",
+  option_count: 1,
+  library_count: 4000,
+  options: [
+    {
+      document_id: "doc-contract",
+      title: "Markdown Langgraph - Pydantic Annotated Literal",
+      source_filename: "Markdown Langgraph - Pydantic Annotated Literal.md",
+      knowledge_base_id: "kb-personal",
+      knowledge_base_name: "개인 자료",
+      match_confidence: "medium",
+      match_reason_code: "partial_filename",
+    },
+  ],
+  next_cursor: null,
+  refinement: {
+    allowed: true,
+    attempts_used: 0,
+    attempts_max: 2,
+    max_length: 120,
+  },
+  browse: { allowed: false, cursor: null },
+};
+
+export const mockUnresolvedInteractionV2 = {
+  ...mockPendingInteractionV2,
+  interaction_id: "ea4d14ef-2bd7-4786-8ce4-92ea4e7f9817",
+  reason_code: "unresolved_document_reference",
+  option_count: 0,
+  options: [],
+};
+
+export const mockBrowseInteractionV2 = {
+  ...mockPendingInteractionV2,
+  interaction_id: "63f4561e-d3bd-4aa0-a7d2-0084d18ed0cf",
+  reason_code: "unresolved_document_reference",
+  option_count: 1,
+  refinement: {
+    ...mockPendingInteractionV2.refinement,
+    allowed: false,
+    attempts_used: 2,
+  },
+  browse: { allowed: true },
+};
+
+export const mockMaxShortlistInteractionV2 = {
+  ...mockPendingInteractionV2,
+  interaction_id: "5f2d60da-b876-4a1e-8786-c22a7b76e79e",
+  option_count: 5,
+  options: Array.from({ length: 5 }, (_, index) => ({
+    ...mockPendingInteractionV2.options[0],
+    document_id: `doc-v2-${index}`,
+    title: `Pydantic 후보 문서 ${index + 1}`,
+    source_filename: `organization-project-pydantic-annotated-literal-candidate-${index + 1}-final-review.md`,
+  })),
+};
+
+/**
+ * The same question with a list long enough to outgrow the panel.
+ *
+ * The backend pages at 20, and `option_count` is unbounded — a vague reference
+ * across a large knowledge base legitimately produces a full page. Every other
+ * fixture here has two options, which is why nothing caught the overflow.
+ */
+export const mockManyOptionInteraction = {
+  ...mockPendingInteraction,
+  option_count: 40,
+  options: Array.from({ length: 20 }, (_, index) => ({
+    document_id: `doc-many-${index}`,
+    title: `자료 ${index + 1}`,
+    source_filename: `source-${index + 1}.pdf`,
+    knowledge_base_id: "kb-personal",
+    knowledge_base_name: "개인 자료",
+  })),
+  next_cursor: "cursor-page-2",
+};
+
 const mockCitation = {
   id: "citation-visual",
   document_id: "doc-contract",
+  document_title: "2026 파트너 계약서",
   knowledge_base_id: "kb-personal",
+  knowledge_base_name: "개인 자료",
   chunk_id: "chunk-4",
   snippet:
     "갱신 통지는 만료 60일 전까지 서면으로 이루어져야 하며, 통지가 없으면 1년 자동 연장된다.",
   source_page: 4,
   source_filename: "partner-contract-2026.pdf",
+};
+
+/**
+ * A second chunk of the *same* document, on a different page.
+ *
+ * Without this the grouping is untestable: every fixture document contributed
+ * exactly one chunk, so one-row-per-chunk and one-row-per-document produced
+ * identical output.
+ */
+const mockSecondChunkOfCitedDocument = {
+  ...mockCitation,
+  id: "citation-visual-2",
+  chunk_id: "chunk-9",
+  snippet: "위약금은 잔여 계약 기간의 30퍼센트로 한다.",
+  source_page: 9,
+};
+
+/**
+ * A source given to composition that the answer did not verifiably use.
+ *
+ * Deliberately absent from `citations`: the whole point of the attributed mode
+ * is that consulted is a superset, so a fixture where the two lists are equal
+ * would prove nothing.
+ */
+const mockConsultedOnlySource = {
+  id: "citation-consulted-only",
+  document_id: "doc-roadmap",
+  document_title: "제품 로드맵 2026",
+  knowledge_base_id: "kb-personal",
+  knowledge_base_name: "개인 자료",
+  chunk_id: "chunk-11",
+  snippet: "2분기 목표는 파트너 채널 확대와 온보딩 자동화입니다.",
+  source_page: 11,
+  source_filename: "product-roadmap-2026.pdf",
 };
 
 const mockMember = {
@@ -199,9 +318,29 @@ type RouteOverrides = {
    * Omitted entirely by default so every existing spec keeps proving the
    * flag-off composer is unchanged.
    */
+  /**
+   * How the completed run reports citation attribution.
+   * `false` omits `consulted_sources` entirely, as a backend without the
+   * attribution migration does — that is the default so every existing spec
+   * keeps proving the legacy panel is unchanged.
+   */
+  attribution?: false | "supported" | "none";
+  /** Add refresh-safe comprehensive-document coverage to the completed run. */
+  documentCoverage?: false | "complete" | "partial";
+  processState?:
+    | "completed"
+    | "failed"
+    | "cancelled"
+    | "needs_evidence"
+    | "no_events";
   interaction?:
     | false
     | "document_selection"
+    | "document_selection_v2"
+    | "v2_unresolved"
+    | "v2_max_shortlist"
+    | "v2_browse"
+    | "many_options"
     | "unsupported_type"
     | "unsupported_version"
     | "expired";
@@ -216,24 +355,247 @@ export async function mockWorkspace(
     guest = false,
     empty = false,
     reasoning = true,
+    attribution = false,
+    documentCoverage = false,
+    processState = "completed",
     interaction = false,
   } = overrides;
+  const consultedSources = !attribution
+    ? undefined
+    : [mockCitation, mockSecondChunkOfCitedDocument, mockConsultedOnlySource];
+  // "none" is the case the backend expects to be common: sources were read, but
+  // the conservative selector matched none of them to the answer.
+  const attributedCitations = attribution === "none" ? [] : [mockCitation];
+  const coverage = !documentCoverage
+    ? null
+    : {
+        mode: documentCoverage,
+        document_id: mockCitation.document_id,
+        title: "2026 파트너 계약서",
+        source_filename: mockCitation.source_filename,
+        start_offset: 0,
+        end_offset: documentCoverage === "complete" ? 8_400 : 12_000,
+        total_chars: documentCoverage === "complete" ? 8_400 : 32_000,
+      };
   const pendingInteraction = !interaction
     ? null
-    : interaction === "unsupported_type"
-      ? { ...mockPendingInteraction, type: "approval" }
-      : interaction === "unsupported_version"
-        ? { ...mockPendingInteraction, schema_version: 2 }
-        : interaction === "expired"
-          ? {
-              ...mockPendingInteraction,
-              expires_at: "2020-01-01T00:00:00.000Z",
-            }
-          : mockPendingInteraction;
+    : interaction === "document_selection_v2"
+      ? mockPendingInteractionV2
+      : interaction === "v2_unresolved"
+        ? mockUnresolvedInteractionV2
+        : interaction === "v2_max_shortlist"
+          ? mockMaxShortlistInteractionV2
+          : interaction === "v2_browse"
+            ? mockBrowseInteractionV2
+            : interaction === "many_options"
+              ? mockManyOptionInteraction
+              : interaction === "unsupported_type"
+                ? { ...mockPendingInteraction, type: "approval" }
+                : interaction === "unsupported_version"
+                  ? { ...mockPendingInteraction, schema_version: 3 }
+                  : interaction === "expired"
+                    ? {
+                        ...mockPendingInteraction,
+                        expires_at: "2020-01-01T00:00:00.000Z",
+                      }
+                    : mockPendingInteraction;
   const knowledgeBases = empty ? [] : mockKnowledgeBases;
   const documents = empty ? [] : mockDocuments;
   const conversations = empty ? [] : [mockConversation];
   const groups = empty ? [] : [mockGroup];
+  const processRun = {
+    ...mockRun,
+    status:
+      processState === "failed"
+        ? "failed"
+        : processState === "cancelled"
+          ? "cancelled"
+          : "completed",
+  };
+  const traceStep = (
+    id: string,
+    eventType: string,
+    koTitle: string,
+    enTitle: string,
+    koDescription: string,
+    enDescription: string,
+    status: "completed" | "waiting" = "completed",
+  ) => ({
+    id,
+    event_type: eventType,
+    status,
+    title: { ko: koTitle, en: enTitle },
+    description: { ko: koDescription, en: enDescription },
+    evidence: {},
+  });
+  const retrievalTrace = [
+    traceStep(
+      "query_cartographer",
+      "query_planned",
+      "질문 의도 정리",
+      "Mapped the question",
+      "계약 갱신 조건을 찾도록 질문 범위를 정했습니다.",
+      "Scoped the question to contract renewal terms.",
+    ),
+    traceStep(
+      "source_warden",
+      "sources_authorized",
+      "문서 범위 확인",
+      "Checked document scope",
+      "선택한 지식 베이스에서 사용할 문서를 확인했습니다.",
+      "Checked usable documents in the selected knowledge bases.",
+    ),
+    traceStep(
+      "candidate_scouts",
+      "candidates_retrieved",
+      "관련 문서 탐색",
+      "Found relevant documents",
+      "질문과 관련된 문서 후보를 찾았습니다.",
+      "Found document candidates relevant to the question.",
+    ),
+    traceStep(
+      "context_curator",
+      "context_prepared",
+      "답변 자료 구성",
+      "Prepared answer context",
+      "답변에 사용할 문서 내용을 정리했습니다.",
+      "Prepared document context for the answer.",
+    ),
+  ];
+  const processEvents =
+    processState === "no_events"
+      ? []
+      : processState === "failed"
+        ? [
+            {
+              id: "event-1",
+              run_id: mockRun.run_id,
+              sequence: 1,
+              event_type: "run_started",
+              payload: { knowledge_base_selection: { mode: "all" } },
+            },
+            {
+              id: "event-2",
+              run_id: mockRun.run_id,
+              sequence: 2,
+              event_type: "retrieval_completed",
+              payload: { documents: 2, agent_trace: retrievalTrace },
+            },
+            {
+              id: "event-3",
+              run_id: mockRun.run_id,
+              sequence: 3,
+              event_type: "run_failed",
+              payload: {},
+            },
+          ]
+        : processState === "cancelled"
+          ? [
+              {
+                id: "event-1",
+                run_id: mockRun.run_id,
+                sequence: 1,
+                event_type: "run_started",
+                payload: { knowledge_base_selection: { mode: "all" } },
+              },
+              {
+                id: "event-2",
+                run_id: mockRun.run_id,
+                sequence: 2,
+                event_type: "graph_invoked",
+                payload: {
+                  agent_trace: [
+                    traceStep(
+                      "assistant_graph",
+                      "answer_drafting",
+                      "답변 구성 시작",
+                      "Started drafting",
+                      "확인한 문서 내용으로 답변을 구성했습니다.",
+                      "Started composing from the checked document context.",
+                      "waiting",
+                    ),
+                  ],
+                },
+              },
+              {
+                id: "event-3",
+                run_id: mockRun.run_id,
+                sequence: 3,
+                event_type: "run_cancelled",
+                payload: {},
+              },
+            ]
+          : processState === "needs_evidence"
+            ? [
+                {
+                  id: "event-1",
+                  run_id: mockRun.run_id,
+                  sequence: 1,
+                  event_type: "run_started",
+                  payload: { knowledge_base_selection: { mode: "all" } },
+                },
+                {
+                  id: "event-2",
+                  run_id: mockRun.run_id,
+                  sequence: 2,
+                  event_type: "retrieval_completed",
+                  payload: {
+                    insufficient_evidence: true,
+                    agent_trace: retrievalTrace,
+                  },
+                },
+                {
+                  id: "event-3",
+                  run_id: mockRun.run_id,
+                  sequence: 3,
+                  event_type: "run_completed",
+                  payload: {},
+                },
+              ]
+            : [
+                {
+                  id: "event-1",
+                  run_id: mockRun.run_id,
+                  sequence: 1,
+                  event_type: "run_started",
+                  payload: { knowledge_base_selection: { mode: "all" } },
+                },
+                {
+                  id: "event-2",
+                  run_id: mockRun.run_id,
+                  sequence: 2,
+                  event_type: "retrieval_completed",
+                  payload: { documents: 2, agent_trace: retrievalTrace },
+                },
+                {
+                  id: "event-3",
+                  run_id: mockRun.run_id,
+                  sequence: 3,
+                  event_type: "run_completed",
+                  payload: {
+                    citations: [{ id: mockCitation.id }],
+                    agent_trace: [
+                      ...retrievalTrace,
+                      traceStep(
+                        "evidence_judge",
+                        "citations_checked",
+                        "근거 연결 확인",
+                        "Checked evidence links",
+                        "답변과 문서 근거의 연결을 확인했습니다.",
+                        "Checked links between the answer and document evidence.",
+                      ),
+                      traceStep(
+                        "answer_composer",
+                        "answer_composed",
+                        "답변 작성 완료",
+                        "Completed the answer",
+                        "확인한 근거를 바탕으로 답변을 마쳤습니다.",
+                        "Completed the answer from the checked evidence.",
+                      ),
+                    ],
+                  },
+                },
+              ];
 
   await page.route("**/api/my-agents/**", async (route) => {
     const request = route.request();
@@ -253,6 +615,50 @@ export async function mockWorkspace(
       return json({ ...mockUser, is_guest: guest });
     }
     if (path === "/health") return json({ status: "ok" });
+    if (
+      interaction === "v2_browse" &&
+      path ===
+        `/conversations/${mockConversation.id}/runs/${mockWaitingRun.run_id}/interactions/${mockBrowseInteractionV2.interaction_id}/options`
+    ) {
+      const cursor = new URL(request.url()).searchParams.get("cursor");
+      if (cursor === "cursor-page-2") {
+        return json({
+          schema_version: 2,
+          interaction_id: mockBrowseInteractionV2.interaction_id,
+          type: "document_selection",
+          mode: "broad",
+          option_count: 4,
+          library_count: 4,
+          options: [
+            mockPendingInteraction.options[1],
+            {
+              document_id: "doc-broad-third",
+              title: "보안 검토 메모",
+              source_filename: "security-review.md",
+              knowledge_base_id: "kb-personal",
+              knowledge_base_name: "개인 자료",
+            },
+          ],
+          next_cursor: null,
+        });
+      }
+      return json({
+        schema_version: 2,
+        interaction_id: mockBrowseInteractionV2.interaction_id,
+        type: "document_selection",
+        mode: "broad",
+        option_count: 4,
+        library_count: 4,
+        options: [
+          {
+            ...mockPendingInteraction.options[0],
+            document_id: "doc-broad-contract",
+          },
+          mockPendingInteraction.options[1],
+        ],
+        next_cursor: "cursor-page-2",
+      });
+    }
     if (path === "/capabilities/reasoning") {
       // A backend without the reasoning migration 404s here, and the composer
       // must fall back to hiding its controls rather than erroring.
@@ -358,7 +764,7 @@ export async function mockWorkspace(
     }
     if (path === `/conversations/${mockConversation.id}/runs`) {
       if (pendingInteraction) return json([mockWaitingRun, mockRun]);
-      return json(empty ? [] : [mockRun]);
+      return json(empty ? [] : [processRun]);
     }
     if (
       pendingInteraction &&
@@ -380,7 +786,19 @@ export async function mockWorkspace(
       return json({
         ...mockRun,
         reply: "갱신 통지 기한이 가장 큰 위험입니다.",
-        citations: [mockCitation],
+        // `route` and `handled_by` are required by
+        // `conversationRunResponseSchema`. Without them the whole response
+        // failed to parse and the evidence panel silently rendered no sources
+        // at all — which is why no spec using this fixture had ever asserted
+        // on a citation.
+        route: {
+          label: mockRun.route_label,
+          explanation: "문서 근거가 필요한 질문으로 판단했습니다.",
+        },
+        handled_by: "personal_assistant_graph",
+        citations: attribution ? attributedCitations : [mockCitation],
+        ...(consultedSources ? { consulted_sources: consultedSources } : {}),
+        ...(documentCoverage ? { document_coverage: coverage } : {}),
       });
     }
     // The suspended run's stored activity. It exists server-side but has no
@@ -403,7 +821,7 @@ export async function mockWorkspace(
           run_id: mockWaitingRun.run_id,
           sequence: 2,
           event_type: "retrieval_completed",
-          payload: { matched_documents: 2 },
+          payload: { matched_documents: 2, agent_trace: retrievalTrace },
         },
         {
           id: "waiting-event-3",
@@ -418,29 +836,7 @@ export async function mockWorkspace(
       path ===
       `/conversations/${mockConversation.id}/runs/${mockRun.run_id}/events`
     ) {
-      return json([
-        {
-          id: "event-1",
-          run_id: mockRun.run_id,
-          sequence: 1,
-          event_type: "run_started",
-          payload: { knowledge_base_selection: { mode: "all" } },
-        },
-        {
-          id: "event-2",
-          run_id: mockRun.run_id,
-          sequence: 2,
-          event_type: "retrieval_completed",
-          payload: { documents: 2 },
-        },
-        {
-          id: "event-3",
-          run_id: mockRun.run_id,
-          sequence: 3,
-          event_type: "run_completed",
-          payload: { citations: [{ id: mockCitation.id }] },
-        },
-      ]);
+      return json(processEvents);
     }
 
     return json([]);

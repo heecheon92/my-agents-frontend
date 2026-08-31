@@ -1,3 +1,11 @@
+## 2026-08-31 — Ranked document clarification and human refinement
+
+- Refreshed interaction models from the live backend OpenAPI and kept already-waiting V1 runs compatible alongside the V2 select/refine union.
+- Replaced the broad default presentation with the backend-ranked shortlist, a final one-line filename clue, two-attempt status, and broad authorized browsing only after exhaustion.
+- Kept refinement inside the same run and outside the transcript, protected Enter during IME composition, restored focus to new candidates, and pinned Cancel outside the scrolling list.
+- Fixed repeated-interrupt cache recovery by writing the latest SSE waiting response into the run-detail query cache before invalidation.
+- Added bilingual copy, parser/API coverage, and mocked Playwright coverage at mobile and desktop widths. The owner reserved the final manual cross-repository E2E pass.
+
 ## 2026-06-24 — Knowledge management lifecycle UX
 
 - Moved publish-request creation to Knowledge-owned source-space and document actions so users share selected entities through group/source-space selectors instead of typing document or knowledge-base IDs.
@@ -815,3 +823,427 @@ server check and imply the boundary is enforced here, which it is not.
 
 Rechecked live in the browser on default all-sources mode: exactly Alpha and
 Beta offered, two documents, no system sources present, and cancel succeeded.
+
+### A long option list clipped itself out of the panel
+
+Reported from use: with many options to choose from, the choice card blocked
+scrolling. The mechanism turned out to be worse than "blocked".
+
+The card renders inside the composer, which is `absolute inset-x-0 bottom-0`
+against a panel that is `overflow-hidden`. The option `<ul>` had no height cap,
+so it grew the composer upward until it covered the transcript entirely — the
+reported symptom, since every wheel event then landed on a card that had nothing
+to scroll — and then kept going past the panel's top edge, where the overflow was
+clipped away with no scroller anywhere in the subtree to bring it back. Measured
+against one full backend page of 20 options: **1049px** of card lost above the
+panel at 1280×720, **1801px** at 390×844. The title, the description and roughly
+the first fifteen options were simply not on screen and not reachable.
+
+Every fixture in `e2e/durable-source-choice.spec.ts` carried two options, which
+is why eleven passing interaction tests said nothing about this. The new
+`many_options` fixture in `e2e/helpers/mock-workspace.ts` serves a full page of
+20 with a `next_cursor`, matching what the backend actually pages at.
+
+The fix bounds the list — `max-h-[min(16rem,28dvh)] overflow-y-auto
+overscroll-contain`, tagged `data-slot="interaction-options"` — and not the card.
+That distinction is the whole point: bounding the card would scroll **Cancel**
+out of reach, and a suspended run blocks the entire conversation for up to 24
+hours, so cancel is the release valve and must stay pinned along with the title
+and the expiry notice. `28dvh` rather than a fixed height because the mobile
+panel is where the overflow was worst.
+
+Both new cases were confirmed to fail against the unfixed component before being
+kept, at both viewports. `expectNoNestedChatScroll` is unaffected: it walks the
+transcript's *ancestor* chain, and the list is a sibling subtree.
+
+Verified: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (240
+passed), `pnpm exec playwright test` (110 passed, 2 skipped), `pnpm build`.
+Not verified: behaviour against a real backend paging a second page into the
+bounded list — the same live gap noted above, since the checkpointer flag is off.
+
+### Evidence panel: consulted sources, ahead of the backend field
+
+Built against the contract pinned with the backend on 2026-08-25 (see
+`docs/backend-requests.md`). Citations today are every positive-score chunk
+admitted to composition, so the panel presents consulted sources as cited ones.
+The backend is adding `consulted_sources` as a nullable superset of `citations`;
+this is the frontend half, built ahead of the hosted OpenAPI document.
+
+The design decision that drove the shape: backend expects "no source verifiably
+supported this answer" to be **common**, not rare, because the attribution
+selector is deliberately conservative and paraphrased summaries rarely match
+lexically. So the panel is one list of consulted sources with the verified
+subset badged `근거`, not two sections — a separate "used" section would sit
+empty most of the time, and `EvidencePanel.tsx`'s old `citations.length > 0`
+gate would have made the whole disclosure *vanish* on exactly those answers,
+which reads as a regression rather than as honesty. The gate now counts rendered
+rows, and the summary count follows the rendered list rather than
+`citations.length` — otherwise a four-source disclosure would be labelled
+`인용 1개` with three sources hidden behind a number that did not describe it.
+
+`buildEvidenceSources` (`components/chat/evidence-panel/evidence-sources.ts`)
+owns the merge. Three rules it encodes, each of which was a real decision:
+
+- **`null` is not `[]`.** A run predating attribution reports `null` and renders
+  legacy — flat list, nothing badged. Badging it would claim a verification that
+  never ran, putting a stronger claim on old answers than on new ones. This is
+  why the backend dropped its original plan to backfill `used_in_answer = true`;
+  a run-level `citation_attribution_version` marks the distinction instead.
+- **The join is by `id` alone.** The contract guarantees a source in both arrays
+  is the identical persisted row with the identical `id`. Matching on
+  `chunk_id`, title or snippet would double-render on any collision.
+- **A cited source missing from the consulted superset is kept, not dropped.**
+  That state is a contract violation, but dropping it would hide the strongest
+  evidence the answer has.
+
+**Coverage boundary, stated honestly.** The merge logic has 7 unit tests. The
+*rendering* has none: `vitest.config.ts` is `environment: "node"` with no jsdom
+and `include: ["tests/**/*.test.ts"]`, so component render tests are not
+possible in this repo, and Playwright cannot reach attributed mode because the
+zod schema strips the unknown `consulted_sources` key. Both modes were therefore
+verified by temporarily injecting a payload at the `EvidencePanel` call site and
+screenshotting the result — zero-supported renders the explanatory line above
+the list, and the badged variant puts the `근거` pill before the title. That
+injection was reverted; no trace remains in the tree.
+
+### Wiring it to the real contract
+
+Completed the same day against the backend's served OpenAPI document at
+`http://127.0.0.1:8000/openapi.json`, per `AGENTS.md` — not from the backend
+author's description of it, precise though that was. The served property is
+`anyOf [array of CitationResponse, null]` and is **not** required, so absent,
+`null` and `[]` are three distinct wire states; `.nullish()` covers all three
+and `.default([])` would have collapsed the first two into the third. The
+document was re-fetched after a backend restart and confirmed byte-identical.
+
+`hasLiveEvidence` in `ChatWorkspace.tsx` is the subtle part. The previous
+condition was `latestCitations.length > 0`, choosing between live stream values
+and the server's run detail. Under attribution that breaks: a completed run can
+legitimately have zero citations and several consulted sources, so the emptiness
+of one array no longer means "no live evidence", and keying on it alone would
+pair the live consulted list with the server's citation list — badging whichever
+rows happened to match. The pair is now read from one source. A legacy run never
+sets `latestConsultedSources`, so the condition reduces to the old one exactly.
+
+**A pre-existing fixture bug surfaced here.** `mockWorkspace`'s run-detail
+response omitted `route` and `handled_by`, both required by
+`conversationRunResponseSchema`, so the response never parsed and the evidence
+panel silently rendered no sources at all. No spec had noticed because
+`e2e/chat-citations.spec.ts` builds its own mock. Any future assertion about
+citations through `mockWorkspace` would have failed for this reason rather than
+the one under test.
+
+Coverage now includes the rendering that was previously unreachable:
+`e2e/citation-attribution.spec.ts` covers badged, zero-supported, and legacy.
+The zero-supported case was verified to **fail** against the old
+`citations.length > 0` gate before being kept.
+
+Verified: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (247
+passed, 36 files), `pnpm exec playwright test` (113 passed, 2 skipped),
+`pnpm build`. Not verified: a real backend response through this path — every
+test is mocked, and no run has been driven against the live attributed backend.
+
+### New chat kept showing the conversation you just left
+
+Reported from use: clicking 새 대화 from an existing conversation frequently did
+not clear the workspace. Intermittent because it depended on *how* you got to
+the conversation.
+
+`ensureConversationId` moves the URL with `history.replaceState` rather than
+`router.push`, deliberately — a real navigation crosses a dynamic segment and
+remounts the workspace mid-run, which is the frozen-chat bug fixed earlier. The
+cost, unaccounted for at the time: `replaceState` performs no route transition,
+so Next's route `params` keep reporting the value the page was loaded with.
+
+`ChatWorkspace` derived `routeConversationId` from those params. The effect that
+clears `optimisticConversationId` fires only when `routeConversationId ===
+optimisticConversationId`, which after a `replaceState` can never happen — so
+the optimistic id was never cleared, and since `activeId =
+optimisticConversationId ?? routeConversationId` it outranked the now-empty
+route. Clicking 새 대화 moved the URL to `/chat` correctly and left the
+transcript showing the previous conversation.
+
+Intermittent because a conversation reached by *clicking the sidebar* is a real
+navigation that remounts the workspace and resets the optimistic state; only a
+conversation the composer had auto-created carried a stale id. So it reproduced
+exactly when you sent a first message and then started another new chat.
+
+`ConversationHistorySidebarGroup` already read `usePathname` for precisely this
+reason, with a comment saying route params do not track `replaceState`. The two
+components disagreed about the same question. Both now go through
+`conversationIdFromPathname` in `chat-routes.ts`, so they cannot drift again.
+
+`e2e/new-conversation-reset.spec.ts` drives the real sequence — send, auto-create
+by `replaceState`, then 새 대화 — and asserts the transcript is empty, scoped to
+the transcript because the title legitimately remains in the sidebar history. It
+was confirmed to fail against the unfixed component first.
+
+### Citation panel: one row per document
+
+Product decision, relayed 2026-08-25: the panel lists documents, not retrieved
+passages. A document routinely contributes several chunks, so a row each made
+one source look like four, with near-identical snippets under each.
+
+Backend added nullable `document_title` and `knowledge_base_name` to
+`CitationResponse` on both arrays; both were read from the served OpenAPI
+document at `http://127.0.0.1:8000/openapi.json` before the schema was touched.
+`groupSourcesByDocument` collapses by `document_id`, marks a document supported
+when *any* of its chunks is, deduplicates and sorts page numbers, and prefers
+`source_filename` over `document_title` because a filename is what the reader
+recognises. Backend ordering is preserved — re-sorting would invent a ranking
+the frontend has no basis for.
+
+Snippets, `document_id`, `knowledge_base_id` and `chunk_id` are gone from the
+panel **entirely**, not collapsed: they were most of what the old 상세 정보
+disclosure held, so the disclosure went with them. `document_id` survives only
+as the grouping key and never reaches the DOM. The tests assert
+`toHaveCount(0)` rather than `toBeHidden` for exactly that reason. Chunk-level
+provenance is unchanged server-side; the run row's 상세 정보, which shows
+`run_id`, is the audit surface and was left alone.
+
+Two specs asserted the old behaviour and were updated to the new guarantee:
+`e2e/chat-citations.spec.ts` (was asserting the snippet visible and
+`document_id` revealed by 상세 정보) and the env-gated `e2e/v1-demo.spec.ts`
+(was asserting `chat.documentLabel`, and now tolerates either the citation or
+consulted disclosure label since it runs against a live backend that may be
+either).
+
+Left in place deliberately: `chat.documentLabel`, `chat.knowledgeBaseLabel` and
+`chat.chunkLabel` are now unused by any component. Removing them is a copy
+cleanup rather than part of this change, and `chat.chunkLabel` is referenced by
+a rule in `tests/knowledge-copy.test.ts`, so it is reported rather than removed.
+
+Verified: `pnpm lint`, `pnpm exec tsc --noEmit`, `pnpm exec vitest run` (254
+passed, 36 files), `pnpm exec playwright test` (114 passed, 2 skipped),
+`pnpm build`. Both panel states inspected in a browser. Not verified: a real
+backend response through either path — every test is mocked.
+
+## 2026-08-26 — Live agent process replaces retrospective response evidence
+
+The answer footer now explains work while it happens instead of hiding it in
+`응답 근거`. `AgentProcessPanel` renders reached phases only—never a total,
+percentage, or invented future step—and retains a compact one-line record on
+the latest completed answer. Failed, cancelled, insufficient-evidence, and
+durably suspended runs preserve reached work and end in distinct static states.
+A waiting interaction freezes at `확인 요청 대기`, shows no composing spinner,
+and leaves the interaction card as the action surface.
+
+The stable phase spine now keeps the backend's actual localized trace titles as
+ordered dynamic detail. Valid unknown agent IDs use the same safe fallback phase
+in both spine and detail instead of disappearing. A `run_started` event with no
+trace renders `답변 준비 중`; it does not fabricate a planning step to fill the
+quiet interval before retrieval reports. Detail reveal is staggered but
+persistent, and only phase transitions enter the live region.
+
+Successful completion collapses to the reached-step count.
+The quiet copy control beside it preserves `run_id` for support without putting
+the raw value in the reading path; clipboard failure reveals the ID as the only
+fallback. `응답 근거`, raw activity payloads, run rows, and their chat-localized
+copy were removed from the DOM. Onboarding now targets `chat.agent-process`, and
+older answers say that sources and the agent process are latest-answer-only.
+
+The operational-summary backend request is provider-independent: semantic keys
+and allowlisted parameters must come from deterministic backend facts. OpenAI
+`reasoning.summary` and assistant `phase` were investigated separately.
+Provider-generated reasoning prose has weaker truth status and is deferred to a
+later product decision; it has no slot or unavailable placeholder in this UI.
+
+Test-first evidence: the process-state tests failed 7/7 before the derivation
+existed; two dynamic-detail tests failed before `getAgentProcessDetails`; the
+single-unknown-agent regression reproduced the spine/detail disagreement; and
+the suspended browser test was deliberately run against the old busy-state
+wiring and failed because the composing indicator returned. Playwright captures
+starting, running, completed, failed, cancelled, suspended, `근거 필요`, and
+no-event states at 390/768/1280, plus reduced-motion and isolated process-panel
+frames. All evidence is mocked; live backend/OpenAPI verification remains open.
+
+Final local verification: `pnpm lint`, `pnpm exec tsc --noEmit`, and
+`pnpm exec vitest run` passed (261 tests, 36 files); full Playwright passed 137
+with 2 environment-gated skips; `pnpm build` completed all 17 routes; and
+`git diff --check` passed.
+
+## 2026-08-26 — Document choice resumes into live output immediately
+
+Reported from use: after choosing a document in the durable interaction card,
+the UI stayed frozen until the full summary arrived. The apparent frontend
+state leads were not the root cause. `resumeInteraction` already set streaming
+state synchronously, and a cached waiting run resolves to `resuming` while that
+flag is true.
+
+The backend `/resume/stream` adapter was buffered: it called sync resume to
+completion before yielding its first byte, emitted no `run_resumed` or progress,
+and then split the finished reply into artificial deltas. Backend resume now
+claims the run once, emits `run_resumed` first, streams LangGraph messages and
+updates, and checks cancellation between steps.
+
+Frontend transition behavior is explicit as well. Choosing clears the answered
+card before awaiting the first event. Waiting-run recovery is suppressed while
+resume is active, so stale query data cannot freeze the card again. If resume
+fails and the server still reports waiting, the existing recovery effect
+restores it. The process-state derivation also treats an in-flight resume as
+active rather than retaining the `확인 요청 대기` terminal.
+
+The new Playwright regression deliberately withholds the first resume response
+event. It failed at 390 and 1280 before the fix because the interaction card
+remained mounted. During that same interval it now verifies no card or waiting
+terminal, visible process progress and steering control, an editable composer,
+and a queueable follow-up. Screenshots capture the interval itself rather than
+the final resumed answer.
+
+Final cross-repo verification after the resume fix: frontend lint and TypeScript
+passed, Vitest passed 262 tests across 36 files, full Playwright passed 139 with
+2 environment-gated skips, and the production build completed all 17 routes.
+The backend passed 534 tests with 2 skipped; Ruff lint/format and both diff
+checks passed. Live hosted deployment remains unverified.
+
+### Follow-up: process growth now participates in transcript auto-scroll
+
+The newly useful pre-answer interval exposed a second-order layout defect: the
+process panel accumulated stages while `sortedMessages.length` and
+`streamedReply.length` stayed unchanged, so the transcript's auto-scroll effect
+did not run. At 390 and 1280 the current stage ended behind the floating
+composer.
+
+`autoScrollTrigger` now includes the visible activity-event count plus the
+latest event identity and sequence. Every appended event therefore rechecks the
+bottom position after render, including a single event that reveals several
+trace steps at once. The existing `shouldAutoScrollRef` guard remains the final
+authority, so a reader who scrolls upward is not pulled back down.
+
+The geometric regression failed before the fix at both widths: the current row
+ended at 828.5px versus a 649px composer top on mobile, and 772.5px versus 697px
+on desktop. It now requires the full current row to stay above the composer.
+A separate test moves the reader away from the bottom and verifies process
+growth leaves `scrollTop` unchanged. Updated interval screenshots include
+several accumulated dynamic steps at both widths.
+
+## The agent process moved to the head of the answer
+
+The panel lived in the message footer, below the answer, and was permanently
+expanded while a run was working. Both properties fought the thing it is for.
+
+Position first. The panel describes work that happens *before* the answer
+exists, so reading it after the answer reversed the order it reports. It also
+grew downward from under the answer while the run progressed, which pushed the
+composer's neighbourhood around and made the panel read as a retrospective log
+of something already finished. It now sits at the top of the assistant bubble,
+between the role label and the answer text, in a fixed place the growing answer
+never moves.
+
+Shape second. Every state is now one `<details>`, collapsed by default,
+including the running state. Collapsed it is a single row — the run's current
+step, or its terminal outcome — and expanding it reveals the full step list
+unchanged. A reader who never opens it still learns what the run is doing right
+now, which the old permanently-expanded block bought at the cost of several
+rows of vertical space on every answer.
+
+Two things in that are easy to get wrong.
+
+**Exactly one element carries `data-current`/`data-terminal`, and it is the
+headline.** Marking both the headline and its matching row inside the list
+would make `locator('[data-current="true"]')` ambiguous under Playwright's
+strict mode, and — worse — a marker on a row inside a *closed* `<details>` has
+no box, so `boundingBox()` returns null and the composer-overlap regression in
+`e2e/durable-source-choice.spec.ts` would fail on a geometry it never actually
+measured. The list rows keep their visual treatment through local variables
+instead of data attributes.
+
+**The `aria-live` region sits outside the `<details>`.** A closed disclosure is
+removed from the accessibility tree, so a live region inside it announces
+nothing to the reader most likely to be relying on it — the one who left the
+panel collapsed.
+
+`getAgentProcessHeadline` is exported and unit-tested rather than inlined,
+because its branch order is load-bearing: `needsEvidence` is a terminal that
+`terminalLabel` deliberately returns `null` for, so without an explicit branch
+it falls through to the generic last-stage case and silently loses its warning
+treatment. Seven cases cover live, starting, each labelled terminal,
+`needsEvidence`, completed, the lifecycle-less cold load, and empty.
+
+Animation is CSS only. The headline label is keyed on its own text so React
+remounts it on a step change and replays the enter transition; without the key
+the text swaps in place with no motion at all. The chevron rotates on
+`group-open/process`. Both are `motion-safe:`, and the global
+`prefers-reduced-motion` block in `app/globals.css` already neutralises them
+with `!important` — no second opt-out was added.
+
+The panel keeps its accent tint when open. The old completed-state disclosure
+switched to `bg-km-surface` on open, which is the same token the step chips
+use — so every chip vanished into the background the moment the panel was
+expanded, in both themes. That was invisible while only the completed state
+collapsed; unifying every state onto one `<details>` would have spread it to
+all of them.
+
+The run-id handle stayed in the footer with the other per-message actions
+rather than following the panel up. It is an audit affordance, not part of the
+process narrative, and it is still gated on recorded events.
+
+### Verification
+
+Biome check passed 261 files, `tsc --noEmit` was clean, Vitest passed 269 tests
+across 36 files (7 new), and the production build completed all 17 routes.
+Playwright passed 142 with the 2 environment-gated `v1-demo` skips.
+
+New coverage: `heads the answer instead of trailing it` asserts the panel's
+bottom edge is above the answer text's top edge and that the answer precedes
+the footer — the reposition itself, which no existing assertion could have
+caught. `expands the full step list from the collapsed current step` drives the
+disclosure both ways. The per-state loop now asserts collapsed-by-default in
+every state, opens each one, and captures an expanded review frame alongside
+the collapsed one at all three widths.
+
+One existing assertion was relaxed rather than deleted: the expanded check is
+now on the step list, not on a specific step title. A cancelled run can end
+before the backend emits any trace step, and the disclosure still has to open
+onto its terminal row. `e2e/v1-demo.spec.ts` now looks for the panel on the
+page instead of inside the footer.
+
+Visual checks were made from the Playwright review frames at 390, 768, and
+1280 in light mode: collapsed and expanded, for completed, running, failed,
+cancelled, suspended, and needs-evidence. Dark mode was not inspected
+in separate state matrices; the expanded panel was inspected in both themes,
+which is how the vanishing chips were caught. The
+dark-mode AA contrast gate on `/chat` also passed.
+
+## 2026-08-31 — Comprehensive-document coverage reaches the answer surface
+
+The backend PR branch was hosted locally and its live `/openapi.json` removed
+the plan's API-model blocker. The frontend now parses optional/nullable
+`document_coverage` from the shared completed-run schema, so sync run, resume,
+replay, every `run_completed` stream, and refresh-safe run detail use one
+contract.
+
+Coverage uses a tri-state local value. `undefined` permits cold-load fallback
+to run detail, `null` means the current result has no coverage, and an object is
+the served bounded range. This distinction also stops citations or coverage
+from the previous run appearing while a new run owns the live answer surface.
+Replay results update the same state immediately.
+
+The UI adds one compact row inside the existing source disclosure. Complete and
+partial copy branch only on the backend mode; offsets never infer completion.
+The row does not change the document-source count, receive a support badge, or
+promise additional ranges. The backend's duplicate partial-review prose remains
+for the coordinated release as the safer compatibility boundary.
+
+The PR review fixes landed with the same pass: the run-id action takes the
+active run instead of stale run-list data, a waiting answer composer stays in
+the drafting stage, final failure overrides an earlier insufficient-evidence
+signal, and the external live region announces completed and needs-evidence
+outcomes instead of becoming empty.
+
+The visible `에이전트 흐름` prefix was removed after visual review. The
+collapsed panel now leads directly with the current or terminal step; its
+group keeps the quieter `답변 과정` accessible label for assistive technology.
+
+Focused evidence before the full gate: TypeScript passed; 54 targeted Vitest
+tests passed; and 29 focused Playwright tests passed across process states,
+active run IDs, accessibility announcements, complete/partial coverage,
+ordinary-answer parity, source counts, and 390px overflow.
+
+Final pre-publication verification on the integrated branch: Biome checked 263
+files, TypeScript passed, Vitest passed 275 tests across 37 files, and full
+Playwright passed 147 tests with 2 environment-gated V1 demo skips. The native
+checkout production build compiled and generated all 17 routes. Playwright CLI
+visual review covered the expanded partial-coverage disclosure at desktop and
+390px; the mobile row wrapped without horizontal overflow, remained reachable
+above the floating composer, and produced no console errors.

@@ -77,6 +77,25 @@ export const agentTraceStepSchema = z.object({
   evidence: z.record(z.string(), z.unknown()).default({}),
 });
 
+/**
+ * The bounded document range the backend actually read for a comprehensive
+ * answer. This is provenance about retrieval coverage, not a citation claim.
+ *
+ * Generated from the locally served backend OpenAPI contract on 2026-08-31.
+ * `source_filename` and the containing response property are both optional and
+ * nullable in that document. `mode` stays authoritative: the UI must not infer
+ * complete/partial from the offsets.
+ */
+export const documentCoverageSchema = z.object({
+  mode: z.enum(["complete", "partial"]),
+  document_id: z.string(),
+  title: z.string(),
+  source_filename: z.string().nullish(),
+  start_offset: z.number().int().nonnegative(),
+  end_offset: z.number().int().nonnegative(),
+  total_chars: z.number().int().nonnegative(),
+});
+
 export const conversationRunResponseSchema = z
   .object({
     run_id: z.string().min(1),
@@ -88,6 +107,19 @@ export const conversationRunResponseSchema = z
     answer_mode: z.string().optional(),
     document_scope: z.string().optional(),
     citations: z.array(citationSchema).default([]),
+    /**
+     * Every user-visible source handed to answer composition — a superset of
+     * `citations`, which is the conservative answer-supported subset.
+     *
+     * `.nullish()` because the served contract is `anyOf [array, null]` and the
+     * property is not required, so absent, `null` and `[]` are three distinct
+     * states on the wire. Absent/`null` means the run predates attribution and
+     * its `citations` were never verified; `[]` means attribution ran and found
+     * nothing. Collapsing those with `.default([])` would erase the difference
+     * and let old runs claim a check that never happened.
+     */
+    consulted_sources: z.array(citationSchema).nullish(),
+    document_coverage: documentCoverageSchema.nullish(),
     warnings: z.array(conversationRunWarningSchema).default([]),
     agent_trace: z.array(agentTraceStepSchema).default([]),
     knowledge_base_selection: knowledgeBaseSelectionSchema.default({
@@ -203,6 +235,7 @@ export type ConversationRunWarning = z.infer<
   typeof conversationRunWarningSchema
 >;
 export type AgentTraceStep = z.infer<typeof agentTraceStepSchema>;
+export type DocumentCoverage = z.infer<typeof documentCoverageSchema>;
 export type RunSourceContext = z.infer<typeof runSourceContextSchema>;
 export type ConversationRunResponse = z.infer<
   typeof conversationRunResponseSchema

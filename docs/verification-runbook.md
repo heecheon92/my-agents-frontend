@@ -75,7 +75,7 @@ Use this after auth, BFF, chat, route, provider, or visual shell changes.
 8. Create a question thread.
 9. Send a message such as `Summarize the renewal risks in my notes`.
 10. Confirm the Ask transcript shows user and assistant messages.
-11. Confirm citations appear near the assistant answer when knowledge was used.
+11. Confirm document-level sources and the reached-stage agent process appear near the latest assistant answer when knowledge was used.
 12. Open the response evidence/work-history disclosure and confirm it shows a completed run plus redacted operational events.
 13. Confirm browser console has no unexpected errors. A 401 from `/auth/me` after logout is expected unauthenticated behavior.
 14. Click logout and confirm redirect to `/login`.
@@ -108,9 +108,9 @@ Expected seeded text flow: login -> create or choose a knowledge/source space on
 Knowledge/Sources -> confirm the URL may use `/knowledge/{knowledge-base-id}` or
 `/knowledge/{group-id}` for the selected context -> add a text source under that
 space -> prepare it through the upload/preparation flow or a seeded backend fixture ->
-streamed Ask answer with `All` or selected source scope -> citations beside the
-answer -> response evidence disclosure with completed run/work history -> persisted
-run-detail citations after reload.
+streamed Ask answer with `All` or selected source scope -> document-level sources
+beside the answer -> live reached-stage agent process -> compact completed process
+after the answer -> persisted sources and process after reload.
 
 Upload smoke should use an active backend with the KB-nested upload contract: login -> Sources -> create or select a source space -> upload a supported PDF, Markdown (`.md`/`.markdown`), plain text (`.txt`), Excel workbook (`.xlsx`), PowerPoint deck (`.pptx`), or Word document (`.docx`) through `POST /knowledge-bases/{knowledge_base_id}/documents/upload` -> verify document source metadata -> refresh the selected `/knowledge/{id}` route -> confirm the uploaded file is prepared by the unified upload flow -> confirm citations can render backend-provided filename/page/space provenance.
 

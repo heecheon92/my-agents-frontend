@@ -7,12 +7,20 @@ export function MessageBubble({
   content,
   isAssistant,
   align = "left",
+  header,
   children,
 }: {
   roleLabel: string;
   content: string;
   isAssistant: boolean;
   align?: "left" | "right";
+  /**
+   * Rendered above the answer text, below the role label. The agent process
+   * belongs here rather than in the footer: it describes work that happens
+   * *before* the answer, and a reader watching a run needs it in a fixed place
+   * that the growing answer does not push around.
+   */
+  header?: ReactNode;
   children?: ReactNode;
 }) {
   /**
@@ -56,6 +64,7 @@ export function MessageBubble({
       >
         {roleLabel}
       </p>
+      {header ? <div className="mb-3">{header}</div> : null}
       {content ? (
         isAssistant ? (
           <AgentMessageRenderer content={content} />

@@ -26,17 +26,36 @@ from the wish list.
 
 A calm, citation-forward AI workspace. Editorial rather than dashboard-noisy:
 dense information is fine, but hierarchy must feel curated. The metaphor is
-**instrument panel + knowledge dossier** — transcripts, citations, activity,
-documents, and permissions read as connected operational evidence.
+**instrument panel + knowledge dossier** — transcripts, document-level sources,
+the reached-stage agent process, documents, and permissions read as connected
+operational evidence.
 
 **Trust signals.** Provenance sits next to answers. Backend-owned limits are
 stated honestly. Errors explain the next safe step without exposing internals.
 
+**Document coverage is retrieval provenance, not a citation.** A comprehensive
+answer may disclose that the backend read a complete document or one bounded
+range. That row lives inside the source disclosure but does not increase the
+source count, inherit a support badge, or imply that every read passage supports
+the answer. Partial coverage states the served character range without a
+percentage, progress affordance, or promise that another range is reachable.
+
+**The agent process heads the answer it describes.** It reports work that
+precedes the answer, so it sits at the top of the assistant message rather than
+in its footer, collapsed to the run's current step with the full step list one
+disclosure away. Collapsed is the default in every state, running included: a
+single live row is enough to follow a run, and the reader who wants the whole
+trail opens it. Never show a percentage, a step total, or a progress bar there
+— the reachable stages are derived from events as they arrive, so any total
+would be invented.
+
 **Audience.** Readers are technically literate and want to see *how* an answer
 was produced, not only that it appeared. That is a design
-input, not just context: the retrieval pipeline, agent trace, citation chunks,
-and extraction stages are **evidence of how the system works, and should stay
-legible rather than be smoothed away**. Name the pipeline accurately in
+input, not just context: the retrieval pipeline, backend-authored agent steps,
+document provenance, and extraction stages are **evidence of how the system
+works, and should stay legible rather than be smoothed away**. Chunk-level
+provenance remains an audit boundary; the primary answer surface groups it by
+document. Name the pipeline accurately in
 inspection surfaces — `임베딩`, `청크`, `엔티티`, `색인` are correct there, and
 `docs/korean-copy-guide.md` records the boundary. This never licenses leaking
 internals: raw enums, identifiers in a primary reading path, stack traces, and
@@ -299,6 +318,13 @@ conversation behind.
   generic Korean. See `docs/backend-requests.md` for the error-code request that
   will restore specificity.
 - **Disabled** — explain the blocker in nearby copy, do not just grey out.
+- **Suspended for document input** — keep the backend-ranked shortlist in its
+  original order, with the one-line filename refinement as the final choice.
+  Cancel and the title stay pinned while only the option list scrolls. After two
+  unresolved refinements the same card may page the broad authorized list. Do
+  not nest a form inside the composer form; Enter is handled locally and must
+  remain IME-safe. A repeated interrupt announces the new candidate count and
+  restores focus to the first candidate (or the refinement input when empty).
 
 ---
 

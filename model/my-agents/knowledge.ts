@@ -127,7 +127,15 @@ export const extractionRunSchema = z.object({
 export const citationSchema = z.object({
   id: z.string().min(1),
   document_id: z.string().min(1),
+  /**
+   * Display names, resolved server-side so the panel does not have to join
+   * against a document list it may not have loaded. Both nullable in the served
+   * contract; `source_filename` is preferred over `document_title` when present
+   * because a filename is what the user recognises.
+   */
+  document_title: z.string().nullish(),
   knowledge_base_id: z.string().nullable().optional(),
+  knowledge_base_name: z.string().nullish(),
   chunk_id: z.string().min(1),
   snippet: z.string(),
   source_page: z.number().nullable().optional(),

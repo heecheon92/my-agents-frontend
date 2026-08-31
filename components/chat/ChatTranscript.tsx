@@ -1,16 +1,17 @@
 import { RotateCcw, Sparkles } from "lucide-react";
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
+import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { ErrorState } from "@/components/Status";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type {
   AgentEvent,
-  AgentRunSummary,
   Citation,
+  DocumentCoverage,
   Message,
 } from "@/model/my-agents";
 import { CopyMessageButton } from "./CopyMessageButton";
-import { CurrentAgentTraceStepPanel, EvidencePanel } from "./EvidencePanel";
+import { AgentProcessPanel, EvidencePanel } from "./EvidencePanel";
 import { MessageBubble } from "./MessageBubble";
 import type { ChatLocalization, LiveActivityEvent } from "./types";
 
@@ -58,19 +59,55 @@ function AssistantGeneratingIndicator({ label }: { label: string }) {
   );
 }
 
+/**
+ * The onboarding target travels with the panel. It is still gated on recorded
+ * events: `OnboardingTarget` always renders its wrapper, and an empty wrapper
+ * would register a zero-size anchor for the coach mark to point at.
+ */
+function AgentProcessHeader({
+  localization,
+  lang,
+  events,
+  citationCount,
+  isStreaming,
+}: {
+  localization: ChatLocalization;
+  lang: string;
+  events: Array<AgentEvent | LiveActivityEvent>;
+  citationCount: number;
+  isStreaming: boolean;
+}): ReactNode {
+  if (events.length === 0) return null;
+  return (
+    <OnboardingTarget id="chat.agent-process" className="w-full min-w-0">
+      <AgentProcessPanel
+        localization={localization}
+        lang={lang}
+        events={events}
+        citationCount={citationCount}
+        isStreaming={isStreaming}
+      />
+    </OnboardingTarget>
+  );
+}
+
 export function ChatTranscript({
   localization,
   lang,
   activeId,
+  activeRunId,
   messagesError,
   messages,
   conversationIsBusy,
+  isProducingOutput,
   streamedReply,
   serverActiveRunIsStale,
-  sortedRuns,
   visibleActivityEvents,
   visibleCitations,
+  visibleConsultedSources,
+  visibleDocumentCoverage,
   latestAssistantMessageId,
+  latestRunId,
   replayingMessageId,
   replayDisabled,
   replayNotice,
@@ -82,15 +119,19 @@ export function ChatTranscript({
   localization: ChatLocalization;
   lang: string;
   activeId?: string;
+  activeRunId: string | null;
   messagesError: unknown;
   messages: Message[];
   conversationIsBusy: boolean;
+  isProducingOutput: boolean;
   streamedReply: string;
   serverActiveRunIsStale: boolean;
-  sortedRuns: AgentRunSummary[];
   visibleActivityEvents: Array<AgentEvent | LiveActivityEvent>;
   visibleCitations: Citation[];
+  visibleConsultedSources: Citation[] | null;
+  visibleDocumentCoverage: DocumentCoverage | null;
   latestAssistantMessageId?: string;
+  latestRunId: string | null;
   replayingMessageId: string | null;
   replayDisabled: boolean;
   replayNotice: ReplayNotice | null;
@@ -109,9 +150,9 @@ export function ChatTranscript({
     messages,
     replayingMessageId,
   );
-  const shouldRenderBusyBubble = conversationIsBusy && !replayingMessageId;
+  const shouldRenderBusyBubble = isProducingOutput && !replayingMessageId;
   const shouldRenderSeparateStreamingBubble =
-    !replayingMessageId && (shouldRenderBusyBubble || Boolean(streamedReply));
+    !replayingMessageId && (conversationIsBusy || Boolean(streamedReply));
 
   return (
     <div
@@ -147,6 +188,12 @@ export function ChatTranscript({
         {displayedMessages.map((message) => {
           const isAssistant = message.role === "assistant";
           const isReplaying = replayingMessageId === message.id;
+          const showsLiveEvidence =
+            message.id === latestAssistantMessageId || isReplaying;
+          // A busy conversation renders its activity on the streaming bubble
+          // below, so the settled message must not draw the same panel twice.
+          const messageEvents =
+            conversationIsBusy && !isReplaying ? [] : visibleActivityEvents;
           return (
             <MessageBubble
               key={message.id}
@@ -160,30 +207,35 @@ export function ChatTranscript({
                 isAssistant && (!isReplaying || Boolean(streamedReply))
               }
               align={message.role === "user" ? "right" : "left"}
+              header={
+                isAssistant && showsLiveEvidence ? (
+                  <AgentProcessHeader
+                    localization={localization}
+                    lang={lang}
+                    events={messageEvents}
+                    citationCount={visibleCitations.length}
+                    isStreaming={isReplaying}
+                  />
+                ) : null
+              }
             >
               {isReplaying && !streamedReply ? (
                 <AssistantGeneratingIndicator
                   label={localization.agentComposing}
                 />
               ) : null}
-              {isReplaying ? (
-                <CurrentAgentTraceStepPanel
-                  localization={localization}
-                  lang={lang}
-                  events={visibleActivityEvents}
-                />
-              ) : null}
               {isAssistant ? (
                 <EvidencePanel
                   localization={localization}
-                  lang={lang}
                   isLatestAssistantMessage={
                     message.id === latestAssistantMessageId
                   }
                   isStreaming={isReplaying}
-                  runs={sortedRuns}
-                  events={visibleActivityEvents}
+                  runId={isReplaying ? null : latestRunId}
+                  events={messageEvents}
                   citations={visibleCitations}
+                  consultedSources={visibleConsultedSources}
+                  documentCoverage={visibleDocumentCoverage}
                   replayButton={
                     <Button
                       type="button"
@@ -248,6 +300,15 @@ export function ChatTranscript({
               (serverActiveRunIsStale ? localization.activeRunStale : "")
             }
             isAssistant={Boolean(streamedReply)}
+            header={
+              <AgentProcessHeader
+                localization={localization}
+                lang={lang}
+                events={visibleActivityEvents}
+                citationCount={visibleCitations.length}
+                isStreaming={isProducingOutput}
+              />
+            }
           >
             {shouldRenderBusyBubble &&
             !streamedReply &&
@@ -256,21 +317,15 @@ export function ChatTranscript({
                 label={localization.agentComposing}
               />
             ) : null}
-            {shouldRenderBusyBubble ? (
-              <CurrentAgentTraceStepPanel
-                localization={localization}
-                lang={lang}
-                events={visibleActivityEvents}
-              />
-            ) : null}
             <EvidencePanel
               localization={localization}
-              lang={lang}
               isLatestAssistantMessage={true}
-              isStreaming={shouldRenderBusyBubble}
-              runs={sortedRuns}
+              isStreaming={isProducingOutput}
+              runId={activeRunId}
               events={visibleActivityEvents}
               citations={visibleCitations}
+              consultedSources={visibleConsultedSources}
+              documentCoverage={visibleDocumentCoverage}
             />
           </MessageBubble>
         ) : null}

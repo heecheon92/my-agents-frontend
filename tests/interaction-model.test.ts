@@ -6,7 +6,9 @@ import {
   documentSelectionOptionsPageSchema,
   INTERACTION_SCHEMA_VERSION,
   isDocumentSelection,
+  isDocumentSelectionV2,
   isRunInterrupted,
+  LEGACY_INTERACTION_SCHEMA_VERSION,
   pendingInteractionSchema,
 } from "@/model/my-agents";
 
@@ -48,6 +50,27 @@ const interruptedBody = {
       },
     ],
     next_cursor: null,
+  },
+};
+
+const v2InterruptedBody = {
+  ...interruptedBody,
+  interaction: {
+    ...interruptedBody.interaction,
+    schema_version: INTERACTION_SCHEMA_VERSION,
+    interaction_id: "4a0b7c65-7c47-4bb3-9618-51ec95291843",
+    reason_code: "unresolved_document_reference",
+    option_count: 0,
+    library_count: 4000,
+    options: [],
+    next_cursor: null,
+    refinement: {
+      allowed: true,
+      attempts_used: 0,
+      attempts_max: 2,
+      max_length: 120,
+    },
+    browse: { allowed: false, cursor: null },
   },
 };
 
@@ -113,6 +136,27 @@ describe("interaction schema versioning", () => {
   it("parses the supported version as the known type", () => {
     const parsed = pendingInteractionSchema.parse(interruptedBody.interaction);
     expect(isDocumentSelection(parsed)).toBe(true);
+    const v2 = pendingInteractionSchema.parse(v2InterruptedBody.interaction);
+    expect(isDocumentSelection(v2)).toBe(true);
+    if (!isDocumentSelection(v2)) return;
+    expect(isDocumentSelectionV2(v2)).toBe(true);
+  });
+
+  it("fills optional V2 refinement defaults from the OpenAPI contract", () => {
+    const { attempts_max, max_length, ...requiredRefinement } =
+      v2InterruptedBody.interaction.refinement;
+    expect(attempts_max).toBe(2);
+    expect(max_length).toBe(120);
+    const parsed = pendingInteractionSchema.parse({
+      ...v2InterruptedBody.interaction,
+      refinement: requiredRefinement,
+      browse: { allowed: false },
+    });
+    expect(isDocumentSelection(parsed)).toBe(true);
+    if (!isDocumentSelection(parsed) || !isDocumentSelectionV2(parsed)) return;
+    expect(parsed.refinement.attempts_max).toBe(2);
+    expect(parsed.refinement.max_length).toBe(120);
+    expect(parsed.browse.cursor).toBeNull();
   });
 
   it("does not let a future version masquerade as the known type", () => {
@@ -139,10 +183,30 @@ describe("interaction schema versioning", () => {
   it("refuses to send a resume body for an unsupported version", () => {
     expect(
       conversationRunResumeRequestSchema.safeParse({
-        schema_version: INTERACTION_SCHEMA_VERSION,
+        schema_version: LEGACY_INTERACTION_SCHEMA_VERSION,
         interaction_id: "run-1:document_selection",
         type: "document_selection",
         document_id: "doc-1",
+      }).success,
+    ).toBe(true);
+
+    expect(
+      conversationRunResumeRequestSchema.safeParse({
+        schema_version: INTERACTION_SCHEMA_VERSION,
+        interaction_id: "4a0b7c65-7c47-4bb3-9618-51ec95291843",
+        type: "document_selection",
+        kind: "select",
+        document_id: "doc-1",
+      }).success,
+    ).toBe(true);
+
+    expect(
+      conversationRunResumeRequestSchema.safeParse({
+        schema_version: INTERACTION_SCHEMA_VERSION,
+        interaction_id: "4a0b7c65-7c47-4bb3-9618-51ec95291843",
+        type: "document_selection",
+        kind: "refine",
+        text: " Pydantic Annotated Literal.md ",
       }).success,
     ).toBe(true);
 
@@ -158,7 +222,7 @@ describe("interaction schema versioning", () => {
 
   it("rejects an options page from an unsupported version", () => {
     const page = {
-      schema_version: INTERACTION_SCHEMA_VERSION,
+      schema_version: LEGACY_INTERACTION_SCHEMA_VERSION,
       interaction_id: "run-1:document_selection",
       type: "document_selection",
       option_count: 0,
@@ -174,12 +238,22 @@ describe("interaction schema versioning", () => {
         schema_version: INTERACTION_SCHEMA_VERSION + 1,
       }).success,
     ).toBe(false);
+
+    expect(
+      documentSelectionOptionsPageSchema.safeParse({
+        ...page,
+        schema_version: INTERACTION_SCHEMA_VERSION,
+        interaction_id: "4a0b7c65-7c47-4bb3-9618-51ec95291843",
+        mode: "broad",
+        library_count: 4000,
+      }).success,
+    ).toBe(true);
   });
 
   it("defaults an absent options array rather than failing", () => {
     // Only `option_count` is required by the contract.
     const parsed = documentSelectionOptionsPageSchema.parse({
-      schema_version: INTERACTION_SCHEMA_VERSION,
+      schema_version: LEGACY_INTERACTION_SCHEMA_VERSION,
       interaction_id: "run-1:document_selection",
       type: "document_selection",
       option_count: 12,

@@ -108,6 +108,8 @@ allow-by-default.
 | display name | `표시 이름` | `닉네임`, `별명` |
 | ready (a document is usable) | `준비됨` | `완료`, `성공` |
 | needs attention (failed) | `확인 필요` | `실패`, `오류` — for per-item states where the user can retry |
+| answer needs attention | `답변 확인 필요` | `실행 실패`, `답변 실패` — primary answer surface; the advanced activity event may still use `실행 실패` |
+| answer cancelled | `답변 취소됨` | `실행 취소됨` — primary answer surface; the advanced activity event keeps its existing label |
 
 **One concept, one term.** Before this guide, the same disclosure was labelled
 four different ways on the same screen and share requests had two names. If you

@@ -39,13 +39,14 @@ export function deriveRunPhase({
   hasServerActiveRun: boolean;
   hasServerWaitingRun: boolean;
 }): RunPhase {
-  // A pending question wins over a live stream: the resume streams its
-  // continuation while the card is still up, and that is `resuming`, not
-  // `streaming`. Checking streaming first would lose the distinction and put
-  // the card and the stop button on screen together.
-  if (hasPendingInteraction || hasServerWaitingRun) {
+  // A mounted pending question wins over a live stream during refinement: the
+  // card remains the action surface and the phase is `resuming`.
+  if (hasPendingInteraction) {
     return isStreaming ? "resuming" : "waiting";
   }
+  // A final selection clears the card before the server's waiting row has
+  // refetched. That local stream is producing an answer, not still waiting.
+  if (hasServerWaitingRun) return isStreaming ? "streaming" : "waiting";
   if (isStreaming || hasServerActiveRun) return "streaming";
   return "idle";
 }
@@ -71,7 +72,7 @@ export function blocksNewRun(phase: RunPhase) {
  * cancel affordance on the interaction card, not a stop on the composer.
  */
 export function showsStopControl(phase: RunPhase) {
-  return phase === "streaming" || phase === "resuming";
+  return phase === "streaming";
 }
 
 /**

@@ -22,7 +22,11 @@ import { decodeRouteSegment } from "@/lib/route-segments";
 import { cn } from "@/lib/utils";
 import type { Conversation } from "@/model/my-agents";
 import { useChatActivityStore } from "./chat-activity-store";
-import { conversationHref, NEW_CHAT_HREF } from "./chat-routes";
+import {
+  conversationHref,
+  conversationIdFromPathname,
+  NEW_CHAT_HREF,
+} from "./chat-routes";
 import { getConversationCardClassName } from "./conversation-card";
 import { DeleteConversationAlertDialog } from "./DeleteConversationAlertDialog";
 import { getNextConversationIdAfterDelete } from "./workspace-helpers";
@@ -56,11 +60,7 @@ export function ConversationHistorySidebarGroup() {
   const [conversationPendingDelete, setConversationPendingDelete] =
     useState<Conversation>();
 
-  const activeId = decodeRouteSegment(
-    pathname.startsWith(`${NEW_CHAT_HREF}/`)
-      ? pathname.slice(NEW_CHAT_HREF.length + 1)
-      : undefined,
-  );
+  const activeId = decodeRouteSegment(conversationIdFromPathname(pathname));
 
   function requestDelete(item: Conversation) {
     deleteConversation.reset();

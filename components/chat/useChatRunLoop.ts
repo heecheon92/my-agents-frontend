@@ -1,18 +1,21 @@
 "use client";
 
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
-import type {
-  AnswerDeltaEventData,
-  Citation,
-  ConversationRunInterruptedResponse,
-  ConversationRunResponse,
-  ConversationRunResumeRequest,
-  KnowledgeBaseSelection,
-  Message,
-  PendingInteraction,
-  ReasoningEffort,
-  ReasoningMode,
-  RunCancelledEventData,
+import {
+  type AnswerDeltaEventData,
+  type Citation,
+  type ConversationRunInterruptedResponse,
+  type ConversationRunResponse,
+  type ConversationRunResumeRequest,
+  type DocumentCoverage,
+  isDocumentSelection,
+  isDocumentSelectionV2,
+  type KnowledgeBaseSelection,
+  type Message,
+  type PendingInteraction,
+  type ReasoningEffort,
+  type ReasoningMode,
+  type RunCancelledEventData,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 import type { LiveActivityEvent, QueuedMessage } from "./types";
@@ -28,6 +31,7 @@ type QueryInvalidator = {
   invalidateQueries: (options: {
     queryKey: readonly unknown[];
   }) => Promise<unknown>;
+  setQueryData: (queryKey: readonly unknown[], value: unknown) => unknown;
 };
 
 type UseChatRunLoopOptions = {
@@ -49,7 +53,10 @@ type UseChatRunLoopOptions = {
   localization: {
     runFailed: string;
     interactionWaitingAnnouncement: string;
+    interactionRefinementWaitingAnnouncement: string;
+    interactionBrowseWaitingAnnouncement: string;
     interactionResumedAnnouncement: string;
+    interactionRefiningAnnouncement: string;
     queueAlreadyExistsAnnouncement: string;
     queuedAnnouncement: string;
     immediateFailedAnnouncement: string;
@@ -63,6 +70,13 @@ type UseChatRunLoopOptions = {
   setIsCancelling: (isCancelling: boolean) => void;
   setIsStreaming: (isStreaming: boolean) => void;
   setLatestCitations: React.Dispatch<React.SetStateAction<Citation[]>>;
+  setLatestConsultedSources: React.Dispatch<
+    React.SetStateAction<Citation[] | null>
+  >;
+  setLatestDocumentCoverage: React.Dispatch<
+    React.SetStateAction<DocumentCoverage | null | undefined>
+  >;
+  setLatestRunResultId: (runId: string | null) => void;
   setLiveActivityEvents: React.Dispatch<
     React.SetStateAction<LiveActivityEvent[]>
   >;
@@ -73,10 +87,7 @@ type UseChatRunLoopOptions = {
   setStatusAnnouncement: (message: string) => void;
   setStreamedReply: (reply: string | ((current: string) => string)) => void;
   setStreamError: (error: unknown) => void;
-  /**
-   * Records the question the run stopped to ask. Called with the id and count
-   * only — the SSE payload carries no options, so the card fetches them.
-   */
+  /** Records the complete refresh-safe interaction carried by HTTP or SSE. */
   setPendingInteraction: (interaction: PendingInteraction | null) => void;
   pendingInteractionRef: React.MutableRefObject<PendingInteraction | null>;
 };
@@ -95,6 +106,9 @@ export function useChatRunLoop({
   setIsCancelling,
   setIsStreaming,
   setLatestCitations,
+  setLatestConsultedSources,
+  setLatestDocumentCoverage,
+  setLatestRunResultId,
   setLiveActivityEvents,
   setOptimisticMessage,
   setQueuedMessageState,
@@ -133,6 +147,12 @@ export function useChatRunLoop({
     setCurrentRunId(null);
     setLiveActivityEvents([]);
     setLatestCitations([]);
+    setLatestConsultedSources(null);
+    // Until completion, busy-state ownership suppresses stale run-detail
+    // evidence. Keep this `undefined` so a failed run can reveal the previous
+    // completed answer's evidence again once the busy state ends.
+    setLatestDocumentCoverage(undefined);
+    setLatestRunResultId(null);
     setOptimisticMessage({
       id: `optimistic-${Date.now()}`,
       conversation_id: conversationId,
@@ -185,6 +205,11 @@ export function useChatRunLoop({
           completed = true;
           setStreamedReply(data.reply);
           setLatestCitations(data.citations ?? []);
+          // `?? null`, never `?? []`: a backend without attribution omits the
+          // field, and that is "unverified", not "nothing consulted".
+          setLatestConsultedSources(data.consulted_sources ?? null);
+          setLatestDocumentCoverage(data.document_coverage ?? null);
+          setLatestRunResultId(data.run_id);
         }
         // The run stopped to ask something. This is a *terminal* event for this
         // stream but not for the run: the run stays open server-side and holds
@@ -196,7 +221,13 @@ export function useChatRunLoop({
           // The stream hands over the whole interaction, including its first
           // page of options, so the card can render without a round-trip.
           setPendingInteraction(data.interaction);
-          setStatusAnnouncement(localization.interactionWaitingAnnouncement);
+          queryClient.setQueryData(
+            MyAgentsQueryKeys.conversations.run(conversationId, data.run_id),
+            data,
+          );
+          setStatusAnnouncement(
+            waitingInteractionAnnouncement(data.interaction, localization),
+          );
         }
         if (streamEvent.event === "run_resumed") {
           setStatusAnnouncement(localization.interactionResumedAnnouncement);
@@ -348,6 +379,9 @@ export function useChatRunLoop({
       )) {
         if (streamEvent.event === "answer_delta") {
           const data = streamEvent.data as AnswerDeltaEventData;
+          if ("kind" in payload && payload.kind === "refine") {
+            setPendingInteraction(null);
+          }
           setStreamedReply((current) => current + data.delta);
           continue;
         }
@@ -362,10 +396,16 @@ export function useChatRunLoop({
           );
         }
         if (streamEvent.event === "run_resumed") {
-          // The question is answered; the card comes down and the partial
-          // answer keeps growing from where it stopped.
-          setPendingInteraction(null);
-          setStatusAnnouncement(localization.interactionResumedAnnouncement);
+          // Selection ends suspension immediately. Refinement keeps the card
+          // mounted and disabled until a new interaction or answer arrives.
+          if (!("kind" in payload && payload.kind === "refine")) {
+            setPendingInteraction(null);
+          }
+          setStatusAnnouncement(
+            "kind" in payload && payload.kind === "refine"
+              ? localization.interactionRefiningAnnouncement
+              : localization.interactionResumedAnnouncement,
+          );
         }
         if (streamEvent.event === "run_cancelled") cancelled = true;
         if (streamEvent.event === "run_completed") {
@@ -373,6 +413,11 @@ export function useChatRunLoop({
           completed = true;
           setStreamedReply(data.reply);
           setLatestCitations(data.citations ?? []);
+          // `?? null`, never `?? []`: a backend without attribution omits the
+          // field, and that is "unverified", not "nothing consulted".
+          setLatestConsultedSources(data.consulted_sources ?? null);
+          setLatestDocumentCoverage(data.document_coverage ?? null);
+          setLatestRunResultId(data.run_id);
           setPendingInteraction(null);
         }
         // A resumed run can suspend again — a second ambiguous reference in
@@ -382,7 +427,13 @@ export function useChatRunLoop({
           const data = streamEvent.data as ConversationRunInterruptedResponse;
           interrupted = true;
           setPendingInteraction(data.interaction);
-          setStatusAnnouncement(localization.interactionWaitingAnnouncement);
+          queryClient.setQueryData(
+            MyAgentsQueryKeys.conversations.run(conversationId, data.run_id),
+            data,
+          );
+          setStatusAnnouncement(
+            waitingInteractionAnnouncement(data.interaction, localization),
+          );
         }
         if (streamEvent.event === "run_failed") {
           throw new Error(
@@ -404,7 +455,16 @@ export function useChatRunLoop({
       return cancelled ? "cancelled" : "completed";
     } catch (error) {
       // The interaction is still open server-side, so the card stays up and
-      // the user can choose again. Dropping it here would strand the run.
+      // Product DB may already hold a fresh attempt even if its SSE event was
+      // lost. Refresh both keys so recovery cannot keep a stale UUID forever.
+      await Promise.allSettled([
+        queryClient.invalidateQueries({
+          queryKey: MyAgentsQueryKeys.conversations.run(conversationId, runId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: MyAgentsQueryKeys.conversations.runs(conversationId),
+        }),
+      ]);
       setStreamError(error);
       return "failed";
     } finally {
@@ -422,4 +482,28 @@ export function useChatRunLoop({
     runMessageAndContinue,
     setQueuedMessage,
   };
+}
+
+export function waitingInteractionAnnouncement(
+  interaction: PendingInteraction,
+  localization: Pick<
+    UseChatRunLoopOptions["localization"],
+    | "interactionWaitingAnnouncement"
+    | "interactionRefinementWaitingAnnouncement"
+    | "interactionBrowseWaitingAnnouncement"
+  >,
+) {
+  if (
+    !isDocumentSelection(interaction) ||
+    !isDocumentSelectionV2(interaction)
+  ) {
+    return localization.interactionWaitingAnnouncement;
+  }
+  if (interaction.option_count > 0) {
+    return localization.interactionWaitingAnnouncement;
+  }
+  if (interaction.refinement.allowed) {
+    return localization.interactionRefinementWaitingAnnouncement;
+  }
+  return localization.interactionBrowseWaitingAnnouncement;
 }

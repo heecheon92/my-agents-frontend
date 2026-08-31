@@ -130,17 +130,25 @@ test("assistant citation references stay compact until opened", async ({
     footer.getByText(ko.chat.citationSummary.replace("{count}", "1")),
   ).toBeVisible();
   await expect(footer.getByText(citation.source_filename)).toBeHidden();
-  await expect(footer.getByText(citation.snippet)).toBeHidden();
-  await expect(footer.getByText(citation.document_id)).toBeHidden();
+  await expect(footer.getByText(citation.document_id)).toHaveCount(0);
 
   await footer.getByLabel(new RegExp(ko.chat.viewCitationDetails)).click();
 
+  // Opened, the panel names the document and nothing else.
   await expect(footer.getByText(citation.source_filename)).toBeVisible();
-  await expect(footer.getByText(citation.snippet)).toBeVisible();
-  await expect(footer.getByText(citation.document_id)).toBeHidden();
 
-  await footer.getByText(ko.chat.advancedDetails).first().click();
-  await expect(footer.getByText(citation.document_id)).toBeVisible();
+  /*
+   * Chunk-level detail is gone from the panel entirely, not merely collapsed.
+   * The snippet duplicated the answer while adding nothing actionable, and
+   * `document_id`/`chunk_id` are internal handles that meant nothing to a
+   * reader — they were most of what the old 상세 정보 disclosure held, so it went
+   * with them. `toHaveCount(0)` rather than `toBeHidden`: the assertion is that
+   * these never reach the DOM, which `toBeHidden` would also accept for markup
+   * that is merely collapsed.
+   */
+  await expect(footer.getByText(citation.snippet)).toHaveCount(0);
+  await expect(footer.getByText(citation.document_id)).toHaveCount(0);
+  await expect(footer.getByText(citation.chunk_id)).toHaveCount(0);
 });
 
 // The measured counterpart to the class-name assertions in

@@ -30,6 +30,7 @@ export function PendingInteractionSlot({
   localization,
   isResuming,
   onChoose,
+  onRefine,
   onCancel,
 }: {
   interaction: PendingInteraction;
@@ -38,6 +39,7 @@ export function PendingInteractionSlot({
   localization: ChatLocalization;
   isResuming: boolean;
   onChoose: (documentId: string) => void;
+  onRefine: (text: string) => void;
   onCancel: () => void;
 }) {
   const support = classifyInteraction(
@@ -51,12 +53,20 @@ export function PendingInteractionSlot({
     support.support === "supported" && isDocumentSelection(interaction)
       ? interaction
       : null;
-  const { options, hasMore, isLoadingMore, hasError, loadMore } =
-    useInteractionOptions({
-      conversationId,
-      runId,
-      interaction: documentSelection,
-    });
+  const {
+    options,
+    hasMore,
+    isLoadingMore,
+    hasError,
+    hasLoadedBroadPage,
+    displayOptionCount,
+    displayLibraryCount,
+    loadMore,
+  } = useInteractionOptions({
+    conversationId,
+    runId,
+    interaction: documentSelection,
+  });
 
   if (support.support !== "supported" || !documentSelection) {
     return (
@@ -86,8 +96,12 @@ export function PendingInteractionSlot({
       isResuming={isResuming}
       isLoadingMore={isLoadingMore}
       optionsError={hasError}
+      hasLoadedBroadPage={hasLoadedBroadPage}
+      displayOptionCount={displayOptionCount}
+      displayLibraryCount={displayLibraryCount}
       hasMore={hasMore}
       onChoose={onChoose}
+      onRefine={onRefine}
       onLoadMore={loadMore}
       onCancel={onCancel}
     />

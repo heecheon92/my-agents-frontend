@@ -8,9 +8,9 @@ import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import type {
-  AgentRunSummary,
   Citation,
   Conversation,
+  DocumentCoverage,
   KnowledgeBase,
   Message,
   ReasoningEffort,
@@ -56,6 +56,7 @@ type ChatWorkspaceLayoutProps = {
   };
   lang: string;
   latestAssistantMessageId?: string;
+  latestRunId: string | null;
   localization: Localization["chat"];
   messages: Message[];
   messagesError: unknown;
@@ -87,16 +88,18 @@ type ChatWorkspaceLayoutProps = {
   reasoning: ResolvedReasoning;
   onReasoningModeChange: (next: "standard" | "pro") => void;
   onReasoningEffortChange: (next: ReasoningEffort) => void;
-  sortedRuns: AgentRunSummary[];
   statusAnnouncement: string;
   streamError: unknown;
   streamedReply: string;
   visibleCitations: Citation[];
+  visibleConsultedSources: Citation[] | null;
+  visibleDocumentCoverage: DocumentCoverage | null;
   visibleQueuedMessage: QueuedMessage | null;
 };
 
 export function ChatWorkspaceLayout({
   activeId,
+  activeRunId,
   chatScrollRef,
   composerPlaceholder,
   conversation,
@@ -111,6 +114,7 @@ export function ChatWorkspaceLayout({
   knowledgeBases,
   lang,
   latestAssistantMessageId,
+  latestRunId,
   localization,
   messages,
   messagesError,
@@ -138,11 +142,12 @@ export function ChatWorkspaceLayout({
   reasoning,
   onReasoningModeChange,
   onReasoningEffortChange,
-  sortedRuns,
   statusAnnouncement,
   streamError,
   streamedReply,
   visibleCitations,
+  visibleConsultedSources,
+  visibleDocumentCoverage,
   visibleQueuedMessage,
 }: ChatWorkspaceLayoutProps) {
   const isMobile = useIsMobile();
@@ -231,15 +236,19 @@ export function ChatWorkspaceLayout({
               localization={localization}
               lang={lang}
               activeId={activeId}
+              activeRunId={activeRunId}
               messagesError={messagesError}
               messages={messages}
               conversationIsBusy={conversationIsBusy}
+              isProducingOutput={isStreaming}
               streamedReply={streamedReply}
               serverActiveRunIsStale={serverActiveRunIsStale}
-              sortedRuns={sortedRuns}
               visibleActivityEvents={events}
               visibleCitations={visibleCitations}
+              visibleConsultedSources={visibleConsultedSources}
+              visibleDocumentCoverage={visibleDocumentCoverage}
               latestAssistantMessageId={latestAssistantMessageId}
+              latestRunId={latestRunId}
               replayingMessageId={replayingMessageId}
               replayDisabled={
                 conversationIsBusy ||
@@ -262,6 +271,7 @@ export function ChatWorkspaceLayout({
             */}
             <div
               ref={composerRef}
+              data-slot="chat-composer-overlay"
               className="pointer-events-none absolute inset-x-0 bottom-0"
             >
               <OnboardingTarget id="chat.composer">

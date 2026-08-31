@@ -27,17 +27,16 @@ describe("component public export contracts", () => {
       isActiveAgentRunStatus: expect.any(Function),
       isConversationRunAlreadyActiveError: expect.any(Function),
       isObservedActiveRunStale: expect.any(Function),
-      sanitizeActivityEventPayload: expect.any(Function),
     });
   });
 
   it("keeps evidence panel helper and component exports stable", () => {
     expect(EvidencePanel).toMatchObject({
-      CurrentAgentTraceStepPanel: expect.any(Function),
+      AgentProcessPanel: expect.any(Function),
       EvidencePanel: expect.any(Function),
+      getAgentProcessDetails: expect.any(Function),
+      getAgentProcessState: expect.any(Function),
       getAgentTraceStageKeys: expect.any(Function),
-      getCurrentAgentTraceStep: expect.any(Function),
-      sanitizeActivityEventPayload: expect.any(Function),
     });
   });
 
