@@ -1,3 +1,11 @@
+## 2026-08-31 — Ranked document clarification and human refinement
+
+- Refreshed interaction models from the live backend OpenAPI and kept already-waiting V1 runs compatible alongside the V2 select/refine union.
+- Replaced the broad default presentation with the backend-ranked shortlist, a final one-line filename clue, two-attempt status, and broad authorized browsing only after exhaustion.
+- Kept refinement inside the same run and outside the transcript, protected Enter during IME composition, restored focus to new candidates, and pinned Cancel outside the scrolling list.
+- Fixed repeated-interrupt cache recovery by writing the latest SSE waiting response into the run-detail query cache before invalidation.
+- Added bilingual copy, parser/API coverage, and mocked Playwright coverage at mobile and desktop widths. The owner reserved the final manual cross-repository E2E pass.
+
 ## 2026-06-24 — Knowledge management lifecycle UX
 
 - Moved publish-request creation to Knowledge-owned source-space and document actions so users share selected entities through group/source-space selectors instead of typing document or knowledge-base IDs.

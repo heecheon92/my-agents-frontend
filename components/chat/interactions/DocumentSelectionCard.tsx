@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import type {
-  DocumentSelectionInteraction,
-  DocumentSelectionOption,
+import {
+  type DocumentSelectionInteraction,
+  type DocumentSelectionOption,
+  isDocumentSelectionV2,
 } from "@/model/my-agents";
 import type { ChatLocalization } from "../types";
 
@@ -23,8 +24,12 @@ export function DocumentSelectionCard({
   isResuming,
   isLoadingMore,
   optionsError,
+  hasLoadedBroadPage,
+  displayOptionCount,
+  displayLibraryCount,
   hasMore,
   onChoose,
+  onRefine,
   onLoadMore,
   onCancel,
 }: {
@@ -34,16 +39,53 @@ export function DocumentSelectionCard({
   isResuming: boolean;
   isLoadingMore: boolean;
   optionsError: boolean;
+  hasLoadedBroadPage: boolean;
+  displayOptionCount: number;
+  displayLibraryCount: number;
   hasMore: boolean;
   onChoose: (documentId: string) => void;
+  onRefine: (text: string) => void;
   onLoadMore: () => void;
   onCancel: () => void;
 }) {
   const isExpired = useIsExpired(interaction.expires_at);
+  const isV2 = isDocumentSelectionV2(interaction);
+  const canAnswer = !isResuming && !isExpired;
+  const [refinement, setRefinement] = useState("");
+  const firstOptionRef = useRef<HTMLButtonElement>(null);
+  const refinementInputRef = useRef<HTMLInputElement>(null);
+  const browseActionRef = useRef<HTMLButtonElement>(null);
+  const cancelActionRef = useRef<HTMLButtonElement>(null);
+  const focusPendingRef = useRef(false);
+  const previousInteractionIdRef = useRef(interaction.interaction_id);
+  const previousBroadLoadedRef = useRef(hasLoadedBroadPage);
+  useEffect(() => {
+    const interactionChanged =
+      previousInteractionIdRef.current !== interaction.interaction_id;
+    const broadPageJustLoaded =
+      !previousBroadLoadedRef.current && hasLoadedBroadPage;
+    previousInteractionIdRef.current = interaction.interaction_id;
+    previousBroadLoadedRef.current = hasLoadedBroadPage;
+    if (interactionChanged || broadPageJustLoaded) {
+      focusPendingRef.current = true;
+    }
+    if (interactionChanged) setRefinement("");
+    if (!focusPendingRef.current || !canAnswer) return;
+    const frameId = window.requestAnimationFrame(() => {
+      const target = [
+        firstOptionRef.current,
+        refinementInputRef.current,
+        browseActionRef.current,
+        cancelActionRef.current,
+      ].find((candidate) => candidate && !candidate.disabled);
+      target?.focus();
+      focusPendingRef.current = false;
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [canAnswer, hasLoadedBroadPage, interaction.interaction_id]);
   // Once the deadline passes the server will refuse the answer with
   // `run_interaction_expired`, so offering Choose would be offering a request
   // known to fail. Cancel stays enabled — it is what releases the waiting run.
-  const canAnswer = !isResuming && !isExpired;
   return (
     <div
       data-slot="interaction-card"
@@ -61,7 +103,20 @@ export function DocumentSelectionCard({
         )}
       </div>
       <p className="mt-1 text-cal-body">
-        {localization.interactionDescription}
+        {!isV2
+          ? localization.interactionV1Description
+          : !interaction.refinement.allowed
+            ? localization.interactionExhaustedDescription
+            : interaction.reason_code === "unresolved_document_reference"
+              ? localization.interactionUnresolvedDescription
+              : localization.interactionDescription}
+      </p>
+
+      <p className="sr-only" aria-live="polite">
+        {(isV2 && !hasLoadedBroadPage
+          ? localization.interactionCandidatesAnnouncement
+          : localization.interactionDocumentsAnnouncement
+        ).replace("{count}", String(options.length))}
       </p>
 
       {/*
@@ -69,7 +124,7 @@ export function DocumentSelectionCard({
         Uncapped, this grew the composer — which is absolutely positioned
         against the panel at `bottom-0` — upward past the panel's top edge,
         where `overflow-hidden` clipped the title and the first options away
-        with no way to reach them. A full backend page is 20 options, so this
+        with no way to reach them. A full backend page can be 50 options, so this
         was reachable with one ordinary ambiguous reference, not an edge case.
         Bounding the list rather than the card keeps the title, the expiry
         notice and Cancel pinned: a suspended run blocks the conversation, so
@@ -77,18 +132,20 @@ export function DocumentSelectionCard({
       */}
       <ul
         data-slot="interaction-options"
-        className="mt-3 flex max-h-[min(16rem,28dvh)] flex-col gap-2 overflow-y-auto overscroll-contain pr-1"
+        className={`mt-3 flex flex-col gap-2 overflow-y-auto overscroll-contain pr-1 ${
+          isV2 ? "max-h-[min(10rem,18dvh)]" : "max-h-[min(16rem,28dvh)]"
+        }`}
       >
-        {options.map((option) => (
+        {options.map((option, index) => (
           <li
             key={option.document_id}
             className="flex flex-col gap-2 rounded-control border border-cal-hairline bg-cal-surface-card p-2 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="min-w-0">
-              <p className="truncate font-medium text-cal-ink">
+              <p className="break-words font-medium text-cal-ink [overflow-wrap:anywhere]">
                 {option.title}
               </p>
-              <p className="truncate text-xs text-cal-muted">
+              <p className="break-words text-xs text-cal-muted [overflow-wrap:anywhere]">
                 {/* Filename disambiguates two documents sharing a title; the
                     knowledge base says which space it came from. Either can be
                     absent — a pasted note has no file. */}
@@ -96,12 +153,22 @@ export function DocumentSelectionCard({
                   option.source_filename,
                   option.knowledge_base_name ??
                     localization.interactionNoKnowledgeBase,
+                  "match_confidence" in option && option.match_confidence
+                    ? localization[
+                        option.match_confidence === "high"
+                          ? "interactionMatchHigh"
+                          : option.match_confidence === "medium"
+                            ? "interactionMatchMedium"
+                            : "interactionMatchLow"
+                      ]
+                    : null,
                 ]
                   .filter(Boolean)
                   .join(" · ")}
               </p>
             </div>
             <Button
+              ref={index === 0 ? firstOptionRef : undefined}
               type="button"
               size="sm"
               className="shrink-0"
@@ -114,6 +181,74 @@ export function DocumentSelectionCard({
         ))}
       </ul>
 
+      {isV2 && interaction.refinement.allowed ? (
+        <div className="mt-3 rounded-control border border-cal-hairline bg-cal-surface-card p-3">
+          <label
+            htmlFor={`document-refinement-${interaction.interaction_id}`}
+            className="font-medium text-cal-ink"
+          >
+            {localization.interactionRefineLabel}
+          </label>
+          <p
+            id={`document-refinement-help-${interaction.interaction_id}`}
+            className="mt-1 text-xs text-cal-muted"
+          >
+            {localization.interactionRefineDescription}
+          </p>
+          <div className="mt-2 flex flex-col gap-2 sm:flex-row">
+            <input
+              ref={refinementInputRef}
+              id={`document-refinement-${interaction.interaction_id}`}
+              value={refinement}
+              maxLength={interaction.refinement.max_length}
+              enterKeyHint="search"
+              disabled={!canAnswer}
+              aria-describedby={`document-refinement-help-${interaction.interaction_id}`}
+              className="min-w-0 flex-1 rounded-control border border-cal-hairline bg-cal-surface-card px-3 py-2 text-cal-ink outline-none focus-visible:outline-2 focus-visible:outline-cal-primary focus-visible:outline-offset-2"
+              placeholder={localization.interactionRefinePlaceholder}
+              onChange={(event) => setRefinement(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key !== "Enter") return;
+                event.preventDefault();
+                event.stopPropagation();
+                if (
+                  event.nativeEvent.isComposing ||
+                  !refinement.trim() ||
+                  !canAnswer
+                )
+                  return;
+                onRefine(refinement.trim());
+              }}
+            />
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!canAnswer || !refinement.trim()}
+              onClick={() => onRefine(refinement.trim())}
+            >
+              {localization.interactionRefineAction}
+            </Button>
+          </div>
+          <p className="mt-1 text-right text-xs text-cal-muted">
+            {localization.interactionRefineAttemptsRemaining.replace(
+              "{remaining}",
+              String(
+                interaction.refinement.attempts_max -
+                  interaction.refinement.attempts_used,
+              ),
+            )}
+          </p>
+        </div>
+      ) : null}
+
+      {isV2 && interaction.browse.allowed ? (
+        <p className="mt-3 text-xs text-cal-muted">
+          {hasLoadedBroadPage
+            ? localization.interactionBrowseLoadedDescription
+            : localization.interactionBrowseAvailableDescription}
+        </p>
+      ) : null}
+
       {optionsError ? (
         <p className="mt-2 text-xs text-cal-muted">
           {localization.interactionOptionsFailed}
@@ -123,26 +258,43 @@ export function DocumentSelectionCard({
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {hasMore ? (
           <Button
+            ref={
+              isV2 && interaction.browse.allowed && !hasLoadedBroadPage
+                ? browseActionRef
+                : undefined
+            }
             type="button"
             variant="secondary"
             size="sm"
             disabled={isLoadingMore || !canAnswer}
             onClick={onLoadMore}
           >
-            {localization.interactionLoadMore}
+            {isV2 && interaction.browse.allowed && !hasLoadedBroadPage
+              ? localization.interactionBrowseAction
+              : localization.interactionLoadMore}
           </Button>
         ) : null}
         {/* Cancel is always reachable, including while resuming. A suspended
             run blocks the whole conversation, so the dismissal must never be
             the thing that is disabled. */}
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+        <Button
+          ref={cancelActionRef}
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onCancel}
+        >
           {localization.interactionCancel}
         </Button>
         <span className="text-xs text-cal-muted">
-          {localization.interactionCountLabel.replace(
-            "{count}",
-            String(interaction.option_count),
-          )}
+          {isV2
+            ? localization.interactionV2CountLabel
+                .replace("{count}", String(displayOptionCount))
+                .replace("{total}", String(displayLibraryCount))
+            : localization.interactionCountLabel.replace(
+                "{count}",
+                String(displayOptionCount),
+              )}
         </span>
       </div>
 

@@ -99,6 +99,39 @@ describe("MyAgentsConversationAPI", () => {
     ]);
   });
 
+  it("sends a V2 refinement through the same resume stream", async () => {
+    const response = streamResponse([]);
+    const calls: Array<{ path: string; init?: unknown }> = [];
+    const api = new MyAgentsConversationAPI({
+      fetch: async () => null,
+      fetchResponse: async (path, init) => {
+        calls.push({ path, init });
+        return response;
+      },
+    });
+    const payload = {
+      schema_version: 2 as const,
+      interaction_id: "4a0b7c65-7c47-4bb3-9618-51ec95291843",
+      type: "document_selection" as const,
+      kind: "refine" as const,
+      text: " Pydantic Annotated Literal.md ",
+    };
+
+    await expect(
+      api.streamResumeRun("conversation-1", "run-1", payload),
+    ).resolves.toBe(response);
+    expect(calls).toEqual([
+      {
+        path: "/conversations/conversation-1/runs/run-1/resume/stream",
+        init: {
+          method: "POST",
+          body: { ...payload, text: "Pydantic Annotated Literal.md" },
+          headers: { Accept: "text/event-stream" },
+        },
+      },
+    ]);
+  });
+
   it("replays assistant messages through the backend replay contract", async () => {
     const calls: Array<{ path: string; init?: unknown }> = [];
     const api = new MyAgentsConversationAPI({

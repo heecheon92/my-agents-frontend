@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   classifyInteraction,
+  LATEST_INTERACTION_PROTOCOL_MAJOR,
   registeredInteractionTypes,
   resolveInteractionRenderer,
-  SUPPORTED_INTERACTION_PROTOCOL_MAJOR,
 } from "@/components/chat/interactions/registry";
 
 const FALLBACK = "fallback" as const;
@@ -56,7 +56,7 @@ describe("interaction protocol classification", () => {
       classifyInteraction(
         {
           type: "document_selection",
-          major: SUPPORTED_INTERACTION_PROTOCOL_MAJOR,
+          major: LATEST_INTERACTION_PROTOCOL_MAJOR,
         },
         known,
       ),
@@ -69,7 +69,7 @@ describe("interaction protocol classification", () => {
     // can do but dismiss. Collapsing them would give one of the two wrong copy.
     expect(
       classifyInteraction(
-        { type: "approval", major: SUPPORTED_INTERACTION_PROTOCOL_MAJOR },
+        { type: "approval", major: LATEST_INTERACTION_PROTOCOL_MAJOR },
         known,
       ),
     ).toEqual({ support: "unsupported_type", type: "approval" });
@@ -78,28 +78,30 @@ describe("interaction protocol classification", () => {
       classifyInteraction(
         {
           type: "document_selection",
-          major: SUPPORTED_INTERACTION_PROTOCOL_MAJOR + 1,
+          major: LATEST_INTERACTION_PROTOCOL_MAJOR + 1,
         },
         known,
       ),
     ).toEqual({
       support: "unsupported_version",
       type: "document_selection",
-      major: SUPPORTED_INTERACTION_PROTOCOL_MAJOR + 1,
+      major: LATEST_INTERACTION_PROTOCOL_MAJOR + 1,
     });
   });
 
-  it("treats an older major as unsupported too", () => {
-    // A backend rolled back below our floor is as unrenderable as one ahead of
-    // it, and silently trying to parse it is how a half-populated card ships.
+  it("keeps V1 waiting runs supported while rejecting older unknown versions", () => {
     expect(
       classifyInteraction(
         {
           type: "document_selection",
-          major: SUPPORTED_INTERACTION_PROTOCOL_MAJOR - 1,
+          major: LATEST_INTERACTION_PROTOCOL_MAJOR - 1,
         },
         known,
       ).support,
+    ).toBe("supported");
+    expect(
+      classifyInteraction({ type: "document_selection", major: 0 }, known)
+        .support,
     ).toBe("unsupported_version");
   });
 
@@ -108,7 +110,7 @@ describe("interaction protocol classification", () => {
       classifyInteraction(
         {
           type: "document_selection",
-          major: SUPPORTED_INTERACTION_PROTOCOL_MAJOR,
+          major: LATEST_INTERACTION_PROTOCOL_MAJOR,
         },
         new Set(known),
       ).support,

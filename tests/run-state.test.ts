@@ -39,8 +39,7 @@ describe("deriveRunPhase", () => {
   });
 
   it("is resuming while the continuation streams under an open card", () => {
-    // Not `streaming`: the card is still up, and the stop button must not
-    // appear next to it. Checking streaming first would lose this.
+    // Refinement keeps the card up while its lookup continues.
     expect(
       deriveRunPhase({
         ...NOTHING,
@@ -48,6 +47,16 @@ describe("deriveRunPhase", () => {
         hasPendingInteraction: true,
       }),
     ).toBe("resuming");
+  });
+
+  it("is streaming after a final choice while the waiting row is stale", () => {
+    expect(
+      deriveRunPhase({
+        ...NOTHING,
+        isStreaming: true,
+        hasServerWaitingRun: true,
+      }),
+    ).toBe("streaming");
   });
 
   it("treats a stale server active run as streaming, not waiting", () => {
@@ -77,7 +86,7 @@ describe("run phase decisions", () => {
   it("offers stop only while something is actually being written", () => {
     // Not the same set as blocksNewRun. A suspended run produces nothing, so a
     // stop button there would offer to interrupt an answer that is not running.
-    expect(phases.filter(showsStopControl)).toEqual(["streaming", "resuming"]);
+    expect(phases.filter(showsStopControl)).toEqual(["streaming"]);
     expect(showsStopControl("waiting")).toBe(false);
   });
 
@@ -97,6 +106,6 @@ describe("run phase decisions", () => {
     const divergent = phases.filter(
       (phase) => blocksNewRun(phase) !== showsStopControl(phase),
     );
-    expect(divergent).toEqual(["waiting"]);
+    expect(divergent).toEqual(["waiting", "resuming"]);
   });
 });

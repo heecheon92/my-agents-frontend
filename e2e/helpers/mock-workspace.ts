@@ -133,6 +133,69 @@ export const mockPendingInteraction = {
   next_cursor: null,
 };
 
+export const mockPendingInteractionV2 = {
+  schema_version: 2,
+  interaction_id: "4a0b7c65-7c47-4bb3-9618-51ec95291843",
+  type: "document_selection",
+  reason_code: "ambiguous_document_reference",
+  message_key: "clarification.document_scope.select_source",
+  expires_at: "2099-01-01T00:00:00.000Z",
+  option_count: 1,
+  library_count: 4000,
+  options: [
+    {
+      document_id: "doc-contract",
+      title: "Markdown Langgraph - Pydantic Annotated Literal",
+      source_filename: "Markdown Langgraph - Pydantic Annotated Literal.md",
+      knowledge_base_id: "kb-personal",
+      knowledge_base_name: "개인 자료",
+      match_confidence: "medium",
+      match_reason_code: "partial_filename",
+    },
+  ],
+  next_cursor: null,
+  refinement: {
+    allowed: true,
+    attempts_used: 0,
+    attempts_max: 2,
+    max_length: 120,
+  },
+  browse: { allowed: false, cursor: null },
+};
+
+export const mockUnresolvedInteractionV2 = {
+  ...mockPendingInteractionV2,
+  interaction_id: "ea4d14ef-2bd7-4786-8ce4-92ea4e7f9817",
+  reason_code: "unresolved_document_reference",
+  option_count: 0,
+  options: [],
+};
+
+export const mockBrowseInteractionV2 = {
+  ...mockPendingInteractionV2,
+  interaction_id: "63f4561e-d3bd-4aa0-a7d2-0084d18ed0cf",
+  reason_code: "unresolved_document_reference",
+  option_count: 1,
+  refinement: {
+    ...mockPendingInteractionV2.refinement,
+    allowed: false,
+    attempts_used: 2,
+  },
+  browse: { allowed: true },
+};
+
+export const mockMaxShortlistInteractionV2 = {
+  ...mockPendingInteractionV2,
+  interaction_id: "5f2d60da-b876-4a1e-8786-c22a7b76e79e",
+  option_count: 5,
+  options: Array.from({ length: 5 }, (_, index) => ({
+    ...mockPendingInteractionV2.options[0],
+    document_id: `doc-v2-${index}`,
+    title: `Pydantic 후보 문서 ${index + 1}`,
+    source_filename: `organization-project-pydantic-annotated-literal-candidate-${index + 1}-final-review.md`,
+  })),
+};
+
 /**
  * The same question with a list long enough to outgrow the panel.
  *
@@ -273,6 +336,10 @@ type RouteOverrides = {
   interaction?:
     | false
     | "document_selection"
+    | "document_selection_v2"
+    | "v2_unresolved"
+    | "v2_max_shortlist"
+    | "v2_browse"
     | "many_options"
     | "unsupported_type"
     | "unsupported_version"
@@ -312,18 +379,26 @@ export async function mockWorkspace(
       };
   const pendingInteraction = !interaction
     ? null
-    : interaction === "many_options"
-      ? mockManyOptionInteraction
-      : interaction === "unsupported_type"
-        ? { ...mockPendingInteraction, type: "approval" }
-        : interaction === "unsupported_version"
-          ? { ...mockPendingInteraction, schema_version: 2 }
-          : interaction === "expired"
-            ? {
-                ...mockPendingInteraction,
-                expires_at: "2020-01-01T00:00:00.000Z",
-              }
-            : mockPendingInteraction;
+    : interaction === "document_selection_v2"
+      ? mockPendingInteractionV2
+      : interaction === "v2_unresolved"
+        ? mockUnresolvedInteractionV2
+        : interaction === "v2_max_shortlist"
+          ? mockMaxShortlistInteractionV2
+          : interaction === "v2_browse"
+            ? mockBrowseInteractionV2
+            : interaction === "many_options"
+              ? mockManyOptionInteraction
+              : interaction === "unsupported_type"
+                ? { ...mockPendingInteraction, type: "approval" }
+                : interaction === "unsupported_version"
+                  ? { ...mockPendingInteraction, schema_version: 3 }
+                  : interaction === "expired"
+                    ? {
+                        ...mockPendingInteraction,
+                        expires_at: "2020-01-01T00:00:00.000Z",
+                      }
+                    : mockPendingInteraction;
   const knowledgeBases = empty ? [] : mockKnowledgeBases;
   const documents = empty ? [] : mockDocuments;
   const conversations = empty ? [] : [mockConversation];
@@ -540,6 +615,50 @@ export async function mockWorkspace(
       return json({ ...mockUser, is_guest: guest });
     }
     if (path === "/health") return json({ status: "ok" });
+    if (
+      interaction === "v2_browse" &&
+      path ===
+        `/conversations/${mockConversation.id}/runs/${mockWaitingRun.run_id}/interactions/${mockBrowseInteractionV2.interaction_id}/options`
+    ) {
+      const cursor = new URL(request.url()).searchParams.get("cursor");
+      if (cursor === "cursor-page-2") {
+        return json({
+          schema_version: 2,
+          interaction_id: mockBrowseInteractionV2.interaction_id,
+          type: "document_selection",
+          mode: "broad",
+          option_count: 4,
+          library_count: 4,
+          options: [
+            mockPendingInteraction.options[1],
+            {
+              document_id: "doc-broad-third",
+              title: "보안 검토 메모",
+              source_filename: "security-review.md",
+              knowledge_base_id: "kb-personal",
+              knowledge_base_name: "개인 자료",
+            },
+          ],
+          next_cursor: null,
+        });
+      }
+      return json({
+        schema_version: 2,
+        interaction_id: mockBrowseInteractionV2.interaction_id,
+        type: "document_selection",
+        mode: "broad",
+        option_count: 4,
+        library_count: 4,
+        options: [
+          {
+            ...mockPendingInteraction.options[0],
+            document_id: "doc-broad-contract",
+          },
+          mockPendingInteraction.options[1],
+        ],
+        next_cursor: "cursor-page-2",
+      });
+    }
     if (path === "/capabilities/reasoning") {
       // A backend without the reasoning migration 404s here, and the composer
       // must fall back to hiding its controls rather than erroring.

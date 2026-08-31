@@ -20,11 +20,14 @@ import { useLocalization } from "@/hooks/useLocalization";
 import { decodeRouteSegment } from "@/lib/route-segments";
 import {
   type Citation,
+  type ConversationRunResumeRequest,
   type DocumentCoverage,
   INTERACTION_SCHEMA_VERSION,
   isDocumentSelection,
+  isDocumentSelectionV2,
   isRunInterrupted,
   type KnowledgeBaseSelectionMode,
+  LEGACY_INTERACTION_SCHEMA_VERSION,
   type Message,
   type PendingInteraction,
 } from "@/model/my-agents";
@@ -57,7 +60,10 @@ import {
   showsStopControl,
 } from "./chat/run-state";
 import type { LiveActivityEvent, QueuedMessage } from "./chat/types";
-import { useChatRunLoop } from "./chat/useChatRunLoop";
+import {
+  useChatRunLoop,
+  waitingInteractionAnnouncement,
+} from "./chat/useChatRunLoop";
 import { useChatWorkspaceEffects } from "./chat/useChatWorkspaceEffects";
 import { useReplayAssistantMessageHandler } from "./chat/useReplayAssistantMessageHandler";
 import {
@@ -494,6 +500,9 @@ export function ChatWorkspace({
     setPendingInteraction(detail.interaction);
     setActiveRunId(detail.run_id);
     activeRunIdRef.current = detail.run_id;
+    setStatusAnnouncement(
+      waitingInteractionAnnouncement(detail.interaction, localization),
+    );
   }, [serverWaitingRunId, waitingRunDetail.data, isStreaming]);
 
   /**
@@ -510,13 +519,12 @@ export function ChatWorkspace({
     setPendingInteraction(null);
   }, [serverWaitingRunId, isStreaming, runs.isFetching]);
 
-  async function handleChooseInteractionOption(documentId: string) {
+  async function answerPendingInteraction(
+    payload: ConversationRunResumeRequest,
+  ) {
     const interaction = pendingInteraction;
     const runId = activeRunId ?? serverWaitingRunId;
     if (!activeId || !interaction || !runId) return;
-    // The same type+version decision the card and the registry make. Checking
-    // `type` alone would let a v2 `document_selection` — which renders as the
-    // unsupported card — still be answered through the v1 resume contract.
     if (!isDocumentSelection(interaction)) return;
     // Carry the run's stored activity into the live list before the resume
     // appends to it. After a cold load the live list is empty and this run's
@@ -526,15 +534,51 @@ export function ChatWorkspace({
     setLiveActivityEvents((current) =>
       seedLiveActivityEvents(current, events.data ?? []),
     );
-    // Choosing is control input, not another conversational turn. The run
-    // leaves the suspended presentation immediately; if the request fails,
-    // the server waiting row/detail recovery above restores this exact card.
-    setPendingInteraction(null);
-    await resumeInteraction(activeId, runId, {
+    // A final selection leaves the suspended presentation immediately. A
+    // refinement keeps the card mounted and disabled while the backend tries
+    // the clue, then replaces it with the next attempt if needed.
+    if (!("kind" in payload && payload.kind === "refine")) {
+      setPendingInteraction(null);
+    }
+    await resumeInteraction(activeId, runId, payload);
+  }
+
+  async function handleChooseInteractionOption(documentId: string) {
+    const interaction = pendingInteraction;
+    if (!interaction || !isDocumentSelection(interaction)) return;
+    await answerPendingInteraction(
+      isDocumentSelectionV2(interaction)
+        ? {
+            schema_version: INTERACTION_SCHEMA_VERSION,
+            interaction_id: interaction.interaction_id,
+            type: "document_selection",
+            kind: "select",
+            document_id: documentId,
+          }
+        : {
+            schema_version: LEGACY_INTERACTION_SCHEMA_VERSION,
+            interaction_id: interaction.interaction_id,
+            type: "document_selection",
+            document_id: documentId,
+          },
+    );
+  }
+
+  async function handleRefineInteraction(text: string) {
+    const interaction = pendingInteraction;
+    if (
+      !interaction ||
+      !isDocumentSelection(interaction) ||
+      !isDocumentSelectionV2(interaction) ||
+      !interaction.refinement.allowed
+    )
+      return;
+    await answerPendingInteraction({
       schema_version: INTERACTION_SCHEMA_VERSION,
       interaction_id: interaction.interaction_id,
       type: "document_selection",
-      document_id: documentId,
+      kind: "refine",
+      text,
     });
   }
 
@@ -889,6 +933,7 @@ export function ChatWorkspace({
             localization={localization}
             isResuming={isStreaming || isCancellingInteraction}
             onChoose={handleChooseInteractionOption}
+            onRefine={handleRefineInteraction}
             onCancel={handleCancelInteraction}
           />
         ) : null

@@ -318,6 +318,13 @@ conversation behind.
   generic Korean. See `docs/backend-requests.md` for the error-code request that
   will restore specificity.
 - **Disabled** — explain the blocker in nearby copy, do not just grey out.
+- **Suspended for document input** — keep the backend-ranked shortlist in its
+  original order, with the one-line filename refinement as the final choice.
+  Cancel and the title stay pinned while only the option list scrolls. After two
+  unresolved refinements the same card may page the broad authorized list. Do
+  not nest a form inside the composer form; Enter is handled locally and must
+  remain IME-safe. A repeated interrupt announces the new candidate count and
+  restores focus to the first candidate (or the refinement input when empty).
 
 ---
 

@@ -17,14 +17,16 @@
  */
 
 /**
- * The interaction protocol major version this build understands.
+ * The latest interaction protocol version this build understands.
  *
- * Pinned as a constant so the mismatch is a single visible fact rather than a
- * behaviour spread across parse sites. A backend that ships a new major must
- * fail loudly here — the fallback tells the user to reload for a newer app —
- * rather than quietly rendering a card with fields it cannot read.
+ * V1 remains in the supported set for already-waiting runs. A backend that
+ * ships anything outside the explicit set falls back to a cancellable card.
  */
-export const SUPPORTED_INTERACTION_PROTOCOL_MAJOR = 1;
+export const LATEST_INTERACTION_PROTOCOL_MAJOR = 2;
+export const SUPPORTED_INTERACTION_PROTOCOL_MAJORS = new Set([
+  1,
+  LATEST_INTERACTION_PROTOCOL_MAJOR,
+]);
 
 export type InteractionSupport =
   /** This build can render it. */
@@ -42,7 +44,7 @@ export function classifyInteraction(
   { type, major }: { type: string; major: number },
   knownTypes: ReadonlySet<string> | ReadonlyArray<string>,
 ): InteractionSupport {
-  if (major !== SUPPORTED_INTERACTION_PROTOCOL_MAJOR) {
+  if (!SUPPORTED_INTERACTION_PROTOCOL_MAJORS.has(major)) {
     return { support: "unsupported_version", type, major };
   }
   // `Array.isArray`, not `instanceof Set`: the latter does not narrow a

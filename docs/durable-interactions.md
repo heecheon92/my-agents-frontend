@@ -10,18 +10,30 @@ anything under `components/chat/interactions/`.
 
 ## Status
 
-Implemented on `feature/durable-document-source-choice`, against the live
-OpenAPI document from backend `feature/langgraph-checkpointer`. Dark in
-production: both backend flags default off, and the composer is byte-identical
-to before until `MY_AGENTS_CHECKPOINTER_ENABLED` is turned on.
+V1 and V2 are implemented on the current document-coverage PR. The V2 schemas
+were refreshed from the live backend OpenAPI at `http://127.0.0.1:8017/openapi.json`
+on 2026-08-31. V1 remains supported for already-waiting checkpoints.
 
-Verified end to end in a browser on 2026-08-17 against persistence-enabled
-Postgres: an ambiguous prompt raised the card, a hard reload rebuilt it from run
-detail, choosing a document resumed and completed the same run with a citation,
-and a second waiting run cancelled cleanly. Not yet exercised live: a second
-interrupt within one run, a second page of options, and guest behaviour. See
-`docs/implementation-log.md` for what that leaves open — notably the encoded
-`interaction_id`, which only the paged options route carries.
+The V1 flow was verified live in a browser on 2026-08-17. The V2 flow has mocked
+browser coverage for cold recovery, select/refine request bodies, repeated
+interrupts, stale-cache replacement, IME-safe Enter, focus restoration, broad
+fallback, cancellation, and mobile geometry. The owner is performing the final
+manual cross-repository E2E check.
+
+## V2 resolution ladder
+
+1. A unique exact title or filename continues automatically.
+2. Otherwise the card renders the backend-ranked shortlist, never more than five.
+3. Human input is the last choice: one line, at most 120 characters, resumed as
+   `{kind: "refine"}` on the same run rather than sent as chat.
+4. Two unresolved refinements unlock the broad authorized list and its opaque
+   cursor. The frontend never constructs or filters that source universe.
+
+Every refinement attempt has a fresh UUID, so a response from an earlier attempt
+cannot append stale options. The run, selected KB scope, transcript, and original
+expiry do not change. A repeated `run_interrupted` response is also written into
+the run-detail query cache before invalidation; otherwise cold recovery can replace
+the new card with the previous cached attempt.
 
 ## Hard rule: no Zod models from backend source
 
@@ -69,7 +81,7 @@ This is the easiest thing to get wrong.
 
 - The **SSE stream** emits `ConversationRunInterruptedResponse.model_dump()` —
   the same full body as the HTTP 202, with the nested `interaction` and its
-  first page of options. `conversationRunInterruptedResponseSchema` parses it,
+  inline V1 options or V2 shortlist. `conversationRunInterruptedResponseSchema` parses it,
   strictly, with every contract-required field required.
 - The **persisted activity event** (`GET .../runs/{run_id}/events`) carries a
   separate, simplified, redaction-safe payload:
@@ -78,7 +90,7 @@ This is the easiest thing to get wrong.
 Keeping both means neither has to be loosened for the other. An earlier draft
 made `reason_code` and `message_key` optional on the known schema to fit an
 imagined thin SSE payload; that was wrong and was reverted. If you find yourself
-relaxing the known v1 parser, check which of the two contracts you are actually
+relaxing a known parser, check which of the two contracts you are actually
 looking at first.
 
 ## Design rules to keep
@@ -97,20 +109,20 @@ is backend-controlled, and a plain object answers `"constructor"` with an
 inherited function that is not a component.
 
 **Version support is enforced at three levels, and all three are needed.**
-`schema_version` is an integer, not a semver string, and the supported value is
-`INTERACTION_SCHEMA_VERSION`.
+`schema_version` is an integer, not a semver string. New interactions use V2;
+the V1 literal stays supported only for already-waiting runs.
 
 1. The known schemas (`documentSelectionInteractionSchema`,
    `documentSelectionOptionsPageSchema`, `conversationRunResumeRequestSchema`)
-   use `z.literal`, not `z.number().int()`. The known branch is tried first in
-   the union, so a permissive version field would let a v2 body parse as v1.
+   use `z.literal`, not `z.number().int()`. Known branches are tried before the
+   fallback, so a permissive version field would let a future body masquerade as V2.
 2. `isDocumentSelection` checks type **and** version **and** a structural field.
-   Type alone is not enough: a v2 body parses through the unsupported branch and
+   Type alone is not enough: a future body parses through the unsupported branch and
    still calls itself `document_selection`, and Zod strips unknown keys, so such
    a body keeps its type while losing everything the card renders.
 3. `handleChooseInteractionOption` gates on the same `isDocumentSelection`, so
    the card, the registry, and the submit handler share one support decision.
-   Checking type alone there would answer a v2 question over the v1 contract.
+   Checking type alone there would answer a future question over a supported contract.
 
 `unsupportedInteractionSchema` stays version-permissive on purpose — it is the
 branch that must accept anything, including the future, so the card can say so
@@ -121,13 +133,13 @@ blocks new runs but produces nothing, so it must not show a stop button. Folding
 `waiting_for_input` into the existing single `isActiveAgentRunStatus` predicate
 gets this wrong.
 
-**Answering control input ends suspension immediately.** Choosing a document is
-not a new conversational turn. Before the first resume-stream event arrives,
-the frontend clears the answered card, treats the run as producing output,
-shows steering controls, accepts a queued follow-up, and advances the process
-surface. A stale `waiting_for_input` row in the runs-query cache must not rebuild
-the card while `isStreaming` is true. If resume fails and server truth still
-says waiting, cold-load recovery restores the same card.
+**Selection and refinement have different transitions.** Choosing a final
+document clears the card immediately and lets the answer surface resume.
+Refinement keeps the card mounted and disabled, with its Cancel action as the
+release valve; the composer queue stays paused until a new interaction or an
+answer arrives. A repeated `run_interrupted` response replaces the card and its
+run-detail cache entry together. If resume fails and server truth still says
+waiting, cold-load recovery restores the same attempt.
 
 The backend resume stream begins with `run_resumed`, followed by actual
 retrieval/graph progress and answer deltas. A transport that executes sync
@@ -143,10 +155,9 @@ from "waiting" from the error and must decide from run state.
 **Cold load must reconstruct the pending interaction.** `GET /runs/{run_id}`
 returns the waiting shape, so a refresh during a pending question rebuilds the
 card from the run list rather than from stream events. `e2e/durable-source-choice.spec.ts`
-has eight cases: seven depend on a pending interaction and one is flags-off
-parity. Disabling the recovery effect fails **six of the seven** — the survivor
-is the queue-paused case, which reads the waiting run from the run list rather
-than from the rebuilt card, and the parity case must keep passing either way.
+covers cold recovery, both protocol versions, refinement, broad browsing,
+failure recovery, layout, cancellation, and flags-off parity. Keep the recovery
+and parity cases together when this surface changes.
 
 **Cancel must not clear the card before it succeeds.** The card is the only way
 out of a suspended run. Clearing optimistically and then failing would leave the
@@ -204,7 +215,7 @@ inside the composer, which is absolutely positioned against the panel at
 the composer *upward* until it covers the transcript and then spills past the
 panel's top edge, where it is clipped with nothing to scroll it back — measured
 at 1049px of lost card on desktop and 1801px on a 390px phone with one full
-backend page of 20 options. That is an ordinary ambiguous reference, not an edge
+backend page of up to 50 options. That is an ordinary ambiguous reference, not an edge
 case, so the cap is not defensive polish.
 
 The cap belongs on the `<ul>` (`data-slot="interaction-options"`), never on the

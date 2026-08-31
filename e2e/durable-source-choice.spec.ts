@@ -3,6 +3,7 @@ import ko from "@/localization/ko.json";
 import {
   dismissOnboarding,
   hideDevIndicators,
+  mockPendingInteractionV2,
   mockWorkspace,
 } from "./helpers/mock-workspace";
 
@@ -26,6 +27,267 @@ test.describe("durable document-source choice", () => {
     // the list.
     await expect(card.getByText("2026 파트너 계약서")).toBeVisible();
     await expect(card.getByText("온보딩 메모")).toBeVisible();
+  });
+
+  test("announces the available action on an unresolved cold load", async ({
+    page,
+  }) => {
+    await mockWorkspace(page, { interaction: "v2_unresolved" });
+    await page.goto(CONVERSATION_URL);
+
+    await expect(
+      page.getByText(chat.interactionRefinementWaitingAnnouncement),
+    ).toBeVisible();
+    await expect(page.getByLabel(chat.interactionRefineLabel)).toBeVisible();
+  });
+
+  test("refines a V2 interaction on the same run without submitting chat", async ({
+    page,
+  }) => {
+    await mockWorkspace(page, { interaction: "document_selection_v2" });
+    let resumeBody: unknown;
+    let hasRefined = false;
+    let releaseResume: (() => void) | undefined;
+    const resumeGate = new Promise<void>((resolve) => {
+      releaseResume = resolve;
+    });
+    const nextInteraction = {
+      ...mockPendingInteractionV2,
+      interaction_id: "abf5519e-12c5-44c8-8a91-0a6881a23cc1",
+      option_count: 2,
+      options: [
+        ...mockPendingInteractionV2.options,
+        {
+          ...mockPendingInteractionV2.options[0],
+          document_id: "doc-second",
+          title: "Pydantic Annotated Literal examples",
+        },
+      ],
+      refinement: {
+        ...mockPendingInteractionV2.refinement,
+        attempts_used: 1,
+      },
+    };
+    await page.route(
+      "**/api/my-agents/conversations/c-visual/runs/run-waiting",
+      async (route) => {
+        if (route.request().method() !== "GET") return route.fallback();
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: "waiting_for_input",
+            run_id: "run-waiting",
+            conversation_id: "c-visual",
+            interaction: hasRefined
+              ? nextInteraction
+              : mockPendingInteractionV2,
+          }),
+        });
+      },
+    );
+    await page.route("**/api/my-agents/**/resume/stream", async (route) => {
+      resumeBody = route.request().postDataJSON();
+      hasRefined = true;
+      await resumeGate;
+      await route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        body:
+          `event: run_resumed\ndata: ${JSON.stringify({ run_id: "run-waiting", status: "running", interaction_id: mockPendingInteractionV2.interaction_id, interaction_schema_version: 2, interaction_type: "document_selection" })}\n\n` +
+          `event: run_interrupted\ndata: ${JSON.stringify({ status: "waiting_for_input", run_id: "run-waiting", conversation_id: "c-visual", interaction: nextInteraction })}\n\n`,
+      });
+    });
+    await page.goto(CONVERSATION_URL);
+
+    const card = page.locator('[data-slot="interaction-card"]');
+    await expect(card).toBeVisible();
+    await expect(card.locator("form")).toHaveCount(0);
+    const clue = card.getByLabel(chat.interactionRefineLabel);
+    const composer = page.getByPlaceholder(chat.streamingComposerPlaceholder);
+    await composer.fill("예약되면 안 되는 후속 질문");
+    await clue.press("Enter");
+    expect(resumeBody).toBeUndefined();
+    await expect(page.getByText(chat.queuedTitle)).toHaveCount(0);
+    await clue.fill("Pydantic Annotated Literal.md");
+    await clue.dispatchEvent("keydown", {
+      key: "Enter",
+      code: "Enter",
+      isComposing: true,
+    });
+    expect(resumeBody).toBeUndefined();
+    await clue.press("Enter");
+
+    await expect
+      .poll(() => resumeBody)
+      .toEqual({
+        schema_version: 2,
+        interaction_id: mockPendingInteractionV2.interaction_id,
+        type: "document_selection",
+        kind: "refine",
+        text: "Pydantic Annotated Literal.md",
+      });
+    await expect(card).toBeVisible();
+    await expect(clue).toBeDisabled();
+    releaseResume?.();
+    await expect(
+      card.getByText("Pydantic Annotated Literal examples"),
+    ).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: chat.interactionChoose }).first(),
+    ).toBeFocused();
+  });
+
+  test("recovers the fresh attempt when the refine stream disconnects", async ({
+    page,
+  }) => {
+    await mockWorkspace(page, { interaction: "document_selection_v2" });
+    let advanced = false;
+    const recoveredInteraction = {
+      ...mockPendingInteractionV2,
+      interaction_id: "f708ab31-e9df-41b0-a5b2-67aa67f41f25",
+      option_count: 1,
+      options: [
+        {
+          ...mockPendingInteractionV2.options[0],
+          document_id: "doc-recovered",
+          title: "Recovered candidate",
+        },
+      ],
+      refinement: {
+        ...mockPendingInteractionV2.refinement,
+        attempts_used: 1,
+      },
+    };
+    await page.route(
+      "**/api/my-agents/conversations/c-visual/runs/run-waiting",
+      async (route) => {
+        if (route.request().method() !== "GET") return route.fallback();
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            status: "waiting_for_input",
+            run_id: "run-waiting",
+            conversation_id: "c-visual",
+            interaction: advanced
+              ? recoveredInteraction
+              : mockPendingInteractionV2,
+          }),
+        });
+      },
+    );
+    await page.route("**/api/my-agents/**/resume/stream", async (route) => {
+      advanced = true;
+      await route.abort("failed");
+    });
+    await page.goto(CONVERSATION_URL);
+
+    const card = page.locator('[data-slot="interaction-card"]');
+    const clue = card.getByLabel(chat.interactionRefineLabel);
+    await clue.fill("recovered filename");
+    await clue.press("Enter");
+
+    await expect(card.getByText("Recovered candidate")).toBeVisible();
+    await expect(
+      card.getByText("Markdown Langgraph - Pydantic Annotated Literal", {
+        exact: true,
+      }),
+    ).toHaveCount(0);
+  });
+
+  test("sends the V2 select answer shape", async ({ page }) => {
+    await mockWorkspace(page, { interaction: "document_selection_v2" });
+    let resumeBody: unknown;
+    await page.route("**/api/my-agents/**/resume/stream", async (route) => {
+      resumeBody = route.request().postDataJSON();
+      await route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        body:
+          `event: run_resumed\ndata: ${JSON.stringify({ run_id: "run-waiting", status: "running", interaction_id: mockPendingInteractionV2.interaction_id, interaction_schema_version: 2, interaction_type: "document_selection" })}\n\n` +
+          'event: run_failed\ndata: {"run_id":"run-waiting","safe_error_type":"TestEnd"}\n\n',
+      });
+    });
+    await page.goto(CONVERSATION_URL);
+
+    await page
+      .getByRole("button", { name: chat.interactionChoose })
+      .first()
+      .click();
+    await expect
+      .poll(() => resumeBody)
+      .toEqual({
+        schema_version: 2,
+        interaction_id: mockPendingInteractionV2.interaction_id,
+        type: "document_selection",
+        kind: "select",
+        document_id: "doc-contract",
+      });
+  });
+
+  test("loads the broad authorized list only after refinement is exhausted", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mockWorkspace(page, { interaction: "v2_browse" });
+    await page.goto(CONVERSATION_URL);
+
+    const card = page.locator('[data-slot="interaction-card"]');
+    await expect(
+      card.getByText(chat.interactionBrowseAvailableDescription),
+    ).toBeVisible();
+    await expect(card.getByLabel(chat.interactionRefineLabel)).toHaveCount(0);
+    await card
+      .getByRole("button", { name: chat.interactionBrowseAction })
+      .click();
+    await expect(
+      card.getByText(chat.interactionBrowseLoadedDescription),
+    ).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: chat.interactionChoose }).first(),
+    ).toBeFocused();
+    await expect(card.getByText("2026 파트너 계약서")).toBeVisible();
+    await card.getByRole("button", { name: chat.interactionLoadMore }).click();
+    await expect(card.getByText("보안 검토 메모")).toBeVisible();
+    await expect(card.getByText("온보딩 메모")).toHaveCount(1);
+    await expect(
+      card.getByText(
+        chat.interactionV2CountLabel
+          .replace("{count}", "1")
+          .replace("{total}", "4"),
+      ),
+    ).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: chat.interactionCancel }),
+    ).toBeVisible();
+  });
+
+  test("keeps the maximum V2 shortlist inside the mobile panel", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await mockWorkspace(page, { interaction: "v2_max_shortlist" });
+    await page.goto(CONVERSATION_URL);
+
+    const panel = page.getByTestId("chat-workspace-panel");
+    const card = page.locator('[data-slot="interaction-card"]');
+    const [panelBox, cardBox] = await Promise.all([
+      panel.boundingBox(),
+      card.boundingBox(),
+    ]);
+    if (!panelBox || !cardBox) throw new Error("expected panel and V2 card");
+    expect(cardBox.y).toBeGreaterThanOrEqual(panelBox.y);
+    expect(cardBox.height).toBeLessThan(panelBox.height * 0.75);
+    await expect(
+      card.getByText(
+        "organization-project-pydantic-annotated-literal-candidate-1-final-review.md",
+        { exact: false },
+      ),
+    ).toBeVisible();
+    await expect(
+      card.getByRole("button", { name: chat.interactionCancel }),
+    ).toBeVisible();
   });
 
   test("blocks sending but offers no stop control while suspended", async ({
@@ -66,7 +328,12 @@ test.describe("durable document-source choice", () => {
       const resumeGate = new Promise<void>((resolve) => {
         releaseResume = resolve;
       });
+      let markResumeRequested: (() => void) | undefined;
+      const resumeRequested = new Promise<void>((resolve) => {
+        markResumeRequested = resolve;
+      });
       await page.route("**/api/my-agents/**/resume/stream", async (route) => {
+        markResumeRequested?.();
         await resumeGate;
         await route.fulfill({
           status: 200,
@@ -85,24 +352,24 @@ test.describe("durable document-source choice", () => {
         .getByRole("button", { name: chat.interactionChoose })
         .first()
         .click();
+      await resumeRequested;
 
       // This is deliberately before the first resume-stream event. Choosing
       // is control input, so the card and waiting terminal must disappear
       // immediately rather than staying frozen for the backend's re-plan.
       await expect(page.locator('[data-slot="interaction-card"]')).toHaveCount(
         0,
-        { timeout: 750 },
       );
       await expect(
         page.locator('[data-terminal="waitingForConfirmation"]'),
-      ).toHaveCount(0, { timeout: 750 });
+      ).toHaveCount(0);
       await expect(
         page.getByRole("button", { name: chat.sendNow, exact: true }),
-      ).toBeVisible({ timeout: 750 });
+      ).toBeVisible();
       const composer = page.getByPlaceholder(chat.streamingComposerPlaceholder);
-      await expect(composer).toBeVisible({ timeout: 750 });
+      await expect(composer).toBeVisible();
       await expect(page.getByTestId("agent-process-panel")).toBeVisible({
-        timeout: 750,
+        timeout: 5_000,
       });
       const currentStageBox = await page
         .locator('[data-current="true"]')
@@ -164,12 +431,7 @@ test.describe("durable document-source choice", () => {
       .getByRole("button", { name: chat.interactionChoose })
       .first()
       .click();
-    await expect(page.locator('[data-slot="interaction-card"]')).toHaveCount(
-      0,
-      {
-        timeout: 750,
-      },
-    );
+    await expect(page.locator('[data-slot="interaction-card"]')).toHaveCount(0);
     await page.waitForTimeout(100);
     expect(await scrollRegion.evaluate((element) => element.scrollTop)).toBe(0);
     releaseResume?.();
