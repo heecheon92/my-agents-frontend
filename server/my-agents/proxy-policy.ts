@@ -32,6 +32,14 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "capabilities.reasoning",
   },
   {
+    // Read-only. Gates every attachment affordance: the composer renders no
+    // usable control unless this reports `enabled` *and* `eligible`, and it
+    // must degrade to rendering nothing when the endpoint is absent.
+    method: "GET",
+    pattern: /^\/capabilities\/document-workspace$/,
+    name: "capabilities.document-workspace",
+  },
+  {
     // Unauthenticated: `/guest` needs the active limits and delivery mode
     // before anyone signs in, so the copy can state them accurately.
     method: "GET",
@@ -167,6 +175,39 @@ export const BFF_ALLOWLIST: Rule[] = [
     method: "GET",
     pattern: new RegExp(`^/conversations/${uuidLike}/runs/${uuidLike}/events$`),
     name: "events.list",
+  },
+  {
+    // Multipart upload of a temporary conversation file. Already covered by
+    // `isAllowedMutationContentType`, which accepts `multipart/form-data`, and
+    // deliberately outside `isCsrfExemptPath` — it is an authenticated
+    // mutation that transfers user bytes to a third-party provider.
+    method: "POST",
+    pattern: new RegExp(`^/conversations/${uuidLike}/attachments$`),
+    name: "conversations.attachments.create",
+  },
+  {
+    method: "GET",
+    pattern: new RegExp(`^/conversations/${uuidLike}/attachments$`),
+    name: "conversations.attachments.list",
+  },
+  {
+    method: "DELETE",
+    pattern: new RegExp(`^/conversations/${uuidLike}/attachments/${uuidLike}$`),
+    name: "conversations.attachments.delete",
+  },
+  {
+    method: "GET",
+    pattern: new RegExp(`^/conversations/${uuidLike}/artifacts$`),
+    name: "conversations.artifacts.list",
+  },
+  {
+    // Binary passthrough. Must also be listed in `isBinaryDownloadPath` in the
+    // route handler, or the body is read as text and the bytes are corrupted.
+    method: "GET",
+    pattern: new RegExp(
+      `^/conversations/${uuidLike}/artifacts/${uuidLike}/download$`,
+    ),
+    name: "conversations.artifacts.download",
   },
   { method: "POST", pattern: /^\/groups$/, name: "groups.create" },
   { method: "GET", pattern: /^\/groups$/, name: "groups.list" },

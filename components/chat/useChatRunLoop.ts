@@ -145,6 +145,7 @@ export function useChatRunLoop({
     conversationId: string,
     message: string,
     knowledgeBaseSelection: KnowledgeBaseSelection,
+    attachmentIds: string[],
   ): Promise<RunOutcome> {
     if (isStreamingRef.current) return "failed";
     isStreamingRef.current = true;
@@ -181,6 +182,12 @@ export function useChatRunLoop({
         {
           message,
           knowledge_base_selection: knowledgeBaseSelection,
+          // Omitted entirely when nothing is attached, so a run from a
+          // deployment without the document workspace sends the same body it
+          // always did rather than an empty array the backend must interpret.
+          ...(attachmentIds.length > 0
+            ? { attachment_ids: attachmentIds }
+            : {}),
           ...(getReasoning() ?? {}),
         },
       )) {
@@ -271,6 +278,17 @@ export function useChatRunLoop({
         queryClient.invalidateQueries({
           queryKey: MyAgentsQueryKeys.conversations.runs(conversationId),
         }),
+        // A run is what creates artifacts and what expires attachments, so
+        // both lists are stale the moment it ends. `staleTime: 0` only marks
+        // them stale — without an invalidation nothing refetches, and a file
+        // the run just generated stays invisible until the next full page
+        // load.
+        queryClient.invalidateQueries({
+          queryKey: MyAgentsQueryKeys.conversations.artifacts(conversationId),
+        }),
+        queryClient.invalidateQueries({
+          queryKey: MyAgentsQueryKeys.conversations.attachments(conversationId),
+        }),
       ]);
       setOptimisticMessage(null);
       // Keep the partial answer on screen when the run suspended: the user has
@@ -300,11 +318,13 @@ export function useChatRunLoop({
     conversationId: string,
     message: string,
     knowledgeBaseSelection: KnowledgeBaseSelection,
+    attachmentIds: string[],
   ): Promise<void> {
     const outcome = await runMessage(
       conversationId,
       message,
       knowledgeBaseSelection,
+      attachmentIds,
     );
     if (outcome === "active_conflict") {
       if (queuedMessageRef.current?.conversationId === conversationId) {
@@ -315,6 +335,9 @@ export function useChatRunLoop({
           conversationId,
           content: message,
           knowledgeBaseSelection,
+          // The files were already uploaded and are still available; the held
+          // message keeps them so a retry does not re-transfer the bytes.
+          attachmentIds,
         });
         setStatusAnnouncement(localization.queuedAnnouncement);
       }
@@ -351,6 +374,7 @@ export function useChatRunLoop({
         pendingImmediateMessage.conversationId,
         pendingImmediateMessage.content,
         pendingImmediateMessage.knowledgeBaseSelection,
+        pendingImmediateMessage.attachmentIds,
       );
       return;
     }
@@ -367,6 +391,7 @@ export function useChatRunLoop({
         nextQueuedMessage.conversationId,
         nextQueuedMessage.content,
         nextQueuedMessage.knowledgeBaseSelection,
+        nextQueuedMessage.attachmentIds,
       );
     }
   }
@@ -481,6 +506,10 @@ export function useChatRunLoop({
         }),
         queryClient.invalidateQueries({
           queryKey: MyAgentsQueryKeys.conversations.runs(conversationId),
+        }),
+        // A replay re-runs the turn and can write its own artifacts.
+        queryClient.invalidateQueries({
+          queryKey: MyAgentsQueryKeys.conversations.artifacts(conversationId),
         }),
       ]);
       if (interrupted) return "interrupted";

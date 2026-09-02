@@ -16,6 +16,7 @@ export const API_PATH = {
   },
   capabilities: {
     reasoning: "/capabilities/reasoning",
+    documentWorkspace: "/capabilities/document-workspace",
   },
   conversations: {
     root: "/conversations",
@@ -61,6 +62,20 @@ export const API_PATH = {
     },
     runEvents(conversationId: string, runId: string) {
       return `${this.run(conversationId, runId)}/events`;
+    },
+    attachments(conversationId: string) {
+      return `${this.detail(conversationId)}/attachments`;
+    },
+    attachment(conversationId: string, attachmentId: string) {
+      return `${this.attachments(conversationId)}/${attachmentId}`;
+    },
+    artifacts(conversationId: string) {
+      return `${this.detail(conversationId)}/artifacts`;
+    },
+    // Binary. The proxy streams this one through instead of reading it as
+    // text; see `isBinaryDownloadPath` in the route handler.
+    artifactDownload(conversationId: string, artifactId: string) {
+      return `${this.artifacts(conversationId)}/${artifactId}/download`;
     },
   },
   groups: {

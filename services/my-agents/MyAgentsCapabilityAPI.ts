@@ -1,5 +1,7 @@
 import { API_PATH } from "@/constants/api-path";
 import {
+  type DocumentWorkspaceCapability,
+  documentWorkspaceCapabilitySchema,
   type ReasoningCapabilities,
   reasoningCapabilitiesSchema,
 } from "@/model/my-agents";
@@ -19,5 +21,20 @@ export class MyAgentsCapabilityAPI {
   async reasoning(): Promise<ReasoningCapabilities> {
     const value = await this.client.fetch(API_PATH.capabilities.reasoning);
     return parseWithSchema(reasoningCapabilitiesSchema, value);
+  }
+
+  /**
+   * Whether this account can attach temporary files, and on what terms.
+   *
+   * Both `enabled` and `eligible` must be true before any usable control is
+   * rendered — a disabled deployment and an ineligible account are different
+   * facts with different copy, and neither may leave a working request path
+   * behind a greyed-out button.
+   */
+  async documentWorkspace(): Promise<DocumentWorkspaceCapability> {
+    const value = await this.client.fetch(
+      API_PATH.capabilities.documentWorkspace,
+    );
+    return parseWithSchema(documentWorkspaceCapabilitySchema, value);
   }
 }

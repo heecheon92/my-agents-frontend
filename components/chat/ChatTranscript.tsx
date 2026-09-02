@@ -7,10 +7,12 @@ import { cn } from "@/lib/utils";
 import type {
   AgentEvent,
   Citation,
+  ConversationArtifact,
   DocumentCoverage,
   Message,
   ReasoningSummaryDisplay,
 } from "@/model/my-agents";
+import { ArtifactList } from "./attachments/ArtifactList";
 import { CopyMessageButton } from "./CopyMessageButton";
 import { AgentProcessPanel, EvidencePanel } from "./EvidencePanel";
 import { MessageBubble } from "./MessageBubble";
@@ -119,6 +121,7 @@ export function ChatTranscript({
   chatScrollRef,
   onChatScroll,
   onReplayAssistantMessage,
+  artifactsByRun,
   bottomInset,
 }: {
   localization: ChatLocalization;
@@ -144,6 +147,14 @@ export function ChatTranscript({
   chatScrollRef: RefObject<HTMLDivElement | null>;
   onChatScroll: () => void;
   onReplayAssistantMessage: (messageId: string) => void;
+  /**
+   * Generated files keyed by the run that produced them.
+   *
+   * Grouped by `run_id` rather than read off the run list, which does not
+   * carry artifacts — this is the only thing that reattaches a file to its
+   * answer after a refresh.
+   */
+  artifactsByRun: Record<string, ConversationArtifact[]>;
   /**
    * Height of the composer overlaying the bottom of the panel, in pixels.
    * Reserved as scrollable padding so the last message can always be scrolled
@@ -231,6 +242,19 @@ export function ChatTranscript({
               {isReplaying && !streamedReply ? (
                 <AssistantGeneratingIndicator
                   label={localization.agentComposing}
+                />
+              ) : null}
+              {/* Between the answer and its evidence footer: a generated
+                  file is a result of the answer, not provenance for it. */}
+              {isAssistant && activeId && !isReplaying && latestRunId ? (
+                <ArtifactList
+                  localization={localization}
+                  conversationId={activeId}
+                  artifacts={
+                    message.id === latestAssistantMessageId
+                      ? (artifactsByRun[latestRunId] ?? [])
+                      : []
+                  }
                 />
               ) : null}
               {isAssistant ? (
@@ -325,6 +349,13 @@ export function ChatTranscript({
             !serverActiveRunIsStale ? (
               <AssistantGeneratingIndicator
                 label={localization.agentComposing}
+              />
+            ) : null}
+            {activeId && activeRunId ? (
+              <ArtifactList
+                localization={localization}
+                conversationId={activeId}
+                artifacts={artifactsByRun[activeRunId] ?? []}
               />
             ) : null}
             <EvidencePanel

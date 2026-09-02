@@ -2,6 +2,7 @@ export * from "./auth";
 export * from "./capabilities";
 export * from "./common";
 export * from "./conversations";
+export * from "./document-workspace";
 export * from "./groups";
 export * from "./interactions";
 export * from "./knowledge";

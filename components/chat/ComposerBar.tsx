@@ -10,6 +10,11 @@ import type {
   KnowledgeBaseSelectionMode,
   ReasoningEffort,
 } from "@/model/my-agents";
+import {
+  AttachmentButton,
+  AttachmentPanels,
+} from "./attachments/AttachmentControls";
+import type { AttachmentComposer } from "./attachments/useAttachmentComposer";
 import { KnowledgeScopePicker } from "./KnowledgeScopePicker";
 import { ReasoningControls } from "./ReasoningControls";
 import type { ResolvedReasoning } from "./reasoning-selection";
@@ -71,6 +76,7 @@ export function ComposerBar({
   knowledgeBasesError,
   requiresKnowledgeBaseSelection,
   onToggleKnowledgeBase,
+  attachmentComposer,
 }: {
   localization: ChatLocalization;
   draft: string;
@@ -110,6 +116,12 @@ export function ComposerBar({
   knowledgeBasesError: unknown;
   requiresKnowledgeBaseSelection: boolean;
   onToggleKnowledgeBase: (knowledgeBaseId: string) => void;
+  /**
+   * Temporary conversation files. The composer renders whatever this reports
+   * and nothing when the capability is unavailable — the gating decision is
+   * the hook's, not a prop the caller can get wrong.
+   */
+  attachmentComposer: AttachmentComposer;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -159,6 +171,13 @@ export function ComposerBar({
       {/* Above the queue card: answering this is what unblocks everything
           else, so it should not sit below a message that cannot send yet. */}
       {pendingInteractionSlot}
+      {/* Above the input, with the queue card: both describe something that
+          has not been sent yet. */}
+      <AttachmentPanels
+        localization={localization}
+        composer={attachmentComposer}
+        disabled={isCancelling}
+      />
       {visibleQueuedMessage ? (
         <div className="mb-3 rounded-xl border border-cal-hairline bg-cal-surface-soft p-3 text-sm text-cal-body">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -258,6 +277,15 @@ export function ComposerBar({
           trigger or an icon — the settings themselves live behind them.
         */}
         <div className="flex items-center gap-1">
+          {/* No `OnboardingTarget` wrapper: it always renders a div, and the
+              button renders nothing when the capability is unavailable, which
+              would leave an empty anchor in the control row on every
+              deployment without the feature. */}
+          <AttachmentButton
+            localization={localization}
+            composer={attachmentComposer}
+            disabled={isCancelling}
+          />
           <OnboardingTarget id="chat.source-selector">
             <KnowledgeScopePicker
               localization={localization}

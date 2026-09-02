@@ -4,6 +4,7 @@ export * from "./MyAgentsAuthAPI";
 export * from "./MyAgentsCapabilityAPI";
 export * from "./MyAgentsConversationAPI";
 export * from "./MyAgentsDocumentAPI";
+export * from "./MyAgentsDocumentWorkspaceAPI";
 export * from "./MyAgentsGroupAPI";
 export * from "./MyAgentsKnowledgeBaseAPI";
 export * from "./MyAgentsMemoryAPI";

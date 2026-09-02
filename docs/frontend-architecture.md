@@ -96,6 +96,12 @@ The BFF allowlist currently covers:
 - `POST /conversations`
 - `GET /conversations`
 - `GET /conversations/{conversation_id}`
+- `GET /capabilities/document-workspace`
+- `POST /conversations/{conversation_id}/attachments` (multipart, `provider_consent` required)
+- `GET /conversations/{conversation_id}/attachments`
+- `DELETE /conversations/{conversation_id}/attachments/{attachment_id}`
+- `GET /conversations/{conversation_id}/artifacts`
+- `GET /conversations/{conversation_id}/artifacts/{artifact_id}/download` (binary passthrough)
 - `POST /conversations/{conversation_id}/messages`
 - `GET /conversations/{conversation_id}/messages`
 - `POST /conversations/{conversation_id}/runs`
@@ -188,3 +194,33 @@ The UI should stay polished but not noisy:
 Assistant-authored chat content is rendered through `components/AgentMessageRenderer.tsx`, which currently delegates Markdown strings to `components/AgentMarkdown.tsx`. User-authored messages stay plain text by default.
 
 Supported Markdown is intentionally compact for chat bubbles: paragraphs, headings, strong text, unordered/ordered lists, inline code, code blocks, and safe external links. Raw HTML is not enabled; do not add `rehype-raw`, `dangerouslySetInnerHTML`, executable diagram specs, or arbitrary chart JavaScript. Future chart/graph/diagram/table/tool-result cards should enter through the `AgentArtifact` boundary with backend-validated JSON contracts before any rich renderer is added.
+
+## Temporary conversation files
+
+Attachments are a different workflow from knowledge-base upload and the UI has
+to keep the difference visible: a knowledge-base document is durable, reusable,
+and retrieved through RAG, while an attachment lives in an expiring provider
+container and is read only by the runs that name it.
+
+Three properties of the proxy and the send path are load-bearing.
+
+**Artifact download is a binary passthrough.** `app/api/my-agents/[...path]/route.ts`
+reads every other non-streaming response with `.text()`, which would UTF-8-decode
+and corrupt the bytes, so `isBinaryDownloadPath` gets its own branch that streams
+the body and forwards `content-disposition` verbatim — that header carries the
+filename as `filename*=UTF-8''…`, which is the only reason a Korean-named
+artifact saves under its own name. The branch is gated on a successful response
+so a 410 `artifact_expired` still flows down the JSON path to the error copy.
+
+**Staging is local until the first send.** The attachment endpoint is
+conversation-scoped and bare `/chat` deliberately creates no conversation until
+a message is sent, so files wait in memory, and `handleSend` creates the
+conversation, uploads, then starts the run. If every upload fails the run does
+not start: answering a question about a file the assistant never received reads
+as a wrong answer rather than a failed transfer.
+
+**Nothing about the feature is hardcoded.** Accepted extensions, MIME types,
+file counts, byte ceilings, retention, and the provider named in the consent
+sentence all come from `GET /capabilities/document-workspace`. The one constant
+is a clamp to the run request's `maxItems: 10`, which is defense against a
+misconfigured deployment and is never the number shown to a user.

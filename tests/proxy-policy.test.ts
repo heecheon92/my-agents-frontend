@@ -17,6 +17,56 @@ describe("proxy policy", () => {
     );
   });
 
+  it("allowlists the temporary conversation file routes", () => {
+    expect(
+      isAllowedBackendPath("GET", "/capabilities/document-workspace").allowed,
+    ).toBe(true);
+    expect(
+      isAllowedBackendPath("POST", "/conversations/c-1/attachments").allowed,
+    ).toBe(true);
+    expect(
+      isAllowedBackendPath("GET", "/conversations/c-1/attachments").allowed,
+    ).toBe(true);
+    expect(
+      isAllowedBackendPath("DELETE", "/conversations/c-1/attachments/a-1")
+        .allowed,
+    ).toBe(true);
+    expect(
+      isAllowedBackendPath("GET", "/conversations/c-1/artifacts").allowed,
+    ).toBe(true);
+    expect(
+      isAllowedBackendPath("GET", "/conversations/c-1/artifacts/a-1/download")
+        .allowed,
+    ).toBe(true);
+  });
+
+  it("refuses methods the attachment routes do not serve", () => {
+    // The allowlist is method-scoped. A capability endpoint that accepted a
+    // mutation, or an attachment list that accepted a DELETE, would widen the
+    // proxy past what the backend actually exposes.
+    expect(
+      isAllowedBackendPath("POST", "/capabilities/document-workspace").allowed,
+    ).toBe(false);
+    expect(
+      isAllowedBackendPath("DELETE", "/conversations/c-1/attachments").allowed,
+    ).toBe(false);
+    expect(
+      isAllowedBackendPath("DELETE", "/conversations/c-1/artifacts/a-1")
+        .allowed,
+    ).toBe(false);
+    expect(
+      isAllowedBackendPath("POST", "/conversations/c-1/artifacts/a-1/download")
+        .allowed,
+    ).toBe(false);
+  });
+
+  it("keeps attachment uploads and deletes inside CSRF protection", () => {
+    // Both transfer or destroy provider-held user data. Neither may join the
+    // pre-session exemption list.
+    expect(isCsrfExemptPath("/conversations/c-1/attachments")).toBe(false);
+    expect(isCsrfExemptPath("/conversations/c-1/attachments/a-1")).toBe(false);
+  });
+
   it("allowlists product endpoints", () => {
     expect(
       isAllowedBackendPath("POST", "/conversations/abc/runs").allowed,

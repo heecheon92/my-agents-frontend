@@ -1378,3 +1378,194 @@ invisible text over a frozen gradient.
 The shimmer tests now assert the rendered result rather than the mechanism — a
 spread of colours across characters at one instant — because a uniform pulse
 would satisfy "it animates" and still be the wrong effect.
+
+## 2026-09-02 — temporary conversation files
+
+The backend shipped an OpenAI-hosted document workspace and the frontend had no
+way to reach it. This adds the whole path: capability gating, local staging,
+per-upload consent, selection, run wiring, artifact download, and the error
+copy for seventeen backend codes.
+
+Models came from the served OpenAPI document at `http://127.0.0.1:8000/openapi.json`,
+captured before any code was written. Four places where the served document
+disagreed with the written handoff were resolved in favour of the document:
+`reason_code` is absent rather than null when an account is eligible, so it is
+`.nullish()`; `registry_verified_at` is a plain string; artifact `byte_size` is
+required but nullable while attachment `byte_size` is required and not; and the
+`artifact_created` payload's `byte_size` is optional.
+
+### The proxy could not carry bytes
+
+`route.ts` read every non-streaming response with `.text()`. That
+UTF-8-decodes, so an `.xlsx` would have arrived corrupted, and the response it
+built forwarded only `content-type` — `content-disposition` was dropped, so a
+download would have saved under the route's last path segment. Artifact
+download gets a third branch beside the SSE one: it streams the body and copies
+the disposition header verbatim rather than rebuilding it, because that header
+carries `filename*=UTF-8''…` and re-encoding it would be a second chance to get
+the escaping wrong. `content-length` is forwarded only when present — the
+backend does not set it on a streamed provider response, and a fabricated one
+would draw a wrong progress bar. The branch is gated on a successful response so
+a 410 `artifact_expired` keeps flowing to the localized error path.
+
+### Three decisions that protect the user rather than the code
+
+**No optimistic delete.** A failed delete can mean the provider still holds the
+file. Hiding the row on click would tell someone their data is gone when it is
+not, so the row stays and is marked deleting until the 204 lands.
+
+**No attachment-free fallback.** If every upload fails the run does not start.
+Starting it would answer a question about a file the assistant never received,
+which reads as a wrong answer rather than as a failed transfer — a far worse
+failure than a refused send. A partial success does send, and the failures stay
+staged because the bytes are still on disk.
+
+**Selection dies with availability.** `usableAttachmentIds` re-narrows the
+selection on every render rather than only when a row is clicked, because a file
+can expire while the composer sits open and sending a lapsed ID earns an
+`attachment_expired` refusal on a turn the user believed was ready.
+
+### Copy
+
+The provider is named in the consent sentence — the guidance requires it — but
+it is interpolated from the served `capability.provider`, not written into the
+string. That satisfies the standing instruction to keep copy provider- and
+model-neutral while still naming whoever actually receives the bytes. The
+capability's `model` is parsed and never rendered; an e2e assertion checks that
+its fixture value reaches no DOM node.
+
+`분석만 가능` and `편집한 파일 내려받기 가능` are the only place the difference
+between analysis support and editing certification is visible before a user
+commits, and both are read from `artifact_status` rather than inferred from the
+extension.
+
+### Verification
+
+Biome clean across 280 files, `tsc --noEmit` clean, Vitest 351 tests across 41
+files, production build 17 routes. Playwright 184 passed with 2
+environment-gated skips and one pre-existing unrelated failure, `conversation-list.spec.ts:188`
+("brings the fade back when the control takes keyboard focus"), which was
+confirmed to fail identically on a stashed tree at the same commit.
+
+Thirteen new browser tests cover the capability-absent, disabled, and ineligible
+gates; local staging without consent, proving no upload request is made and the
+draft survives; the served provider name in the consent sentence and the absence
+of the model; local format rejection; the analysis-versus-editable split; the
+all-uploads-failed abandonment, asserting no run starts; cold-load recovery with
+an expired file locked but visible; the run-scoped artifact download; and
+overflow at 390/768/1280.
+
+No live provider call was made. Every test is offline and the credentialed
+`.xlsx` smoke was neither prepared nor run.
+
+### Follow-up: the artifact list never refetched after the run that filled it
+
+Found in live use against a real backend, which is exactly the class of defect
+the mocked suite could not reach. The user asked for a spreadsheet edit, the
+backend produced the artifact, and the UI showed only the model's own prose
+promising a download — inert text, because the real control never rendered.
+
+The artifact list is fetched when the conversation loads. The file is created
+by a run that happens afterwards. `staleTime: 0` marks the query stale but
+refetches nothing on its own, and nothing invalidated it when a run ended, so
+the generated file stayed invisible until the next full page load. Reloading
+revealed it, which is what identified the cause.
+
+`runMessage` and the replay path now invalidate
+`MyAgentsQueryKeys.conversations.artifacts` alongside messages and runs, and the
+run path also invalidates attachments — a run is what expires them.
+
+**This fix is not covered by a test, deliberately rather than by omission.** A
+first attempt passed with the fix reverted: it counted the query's own mount
+instead of the refetch. A rewrite that required an *additional* request after a
+completed run could not be made to drive a run to completion through the mock
+harness across three approaches — `window.fetch` stubbing before navigation,
+the same after a reload, and route-level `fulfill` of `/runs/stream`. The
+optimistic user message appeared each time but no reply streamed. Rather than
+keep a test that had already once passed for the wrong reason, it was removed.
+Closing this gap needs the mock harness to be able to complete a run on an
+existing conversation, which is worth solving on its own.
+
+### Follow-up: the composer became chips, and the certified set widened
+
+Two changes, both reported from use.
+
+**Chips replace the roster.** The composer held a standing checkbox list of the
+conversation's files. Persistence was right — someone dissecting one
+spreadsheet asks several follow-ups about it, and re-attaching each turn would
+be worse — but the roster was permanent furniture above the input that grew
+with the conversation and included expired rows nobody could act on. It now
+shows chips for what the current message carries, which is the model every
+other chat product uses, and the chips still carry forward.
+
+Carrying forward stays explicit rather than implicit, which is the one place
+this deliberately departs from the convention: every run naming an attachment
+re-sends the file and can start a provider container, so what is included has
+to be visible on the turn that spends it.
+
+The chip list is derived from server status intersected with the selection, not
+from the selection alone, so a file that expires mid-conversation drops out of
+the composer on its own instead of sitting there looking ready and failing at
+send. Management — statuses, expiry, provider deletion, re-adding — moved into
+a collapsed library below the composer. It is not part of composing a message.
+
+**The certified output set widened** to include DOCX, PPTX, and PDF alongside
+XLSX/CSV/TSV. No runtime change was needed, which is the point of reading
+`artifact_status` from the served registry — but three places had encoded the
+old set as prose or fixture data and were corrected: the schema comment, the
+`producesCertifiedArtifact` comment, and the mocked capability. The unit and
+browser fixtures that used PDF as their analysis-only example now use plain
+text, because a fixture asserting PDF produces nothing had become a false claim
+about the contract.
+
+The comment also dropped the phrase "fidelity-preserving". Certification is a
+narrower promise than that: the output is recognized, tracked with an expiry,
+and downloadable. No copy may imply pixel-perfect cross-application fidelity,
+and the Korean label was already clear of it.
+
+Verified: Biome clean across 280 files, `tsc --noEmit` clean, Vitest 351 across
+41 files, Playwright 185 passed with 2 environment-gated skips and the one
+pre-existing unrelated `conversation-list.spec.ts:188` failure, production build
+17 routes.
+
+## 2026-09-02 — UI/UX libraries no longer need approval
+
+Heecheon lifted the standing restriction. UI and UX work may now survey
+candidate libraries and install one without asking, whenever a library is
+clearly the better option.
+
+The rule lived in three places and all three moved: the bullet in `AGENTS.md`
+became an "Adding UI/UX libraries" section, `DESIGN.md` narrowed its blanket
+prohibition to the case that actually threatens the design system, and
+`docs/agent-onboarding.md` now separates UI libraries (free) from LLM/provider
+integrations (still gated). `docs/design-implementation-plan.md` also carried a
+"do not add a dependency" line; it is a scoped handoff for a pass that shipped
+in May, so it got a historical scope note rather than an edit — rewriting a
+finished plan to match current policy would make the record dishonest.
+
+Three things were deliberately kept rather than loosened along with it.
+
+**The wrapper convention.** Feature code still imports from `components/ui/`,
+never from a vendor package. That is what keeps a swap a one-file change, and
+it matters more once dependencies arrive more freely, not less.
+
+**A second full component kit still needs a conversation.** Not for permission
+— it would give the product two visual vocabularies, which is a change to
+`DESIGN.md` rather than an implementation detail. A focused single-purpose
+package alongside Base UI needs no such discussion.
+
+**The decision gets written down, including when the library loses.** Recording
+that a library was surveyed and hand-written code won stops the next agent
+re-running the same evaluation.
+
+Written as guidance with a test — real complexity, composes with Tailwind/Base
+UI, maintained and safely licensed — rather than as a blanket yes, because the
+instruction was "install freely if you find using libraries are obvious better
+option", and the judgement is the part worth recording.
+
+The immediate case that prompted this stays as it is: the conversation dropzone
+remains hand-written. `react-dropzone` was surveyed and rejected — its
+`getRootProps()` model wants to own an element and inject a hidden file input
+that would collide with the composer's existing one, for roughly forty lines of
+handlers. That is exactly the "not clearly better" case the new guidance
+describes.

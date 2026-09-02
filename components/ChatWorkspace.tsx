@@ -15,11 +15,13 @@ import {
   useRunEvents,
   useRuns,
 } from "@/hooks/use-conversations";
+import { useConversationArtifacts } from "@/hooks/use-document-workspace";
 import { useKnowledgeBases } from "@/hooks/use-knowledge";
 import { useLocalization } from "@/hooks/useLocalization";
 import { decodeRouteSegment } from "@/lib/route-segments";
 import {
   type Citation,
+  type ConversationArtifact,
   type ConversationRunResumeRequest,
   type DocumentCoverage,
   INTERACTION_SCHEMA_VERSION,
@@ -34,6 +36,8 @@ import {
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 import { resolveErrorMessage } from "@/utils/error-message";
+import { shouldAbortSendAfterUpload } from "./chat/attachments/staging";
+import { useAttachmentComposer } from "./chat/attachments/useAttachmentComposer";
 import {
   CHAT_SCROLL_REGION_CLASS_NAME,
   REPLAY_ICON_PENDING_CLASS_NAME,
@@ -408,6 +412,34 @@ export function ChatWorkspace({
     );
   }
 
+  const attachmentComposer = useAttachmentComposer({
+    conversationId: activeId,
+  });
+  /**
+   * Narrowed to files the server still reports as available, re-derived on
+   * every render. A file can expire while the composer sits open, and sending
+   * a lapsed ID earns an `attachment_expired` refusal on a turn the user
+   * believed was ready.
+   */
+  const selectedAttachmentIds = attachmentComposer.sendableAttachmentIds;
+  const conversationArtifacts = useConversationArtifacts(
+    attachmentComposer.available ? activeId : undefined,
+  );
+  /**
+   * Keyed by the run that produced each file. `AgentRunSummaryResponse`
+   * carries no artifacts, so after a refresh this grouping is the only thing
+   * that reattaches a generated file to its answer.
+   */
+  const artifactsByRun = useMemo(() => {
+    const grouped: Record<string, ConversationArtifact[]> = {};
+    for (const artifact of conversationArtifacts.data ?? []) {
+      const existing = grouped[artifact.run_id];
+      if (existing) existing.push(artifact);
+      else grouped[artifact.run_id] = [artifact];
+    }
+    return grouped;
+  }, [conversationArtifacts.data]);
+
   /**
    * Resolves the conversation to send into, creating one on the first message
    * of a new chat. Returns `undefined` only when the create failed — callers
@@ -461,6 +493,17 @@ export function ChatWorkspace({
     // The knowledge-base requirement is checked before the create, so a blocked
     // send never leaves an empty orphan conversation behind.
     if (!draftMessage || isCancelling || requiresKnowledgeBaseSelection) return;
+    // Checked with the other pre-flight gates, before any conversation is
+    // created: refusing later would leave an empty orphan conversation behind,
+    // and no byte may leave the browser without an explicit answer here.
+    if (
+      attachmentComposer.stagedFiles.length > 0 &&
+      !attachmentComposer.consentGiven
+    ) {
+      setStatusAnnouncement(localization.attachments.consentRequired);
+      toast.error(localization.attachments.consentRequired);
+      return;
+    }
     if (creatingConversationRef.current) return;
     if (activeId && conversationIsBusy) {
       if (visibleQueuedMessage) {
@@ -471,6 +514,9 @@ export function ChatWorkspace({
         conversationId: activeId,
         content: draftMessage,
         knowledgeBaseSelection: activeKnowledgeBaseSelection,
+        // Already uploaded and still available. Holding the IDs rather than
+        // the files means draining the queue never re-transfers the bytes.
+        attachmentIds: selectedAttachmentIds,
       });
       setDraft("");
       setStatusAnnouncement(localization.queuedAnnouncement);
@@ -479,6 +525,7 @@ export function ChatWorkspace({
 
     const pendingDraft = draftMessage;
     const pendingSelection = activeKnowledgeBaseSelection;
+    const pendingAttachmentIds = selectedAttachmentIds;
     setDraft("");
     const conversationId = await ensureConversationId(
       deriveConversationTitle(
@@ -493,7 +540,35 @@ export function ChatWorkspace({
       toast.error(localization.createConversationFailedAnnouncement);
       return;
     }
-    await runMessageAndContinue(conversationId, pendingDraft, pendingSelection);
+    // Upload only after the conversation exists: the endpoint is
+    // conversation-scoped, and bare `/chat` deliberately creates nothing until
+    // the first message is sent.
+    const { uploadedIds, stagedCount } =
+      await attachmentComposer.uploadStagedFiles(conversationId);
+    if (
+      shouldAbortSendAfterUpload({
+        stagedCount,
+        uploadedCount: uploadedIds.length,
+      })
+    ) {
+      // Every upload failed. Starting the run anyway would answer a question
+      // about a file the assistant never received, which reads as a wrong
+      // answer rather than as a failed transfer. The draft and the files stay.
+      setDraft(pendingDraft);
+      setStatusAnnouncement(localization.attachments.uploadAllFailed);
+      toast.error(localization.attachments.uploadAllFailed);
+      return;
+    }
+    attachmentComposer.clearAfterSend();
+    await runMessageAndContinue(
+      conversationId,
+      pendingDraft,
+      pendingSelection,
+      // The freshly uploaded IDs are unioned in rather than re-read from the
+      // selection: the attachments query has not refetched yet, so the derived
+      // selection cannot know about them.
+      Array.from(new Set([...pendingAttachmentIds, ...uploadedIds])),
+    );
   }
 
   /**
@@ -643,12 +718,14 @@ export function ChatWorkspace({
           conversationId: visibleQueuedMessage.conversationId,
           content: visibleQueuedMessage.content,
           knowledgeBaseSelection: visibleQueuedMessage.knowledgeBaseSelection,
+          attachmentIds: visibleQueuedMessage.attachmentIds,
         }
       : activeId && draftMessage
         ? {
             conversationId: activeId,
             content: draftMessage,
             knowledgeBaseSelection: activeKnowledgeBaseSelection,
+            attachmentIds: selectedAttachmentIds,
           }
         : null;
     if (
@@ -709,6 +786,7 @@ export function ChatWorkspace({
       nextQueuedMessage.conversationId,
       nextQueuedMessage.content,
       nextQueuedMessage.knowledgeBaseSelection,
+      nextQueuedMessage.attachmentIds,
     );
   }
 
@@ -924,6 +1002,8 @@ export function ChatWorkspace({
 
   return (
     <ChatWorkspaceLayout
+      attachmentComposer={attachmentComposer}
+      artifactsByRun={artifactsByRun}
       activeId={activeId}
       activeRunId={activeRunId}
       chatScrollRef={chatScrollRef}

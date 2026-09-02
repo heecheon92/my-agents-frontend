@@ -14,6 +14,9 @@ export const MyAgentsQueryKeys = {
     reasoning() {
       return ["my-agents", "capabilities", "reasoning"] as const;
     },
+    documentWorkspace() {
+      return ["my-agents", "capabilities", "document-workspace"] as const;
+    },
   },
   memories: {
     settings() {
@@ -37,6 +40,22 @@ export const MyAgentsQueryKeys = {
     },
     runs(conversationId: string) {
       return ["my-agents", "conversations", "runs", conversationId] as const;
+    },
+    attachments(conversationId: string) {
+      return [
+        "my-agents",
+        "conversations",
+        "attachments",
+        conversationId,
+      ] as const;
+    },
+    artifacts(conversationId: string) {
+      return [
+        "my-agents",
+        "conversations",
+        "artifacts",
+        conversationId,
+      ] as const;
     },
     run(conversationId: string, runId: string) {
       return [

@@ -1,5 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { TEXT_EVENT_STREAM_CONTENT_TYPE } from "@/constants/header";
+import {
+  OCTET_STREAM_CONTENT_TYPE,
+  TEXT_EVENT_STREAM_CONTENT_TYPE,
+} from "@/constants/header";
 import {
   BACKEND_URL,
   COOKIE_SECURE,
@@ -46,6 +49,23 @@ export function isStreamPath(path: string) {
     /^\/conversations\/[^/]+\/runs\/[^/]+\/resume\/stream$/.test(path) ||
     /^\/conversations\/[^/]+\/messages\/[^/]+\/replay\/stream$/.test(path)
   );
+}
+
+/**
+ * Paths whose response body is raw bytes and must not be read as text.
+ *
+ * Omitting a path here *does* fail loudly, unlike `isStreamPath`: the default
+ * branch below calls `backendResponse.text()`, which UTF-8-decodes the body and
+ * silently corrupts every non-text byte, and it forwards no
+ * `content-disposition`, so the browser saves the mangled result under the
+ * route's last path segment.
+ *
+ * Only successful responses take this branch. An expired artifact answers 410
+ * with the JSON error envelope, which must keep flowing through the normal path
+ * so the UI can map `artifact_expired` to localized copy.
+ */
+export function isBinaryDownloadPath(path: string) {
+  return /^\/conversations\/[^/]+\/artifacts\/[^/]+\/download$/.test(path);
 }
 
 function isSessionLoginPath(path: string) {
@@ -122,6 +142,32 @@ async function proxy(request: NextRequest, context: RouteContext) {
           TEXT_EVENT_STREAM_CONTENT_TYPE,
         "x-accel-buffering": "no",
       },
+    });
+  }
+
+  if (isBinaryDownloadPath(backendPath) && backendResponse.ok) {
+    const downloadHeaders = new Headers({
+      // The bytes are provider-hosted and expiring; a cached copy would
+      // outlive the artifact it claims to be.
+      "cache-control": "no-store",
+      "content-type":
+        backendResponse.headers.get("content-type") ??
+        OCTET_STREAM_CONTENT_TYPE,
+    });
+    // Carries the filename as `filename*=UTF-8''...`, which is the only reason
+    // a Korean-named artifact saves under its own name. Copied verbatim rather
+    // than rebuilt — re-encoding it here would be a second chance to get the
+    // escaping wrong.
+    const disposition = backendResponse.headers.get("content-disposition");
+    if (disposition) downloadHeaders.set("content-disposition", disposition);
+    // The backend does not set this on a streamed provider response. Forwarded
+    // only when present so the browser shows a real progress bar when it can
+    // and no bar rather than a wrong one when it cannot.
+    const contentLength = backendResponse.headers.get("content-length");
+    if (contentLength) downloadHeaders.set("content-length", contentLength);
+    return new NextResponse(backendResponse.body, {
+      status: backendResponse.status,
+      headers: downloadHeaders,
     });
   }
 

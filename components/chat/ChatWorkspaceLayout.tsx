@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import type {
   Citation,
   Conversation,
+  ConversationArtifact,
   DocumentCoverage,
   KnowledgeBase,
   Message,
@@ -17,6 +18,11 @@ import type {
   ReasoningSummaryDisplay,
 } from "@/model/my-agents";
 import type { Localization } from "@/utils/localization";
+import {
+  AttachmentDropOverlay,
+  useAttachmentDropzone,
+} from "./attachments/AttachmentDropzone";
+import type { AttachmentComposer } from "./attachments/useAttachmentComposer";
 import { ChatTranscript } from "./ChatTranscript";
 import { ComposerBar } from "./ComposerBar";
 import { NEW_CHAT_HREF } from "./chat-routes";
@@ -37,6 +43,9 @@ export const CHAT_WORKSPACE_PANEL_CLASS_NAME =
 
 type ChatWorkspaceLayoutProps = {
   activeId?: string;
+  attachmentComposer: AttachmentComposer;
+  /** Artifacts grouped by the run that produced them. */
+  artifactsByRun: Record<string, ConversationArtifact[]>;
   activeRunId: string | null;
   chatScrollRef: React.RefObject<HTMLDivElement | null>;
   composerPlaceholder: string;
@@ -101,6 +110,8 @@ type ChatWorkspaceLayoutProps = {
 
 export function ChatWorkspaceLayout({
   activeId,
+  attachmentComposer,
+  artifactsByRun,
   activeRunId,
   chatScrollRef,
   composerPlaceholder,
@@ -153,6 +164,13 @@ export function ChatWorkspaceLayout({
   visibleReasoningSummaries,
   visibleQueuedMessage,
 }: ChatWorkspaceLayoutProps) {
+  // The drop target is the panel itself, so the whole conversation — transcript
+  // and composer alike — accepts a file, and the overlay's positioned ancestor
+  // is the same element.
+  const { dropzoneProps, isDraggingOver } = useAttachmentDropzone({
+    composer: attachmentComposer,
+    disabled: isCancelling,
+  });
   const isMobile = useIsMobile();
   const composerRef = useRef<HTMLDivElement>(null);
   const [composerHeight, setComposerHeight] = useState(0);
@@ -196,7 +214,11 @@ export function ChatWorkspaceLayout({
           <section
             data-testid="chat-workspace-panel"
             className={cn("relative", CHAT_WORKSPACE_PANEL_CLASS_NAME)}
+            {...dropzoneProps}
           >
+            {isDraggingOver ? (
+              <AttachmentDropOverlay localization={localization} />
+            ) : null}
             <header className="flex shrink-0 items-start gap-3 border-b border-cal-hairline p-4 sm:p-5">
               <div className="min-w-0 flex-1">
                 {/* The route's h1 lives here rather than in the conversation
@@ -263,6 +285,7 @@ export function ChatWorkspaceLayout({
               chatScrollRef={chatScrollRef}
               onChatScroll={onChatScroll}
               onReplayAssistantMessage={onReplayAssistantMessage}
+              artifactsByRun={artifactsByRun}
               bottomInset={composerHeight}
             />
             {/*
@@ -287,6 +310,7 @@ export function ChatWorkspaceLayout({
                   visibleQueuedMessage={visibleQueuedMessage}
                   queuedHelper={queuedHelper}
                   pendingInteractionSlot={pendingInteractionSlot}
+                  attachmentComposer={attachmentComposer}
                   knowledgeBases={knowledgeBases.data ?? []}
                   conversationIsBusy={conversationIsBusy}
                   isCancelling={isCancelling}

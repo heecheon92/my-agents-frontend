@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { reasoningEffortSchema, reasoningModeSchema } from "./capabilities";
 import { routeDecisionSchema } from "./common";
+import {
+  conversationArtifactSchema,
+  conversationAttachmentSchema,
+} from "./document-workspace";
 import { pendingInteractionSchema } from "./interactions";
 import { citationSchema } from "./knowledge";
 
@@ -48,6 +52,16 @@ export const conversationRunRequestSchema = z
   .object({
     message: z.string().min(1),
     knowledge_base_selection: knowledgeBaseSelectionSchema.optional(),
+    /**
+     * Temporary conversation files this turn should read.
+     *
+     * Optional and omitted entirely when empty, so a deployment without the
+     * document workspace sends the byte-identical request it always did. The
+     * served OpenAPI declares `maxItems: 10`; the authoritative user-facing
+     * limit is the capability's `limits.max_files_per_run`, which the backend
+     * constrains to that same ceiling. See `attachments/staging.ts`.
+     */
+    attachment_ids: z.array(z.string().min(1)).optional(),
   })
   .merge(runReasoningSchema);
 
@@ -293,6 +307,15 @@ export const conversationRunResponseSchema = z
      * cosmetic regression, losing the reply is not.
      */
     reasoning_summaries: z.array(reasoningSummarySchema).catch([]),
+    /**
+     * The temporary files this run read, and the files it produced.
+     *
+     * `.catch([])` matches the sibling display metadata above: an attachment
+     * shape this build cannot parse must degrade to showing no files rather
+     * than failing the whole run response and losing the answer with it.
+     */
+    attachments: z.array(conversationAttachmentSchema).catch([]),
+    artifacts: z.array(conversationArtifactSchema).catch([]),
     knowledge_base_selection: knowledgeBaseSelectionSchema.default({
       mode: "all",
       knowledge_base_ids: [],

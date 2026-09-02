@@ -27,6 +27,7 @@ type UseChatWorkspaceEffectsOptions = {
     conversationId: string,
     message: string,
     knowledgeBaseSelection: QueuedMessage["knowledgeBaseSelection"],
+    attachmentIds: QueuedMessage["attachmentIds"],
   ) => Promise<void>;
   selectableKnowledgeBases: KnowledgeBase[];
   serverActiveRunId: string | null;
@@ -150,6 +151,7 @@ export function useChatWorkspaceEffects({
       nextQueuedMessage.conversationId,
       nextQueuedMessage.content,
       nextQueuedMessage.knowledgeBaseSelection,
+      nextQueuedMessage.attachmentIds,
     );
   }, [
     activeId,

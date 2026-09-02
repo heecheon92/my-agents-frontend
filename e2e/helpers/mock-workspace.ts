@@ -342,6 +342,14 @@ type RouteOverrides = {
    * Korean characters at 390px against about 165 English ones.
    */
   reasoningSummaries?: boolean | "long";
+  /**
+   * Temporary conversation files. Default `false` mocks a backend without the
+   * feature, which 404s the capability — the state every existing spec runs
+   * in, and the one the composer must degrade to silently.
+   */
+  documentWorkspace?: false | "enabled" | "ineligible" | "disabled";
+  /** Fails every attachment upload, to exercise the abandoned-send path. */
+  attachmentUploadFails?: boolean;
   processState?:
     | "completed"
     | "failed"
@@ -375,7 +383,44 @@ export async function mockWorkspace(
     reasoningSummaries = false,
     processState = "completed",
     interaction = false,
+    documentWorkspace = false,
+    attachmentUploadFails = false,
   } = overrides;
+  const mockAttachment = {
+    id: "att-1",
+    conversation_id: mockConversation.id,
+    filename: "q3-forecast.xlsx",
+    content_type:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    extension: ".xlsx",
+    category: "spreadsheet",
+    byte_size: 2048,
+    status: "available",
+    expires_at: "2030-01-01T00:00:00.000Z",
+    created_at: "2026-09-02T00:00:00.000Z",
+  };
+  const mockExpiredAttachment = {
+    ...mockAttachment,
+    id: "att-expired",
+    filename: "old-notes.csv",
+    extension: ".csv",
+    content_type: "text/csv",
+    status: "expired",
+  };
+  const mockArtifact = {
+    id: "art-1",
+    run_id: mockRun.run_id,
+    conversation_id: mockConversation.id,
+    filename: "q3-forecast-revised.xlsx",
+    content_type:
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    extension: ".xlsx",
+    byte_size: 4096,
+    status: "available",
+    download_url: `/conversations/${mockConversation.id}/artifacts/art-1/download`,
+    expires_at: "2030-01-01T00:00:00.000Z",
+    created_at: "2026-09-02T00:00:00.000Z",
+  };
   const consultedSources = !attribution
     ? undefined
     : [mockCitation, mockSecondChunkOfCitedDocument, mockConsultedOnlySource];
@@ -656,7 +701,125 @@ export async function mockWorkspace(
         body: JSON.stringify(value),
       });
 
+    if (method === "POST" && /\/attachments$/.test(path)) {
+      if (attachmentUploadFails) {
+        return json(
+          { detail: "upload failed", code: "attachment_upload_failed" },
+          502,
+        );
+      }
+      return json(mockAttachment, 201);
+    }
+    if (method === "DELETE" && /\/attachments\/[^/]+$/.test(path)) {
+      return route.fulfill({ status: 204, body: "" });
+    }
     if (method !== "GET") return json({ ok: true });
+
+    if (path === "/capabilities/document-workspace") {
+      // A backend without the document-workspace migration 404s here, and the
+      // composer must render no attachment affordance at all rather than a
+      // disabled one — a visible control implies a usable request path.
+      if (!documentWorkspace) return json({ detail: "Not found" }, 404);
+      return json({
+        enabled: documentWorkspace !== "disabled",
+        eligible: documentWorkspace === "enabled",
+        ...(documentWorkspace === "ineligible"
+          ? { reason_code: "guest_document_workspace_forbidden" }
+          : {}),
+        provider: "openai",
+        // Deliberately not a real deployment model name: the UI never renders
+        // this, and a fixture that named one would be the exact leak the
+        // capability schema comments warn about.
+        model: "served-model-id",
+        registry_verified_at: "2026-08-09",
+        limits: {
+          max_files_per_run: 3,
+          max_combined_bytes: 10_485_760,
+          workspace_idle_ttl_seconds: 1_200,
+        },
+        formats: [
+          {
+            extension: ".xlsx",
+            category: "spreadsheet",
+            mime_types: [
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            ],
+            analysis_supported: true,
+            artifact_status: "certified",
+          },
+          {
+            extension: ".csv",
+            category: "spreadsheet",
+            mime_types: ["text/csv"],
+            analysis_supported: true,
+            artifact_status: "certified",
+          },
+          {
+            extension: ".pdf",
+            category: "document",
+            mime_types: ["application/pdf"],
+            analysis_supported: true,
+            artifact_status: "certified",
+          },
+          {
+            extension: ".docx",
+            category: "document",
+            mime_types: [
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ],
+            analysis_supported: true,
+            artifact_status: "certified",
+          },
+          {
+            extension: ".pptx",
+            category: "presentation",
+            mime_types: [
+              "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            ],
+            analysis_supported: true,
+            artifact_status: "certified",
+          },
+          {
+            extension: ".md",
+            category: "text",
+            mime_types: ["text/markdown"],
+            analysis_supported: true,
+            artifact_status: "certified",
+          },
+          {
+            extension: ".html",
+            category: "text",
+            mime_types: ["text/html"],
+            analysis_supported: true,
+            artifact_status: "certified",
+          },
+          // Kept deliberately: the analysis-only case has to stay represented
+          // or nothing exercises the split between the two badges. Plain text
+          // is not in the certified output set, unlike Markdown and HTML.
+          {
+            extension: ".txt",
+            category: "text",
+            mime_types: ["text/plain"],
+            analysis_supported: true,
+            artifact_status: "unavailable",
+          },
+        ],
+        consent_required: true,
+        retention: "ephemeral",
+      });
+    }
+    if (/\/attachments$/.test(path)) {
+      if (documentWorkspace !== "enabled") return json([]);
+      return json(
+        attachmentUploadFails
+          ? []
+          : [mockAttachment, ...(empty ? [] : [mockExpiredAttachment])],
+      );
+    }
+    if (/\/artifacts$/.test(path)) {
+      if (documentWorkspace !== "enabled") return json([]);
+      return json([mockArtifact]);
+    }
 
     if (path === "/auth/me") {
       if (anonymous) return json({ detail: "Not authenticated" }, 401);

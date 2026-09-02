@@ -5,6 +5,7 @@ import { MyAgentsAuthAPI } from "./MyAgentsAuthAPI";
 import { MyAgentsCapabilityAPI } from "./MyAgentsCapabilityAPI";
 import { MyAgentsConversationAPI } from "./MyAgentsConversationAPI";
 import { MyAgentsDocumentAPI } from "./MyAgentsDocumentAPI";
+import { MyAgentsDocumentWorkspaceAPI } from "./MyAgentsDocumentWorkspaceAPI";
 import { MyAgentsGroupAPI } from "./MyAgentsGroupAPI";
 import { MyAgentsKnowledgeBaseAPI } from "./MyAgentsKnowledgeBaseAPI";
 import { MyAgentsMemoryAPI } from "./MyAgentsMemoryAPI";
@@ -17,6 +18,7 @@ export class MyAgentsAPI {
   readonly groups = new MyAgentsGroupAPI();
   readonly knowledgeBases = new MyAgentsKnowledgeBaseAPI();
   readonly documents = new MyAgentsDocumentAPI();
+  readonly documentWorkspace = new MyAgentsDocumentWorkspaceAPI();
   readonly memories = new MyAgentsMemoryAPI();
 
   async health(): Promise<HealthResponse> {
