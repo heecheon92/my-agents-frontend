@@ -133,6 +133,13 @@ export const mockPendingInteraction = {
   next_cursor: null,
 };
 
+/**
+ * Past the three-line clamp in Korean, and the tail is what a test asserts is
+ * unreachable until the control is used.
+ */
+export const LONG_KOREAN_SUMMARY =
+  "질문이 계약 갱신 조건에 한정되어 있어 문서 전체를 읽는 대신 갱신, 통지, 자동 연장이라는 세 갈래로 나누어 관련 조항을 먼저 찾았습니다. 이후 각 조항의 기한과 예외를 비교해 서로 어긋나는 부분이 있는지 확인했고, 남은 불확실성을 답변 마지막에 따로 적었습니다. 마지막 문장이 여기에 있습니다.";
+
 export const mockPendingInteractionV2 = {
   schema_version: 2,
   interaction_id: "4a0b7c65-7c47-4bb3-9618-51ec95291843",
@@ -327,6 +334,14 @@ type RouteOverrides = {
   attribution?: false | "supported" | "none";
   /** Add refresh-safe comprehensive-document coverage to the completed run. */
   documentCoverage?: false | "complete" | "partial";
+  /**
+   * Add refresh-safe model-authored approach explanations to the completed run.
+   *
+   * `"long"` serves a summary past the three-line clamp in Korean, which is the
+   * case a character-count heuristic gets wrong: three lines is roughly 70
+   * Korean characters at 390px against about 165 English ones.
+   */
+  reasoningSummaries?: boolean | "long";
   processState?:
     | "completed"
     | "failed"
@@ -357,6 +372,7 @@ export async function mockWorkspace(
     reasoning = true,
     attribution = false,
     documentCoverage = false,
+    reasoningSummaries = false,
     processState = "completed",
     interaction = false,
   } = overrides;
@@ -420,6 +436,12 @@ export async function mockWorkspace(
     koDescription: string,
     enDescription: string,
     status: "completed" | "waiting" = "completed",
+    /*
+     * The verified operational summary, when the stage carries one. Served as a
+     * semantic key plus closed parameters, so the frontend words the sentence
+     * and free-form backend prose stops being the display path.
+     */
+    operationalSummary?: { message_key: string; parameters: unknown },
   ) => ({
     id,
     event_type: eventType,
@@ -427,6 +449,14 @@ export async function mockWorkspace(
     title: { ko: koTitle, en: enTitle },
     description: { ko: koDescription, en: enDescription },
     evidence: {},
+    ...(operationalSummary
+      ? {
+          operational_summary: {
+            schema_version: 1,
+            ...operationalSummary,
+          },
+        }
+      : {}),
   });
   const retrievalTrace = [
     traceStep(
@@ -436,6 +466,14 @@ export async function mockWorkspace(
       "Mapped the question",
       "계약 갱신 조건을 찾도록 질문 범위를 정했습니다.",
       "Scoped the question to contract renewal terms.",
+      "completed",
+      {
+        message_key: "agent_trace.query_planned",
+        parameters: {
+          retrieval_route: "retrieval_required",
+          document_scope: "user_documents",
+        },
+      },
     ),
     traceStep(
       "source_warden",
@@ -444,6 +482,11 @@ export async function mockWorkspace(
       "Checked document scope",
       "선택한 지식 베이스에서 사용할 문서를 확인했습니다.",
       "Checked usable documents in the selected knowledge bases.",
+      "completed",
+      {
+        message_key: "agent_trace.sources_resolved",
+        parameters: { resolved_knowledge_base_count: 2 },
+      },
     ),
     traceStep(
       "candidate_scouts",
@@ -452,6 +495,11 @@ export async function mockWorkspace(
       "Found relevant documents",
       "질문과 관련된 문서 후보를 찾았습니다.",
       "Found document candidates relevant to the question.",
+      "completed",
+      {
+        message_key: "agent_trace.candidates_found",
+        parameters: { candidate_count: 12, authorized_context_count: 5 },
+      },
     ),
     traceStep(
       "context_curator",
@@ -799,6 +847,25 @@ export async function mockWorkspace(
         citations: attribution ? attributedCitations : [mockCitation],
         ...(consultedSources ? { consulted_sources: consultedSources } : {}),
         ...(documentCoverage ? { document_coverage: coverage } : {}),
+        ...(reasoningSummaries
+          ? {
+              reasoning_summaries: [
+                {
+                  stage: "retrieval_planning",
+                  text:
+                    reasoningSummaries === "long"
+                      ? LONG_KOREAN_SUMMARY
+                      : "문서 전체가 아니라 갱신 조건과 관련된 부분을 우선 찾았습니다.",
+                  source: "model_generated",
+                },
+                {
+                  stage: "answer_synthesis",
+                  text: "확인한 조항을 기한과 자동 연장 위험 순서로 정리했습니다.",
+                  source: "provider_reasoning_summary",
+                },
+              ],
+            }
+          : {}),
       });
     }
     // The suspended run's stored activity. It exists server-side but has no

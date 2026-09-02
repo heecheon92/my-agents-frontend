@@ -49,6 +49,109 @@ trail opens it. Never show a percentage, a step total, or a progress bar there
 — the reachable stages are derived from events as they arrive, so any total
 would be invented.
 
+**Model-authored approach explanations are not process evidence.** Optional
+`reasoning_summaries` render inside the same disclosure for proximity, but below the verified step
+list as quiet quoted prose without a visible heading or explanatory disclaimer. The enclosing
+`답변 과정` disclosure already establishes that the reader opted into process detail, and the
+pattern is familiar enough from other assistants that naming it again reads as instruction. A rule,
+an inset quote, and muted type carry the distinction instead. They never inherit step dots, status
+colours, chips, or the collapsed headline. Empty summaries render nothing and streaming summaries
+never auto-expand the panel.
+
+Two consequences are easy to undo by accident. The section keeps a **visually hidden** accessible
+name, because a screen reader cannot perceive the rule or the indent that does this work for
+sighted readers; it is the assistive equivalent of the divider, not a reinstated heading. And the
+per-item expander appears from a **measured** overflow rather than a character count — three lines
+is roughly 165 characters of English but about 70 of Korean, so any single threshold either hides
+the control on clamped Korean or offers a dead one on short English.
+
+**The collapsed row carries one process message at a time.** Beneath the verified step label sits a
+single clamped line holding the newest thing the run has said: the `retrieval_planning` summary
+opens it — that summary is produced before retrieval executes, so it fills the longest gap in a run
+and is specific to the question being waited on — and step descriptions take it over as they
+arrive. It never stacks. A growing row stops being collapsed, pushes the answer down, and would
+reintroduce the regression that moving this panel fixed. `answer_synthesis` never appears here at
+all: it comes off the completed response and cannot shorten a wait that is already over.
+
+The row is allowed to skip messages **only because the expanded list keeps every one of them**.
+Those two behaviors are a pair; do not change one without the other. The line also never replaces
+the step label — swapping the label would change that row's trust status mid-run, and it is the only
+short, stable thing in it.
+
+It is `aria-hidden` because `<summary>` text is the disclosure control's accessible name. The
+separate live region announces the planning summary only, not the rotation: later messages are
+longer forms of the step label the main region already speaks, so mirroring them would read every
+advance twice.
+
+A wave ripples through that row while the run works, one character at a time, built on Motion
+(`components/chat/evidence-panel/ShimmerText.tsx`). Each character cycles between two colours on
+shared keyframes, offset by its position; that stagger is what makes the crest travel rather than
+pulse. The `wave` prop adds the lift, scale, and tilt behind the crest, and the row uses it. That
+needs `inline-block` characters, because transforms do not apply to non-replaced inline boxes, and
+a shallow `perspective` on the wrapper — without one `rotateX` is an orthographic squash that just
+shortens the glyph. Both are kept restrained: strong perspective or a large tilt reads as
+distortion at 12px rather than as motion.
+
+The crest is a short flash rather than a smooth fade, which is what makes it a band instead of a
+pulse. Lighting a character for half its cycle puts nearly the whole line mid-transition at once,
+and the row simply dims and brightens together — the first attempt did exactly that and did not
+read as a shimmer at all. Roughly a fifth of the line is lit at any instant.
+
+The colours come from CSS custom properties (`--km-shimmer-base`, `--km-shimmer-crest`) declared on
+the wrapper, so the effect follows the theme rather than hard-coding a palette. Both ends of the
+cycle are the resting colour and the crest moves toward ink, so contrast only ever **rises** during
+the pass — a fade-to-background shimmer cannot promise that on 12px Korean.
+
+Three structural details are easy to undo. Text is split **per word**, each word
+`whitespace-nowrap` and **inline** — per-character spans alone let the browser break a latin word
+anywhere, and making each word atomic with `inline-block` silently defeats `line-clamp`, which has
+already happened on this row once. Only the leading 200 characters animate, because two clamped
+lines hold well under that at any supported width and the rest is clipped. And under reduced motion
+**no animated node is mounted at all**: the words render as plain text, so there is no paused frame
+to get wrong.
+
+**A conversation row truncates; it never widens the rail.** The history list is a grid, and a grid
+item's default `min-width: auto` resolves to its min-content — for a `nowrap` title, the entire
+untruncated string. Without `min-w-0` on both the row and the title span, one long title made a row
+578px wide inside a 271px rail and the list scrolled sideways. `overflow-y: auto` also forces the
+computed `overflow-x` to `auto`, so that scroller was real; the list sets `overflow-x-hidden`
+explicitly.
+
+The delete control sits **over** the title rather than beside it, so a row never gives up width to
+a button that is invisible most of the time. The title gets out from under it with a mask, not
+padding: a mask fades the glyphs themselves, so it works on any row background — active, hovered,
+or transparent — without the fade needing to know which one it is. The fade is tied to the same
+condition as the control, so a row at rest shows its full width of title and gives up nothing —
+and that pairing is exact. Keying the fade on `focus-within` instead left a clicked conversation
+faded with no icon, because clicking an anchor focuses it; the condition is
+`has-[button:focus-visible]`, which is on precisely when the control is.
+
+Two things make that overlay actually clickable, and both were learned by shipping it broken.
+`mask-image` turns the title into a stacking context, so the control needs a positive `z-index` to
+stay above it. And the control must be centred with `inset-y-0 my-auto`, **never**
+`-translate-y-1/2`: `Button` sets a `transform` in its `active:` state, `transform` is a single
+property, and the press therefore replaced the centring and dropped the button half its height —
+`mousedown` on the button, `mouseup` on the anchor, `click` on their common ancestor, handler never
+called. Geometry and computed-style assertions all passed while the control was dead, so the test
+for this presses it.
+
+**A verified stage says what it did, in words this build chose.** Each `AgentTraceStep` may carry an
+optional operational summary: a backend-selected `message_key` at `schema_version` 1 with closed
+scalar parameters. The frontend formats the sentence from those facts and prefers it over the
+backend's own `description`, which is how an interpolated reranker enum once reached a primary
+reading path. A parameter value with no label yields no sentence rather than a bare identifier, and
+an unknown key or future version falls back to the backend prose. Every step that says something
+shows it under its stage — two backend steps routinely share one stage, and rendering only the
+newest silently dropped the other's fact. That completeness is also what lets the collapsed row
+skip messages.
+
+**A summary must never cost the answer.** Explanations are display metadata riding on the same
+response and stream as the reply, so the parsing boundary treats them as expendable: the served
+500-character bound is applied when rendering rather than when parsing, a malformed list degrades
+to no summaries, and an unparseable streamed delta is dropped instead of aborting the answer.
+Reasoning-summary events are also kept out of the activity timeline entirely — the verified-stage
+heuristic matches payload keys, and `source` would otherwise fabricate a retrieval step.
+
 **Audience.** Readers are technically literate and want to see *how* an answer
 was produced, not only that it appeared. That is a design
 input, not just context: the retrieval pipeline, backend-authored agent steps,
@@ -312,11 +415,10 @@ conversation behind.
   word on a blank page. Keep an `aria-live` announcement.
 - **Empty** — name the missing thing and the next action. An empty list because
   a *filter* matched nothing is a different message from an empty list.
-- **Error** — `ErrorState` never renders `error.message`. It maps HTTP status to
-  localized copy via `utils/error-message.ts`. Backend `detail` is deliberately
-  not shown: it is English prose, and English inside Korean copy is worse than
-  generic Korean. See `docs/backend-requests.md` for the error-code request that
-  will restore specificity.
+- **Error** — `ErrorState` never renders `error.message`. It maps stable backend
+  error codes to localized copy via `utils/error-message.ts`, falls back to HTTP
+  status, and deliberately does not show backend `detail` because English prose
+  inside Korean copy is worse than a generic localized fallback.
 - **Disabled** — explain the blocker in nearby copy, do not just grey out.
 - **Suspended for document input** — keep the backend-ranked shortlist in its
   original order, with the one-line filename refinement as the final choice.
@@ -421,24 +523,17 @@ Previously open, now settled:
   in `docs/korean-copy-guide.md`.
 - **`cal-*` migration** — keep as aliases. Renaming has no user benefit and
   real regression risk.
+- **Guest policy and limits** — shipped from `GET /auth/guest/policy`; visible
+  copy follows served values rather than repository defaults.
+- **Activity event display contract** — shipped as a typed, pre-redacted
+  OpenAPI discriminated union with a stable `agent_trace` contract.
 
 ## Open questions
-
-- [ ] **Guest limits are hardcoded in copy.** `24시간`, `대화 1개`, `질문 5개`,
-  `문서 3개` appear in five strings, taken from `.env.example` — which is not
-  production; production configuration lives outside this repo. If the deployed
-  values differ, the product states limits that are wrong. `/auth/me` already
-  carries `guest_expires_at`, so the session-length case can be fixed today;
-  the counts need the backend request filed in `docs/backend-requests.md`.
 
 - [ ] **Product name.** The visible brand is still `my-agents`; the `km-` token
   prefix hints at an unused "Keymesh". Affects brand lockup, metadata, nav.
 - [ ] **`Ask` as a nav label.** The only untranslated nav item. Defensible as a
   product name, but it is currently an accident rather than a decision.
-- [ ] **Activity event display contract.** The frontend localizes the event
-  types it could find and falls back to a de-snaked label for the rest. A
-  documented enum would let the timeline render properly — requested in
-  `docs/backend-requests.md`.
 - [ ] **Unused localization keys.** 76 leaf keys are not referenced anywhere in
   source. Most are genuinely dead, but some may be reached by dynamic index, so
   a bulk delete is unsafe without per-key checking. Worth a dedicated pass.

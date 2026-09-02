@@ -18,7 +18,9 @@ type UseReplayAssistantMessageHandlerOptions = {
   isCancelling: boolean;
   localization: Localization["chat"];
   setStatusAnnouncement: (message: string) => void;
+  onReplayStart?: () => void;
   onReplayResult: (result: ConversationRunResponse) => void;
+  onReplayError?: () => void;
 };
 
 export function useReplayAssistantMessageHandler({
@@ -27,7 +29,9 @@ export function useReplayAssistantMessageHandler({
   isCancelling,
   localization,
   setStatusAnnouncement,
+  onReplayStart,
   onReplayResult,
+  onReplayError,
 }: UseReplayAssistantMessageHandlerOptions) {
   const replayAssistantMessage = useReplayAssistantMessage(activeId);
   const [replayingMessageId, setReplayingMessageId] = useState<string | null>(
@@ -47,6 +51,7 @@ export function useReplayAssistantMessageHandler({
 
     setReplayingMessageId(messageId);
     setReplayNotice(null);
+    onReplayStart?.();
     setStatusAnnouncement(localization.replayStartedAnnouncement);
 
     try {
@@ -68,6 +73,7 @@ export function useReplayAssistantMessageHandler({
           : localization.replaySuccessAnnouncement,
       );
     } catch (error) {
+      onReplayError?.();
       const isConflict = isMyAgentsAPIError(error) && error.status === 409;
       const message =
         error instanceof Error

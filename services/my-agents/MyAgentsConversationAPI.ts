@@ -24,10 +24,12 @@ import {
   type Message,
   type MessageCreateRequest,
   messageSchema,
+  type ReasoningSummaryDeltaEventData,
   type RunCancelledEventData,
   type RunCancelResponse,
   type RunResumedActivityPayload,
   type RunStartedEventData,
+  reasoningSummaryDeltaEventDataSchema,
   runCancelledEventDataSchema,
   runCancelResponseSchema,
   runResumedActivityPayloadSchema,
@@ -40,6 +42,16 @@ import { streamServerSentEvents } from "./sse";
 export type ConversationRunStreamEvent =
   | { event: "run_started"; data: RunStartedEventData }
   | { event: "answer_delta"; data: AnswerDeltaEventData }
+  /*
+   * `data` is nullable here and nowhere else in this union. A reasoning summary
+   * is display metadata riding on the same stream as the answer, so an
+   * unparseable one is dropped rather than thrown: throwing would abort the
+   * `for await` in the run loop and lose the reply over a caption.
+   */
+  | {
+      event: "reasoning_summary_delta";
+      data: ReasoningSummaryDeltaEventData | null;
+    }
   | { event: "run_cancelled"; data: RunCancelledEventData }
   | { event: "run_completed"; data: ConversationRunResponse }
   | { event: "run_interrupted"; data: ConversationRunInterruptedResponse }
@@ -73,6 +85,10 @@ function parseConversationRunStreamEvent({
       event,
       data: parseWithSchema(answerDeltaEventDataSchema, parsedData),
     };
+  }
+  if (event === "reasoning_summary_delta") {
+    const parsed = reasoningSummaryDeltaEventDataSchema.safeParse(parsedData);
+    return { event, data: parsed.success ? parsed.data : null };
   }
   if (event === "run_cancelled") {
     return {

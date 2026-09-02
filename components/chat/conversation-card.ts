@@ -21,7 +21,17 @@ import { cn } from "@/lib/utils";
  */
 export function getConversationCardClassName(isActiveConversation: boolean) {
   return cn(
-    "group/conversation flex items-center gap-1 rounded-md pr-1 transition-colors",
+    /*
+     * `relative` positions the delete control over the title rather than beside
+     * it, so a title is never shortened to reserve a gutter for a button that
+     * is usually invisible.
+     *
+     * `min-w-0` is load-bearing. The row is a grid item, and a grid item's
+     * default `min-width: auto` resolves to its min-content — which, for a
+     * `nowrap` title, is the full untruncated string. A long title made the row
+     * 578px wide inside a 271px sidebar and the list scrolled sideways.
+     */
+    "group/conversation relative flex min-w-0 items-center rounded-md transition-colors",
     isActiveConversation
       ? "bg-cal-primary/12 text-cal-ink hover:bg-cal-primary/12 hover:text-cal-ink"
       : "text-cal-body hover:bg-cal-surface-soft",

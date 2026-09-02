@@ -374,3 +374,71 @@ test("reveals the answer handle only when clipboard access fails", async ({
   await expect(page.getByText(chat.runIdCopyFailedAnnouncement)).toBeAttached();
   await expect(page.getByText("run-visual", { exact: true })).toBeVisible();
 });
+
+/*
+ * Operational summaries are the verified half of the process surface: a
+ * backend-selected key with closed parameters, worded by this build. They
+ * replace the backend's free-form `description`, which is the path an
+ * interpolated reranker enum once took to a primary reading path.
+ */
+test.describe("verified operational summaries", () => {
+  for (const width of [390, 1280]) {
+    test(`states what each stage did at ${width}px`, async ({ page }) => {
+      await page.setViewportSize({ width, height: 900 });
+      await mockWorkspace(page);
+      await page.goto("/chat/c-visual");
+      await dismissOnboarding(page);
+
+      const panel = page.getByTestId("agent-process-panel");
+      await panel.locator("summary").click();
+
+      await expect(panel).toContainText(
+        "후보 12개 중 권한이 있는 5개를 확인했습니다.",
+      );
+      await expect(panel).toContainText("지식 베이스 2개를 사용했습니다.");
+      await expect(panel).toContainText("검색 방식: 문서 검색 필요");
+      // The frontend words these, so no served identifier can reach the reader.
+      await expect(panel).not.toContainText("retrieval_required");
+      await expect(panel).not.toContainText("user_documents");
+      await expect(panel).not.toContainText("cross_encoder");
+      await expectNoHorizontalOverflow(
+        page,
+        `operational summaries @ ${width}px`,
+      );
+    });
+  }
+
+  test("keeps them inside the verified list, apart from model-authored prose", async ({
+    page,
+  }) => {
+    await mockWorkspace(page, { reasoningSummaries: true });
+    await page.goto("/chat/c-visual");
+    await dismissOnboarding(page);
+
+    const panel = page.getByTestId("agent-process-panel");
+    await panel.locator("summary").click();
+
+    // The model-authored section is a sibling of the verified step list, and
+    // the operational summary must never be rendered inside it.
+    const modelAuthored = panel.locator('[data-slot="reasoning-summary"]');
+    await expect(modelAuthored).toBeVisible();
+    await expect(modelAuthored).not.toContainText(
+      "지식 베이스 2개를 사용했습니다.",
+    );
+    await expect(panel.locator("ol")).toContainText(
+      "지식 베이스 2개를 사용했습니다.",
+    );
+  });
+
+  test("survives a reload from stored events", async ({ page }) => {
+    await mockWorkspace(page);
+    await page.goto("/chat/c-visual");
+    await dismissOnboarding(page);
+    await page.reload();
+    await dismissOnboarding(page);
+
+    const panel = page.getByTestId("agent-process-panel");
+    await panel.locator("summary").click();
+    await expect(panel).toContainText("지식 베이스 2개를 사용했습니다.");
+  });
+});

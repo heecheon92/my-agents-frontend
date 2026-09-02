@@ -265,6 +265,29 @@
         "checkingCitations": "Checking citations",
         "answerReady": "Answer ready",
         "needsEvidence": "Needs evidence"
+      },
+      "operational": {
+        "queryPlanned": "Search: {method} · Scope: {scope}",
+        "sourcesResolved": "Used {count} knowledge bases.",
+        "candidatesFound": "Checked {authorized} authorized of {count} candidates.",
+        "relevanceOrdered": "Ordered {count} candidates by relevance.",
+        "contextPrepared": "Used {injected} chunks and set aside {rejected}.",
+        "contextPreparedTruncated": "Used {injected} chunks and set aside {rejected}. Some were left out to fit the budget.",
+        "graphInvoked": "Started composing the answer from {count} chunks.",
+        "answerPrepared": "Checked {count} citations.",
+        "clarificationRequested": "Waiting for a confirmation to continue.",
+        "routes": {
+          "no_retrieval": "no document search",
+          "retrieval_required": "document search required",
+          "retrieval_optional": "document search optional",
+          "clarification_required": "confirmation required"
+        },
+        "scopes": {
+          "current_conversation": "this conversation",
+          "user_documents": "my documents",
+          "group_documents": "group documents",
+          "unknown": "not determined"
+        }
       }
     },
     "messageFooterLabel": "Answer actions and sources",
@@ -335,6 +358,11 @@
     "systemProjectKnowledgePill": "Project knowledge",
     "systemAmbientBoundaryCopy": "System project knowledge is managed separately and may be included automatically; selecting fewer personal or group sources does not disable it.",
     "systemAmbientAvailableCopy": "Project knowledge available automatically: {count}",
+    "reasoningSummary": {
+      "label": "AI explanation",
+      "expand": "Show more",
+      "collapse": "Show less"
+    },
     "reasoningProLabel": "Pro reasoning",
     "reasoningEffortLabel": "Reasoning effort",
     "reasoningLockedGuest": "Guest sessions run with the default settings.",

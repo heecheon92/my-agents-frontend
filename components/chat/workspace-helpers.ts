@@ -119,8 +119,29 @@ export function isObservedActiveRunStale({
   );
 }
 
+/**
+ * Reasoning-summary events belong to a different trust channel and must never
+ * enter the activity timeline.
+ *
+ * This is not tidiness. `getAgentTraceStageKeys` falls back to keyword-matching
+ * event types and payload *keys* when a run carries no backend `agent_trace`
+ * steps, and `ReasoningSummaryGeneratedEventPayload` has a key named `source`.
+ * That matches the retrieval pattern, so a persisted summary event silently
+ * fabricates a `searchingKnowledge` step for a run that never retrieved
+ * anything — model-authored metadata inventing a verified step, which is the
+ * exact channel merge the whole feature is built to avoid.
+ *
+ * The summaries the panel renders come from `reasoning_summaries` on the run,
+ * never from these events, so dropping them here costs nothing.
+ */
+export function isReasoningSummaryEventType(eventType: string) {
+  return eventType.toLowerCase().startsWith("reasoning_summary");
+}
+
 export function shouldRecordLiveActivityEvent(eventType: string) {
-  return eventType !== "answer_delta";
+  return (
+    eventType !== "answer_delta" && !isReasoningSummaryEventType(eventType)
+  );
 }
 
 export function createLiveActivityEvent({
@@ -201,8 +222,8 @@ export function seedLiveActivityEvents(
  * Matched on the machine-readable `code`, not on the English `detail`. The
  * previous implementation substring-matched `"conversation run already active"`,
  * which meant any rewording or localization of the backend's prose would have
- * silently turned every queue-on-busy into a hard error. `code` is the contract
- * (`docs/backend-requests.md`), and `errors.byCode` already localizes from it.
+ * silently turned every queue-on-busy into a hard error. `code` is the served
+ * API contract, and `errors.byCode` already localizes from it.
  *
  * The detail fallback is kept only for a backend old enough to omit `code`.
  */
