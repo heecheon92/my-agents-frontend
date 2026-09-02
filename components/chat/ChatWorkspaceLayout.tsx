@@ -14,6 +14,7 @@ import type {
   KnowledgeBase,
   Message,
   ReasoningEffort,
+  ReasoningSummaryDisplay,
 } from "@/model/my-agents";
 import type { Localization } from "@/utils/localization";
 import { ChatTranscript } from "./ChatTranscript";
@@ -94,6 +95,7 @@ type ChatWorkspaceLayoutProps = {
   visibleCitations: Citation[];
   visibleConsultedSources: Citation[] | null;
   visibleDocumentCoverage: DocumentCoverage | null;
+  visibleReasoningSummaries: ReasoningSummaryDisplay[];
   visibleQueuedMessage: QueuedMessage | null;
 };
 
@@ -148,6 +150,7 @@ export function ChatWorkspaceLayout({
   visibleCitations,
   visibleConsultedSources,
   visibleDocumentCoverage,
+  visibleReasoningSummaries,
   visibleQueuedMessage,
 }: ChatWorkspaceLayoutProps) {
   const isMobile = useIsMobile();
@@ -247,6 +250,7 @@ export function ChatWorkspaceLayout({
               visibleCitations={visibleCitations}
               visibleConsultedSources={visibleConsultedSources}
               visibleDocumentCoverage={visibleDocumentCoverage}
+              visibleReasoningSummaries={visibleReasoningSummaries}
               latestAssistantMessageId={latestAssistantMessageId}
               latestRunId={latestRunId}
               replayingMessageId={replayingMessageId}

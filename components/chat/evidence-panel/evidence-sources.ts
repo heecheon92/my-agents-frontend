@@ -29,7 +29,8 @@ export type EvidenceSourceList = {
 /**
  * Merge the answer-supported subset into the full consulted list.
  *
- * The backend contract (see `docs/backend-requests.md`, 2026-08-25) is that
+ * The backend contract (preserved in `docs/backend-requests-archive.md`,
+ * 2026-08-25) is that
  * `consulted_sources` is a **superset** of `citations`, and a source present in
  * both is the identical persisted row carrying the identical `id`. So the join
  * is by `id` and nothing else — deriving it from `chunk_id`, title or snippet

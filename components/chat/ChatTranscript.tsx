@@ -9,6 +9,7 @@ import type {
   Citation,
   DocumentCoverage,
   Message,
+  ReasoningSummaryDisplay,
 } from "@/model/my-agents";
 import { CopyMessageButton } from "./CopyMessageButton";
 import { AgentProcessPanel, EvidencePanel } from "./EvidencePanel";
@@ -70,12 +71,14 @@ function AgentProcessHeader({
   events,
   citationCount,
   isStreaming,
+  reasoningSummaries,
 }: {
   localization: ChatLocalization;
   lang: string;
   events: Array<AgentEvent | LiveActivityEvent>;
   citationCount: number;
   isStreaming: boolean;
+  reasoningSummaries: ReasoningSummaryDisplay[];
 }): ReactNode {
   if (events.length === 0) return null;
   return (
@@ -86,6 +89,7 @@ function AgentProcessHeader({
         events={events}
         citationCount={citationCount}
         isStreaming={isStreaming}
+        reasoningSummaries={reasoningSummaries}
       />
     </OnboardingTarget>
   );
@@ -106,6 +110,7 @@ export function ChatTranscript({
   visibleCitations,
   visibleConsultedSources,
   visibleDocumentCoverage,
+  visibleReasoningSummaries,
   latestAssistantMessageId,
   latestRunId,
   replayingMessageId,
@@ -130,6 +135,7 @@ export function ChatTranscript({
   visibleCitations: Citation[];
   visibleConsultedSources: Citation[] | null;
   visibleDocumentCoverage: DocumentCoverage | null;
+  visibleReasoningSummaries: ReasoningSummaryDisplay[];
   latestAssistantMessageId?: string;
   latestRunId: string | null;
   replayingMessageId: string | null;
@@ -215,6 +221,9 @@ export function ChatTranscript({
                     events={messageEvents}
                     citationCount={visibleCitations.length}
                     isStreaming={isReplaying}
+                    reasoningSummaries={
+                      showsLiveEvidence ? visibleReasoningSummaries : []
+                    }
                   />
                 ) : null
               }
@@ -307,6 +316,7 @@ export function ChatTranscript({
                 events={visibleActivityEvents}
                 citationCount={visibleCitations.length}
                 isStreaming={isProducingOutput}
+                reasoningSummaries={visibleReasoningSummaries}
               />
             }
           >

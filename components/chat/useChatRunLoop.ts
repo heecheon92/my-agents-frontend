@@ -13,8 +13,11 @@ import {
   type KnowledgeBaseSelection,
   type Message,
   type PendingInteraction,
+  REASONING_SUMMARY_MAX_LENGTH,
   type ReasoningEffort,
   type ReasoningMode,
+  type ReasoningSummaryDeltaEventData,
+  type ReasoningSummaryDisplay,
   type RunCancelledEventData,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
@@ -76,6 +79,9 @@ type UseChatRunLoopOptions = {
   setLatestDocumentCoverage: React.Dispatch<
     React.SetStateAction<DocumentCoverage | null | undefined>
   >;
+  setLatestReasoningSummaries: React.Dispatch<
+    React.SetStateAction<ReasoningSummaryDisplay[] | undefined>
+  >;
   setLatestRunResultId: (runId: string | null) => void;
   setLiveActivityEvents: React.Dispatch<
     React.SetStateAction<LiveActivityEvent[]>
@@ -108,6 +114,7 @@ export function useChatRunLoop({
   setLatestCitations,
   setLatestConsultedSources,
   setLatestDocumentCoverage,
+  setLatestReasoningSummaries,
   setLatestRunResultId,
   setLiveActivityEvents,
   setOptimisticMessage,
@@ -152,6 +159,7 @@ export function useChatRunLoop({
     // evidence. Keep this `undefined` so a failed run can reveal the previous
     // completed answer's evidence again once the busy state ends.
     setLatestDocumentCoverage(undefined);
+    setLatestReasoningSummaries(undefined);
     setLatestRunResultId(null);
     setOptimisticMessage({
       id: `optimistic-${Date.now()}`,
@@ -179,6 +187,18 @@ export function useChatRunLoop({
         if (streamEvent.event === "answer_delta") {
           const data = streamEvent.data as AnswerDeltaEventData;
           setStreamedReply((current) => current + data.delta);
+          continue;
+        }
+        if (streamEvent.event === "reasoning_summary_delta") {
+          // `null` is an unparseable delta the API layer chose to drop rather
+          // than throw on. Display metadata must not abort an answer stream.
+          const data =
+            streamEvent.data as ReasoningSummaryDeltaEventData | null;
+          if (data) {
+            setLatestReasoningSummaries((current) =>
+              mergeReasoningSummaryDelta(current, data),
+            );
+          }
           continue;
         }
         if (shouldRecordLiveActivityEvent(streamEvent.event)) {
@@ -209,6 +229,7 @@ export function useChatRunLoop({
           // field, and that is "unverified", not "nothing consulted".
           setLatestConsultedSources(data.consulted_sources ?? null);
           setLatestDocumentCoverage(data.document_coverage ?? null);
+          setLatestReasoningSummaries(data.reasoning_summaries ?? []);
           setLatestRunResultId(data.run_id);
         }
         // The run stopped to ask something. This is a *terminal* event for this
@@ -385,6 +406,18 @@ export function useChatRunLoop({
           setStreamedReply((current) => current + data.delta);
           continue;
         }
+        if (streamEvent.event === "reasoning_summary_delta") {
+          // `null` is an unparseable delta the API layer chose to drop rather
+          // than throw on. Display metadata must not abort an answer stream.
+          const data =
+            streamEvent.data as ReasoningSummaryDeltaEventData | null;
+          if (data) {
+            setLatestReasoningSummaries((current) =>
+              mergeReasoningSummaryDelta(current, data),
+            );
+          }
+          continue;
+        }
         // Appends to the list the interrupted stream already filled: this is
         // a continuation of the same run, not a new timeline.
         if (shouldRecordLiveActivityEvent(streamEvent.event)) {
@@ -417,6 +450,7 @@ export function useChatRunLoop({
           // field, and that is "unverified", not "nothing consulted".
           setLatestConsultedSources(data.consulted_sources ?? null);
           setLatestDocumentCoverage(data.document_coverage ?? null);
+          setLatestReasoningSummaries(data.reasoning_summaries ?? []);
           setLatestRunResultId(data.run_id);
           setPendingInteraction(null);
         }
@@ -482,6 +516,35 @@ export function useChatRunLoop({
     runMessageAndContinue,
     setQueuedMessage,
   };
+}
+
+/**
+ * Appends one streamed delta to the item for its stage.
+ *
+ * Produces `ReasoningSummaryDisplay`, which has no `source`. A half-streamed
+ * summary genuinely has no provenance to report — the delta event does not
+ * carry one — and deriving it from `stage` would state, in a closed contract
+ * field, something the backend never said. The completed run replaces this
+ * whole list with the served items anyway, so the value would be short-lived
+ * and wrong rather than short-lived and absent.
+ *
+ * Text is bounded here as well as at render: an unbounded accumulator would
+ * grow with a misbehaving stream even before anything is displayed.
+ */
+export function mergeReasoningSummaryDelta(
+  current: ReasoningSummaryDisplay[] | undefined,
+  data: ReasoningSummaryDeltaEventData,
+): ReasoningSummaryDisplay[] {
+  const summaries = current ?? [];
+  const existing = summaries.find((item) => item.stage === data.stage);
+  const text = `${existing?.text ?? ""}${data.delta}`.slice(
+    0,
+    REASONING_SUMMARY_MAX_LENGTH,
+  );
+  const next: ReasoningSummaryDisplay = { stage: data.stage, text };
+  return existing
+    ? summaries.map((item) => (item.stage === data.stage ? next : item))
+    : [...summaries, next];
 }
 
 export function waitingInteractionAnnouncement(

@@ -30,6 +30,7 @@ import {
   LEGACY_INTERACTION_SCHEMA_VERSION,
   type Message,
   type PendingInteraction,
+  type ReasoningSummaryDisplay,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 import { resolveErrorMessage } from "@/utils/error-message";
@@ -73,6 +74,7 @@ import {
   isActiveAgentRunStatus,
   isNearScrollBottom,
   isObservedActiveRunStale,
+  isReasoningSummaryEventType,
   isWaitingForInputRunStatus,
   seedLiveActivityEvents,
 } from "./chat/workspace-helpers";
@@ -92,6 +94,7 @@ export {
   isBlockingAgentRunStatus,
   isConversationRunAlreadyActiveError,
   isObservedActiveRunStale,
+  isReasoningSummaryEventType,
   isWaitingForInputRunStatus,
   seedLiveActivityEvents,
   shouldRecordLiveActivityEvent,
@@ -229,6 +232,9 @@ export function ChatWorkspace({
   const [latestDocumentCoverage, setLatestDocumentCoverage] = useState<
     DocumentCoverage | null | undefined
   >(undefined);
+  const [latestReasoningSummaries, setLatestReasoningSummaries] = useState<
+    ReasoningSummaryDisplay[] | undefined
+  >(undefined);
   const [latestRunResultId, setLatestRunResultId] = useState<string | null>(
     null,
   );
@@ -280,6 +286,9 @@ export function ChatWorkspace({
   const queuedMessageRef = useRef<QueuedMessage | null>(null);
   const pendingImmediateMessageRef = useRef<QueuedMessage | null>(null);
   const cancelAcceptedRef = useRef(false);
+  const replayPreviousReasoningSummariesRef = useRef<
+    ReasoningSummaryDisplay[] | undefined
+  >(undefined);
   const creatingConversationRef = useRef<Promise<string> | null>(null);
   const previousActiveIdRef = useRef<string | undefined>(activeId);
   const previousServerActiveRunIdRef = useRef<string | null>(null);
@@ -349,6 +358,7 @@ export function ChatWorkspace({
     setLatestCitations,
     setLatestConsultedSources,
     setLatestDocumentCoverage,
+    setLatestReasoningSummaries,
     setLatestRunResultId,
     setLiveActivityEvents,
     setOptimisticMessage,
@@ -371,11 +381,22 @@ export function ChatWorkspace({
     isCancelling,
     localization,
     setStatusAnnouncement,
+    onReplayStart: () =>
+      setLatestReasoningSummaries((current) => {
+        replayPreviousReasoningSummariesRef.current = current;
+        return [];
+      }),
     onReplayResult: (result) => {
       setLatestCitations(result.citations ?? []);
       setLatestConsultedSources(result.consulted_sources ?? null);
       setLatestDocumentCoverage(result.document_coverage ?? null);
+      setLatestReasoningSummaries(result.reasoning_summaries ?? []);
+      replayPreviousReasoningSummariesRef.current = undefined;
       setLatestRunResultId(result.run_id);
+    },
+    onReplayError: () => {
+      setLatestReasoningSummaries(replayPreviousReasoningSummariesRef.current);
+      replayPreviousReasoningSummariesRef.current = undefined;
     },
   });
 
@@ -697,8 +718,18 @@ export function ChatWorkspace({
       return persistedMessages;
     return [...persistedMessages, optimisticMessage];
   }, [activeId, messages.data, optimisticMessage]);
+  /*
+   * The live list is already filtered as it is built; the stored list is not,
+   * and after a reload it is the only source the panel has. Reasoning-summary
+   * events are a different trust channel and would otherwise reach the
+   * verified-stage heuristic here — see `isReasoningSummaryEventType`.
+   */
   const visibleActivityEvents =
-    liveActivityEvents.length > 0 ? liveActivityEvents : (events.data ?? []);
+    liveActivityEvents.length > 0
+      ? liveActivityEvents
+      : (events.data ?? []).filter(
+          (event) => !isReasoningSummaryEventType(event.event_type),
+        );
   const completedRunDetail =
     runDetail.data && !isRunInterrupted(runDetail.data) ? runDetail.data : null;
   /*
@@ -730,6 +761,9 @@ export function ChatWorkspace({
   const visibleDocumentCoverage = localRunOwnsEvidence
     ? (latestDocumentCoverage ?? null)
     : (completedRunDetail?.document_coverage ?? null);
+  const visibleReasoningSummaries = localRunOwnsEvidence
+    ? (latestReasoningSummaries ?? [])
+    : (completedRunDetail?.reasoning_summaries ?? []);
   // Live events without a completed local result belong to a newer attempt than
   // the cached run list. Do not pair them with the previous completed run ID.
   const latestRunId =
@@ -842,6 +876,7 @@ export function ChatWorkspace({
     setLatestCitations([]);
     setLatestConsultedSources(null);
     setLatestDocumentCoverage(undefined);
+    setLatestReasoningSummaries(undefined);
     setLatestRunResultId(null);
     setOptimisticMessage(null);
   }, [activeId]);
@@ -955,6 +990,7 @@ export function ChatWorkspace({
       visibleCitations={visibleCitations}
       visibleConsultedSources={visibleConsultedSources}
       visibleDocumentCoverage={visibleDocumentCoverage}
+      visibleReasoningSummaries={visibleReasoningSummaries}
       visibleQueuedMessage={visibleQueuedMessage}
     />
   );

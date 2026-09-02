@@ -148,8 +148,11 @@ const JARGON_RULINGS: Record<string, JargonRuling> = {
   },
   청크: {
     allowed: true,
-    paths: /^admin\.common\.chunks$/,
-    why: "extraction detail",
+    // Widened for the verified operational summaries, which the copy guide
+    // already covers: domain vocabulary is allowed where the surface is about
+    // inspection, and it names the agent trace as one of those surfaces.
+    paths: /^admin\.common\.chunks$|^chat\.answerProcess\.operational\./,
+    why: "extraction detail and verified trace operational summaries",
   },
   엔티티: {
     allowed: true,
@@ -172,6 +175,10 @@ const JARGON_RULINGS: Record<string, JargonRuling> = {
   // Banned: transliterating the English term when 추론 already exists.
   리즈닝: { allowed: false, instead: "추론" },
   씽킹: { allowed: false, instead: "추론" },
+  "사고 과정": { allowed: false, instead: "별도 표기 없이 진행 문맥에서 표시" },
+  "추론 과정": { allowed: false, instead: "별도 표기 없이 진행 문맥에서 표시" },
+  생각: { allowed: false, instead: "별도 표기 없이 진행 문맥에서 표시" },
+  "내부 추론": { allowed: false, instead: "별도 표기 없이 진행 문맥에서 표시" },
   메타데이터: {
     allowed: true,
     paths: /^admin\.documents\.stages\./,
@@ -237,6 +244,16 @@ describe("technical vocabulary is ruled on, not left to chance", () => {
       if (!ruling.allowed) continue;
       expect(allKorean, `${term} should still appear somewhere`).toContain(
         term,
+      );
+    }
+  });
+});
+
+describe("model-authored approach copy", () => {
+  it("never claims to expose private chain of thought", () => {
+    for (const entry of entries) {
+      expect(`${entry.en}\n${entry.ko}`, entry.path).not.toMatch(
+        /chain[- ]of[- ]thought|\bCoT\b/i,
       );
     }
   });

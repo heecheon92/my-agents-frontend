@@ -1247,3 +1247,134 @@ checkout production build compiled and generated all 17 routes. Playwright CLI
 visual review covered the expanded partial-coverage disclosure at desktop and
 390px; the mobile row wrapped without horizontal overflow, remained reachable
 above the floating composer, and produced no console errors.
+
+## 2026-09-02 — Model-authored approach explanations reach the process panel
+
+Optional `reasoning_summaries` now render inside the existing `답변 과정`
+disclosure, below the verified step list. The contract was read from the live
+backend OpenAPI document (`ReasoningSummaryItem`), which confirmed the two
+stages, the two sources, a 500-character bound, and that the field is optional
+on `ConversationRunResponse`.
+
+The visible heading and the explanatory disclaimer an earlier revision carried
+were removed. The enclosing disclosure already establishes that the reader
+opted into process detail, and an answer with an expandable account of how it
+was produced is familiar enough from other assistants that naming it again
+reads as instruction. A rule, an inset quote, and muted type carry the
+separation instead. The section keeps a visually hidden name because a screen
+reader cannot perceive the rule or the indent.
+
+Three defects in the partial revision were fixed rather than carried:
+
+The persisted `reasoning_summary_generated` event fabricated a verified
+retrieval step. `getAgentTraceStageKeys` falls back to keyword-matching event
+types and payload *keys* when a run has no backend `agent_trace`, and the
+summary payload has a key named `source`, which matches the retrieval pattern.
+Model-authored metadata was inventing a verified step — the exact channel merge
+the feature exists to avoid. Reasoning-summary events are now excluded from the
+activity timeline on both the live and stored paths, and a unit test pins the
+before/after.
+
+A summary could cost the answer. `text` was parsed with the served
+`.max(500)`, so one over-long item would fail the whole completed-run response;
+a malformed item did the same; and a strict streamed-delta schema threw inside
+the run loop's `for await`, aborting the reply. The bound now applies at render,
+the list carries `.catch([])`, and an unparseable delta resolves to `null` that
+the loop skips.
+
+The streaming accumulator invented `source` from `stage`. That is a closed
+contract field naming the producer the backend used, and a half-streamed summary
+has none. Rendering now goes through `ReasoningSummaryDisplay`, which omits the
+field entirely.
+
+The per-item expander was gated on `text.length > 180`. Three lines is roughly
+165 characters of English but about 70 of Korean at 390px, so a clamped Korean
+summary — the primary language — offered no control and hid its tail
+permanently. Overflow is now measured on the element.
+
+Verified: Biome checked 266 files, TypeScript passed, Vitest passed 293 tests
+across 38 files, and full Playwright passed 158 tests with 2 environment-gated
+V1 demo skips. The production build compiled and generated all 17 routes.
+Browser checks at 390px covered the collapsed panel, the expanded section, the
+clamped Korean expander, and clipboard separation.
+
+## 2026-09-02 — Verified operational summaries and a published SSE contract
+
+Two backend contracts landed on the frontend, both read from the live OpenAPI
+document rather than from prose.
+
+**Operational summaries.** `AgentTraceStep.operational_summary` is an optional
+`message_key` discriminated union at `schema_version` 1, with one closed
+parameter model per key. The frontend parses it and formats the sentence itself
+from the served facts. That inversion is the point of the contract: display text
+built from a semantic key and scalars cannot carry implementation vocabulary,
+which free-form `description` prose demonstrably could — an interpolated
+reranker enum reached a primary reading path that way, and the operational
+summary now replaces that prose wherever a stage carries one.
+
+Degradation is deliberate and one-way. An unknown key, a future version, or
+parameters that do not match their key all resolve to no summary and fall back
+to the backend description; the verified step and the answer on the same
+response are never lost. Absent and unparseable are normalised to a single
+`null`, unlike `consulted_sources` where `null` and `[]` mean different things —
+here both mean "no summary", so leaving two reachable values would only invite a
+caller to test one and miss the other. A parameter enum value with no label
+yields no sentence rather than a bare identifier.
+
+The expanded list now shows every step that has something to say, not only the
+newest per stage. Two backend steps routinely share one stage —
+`query_cartographer` and `source_warden` are both planning — so the old
+newest-only rule dropped one of two distinct verified facts. It is also what
+keeps the collapsed row honest: that row shows one message at a time and may
+skip precisely because this list is complete.
+
+**Published SSE contract.** `reasoning_summary_delta` is now carried as an
+`x-sse-events` extension on the run, resume, and replay stream operations, all
+three inlining the same schema. The parser matches it exactly — required
+`stage`, nonblank `delta`, positive integer `sequence` — which is safe only
+because a failed parse is dropped rather than thrown. It stays non-strict
+despite `additionalProperties: false` upstream, so a backward-compatible added
+field cannot cost a caption. No per-delta upper bound: the completed item owns
+the 500-character bound.
+
+The `청크` jargon ruling was widened to the operational-summary keys. That
+follows the copy guide rather than working around it — domain vocabulary is
+allowed where the surface is about inspection, and the guide names the agent
+trace as one of those surfaces. English copy uses `{method}`, not `{route}`:
+the placeholder name reaches the localized string and `route` is banned
+implementation vocabulary there, which the copy guardrail caught.
+
+Verified: Biome checked 268 files, TypeScript passed, Vitest passed 323 tests
+across 39 files, and full Playwright passed 165 tests with 2 environment-gated
+V1 demo skips. The production build compiled and generated all 17 routes. The
+expanded panel was inspected at 390 and 1280: every stage states its verified
+facts, no served identifier reaches the reader, and neither width overflows.
+
+## 2026-09-02 — The live process row shimmers
+
+The collapsed process row now carries a per-character wave while a run works,
+built on Motion. The library was added with explicit approval; `AGENTS.md`
+otherwise forbids it, and the earlier pure-CSS version of this effect exists in
+history for anyone who wants the dependency back out.
+
+Each character cycles between `--km-shimmer-base` and `--km-shimmer-crest`,
+offset by its position. Reading the colours from custom properties keeps the
+effect theme-aware, and Motion resolves them per element — measured as eleven
+distinct colours across thirty characters in one frame, which is the wave rather
+than a uniform pulse. Both ends of the cycle are the resting colour and the crest
+moves toward ink, so contrast rises during the pass instead of fading.
+
+Three things were learned the hard way and are recorded in `DESIGN.md`. Splitting
+per character alone lets the browser break a latin word anywhere, so words are
+wrapped in `whitespace-nowrap` spans — and those must stay *inline*, because
+making them `inline-block` turns each into a single atomic line box and silently
+defeats `line-clamp`. Only the leading 200 characters animate, since two clamped
+lines hold well under that and the remainder is clipped. And reduced motion
+mounts no animated node at all, which is stronger than the previous CSS approach:
+that one needed `color: transparent` for `background-clip: text`, so paint and
+motion had to be withheld together or a reduced-motion reader was left with
+invisible text over a frozen gradient.
+
+The shimmer tests now assert the rendered result rather than the mechanism — a
+spread of colours across characters at one instant — because a uniform pulse
+would satisfy "it animates" and still be the wrong effect.

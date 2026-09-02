@@ -275,6 +275,7 @@ describe("MyAgentsConversationAPI", () => {
       fetchResponse: async () =>
         streamResponse([
           'event: run_started\ndata: {"run_id":"run-1","conversation_id":"conversation-1","status":"running","knowledge_base_selection":{"mode":"selected","knowledge_base_ids":["kb-1"]},"resolved_knowledge_base_count":1}\n\n',
+          'event: reasoning_summary_delta\ndata: {"stage":"answer_synthesis","delta":"I compared the evidence.","sequence":1}\n\n',
           'event: answer_delta\ndata: {"delta":"Hel","sequence":1}\n\n',
           'event: answer_delta\ndata: {"delta":"lo","sequence":2}\n\n',
           'event: run_completed\ndata: {"run_id":"run-1","conversation_id":"conversation-1","reply":"Hello","route":{"label":"general_assistant","explanation":"test"},"handled_by":"personal_assistant_graph","knowledge_base_selection":{"mode":"selected","knowledge_base_ids":["kb-1"]},"resolved_knowledge_base_count":1,"citations":[]}\n\n',
@@ -300,6 +301,14 @@ describe("MyAgentsConversationAPI", () => {
             knowledge_base_ids: ["kb-1"],
           },
           resolved_knowledge_base_count: 1,
+        },
+      },
+      {
+        event: "reasoning_summary_delta",
+        data: {
+          stage: "answer_synthesis",
+          delta: "I compared the evidence.",
+          sequence: 1,
         },
       },
       { event: "answer_delta", data: { delta: "Hel", sequence: 1 } },

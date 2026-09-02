@@ -1,7 +1,16 @@
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { AgentEvent, AgentTraceStep } from "@/model/my-agents";
+import {
+  type AgentEvent,
+  type AgentTraceStep,
+  agentTraceOperationalSummarySchema,
+  REASONING_SUMMARY_MAX_LENGTH,
+  type ReasoningSummaryDisplay,
+} from "@/model/my-agents";
 import type { ChatLocalization, LiveActivityEvent } from "../types";
+import { formatOperationalSummary } from "./operational-summary";
+import { ReasoningSummarySection } from "./ReasoningSummarySection";
+import { ShimmerText } from "./ShimmerText";
 
 export type AgentTraceStageKey =
   | "planning"
@@ -290,9 +299,17 @@ function phaseForTraceStep(
 export function getAgentProcessDetails({
   events,
   lang,
+  localization,
 }: {
   events: Array<AgentEvent | LiveActivityEvent>;
   lang: string;
+  /*
+   * Optional so the existing two-argument call sites keep working. Without it
+   * the backend's own `description` is used, which is exactly the pre-contract
+   * behaviour and the right fallback for a run that predates operational
+   * summaries.
+   */
+  localization?: ChatLocalization;
 }): AgentProcessDetail[] {
   const locale = lang.toLowerCase().startsWith("ko") ? "ko" : "en";
   const details = new Map<string, AgentProcessDetail>();
@@ -304,8 +321,31 @@ export function getAgentProcessDetails({
       if (step.status === "skipped") continue;
       const key = `${step.id}:${step.event_type}`;
       const title = step.title[locale] || step.title.en || step.title.ko;
+      /*
+       * The verified operational summary wins over the backend's prose when
+       * both exist.
+       *
+       * They describe the same stage, but only one of them is safe to show:
+       * `description` is free-form backend text and is how an interpolated
+       * reranker enum reached a primary reading path, while the summary is a
+       * semantic key with closed parameters that this build words itself.
+       * Parsed here rather than trusted, because `isAgentTraceStep` is a
+       * structural guard that never inspected this field — an unknown key or a
+       * future version yields no sentence and falls back.
+       */
+      const operational = localization
+        ? formatOperationalSummary(
+            agentTraceOperationalSummarySchema.safeParse(
+              (step as { operational_summary?: unknown }).operational_summary,
+            ).data,
+            localization,
+          )
+        : null;
       const description =
-        step.description[locale] || step.description.en || step.description.ko;
+        operational ||
+        step.description[locale] ||
+        step.description.en ||
+        step.description.ko;
       details.set(key, {
         key,
         phase: phaseForTraceStep(step, event.event_type.toLowerCase()),
@@ -427,15 +467,17 @@ export function AgentProcessPanel({
   events,
   citationCount,
   isStreaming,
+  reasoningSummaries,
 }: {
   localization: ChatLocalization;
   lang: string;
   events: Array<AgentEvent | LiveActivityEvent>;
   citationCount: number;
   isStreaming: boolean;
+  reasoningSummaries: ReasoningSummaryDisplay[];
 }) {
   const state = getAgentProcessState({ events, citationCount, isStreaming });
-  const details = getAgentProcessDetails({ events, lang });
+  const details = getAgentProcessDetails({ events, lang, localization });
   const terminalText = state.terminal
     ? terminalLabel(state.terminal, localization)
     : null;
@@ -448,6 +490,40 @@ export function AgentProcessPanel({
 
   const headline = getAgentProcessHeadline({ state, localization, isStarting });
   if (!headline) return null;
+
+  /*
+   * The model's own account of the approach, raised to the collapsed row while
+   * the run is still working.
+   *
+   * `retrieval_planning` is the only summary eligible for this. It is produced
+   * by the tool-selection node *before* retrieval executes, so it exists during
+   * the wait and is specific to the question that is being waited on.
+   * `answer_synthesis` comes off the completed response and cannot help here —
+   * by the time it exists there is nothing left to wait for.
+   *
+   * It never replaces the verified step label; it stacks beneath it. Swapping
+   * the label would change that row's trust status mid-run, and the label is
+   * also the only short, stable thing in the row.
+   */
+  const planningSummary = reasoningSummaries
+    .find((item) => item.stage === "retrieval_planning")
+    ?.text.slice(0, REASONING_SUMMARY_MAX_LENGTH);
+  /*
+   * One message at a time, newest wins.
+   *
+   * `details` is built in event-sequence order, so the last one carrying a
+   * description is the most recent thing the run has said. The planning summary
+   * is the opening message and holds the row until the first step description
+   * arrives — which is the retrieval wait, the longest gap in a run.
+   *
+   * Derived, never stored. A queue with dwell timers would read more evenly,
+   * but it would put a second, drifting copy of run progress in this component;
+   * everything the row skips stays recoverable in the expanded list below.
+   */
+  const liveProcessMessage = isStreaming
+    ? (details.filter((detail) => detail.description).at(-1)?.description ??
+      planningSummary)
+    : undefined;
 
   const processList = (
     <ol className="grid min-w-0 gap-2">
@@ -470,11 +546,33 @@ export function AgentProcessPanel({
         const isUnmetEvidence =
           stage === "needsEvidence" && state.terminal === "needsEvidence";
         const stageDetails = details.filter((detail) => detail.phase === stage);
-        const latestDetail = stageDetails.at(-1);
-        const showLatestDescription =
-          latestDetail?.description &&
-          (isCurrent ||
-            (state.terminal !== null && stage === state.stages.at(-1)));
+        /*
+         * Every step that said something says it here, not just the last one.
+         *
+         * Two backend steps routinely share a stage — `query_cartographer` and
+         * `source_warden` are both planning — so rendering only the newest
+         * silently dropped the other's sentence. That was tolerable when the
+         * sentences were backend prose restating the stage title; it is not now
+         * that each one is a distinct verified fact. It is also what keeps the
+         * collapsed row's promise: that row shows one message at a time and is
+         * allowed to skip precisely because this list is complete.
+         */
+        const describedDetails = stageDetails.filter(
+          (detail) => detail.description,
+        );
+        /*
+         * Every stage that has a description shows it.
+         *
+         * The previous gate was `isCurrent || (terminal && stage is last)`, and
+         * its terminal half could never fire: nothing in `phaseForTraceStep`
+         * maps to `answerReady`, which is the last stage of every successful
+         * run, so `stageDetails` there is always empty. The effect was that no
+         * backend-authored description rendered anywhere once a run finished.
+         *
+         * The expanded panel is also where the collapsed row's rotating
+         * message is supposed to be recoverable, which only works if the full
+         * set is here.
+         */
         return (
           <li
             key={stage}
@@ -518,11 +616,15 @@ export function AgentProcessPanel({
                   ))}
                 </ul>
               ) : null}
-              {showLatestDescription ? (
-                <p className="mt-1.5 break-words text-xs leading-5 text-cal-muted">
-                  {latestDetail.description}
+              {describedDetails.map((detail) => (
+                <p
+                  key={detail.key}
+                  data-slot="process-step-summary"
+                  className="mt-1.5 break-words text-xs leading-5 text-cal-muted"
+                >
+                  {detail.description}
                 </p>
-              ) : null}
+              ))}
             </div>
           </li>
         );
@@ -585,9 +687,53 @@ export function AgentProcessPanel({
             aria-hidden="true"
             className="size-4 shrink-0 text-cal-muted transition-transform duration-[var(--duration-fast)] ease-[var(--ease-standard)] group-open/process:rotate-180"
           />
+          {/*
+            `basis-full` gives this its own line below the label rather than
+            competing with it for the truncated one.
+
+            `aria-hidden` because this sits inside `<summary>`, whose text
+            content *is* the disclosure control's accessible name: leaving it
+            exposed would rename the toggle to a paragraph that changes as the
+            run progresses. The same text is announced by the live region below
+            and reachable, properly framed, one control away.
+          */}
+          {liveProcessMessage ? (
+            <p
+              aria-hidden="true"
+              data-slot="live-reasoning-summary"
+              /*
+                The sweep is expressed as `motion-safe:` utilities, not a
+                component class. A `@layer components` rule loses to the
+                `text-cal-muted` utility that has to stay for the resting
+                colour, and the compiler dropped the unlayered half of it
+                outright. As utilities all of this sits in one layer, and
+                `motion-safe:` gives the reduced-motion fallback for free —
+                under `reduce` none of it applies and the row is plain muted
+                text.
+
+                Wrapping the text in an inner span to dodge the cascade was
+                tried and reverted: an `inline-block` child counts as a single
+                line box, so `line-clamp-2` silently stopped clamping.
+
+                The gradient runs muted → ink → muted, so the pass *raises*
+                contrast rather than fading the text out. At every frame the
+                row stays at least as readable as at rest, in both themes —
+                which a fade-to-background shimmer cannot promise on 12px
+                Korean.
+              */
+              className="line-clamp-2 basis-full border-s border-cal-hairline ps-3 text-xs leading-5 text-cal-muted"
+            >
+              <ShimmerText text={liveProcessMessage} wave />
+            </p>
+          ) : null}
         </summary>
-        <div className="border-t border-km-accent/20 p-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1 motion-safe:duration-[var(--duration-panel)]">
+        <div className="max-h-[min(32rem,70dvh)] overflow-y-auto border-t border-km-accent/20 p-3 motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-top-1 motion-safe:duration-[var(--duration-panel)]">
           {processList}
+          <ReasoningSummarySection
+            summaries={reasoningSummaries}
+            isStreaming={isStreaming}
+            localization={localization}
+          />
         </div>
       </details>
       {/*
@@ -601,6 +747,23 @@ export function AgentProcessPanel({
         className="sr-only"
       >
         {liveAnnouncement}
+      </span>
+      {/*
+        Carries the planning summary only, not the rotating row above it.
+
+        The row swaps roughly in step with the run, and every later message is a
+        longer form of the step label the region above already announces —
+        mirroring it here would read each advance twice. The planning summary is
+        the one message with no spoken equivalent, and it changes once per run,
+        so it is announced once. The messages this skips stay in the expanded
+        list.
+      */}
+      <span
+        aria-live="polite"
+        data-slot="live-reasoning-summary-announcement"
+        className="sr-only"
+      >
+        {isStreaming ? (planningSummary ?? "") : ""}
       </span>
     </div>
   );

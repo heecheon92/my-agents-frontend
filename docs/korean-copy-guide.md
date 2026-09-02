@@ -58,7 +58,7 @@ Keep these. Do not "simplify" them into vaguer Korean:
 | Term | Korean | Where |
 |---|---|---|
 | embedding | `임베딩` | processing history, ingestion stages |
-| chunk | `청크` | citation details, extraction counts |
+| chunk | `청크` | citation details, extraction counts, verified trace operational summaries |
 | entity | `엔티티` | extraction counts |
 | index | `색인` | ingestion stages |
 | retrieval | `검색` | agent trace, activity events |
@@ -110,6 +110,7 @@ allow-by-default.
 | needs attention (failed) | `확인 필요` | `실패`, `오류` — for per-item states where the user can retry |
 | answer needs attention | `답변 확인 필요` | `실행 실패`, `답변 실패` — primary answer surface; the advanced activity event may still use `실행 실패` |
 | answer cancelled | `답변 취소됨` | `실행 취소됨` — primary answer surface; the advanced activity event keeps its existing label |
+| model-authored approach explanation | 답변 과정 안에 눈에 보이는 제목 없이 표시. 화면에 보이지 않는 이름은 `AI 설명` | `AI 작업 과정 요약`, `사고 과정`, `추론 과정`, `생각` — these over-explain a familiar pattern, collide with `답변 과정`/`작업 내역`, or imply private reasoning |
 
 **One concept, one term.** Before this guide, the same disclosure was labelled
 four different ways on the same screen and share requests had two names. If you
@@ -284,5 +285,5 @@ this file is worth reading rather than skimming.
 
 - `DESIGN.md` — content voice, terminology at the design level.
 - `AGENTS.md` — the rule that no user-facing string may be hardcoded in a component.
-- `docs/backend-requests.md` — error `code` request; until it lands, backend
-  `detail` is not rendered, because it is English prose.
+- `utils/error-message.ts` — maps stable backend error codes to Korean copy and
+  deliberately avoids rendering backend `detail` prose.
