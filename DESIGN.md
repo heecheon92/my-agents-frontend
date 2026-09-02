@@ -110,6 +110,31 @@ lines hold well under that at any supported width and the rest is clipped. And u
 **no animated node is mounted at all**: the words render as plain text, so there is no paused frame
 to get wrong.
 
+**A conversation row truncates; it never widens the rail.** The history list is a grid, and a grid
+item's default `min-width: auto` resolves to its min-content — for a `nowrap` title, the entire
+untruncated string. Without `min-w-0` on both the row and the title span, one long title made a row
+578px wide inside a 271px rail and the list scrolled sideways. `overflow-y: auto` also forces the
+computed `overflow-x` to `auto`, so that scroller was real; the list sets `overflow-x-hidden`
+explicitly.
+
+The delete control sits **over** the title rather than beside it, so a row never gives up width to
+a button that is invisible most of the time. The title gets out from under it with a mask, not
+padding: a mask fades the glyphs themselves, so it works on any row background — active, hovered,
+or transparent — without the fade needing to know which one it is. The fade is tied to the same
+condition as the control, so a row at rest shows its full width of title and gives up nothing —
+and that pairing is exact. Keying the fade on `focus-within` instead left a clicked conversation
+faded with no icon, because clicking an anchor focuses it; the condition is
+`has-[button:focus-visible]`, which is on precisely when the control is.
+
+Two things make that overlay actually clickable, and both were learned by shipping it broken.
+`mask-image` turns the title into a stacking context, so the control needs a positive `z-index` to
+stay above it. And the control must be centred with `inset-y-0 my-auto`, **never**
+`-translate-y-1/2`: `Button` sets a `transform` in its `active:` state, `transform` is a single
+property, and the press therefore replaced the centring and dropped the button half its height —
+`mousedown` on the button, `mouseup` on the anchor, `click` on their common ancestor, handler never
+called. Geometry and computed-style assertions all passed while the control was dead, so the test
+for this presses it.
+
 **A verified stage says what it did, in words this build chose.** Each `AgentTraceStep` may carry an
 optional operational summary: a backend-selected `message_key` at `schema_version` 1 with closed
 scalar parameters. The frontend formats the sentence from those facts and prefers it over the
