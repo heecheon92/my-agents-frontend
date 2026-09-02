@@ -1,5 +1,11 @@
 # Design Implementation Plan
 
+> **Historical scope note (2026-09-02).** This document sequences a specific
+> first implementation pass from 2026-05-22, and that pass has shipped. Its
+> "do not add a dependency" constraints were scoped to that pass and are **not**
+> current policy — see "Adding UI/UX libraries" in `AGENTS.md`, which
+> pre-approves UI/UX libraries where they clearly beat hand-written code.
+
 This is a concise handoff for the frontend engineer. `DESIGN.md` is the source of truth; this plan only sequences the first safe implementation passes. It incorporates frontend engineering feedback from 2026-05-22 and remains documentation-first.
 
 ## Aesthetic direction

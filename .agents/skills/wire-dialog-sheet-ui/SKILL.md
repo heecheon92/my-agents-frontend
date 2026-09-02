@@ -417,5 +417,9 @@ See `docs/next-component-boundaries.md` for the repo-wide rule.
 - Do not keep stale local state between openings when the overlay is reused.
 - Do not use a sheet for a simple confirm.
 - Do not use a narrow centered dialog for a large record editor that behaves like a side panel.
-- Do not add a new overlay dependency or primitive without explicit approval.
+- Do not reach for a new overlay dependency before checking whether the existing
+  Dialog/Sheet/Drawer primitives cover the case — overlays are the one area this
+  repo already has good coverage for. Adding one is allowed when it is clearly
+  better (see "Adding UI/UX libraries" in `AGENTS.md`); wrap it in
+  `components/ui/` and record the decision in `docs/implementation-log.md`.
 - Do not make broad route pages/layouts Client Components just to host one overlay.

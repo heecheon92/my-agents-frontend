@@ -212,8 +212,41 @@ Before changing routing, server actions, route handlers, caching, cookies, or da
 - Use Tailwind CSS v4 conventions already configured in the repo.
 - Reuse shadcn/Base UI primitives and `lib/utils.ts` before adding new UI abstractions.
 - Keep components small and purpose-named.
-- Do not add a second component library without explicit user approval.
 - Avoid copy-pasting large generated component trees; extract clear feature components.
+
+### Adding UI/UX libraries
+
+Pre-approved as of 2026-09-02. When a task asks for UI or UX work, survey the
+available libraries and install one when it is clearly the better option. No
+separate permission request is needed, and neither is asking first.
+
+"Clearly better" is the whole test, and it is not satisfied by a library merely
+existing. A dependency has to earn a place that hand-written code cannot fill
+as well:
+
+- **It carries real complexity.** Virtualization, drag reordering, date/number
+  parsing across locales, rich text, charting, and animation choreography are
+  bodies of work where a good library is obviously right. A pointer handler, a
+  disclosure, or a formatter usually is not.
+- **It composes with what is already here.** Tailwind v4, Base UI, and the
+  `components/ui/` wrapper convention. A library that wants to own an element
+  the repo already owns, ship its own design tokens, or inject markup that
+  duplicates an existing control is a poor fit even when it is well built.
+- **It is maintained and safely licensed.** Check recent releases, open issue
+  volume, install size, transitive dependency count, and the license.
+- **It does not fragment the design system.** One general-purpose component
+  library remains the goal. Adding a focused single-purpose package alongside
+  Base UI is fine; adding a second full component kit is a decision to raise
+  with the user, not because permission is required but because it changes the
+  visual contract `DESIGN.md` holds.
+
+Record the decision in `docs/implementation-log.md`: what was chosen, what was
+rejected, and why. If a library was considered and hand-written code won, say
+that too — it stops the next agent re-running the same survey.
+
+Keep the existing wrapper rule regardless of origin: feature code imports from
+`components/ui/`, never from a vendor package directly, so a swap stays a
+one-file change.
 
 ## Testing and verification commands
 

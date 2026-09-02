@@ -432,9 +432,17 @@ conversation behind.
 
 ## Components
 
-**Do not add a second component library.** Base UI primitives live in
+**One general-purpose component library.** Base UI primitives live in
 `components/ui/`, always imported from there and never from `@base-ui/*` or
-`vaul` directly.
+`vaul` directly. That wrapper rule holds for every dependency, not just these
+two: feature code imports from `components/ui/`, so replacing a vendor is a
+one-file change.
+
+Focused single-purpose libraries are welcome where they clearly beat
+hand-written code — see the library guidance in `AGENTS.md`. A *second full
+component kit* is different: it would give the product two visual vocabularies,
+which is a change to this document rather than an implementation detail. Raise
+it before starting.
 
 ### Overlays
 
