@@ -253,6 +253,7 @@
     "currentAnswerStoppedAnnouncement": "Current answer stopped.",
     "immediateStartedAnnouncement": "Sending your immediate message now.",
     "immediateFailedAnnouncement": "Could not stop the current answer. Your message was restored to the composer.",
+    "cancelledRunNotice": "The answer was cancelled. No answer was produced for this message.",
     "runFailed": "Could not complete the answer.",
     "answerProcess": {
       "title": "Answer process",

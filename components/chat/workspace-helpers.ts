@@ -277,3 +277,47 @@ export function buildActiveKnowledgeBaseSelection({
       knowledgeBaseMode === "selected" ? selectedKnowledgeBaseIds : [],
   };
 }
+
+/**
+ * Whether the transcript should say the last run was cancelled.
+ *
+ * Cancelling a pending clarification left the conversation showing the user's
+ * message and nothing else: the run produced no assistant text, so the bubble
+ * that normally carries the process panel and its `답변 취소됨` row never
+ * rendered. The only acknowledgement was an `aria-live` announcement, so a
+ * screen reader was told what happened and a sighted reader was not.
+ *
+ * Derived from server truth rather than set as a flag when the cancel
+ * succeeds, so it survives a reload and needs no clearing: the next run
+ * changes `runs[0]`, and any answer makes the last message an assistant one.
+ *
+ * Deliberately covers a mid-answer cancel that persisted nothing, not just a
+ * cancelled clarification — both leave the same silence, and the copy is
+ * written to be true of both.
+ *
+ * This is permanent behavior, not a stopgap. Even if the backend later offers
+ * "continue without selecting", Cancel stays terminal, so cancelled turns keep
+ * happening and keep needing an explanation. The only turn that should suppress
+ * this is one that produced a real assistant reply, which the last-message
+ * check below already handles.
+ */
+export function showsCancelledRunNotice({
+  runs,
+  messages,
+  isBusy,
+  hasPendingInteraction,
+}: {
+  /** Newest first. */
+  runs: { status: string }[];
+  messages: { role: string }[];
+  isBusy: boolean;
+  hasPendingInteraction: boolean;
+}): boolean {
+  // A pending question is its own explanation, and a running answer is about
+  // to replace whatever this would say.
+  if (isBusy || hasPendingInteraction) return false;
+  if (runs[0]?.status !== "cancelled") return false;
+  // An assistant message means the run left something behind — a partial
+  // answer the reader can see — so the silence this covers did not happen.
+  return messages.at(-1)?.role === "user";
+}

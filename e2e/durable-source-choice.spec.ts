@@ -448,6 +448,81 @@ test.describe("durable document-source choice", () => {
     ).toBeEnabled();
   });
 
+  test("says the run was cancelled instead of leaving the user's message alone", async ({
+    page,
+  }) => {
+    // Reported from use: cancelling a pending question left the transcript
+    // showing the user's message and nothing else. The run produced no
+    // assistant text, so the bubble that normally carries the process panel and
+    // its cancelled row never rendered, and the only acknowledgement was an
+    // aria-live announcement a sighted reader never sees.
+    await mockWorkspace(page, { interaction: "document_selection" });
+
+    // Stateful on purpose. The notice is derived from the run list rather than
+    // flagged when the button is clicked — that is what makes it survive a
+    // reload — so the mock has to actually stop reporting a waiting run once
+    // the cancel lands, exactly as the backend would.
+    // A suspended run means the user's question is stored and unanswered, so
+    // the transcript has to end on it. The shared fixture ends on an assistant
+    // message, which is a shape a waiting run cannot actually produce.
+    await page.route(
+      "**/api/my-agents/conversations/c-visual/messages",
+      async (route) =>
+        route.request().method() === "GET"
+          ? route.fulfill({
+              json: [
+                {
+                  id: "m-user",
+                  conversation_id: "c-visual",
+                  role: "user",
+                  content: "계약서 갱신 조건을 알려 주세요.",
+                },
+              ],
+            })
+          : route.fallback(),
+    );
+
+    let cancelled = false;
+    await page.route("**/api/my-agents/**/cancel", async (route) => {
+      cancelled = true;
+      return route.fulfill({ json: { ok: true } });
+    });
+    await page.route(
+      "**/api/my-agents/conversations/c-visual/runs",
+      async (route) => {
+        if (route.request().method() !== "GET" || !cancelled) {
+          return route.fallback();
+        }
+        return route.fulfill({
+          json: [
+            {
+              run_id: "run-waiting",
+              conversation_id: "c-visual",
+              status: "cancelled",
+              route_label: null,
+              reasoning_mode: "standard",
+              reasoning_effort: "medium",
+              knowledge_base_selection: { mode: "all", knowledge_base_ids: [] },
+              created_at: "2026-09-05T00:00:00.000Z",
+            },
+          ],
+        });
+      },
+    );
+    await page.goto(CONVERSATION_URL);
+
+    const notice = page.getByTestId("cancelled-run-notice");
+    // Not while the card is up: the question is its own explanation.
+    await expect(page.locator('[data-slot="interaction-card"]')).toBeVisible();
+    await expect(notice).toHaveCount(0);
+
+    await page.getByRole("button", { name: chat.interactionCancel }).click();
+
+    await expect(page.locator('[data-slot="interaction-card"]')).toHaveCount(0);
+    await expect(notice).toBeVisible();
+    await expect(notice).toContainText(chat.cancelledRunNotice);
+  });
+
   test("disables answering once the deadline has passed", async ({ page }) => {
     // Expiry has to change behaviour, not just copy: the server answers a late
     // resume with `run_interaction_expired`, so offering the button would be

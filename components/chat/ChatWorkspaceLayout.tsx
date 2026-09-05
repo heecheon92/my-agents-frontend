@@ -46,6 +46,7 @@ type ChatWorkspaceLayoutProps = {
   attachmentComposer: AttachmentComposer;
   /** Artifacts grouped by the run that produced them. */
   artifactsByRun: Record<string, ConversationArtifact[]>;
+  showsCancelledNotice: boolean;
   activeRunId: string | null;
   chatScrollRef: React.RefObject<HTMLDivElement | null>;
   chatContentRef: React.RefObject<HTMLDivElement | null>;
@@ -113,6 +114,7 @@ export function ChatWorkspaceLayout({
   activeId,
   attachmentComposer,
   artifactsByRun,
+  showsCancelledNotice,
   activeRunId,
   chatScrollRef,
   chatContentRef,
@@ -289,6 +291,7 @@ export function ChatWorkspaceLayout({
               onChatScroll={onChatScroll}
               onReplayAssistantMessage={onReplayAssistantMessage}
               artifactsByRun={artifactsByRun}
+              showsCancelledNotice={showsCancelledNotice}
               bottomInset={composerHeight}
             />
             {/*

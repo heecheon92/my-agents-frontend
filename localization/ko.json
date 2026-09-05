@@ -253,6 +253,7 @@
     "currentAnswerStoppedAnnouncement": "현재 답변을 중지했습니다.",
     "immediateStartedAnnouncement": "즉시 메시지를 지금 보냅니다.",
     "immediateFailedAnnouncement": "현재 답변을 중지하지 못했습니다. 메시지를 입력창으로 복원했습니다.",
+    "cancelledRunNotice": "답변을 취소했습니다. 이 질문에는 답변하지 않았습니다.",
     "runFailed": "답변을 만들지 못했습니다.",
     "answerProcess": {
       "title": "답변 과정",

@@ -46,10 +46,58 @@ Frontend workaround:
 
 ## Current requests
 
-None. Both contracts previously listed here — the published
-`reasoning_summary_delta` SSE schema and backend-owned per-stage operational
-summaries — shipped on 2026-09-02 and are recorded below. The archive keeps
-their original rationale.
+### Proposed: a way to continue without choosing a document
+
+Priority: Later — the priority is a frontend assessment, not an owner decision.
+See the open question at the end.
+
+Frontend need: cancelling a pending clarification ends the turn with no
+assistant reply. The frontend now labels that in the transcript, but a label is
+a smaller thing than an answer.
+
+Current backend behavior: cancelling a `waiting_for_input` run persists the
+cancelled status and a `run_cancelled` event, and clears the interaction and
+checkpoint. What it does not store is an assistant message, so the conversation
+ends on the user's unanswered question. (Corrected 2026-09-05 — an earlier
+draft of this entry said "stores nothing", which was wrong.)
+
+Requested backend contract: **not** a change to what Cancel does. Backend Codex
+is right that resuming the graph on Cancel would redefine stop as continue and
+spend tokens the user just declined to spend; Cancel must stay terminal.
+
+The gap is that the card offers only "pick one of these" or "stop", when a third
+intent exists: *answer anyway, without a document*. That is a distinct choice
+and belongs in the semantic interaction contract as an explicit decline or
+continue-without-selection response, rendered as its own control beside Cancel.
+
+Why it matters: the product's premise is that an answer explains itself. A turn
+that simply stops is the one place that premise breaks. But the fix is a clearer
+choice, not a quieter Cancel.
+
+Frontend behavior, and it is not a workaround to retire:
+`showsCancelledRunNotice` renders a transcript line derived from the run list,
+so a cancelled turn is labelled rather than silent. It stays even if
+continue-without-selection ships. Cancel remains terminal, so genuinely
+cancelled turns keep happening and keep needing an explanation; only a turn that
+produced a real assistant reply should suppress the notice, which the predicate
+already does by requiring the last message to be the user's. (An earlier draft
+of this entry said the notice should be "removed rather than stacked" when this
+ships. That reads as deleting it globally on delivery, which would be wrong —
+corrected 2026-09-05 after Backend Codex flagged it.)
+
+**Open question for the owner, not for the backend.** Heecheon raised this as
+one of two options — "notify the user, or forward the cancellation so the
+assistant can generate a message" — and the notify half is implemented. He did
+not ask for this half to be built, and the Later priority is a frontend
+assessment rather than his instruction.
+
+One thing worth settling before any work starts: a *deterministic* stored
+acknowledgement would add nothing over what already ships, because the frontend
+notice is already a deterministic acknowledgement, rendered without a round trip
+or a token. This is only worth building if the reply engages with the question —
+answering from general knowledge, or naming what it would have needed. If the
+answer is "deterministic is enough", the correct outcome is to close this
+request unbuilt.
 
 ## Deferred deployment and live-evidence gates
 

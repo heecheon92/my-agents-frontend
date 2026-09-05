@@ -1645,3 +1645,56 @@ the diagram renders. Lint, typecheck, 365 unit tests and the production build
 pass. Full browser suite: 192 passed, 2 environment-gated skips, and the
 pre-existing file-drop overlay failure, which passed in isolation immediately
 afterward.
+
+### Follow-up: a cancelled clarification says so
+
+Reported from use: cancelling a pending document question left the transcript
+showing the user's message and nothing else.
+
+The cause is a gap between two things that both behaved correctly. A cancelled
+run already has a visual vocabulary — the process panel's `답변 취소됨` row —
+but that panel rides on the assistant bubble, and the bubble only renders when
+the conversation is busy or some streamed text exists. A clarification suspends
+*before* producing output, so cancelling it leaves neither. The only
+acknowledgement was `setStatusAnnouncement`, which renders into an `sr-only`
+`aria-live` region: a screen reader was told what happened and a sighted reader
+was not, which is the accessibility relationship backwards.
+
+`showsCancelledRunNotice` derives the notice from the newest run's status and
+the last message's role rather than setting a flag when the cancel succeeds.
+That costs nothing and buys two things: it survives a reload, and it needs no
+clearing, because the next run changes `runs[0]` and any answer makes the last
+message an assistant one.
+
+It deliberately covers a mid-answer cancel that persisted nothing, not only a
+cancelled clarification — both leave the same silence, and the copy is written
+to be true of both rather than naming the clarification specifically.
+
+The other option the owner raised, forwarding the cancellation to the assistant
+so it can reply for itself, is backend work and is filed in
+`docs/backend-requests.md` — deferred there, with no backend work underway.
+Backend Codex pushed back on the first draft of that
+request and was right twice: it said the backend "stores nothing" on cancel,
+when it persists the cancelled status and a `run_cancelled` event and clears the
+interaction and checkpoint — only the assistant message is missing. And
+resuming the graph on Cancel would redefine stop as continue and spend tokens
+the user just declined to spend. The request is now for a third choice on the
+card — continue without selecting — rather than for a quieter Cancel.
+
+Codex then caught a third thing, in this log and the ledger both: describing the
+notice as a stopgap to be "removed rather than stacked" reads as deleting it
+when continuation ships. That would be wrong. Cancel stays terminal either way,
+so cancelled turns keep happening and keep needing an explanation. The notice is
+permanent behavior, and the only turn that should suppress it is one that
+produced a real assistant reply — which the predicate already handles by
+requiring the last message to be the user's.
+
+One test fixture was corrected along the way. The shared mock pairs a waiting
+run with a transcript ending on an assistant message, a shape a suspended run
+cannot produce — a run waiting for input has necessarily stored the user's
+question. The browser test overrides it to end on the user message and drives
+a stateful cancel mock so the run list stops reporting `waiting_for_input` only
+after the request lands, as the backend would.
+
+Verified: lint, typecheck, 371 unit tests across 44 files, production build,
+and the full browser suite at 194 passed with 2 environment-gated skips.

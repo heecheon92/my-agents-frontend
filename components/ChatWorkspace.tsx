@@ -81,6 +81,7 @@ import {
   isReasoningSummaryEventType,
   isWaitingForInputRunStatus,
   seedLiveActivityEvents,
+  showsCancelledRunNotice,
 } from "./chat/workspace-helpers";
 
 export { CHAT_SCROLL_REGION_CLASS_NAME };
@@ -849,6 +850,12 @@ export function ChatWorkspace({
     latestRunResultId ??
     (liveActivityEvents.length === 0 ? (latestCompletedRunId ?? null) : null);
   const latestAssistantMessageId = getLatestAssistantMessageId(sortedMessages);
+  const showsCancelledNotice = showsCancelledRunNotice({
+    runs: sortedRuns,
+    messages: sortedMessages,
+    isBusy: conversationIsBusy || isStreaming,
+    hasPendingInteraction: Boolean(pendingInteraction),
+  });
   const latestActivityEvent = visibleActivityEvents.at(-1);
   // The transcript grows from process events before the first answer token,
   // not only from messages and reply text. Event identity/sequence changes for
@@ -1006,6 +1013,7 @@ export function ChatWorkspace({
     <ChatWorkspaceLayout
       attachmentComposer={attachmentComposer}
       artifactsByRun={artifactsByRun}
+      showsCancelledNotice={showsCancelledNotice}
       activeId={activeId}
       activeRunId={activeRunId}
       chatScrollRef={chatScrollRef}

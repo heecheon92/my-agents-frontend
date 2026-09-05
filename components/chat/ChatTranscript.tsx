@@ -123,6 +123,7 @@ export function ChatTranscript({
   onChatScroll,
   onReplayAssistantMessage,
   artifactsByRun,
+  showsCancelledNotice,
   bottomInset,
 }: {
   localization: ChatLocalization;
@@ -162,6 +163,8 @@ export function ChatTranscript({
    * answer after a refresh.
    */
   artifactsByRun: Record<string, ConversationArtifact[]>;
+  /** The last run was cancelled and left no answer behind. */
+  showsCancelledNotice: boolean;
   /**
    * Height of the composer overlaying the bottom of the panel, in pixels.
    * Reserved as scrollable padding so the last message can always be scrolled
@@ -382,6 +385,16 @@ export function ChatTranscript({
                 documentCoverage={visibleDocumentCoverage}
               />
             </MessageBubble>
+          ) : null}
+          {/* Its own row, not attached to a message: it describes what happened
+              to the conversation rather than to any one turn. */}
+          {showsCancelledNotice ? (
+            <p
+              data-testid="cancelled-run-notice"
+              className="rounded-lg border border-cal-hairline bg-cal-surface-soft px-3 py-2 text-xs leading-5 text-cal-muted"
+            >
+              {localization.cancelledRunNotice}
+            </p>
           ) : null}
         </div>
       </div>
