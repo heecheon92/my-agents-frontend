@@ -2,6 +2,10 @@
 
 Use this runbook before claiming frontend work is complete.
 
+For assistant diagram changes, run `pnpm exec playwright test e2e/mermaid.spec.ts` against the real
+Mermaid library. Check diagrams, fallback, streaming completion, theme/mobile, source/copy and
+diagram-free lazy loading. See [Mermaid verification evidence](./mermaid-rendering.md).
+
 ## Install and run locally
 
 Backend terminal:

@@ -197,6 +197,12 @@
     "defaultErrorDescription": "Please try again."
   },
   "chat": {
+    "diagram": {
+      "label": "Diagram",
+      "loading": "Preparing diagram.",
+      "error": "The diagram could not be displayed. View its source.",
+      "source": "Diagram source"
+    },
     "title": "Ask",
     "description": "Ask questions and keep cited sources beside each answer.",
     "newButton": "New",

@@ -214,6 +214,7 @@ export function ChatTranscript({
           return (
             <MessageBubble
               key={message.id}
+              isStreaming={isReplaying}
               roleLabel={
                 localization.roles[
                   message.role as keyof typeof localization.roles
@@ -333,6 +334,7 @@ export function ChatTranscript({
               (serverActiveRunIsStale ? localization.activeRunStale : "")
             }
             isAssistant={Boolean(streamedReply)}
+            isStreaming={isProducingOutput}
             header={
               <AgentProcessHeader
                 localization={localization}

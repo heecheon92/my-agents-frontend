@@ -197,6 +197,12 @@
     "defaultErrorDescription": "다시 시도해 주세요."
   },
   "chat": {
+    "diagram": {
+      "label": "다이어그램",
+      "loading": "다이어그램을 준비하고 있습니다.",
+      "error": "다이어그램을 표시하지 못했습니다. 원문을 확인하세요.",
+      "source": "다이어그램 원문"
+    },
     "title": "Ask",
     "description": "질문하고 답변 옆에서 인용된 출처를 확인하세요.",
     "newButton": "새 대화",

@@ -137,3 +137,5 @@ pnpm build
 ```
 
 Playwright runs without a backend: most specs mock `**/api/my-agents/**` and the config starts the dev server itself. When a change genuinely needs the real backend, run it alongside and walk the login-to-answer path in a browser.
+
+Assistant answers render Mermaid flowchart, sequence, state, ER, and class diagrams after streaming finishes. Diagram source remains available; invalid or unsupported diagrams show a source fallback. See [rendering boundaries](./docs/mermaid-rendering.md).

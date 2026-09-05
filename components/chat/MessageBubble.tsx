@@ -6,6 +6,7 @@ export function MessageBubble({
   roleLabel,
   content,
   isAssistant,
+  isStreaming = false,
   align = "left",
   header,
   children,
@@ -13,6 +14,7 @@ export function MessageBubble({
   roleLabel: string;
   content: string;
   isAssistant: boolean;
+  isStreaming?: boolean;
   align?: "left" | "right";
   /**
    * Rendered above the answer text, below the role label. The agent process
@@ -67,7 +69,7 @@ export function MessageBubble({
       {header ? <div className="mb-3">{header}</div> : null}
       {content ? (
         isAssistant ? (
-          <AgentMessageRenderer content={content} />
+          <AgentMessageRenderer content={content} isStreaming={isStreaming} />
         ) : (
           <p className="whitespace-pre-wrap break-words">{content}</p>
         )

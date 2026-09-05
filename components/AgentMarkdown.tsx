@@ -1,4 +1,38 @@
-import ReactMarkdown from "react-markdown";
+import type { ComponentPropsWithoutRef } from "react";
+import ReactMarkdown, { type ExtraProps } from "react-markdown";
+import { MermaidDiagram } from "@/components/ui/mermaid-diagram";
+
+type BlockProps = ComponentPropsWithoutRef<"pre"> & ExtraProps;
+
+function PlainBlock({ children }: BlockProps) {
+  return (
+    <pre className="my-2 max-w-full overflow-x-auto rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-xs leading-5 text-cal-body first:mt-0 last:mb-0">
+      {children}
+    </pre>
+  );
+}
+
+function DiagramBlock({ children, node }: BlockProps) {
+  const code = node?.children[0];
+  if (
+    code?.type === "element" &&
+    code.tagName === "code" &&
+    Array.isArray(code.properties.className) &&
+    code.properties.className.some(
+      (name) => String(name).toLowerCase() === "language-mermaid",
+    )
+  ) {
+    const source = code.children
+      .map((child) => (child.type === "text" ? child.value : ""))
+      .join("");
+    return <MermaidDiagram source={source} />;
+  }
+  return (
+    <pre className="my-2 max-w-full overflow-x-auto rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-xs leading-5 text-cal-body first:mt-0 last:mb-0">
+      {children}
+    </pre>
+  );
+}
 
 function safeExternalHref(href: string | undefined) {
   if (!href) return undefined;
@@ -11,7 +45,13 @@ function safeExternalHref(href: string | undefined) {
   return undefined;
 }
 
-export function AgentMarkdown({ content }: { content: string }) {
+export function AgentMarkdown({
+  content,
+  diagrams = false,
+}: {
+  content: string;
+  diagrams?: boolean;
+}) {
   return (
     <ReactMarkdown
       components={{
@@ -54,11 +94,7 @@ export function AgentMarkdown({ content }: { content: string }) {
           </ol>
         ),
         li: ({ children }) => <li className="break-words pl-1">{children}</li>,
-        pre: ({ children }) => (
-          <pre className="my-2 max-w-full overflow-x-auto rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-xs leading-5 text-cal-body first:mt-0 last:mb-0">
-            {children}
-          </pre>
-        ),
+        pre: diagrams ? DiagramBlock : PlainBlock,
         code: ({ children, className }) => (
           <code
             className={

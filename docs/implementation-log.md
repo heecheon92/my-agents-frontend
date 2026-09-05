@@ -1,3 +1,40 @@
+## 2026-09-05 — Package installation requires direct user approval
+
+The owner replaced the September 2 blanket UI-library approval. Agents should
+continue researching and recommending useful packages, but name the proposed
+package/version and explain the benefit, alternatives, license and impact, then
+wait for direct user approval before installing. The rule covers runtime/dev
+dependencies, trial installations and tools that download new packages. Existing
+lockfile restoration and already-installed tools remain ordinary workflow steps.
+AGENTS.md, DESIGN.md, onboarding and the historical plan's current-policy pointer
+were reconciled. Earlier implementation history remains a record of the policy
+that applied then; this does not remove the already-installed Mermaid package.
+
+## 2026-09-05 — Mermaid diagrams in assistant Markdown
+
+Added an assistant-only code-block renderer for flowchart, sequence, state, ER, and class diagrams.
+Streamed fences remain readable source until the answer settles. Shared document previews stay
+unchanged. The block components have stable identities so unrelated chat renders do not remount
+finished diagrams. Images use existing theme tokens and local overflow; source is always available.
+
+Mermaid 11.17.2 runs behind components/ui with a lazy import, strict site-owned configuration,
+bounded source/edges/output, serialized rendering, stale-result cleanup and inert SVG blob images.
+No raw SVG is inserted into the application DOM. Markdown HTML remains disabled. Tiny was tested
+and rejected because its published global-script bundle failed through Next.js module imports;
+the standard ESM package passed browser checks. See [the decision and boundaries](./mermaid-rendering.md).
+
+Validation: lint/typecheck/build pass; 365 unit/component tests pass. Full production Playwright:
+190 passed, 2 skipped, one file-drop overlay failure that passed twice in isolation. Final focused
+Mermaid browser suite: 3 passed, covering actual diagrams, invalid/active source, streaming completion,
+theme/widths/reload, keyboard source access, Markdown copy, print visibility and reduced motion.
+Diagram-free production pages do not fetch the Mermaid vendor code. Total built JS is 6,683,075
+bytes versus 2,831,087 baseline, including deferred chunks; this is not initial-route transfer size.
+A fresh-browser navigation to five diagrams took 760 ms on the warm local production server.
+No backend contract or provider calls were needed. The owner reports having carried out manual
+testing of this implementation; the scenarios and environment were not reported here, so nothing
+further is claimed about their coverage. Manual assistive-technology and adversarial CPU stress
+checks remain follow-up verification.
+
 ## 2026-08-31 — Ranked document clarification and human refinement
 
 - Refreshed interaction models from the live backend OpenAPI and kept already-waiting V1 runs compatible alongside the V2 select/refine union.

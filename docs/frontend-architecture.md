@@ -193,7 +193,7 @@ The UI should stay polished but not noisy:
 
 Assistant-authored chat content is rendered through `components/AgentMessageRenderer.tsx`, which currently delegates Markdown strings to `components/AgentMarkdown.tsx`. User-authored messages stay plain text by default.
 
-Supported Markdown is intentionally compact for chat bubbles: paragraphs, headings, strong text, unordered/ordered lists, inline code, code blocks, and safe external links. Raw HTML is not enabled; do not add `rehype-raw`, `dangerouslySetInnerHTML`, executable diagram specs, or arbitrary chart JavaScript. Future chart/graph/diagram/table/tool-result cards should enter through the `AgentArtifact` boundary with backend-validated JSON contracts before any rich renderer is added.
+Supported Markdown is intentionally compact for chat bubbles: paragraphs, headings, strong text, unordered/ordered lists, inline code, code blocks, and safe external links. Raw HTML is not enabled; do not add `rehype-raw`, `dangerouslySetInnerHTML`, or arbitrary chart JavaScript. Assistant Mermaid fences are the narrow rendering extension documented in [Mermaid rendering](./mermaid-rendering.md): they become inert SVG images after streaming settles. Source previews retain ordinary code rendering. Future structured chart/graph/table/tool-result cards still require their own maintained contracts.
 
 ## Temporary conversation files
 

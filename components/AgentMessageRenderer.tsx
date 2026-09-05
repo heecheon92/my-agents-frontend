@@ -20,13 +20,15 @@ export type AgentArtifact =
 export function AgentMessageRenderer({
   content,
   artifacts = [],
+  isStreaming = false,
 }: {
   content: string;
+  isStreaming?: boolean;
   artifacts?: AgentArtifact[];
 }) {
   return (
     <div className="grid gap-2">
-      <AgentMarkdown content={content} />
+      <AgentMarkdown content={content} diagrams={!isStreaming} />
       {artifacts.length > 0 ? (
         <div className="grid gap-2" data-testid="agent-artifact-boundary">
           {artifacts.map((artifact, index) => (

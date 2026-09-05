@@ -4,6 +4,12 @@ This project has two important boundaries: browser-to-frontend BFF security, and
 
 ## Backend repository boundary
 
+Assistant Mermaid fences are an explicitly bounded rendering surface. They use strict site-owned
+configuration and are displayed as checked SVG blob images, never injected as active page DOM.
+Source directives, styling instructions and active/external content are rejected; raw Markdown HTML
+remains disabled. Limits and residual main-thread layout risk are documented in
+[Mermaid rendering](./mermaid-rendering.md).
+
 `../my-agents` is the core backend service. Frontend Codex sessions may inspect it but must not modify it unless the user explicitly approves a backend-scoped task.
 
 Allowed from this repo:
