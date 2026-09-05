@@ -216,13 +216,21 @@ Before changing routing, server actions, route handlers, caching, cookies, or da
 
 ### Adding UI/UX libraries
 
-Pre-approved as of 2026-09-02. When a task asks for UI or UX work, survey the
-available libraries and install one when it is clearly the better option. No
-separate permission request is needed, and neither is asking first.
+Effective 2026-09-05, replacing the 2026-09-02 blanket pre-approval: agents are
+encouraged to research and propose useful packages, but must request direct,
+explicit approval from the user before installation and wait for their answer.
+This applies to runtime and development packages, including trial installations
+and package-executing tools such as `pnpm dlx` or `npx` that download a new package.
+A general feature request or another agent's recommendation is not installation
+approval. Approval already given for the named package and scope need not be asked again.
 
-"Clearly better" is the whole test, and it is not satisfied by a library merely
-existing. A dependency has to earn a place that hand-written code cannot fill
-as well:
+Before asking, name the package and proposed version, explain why it is useful,
+and briefly state alternatives, license, and dependency/bundle impact. Read-only
+research may proceed without approval. Restoring dependencies already declared in
+the lockfile and running installed project tools do not require new-package approval.
+
+The recommendation still needs justification; a library merely existing is not
+enough. A dependency should earn a place that hand-written code cannot fill as well:
 
 - **It carries real complexity.** Virtualization, drag reordering, date/number
   parsing across locales, rich text, charting, and animation choreography are
@@ -237,8 +245,8 @@ as well:
 - **It does not fragment the design system.** One general-purpose component
   library remains the goal. Adding a focused single-purpose package alongside
   Base UI is fine; adding a second full component kit is a decision to raise
-  with the user, not because permission is required but because it changes the
-  visual contract `DESIGN.md` holds.
+  with the user for its design impact as well as installation approval, because
+  it changes the visual contract `DESIGN.md` holds.
 
 Record the decision in `docs/implementation-log.md`: what was chosen, what was
 rejected, and why. If a library was considered and hand-written code won, say

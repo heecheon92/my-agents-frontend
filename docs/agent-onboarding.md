@@ -49,11 +49,11 @@ If changing route handlers, cookies, headers, caching, server actions, or proxy 
 - Do not invent fake backend data. Use honest empty, disabled, TODO, or backend-request states.
 - Do not improvise UI theme values when `DESIGN.md` already defines the design direction; update `DESIGN.md` first if the direction changes.
 - Do not add another LLM/provider integration without explicit approval.
-- UI/UX libraries need no approval. Survey candidates and install one when it is
-  clearly better than hand-written code, then record the decision in
-  `docs/implementation-log.md`. See "Adding UI/UX libraries" in `AGENTS.md` for
-  what "clearly better" means and for the one case that still needs a
-  conversation: a second full component kit.
+- Research and propose useful packages freely, but request direct user approval
+  and wait before installing any new runtime or development package, including
+  trial installs or package-downloading `npx`/`pnpm dlx` commands. Explain the
+  package/version, benefit, alternatives, license and dependency/bundle impact.
+  See "Adding UI/UX libraries" in `AGENTS.md` for the full approval policy.
 
 ## Common task workflow
 

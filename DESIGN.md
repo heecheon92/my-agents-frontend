@@ -439,7 +439,8 @@ two: feature code imports from `components/ui/`, so replacing a vendor is a
 one-file change.
 
 Focused single-purpose libraries are welcome where they clearly beat
-hand-written code — see the library guidance in `AGENTS.md`. A *second full
+hand-written code; installation requires direct user approval under the library
+guidance in `AGENTS.md`. A *second full
 component kit* is different: it would give the product two visual vocabularies,
 which is a change to this document rather than an implementation detail. Raise
 it before starting.
