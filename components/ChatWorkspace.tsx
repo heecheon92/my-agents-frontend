@@ -285,6 +285,7 @@ export function ChatWorkspace({
   >([]);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
+  const chatContentRef = useRef<HTMLDivElement | null>(null);
   const isStreamingRef = useRef(false);
   const activeRunIdRef = useRef<string | null>(null);
   const queuedMessageRef = useRef<QueuedMessage | null>(null);
@@ -980,6 +981,7 @@ export function ChatWorkspace({
     activeId,
     autoReplayAttemptedRunIdsRef,
     autoScrollTrigger,
+    chatContentRef,
     chatScrollRef,
     isCancelling,
     isStreaming,
@@ -1007,6 +1009,7 @@ export function ChatWorkspace({
       activeId={activeId}
       activeRunId={activeRunId}
       chatScrollRef={chatScrollRef}
+      chatContentRef={chatContentRef}
       composerPlaceholder={composerPlaceholder}
       conversation={conversation}
       conversationIsBusy={conversationIsBusy}

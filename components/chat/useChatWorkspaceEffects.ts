@@ -16,6 +16,16 @@ type UseChatWorkspaceEffectsOptions = {
   autoReplayAttemptedRunIdsRef: React.MutableRefObject<Set<string>>;
   autoScrollTrigger: string;
   chatScrollRef: React.RefObject<HTMLDivElement | null>;
+  /**
+   * The transcript's content, whose height is observed directly.
+   *
+   * `autoScrollTrigger` only names content the workspace already knows about —
+   * messages, streamed text, activity events. Anything that grows the
+   * transcript on its own schedule is invisible to it: a rendered diagram, an
+   * artifact list arriving after a run, an image finishing layout. Observing
+   * the box covers all of them, including the ones nobody has thought of yet.
+   */
+  chatContentRef: React.RefObject<HTMLDivElement | null>;
   isCancelling: boolean;
   isStreaming: boolean;
   localization: { queuedSentAnnouncement: string };
@@ -54,6 +64,7 @@ export function useChatWorkspaceEffects({
   activeId,
   autoReplayAttemptedRunIdsRef,
   autoScrollTrigger,
+  chatContentRef,
   chatScrollRef,
   isCancelling,
   isStreaming,
@@ -195,6 +206,50 @@ export function useChatWorkspaceEffects({
     });
   }, [
     autoScrollTrigger,
+    chatScrollRef,
+    requestAnimationFrameFn,
+    shouldAutoScrollRef,
+  ]);
+
+  /**
+   * Follows the transcript while the reader is at the bottom, whatever grew it.
+   *
+   * The effect above fires on state the workspace tracks. This one fires on the
+   * content box actually changing height, which is what a reader experiences.
+   * A diagram that finishes rendering a second after the answer settles added
+   * over a thousand pixels below the fold and left the view stranded, because
+   * no tracked value changed when it appeared.
+   *
+   * `shouldAutoScrollRef` is still the only authority on whether to move: a
+   * reader who scrolled up stays where they put themselves, and growth below
+   * them fires no scroll event, so their position is never silently reclaimed.
+   */
+  useEffect(() => {
+    const scrollElement = chatScrollRef.current;
+    const contentElement = chatContentRef.current;
+    if (!scrollElement || !contentElement) return;
+    if (typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(() => {
+      if (!shouldAutoScrollRef.current) return;
+      // Deferred out of the observer callback. Writing `scrollTop` during
+      // layout can re-enter the observer, and the browser warns about a
+      // resize loop; a frame later the layout is settled.
+      requestAnimationFrameFn(() => {
+        const element = chatScrollRef.current;
+        if (!element || !shouldAutoScrollRef.current) return;
+        const distance =
+          element.scrollHeight - element.scrollTop - element.clientHeight;
+        // Already there. Skipping the write keeps this from cancelling a
+        // reader's in-flight smooth scroll or momentum on a touch device.
+        if (distance <= 0) return;
+        element.scrollTop = element.scrollHeight;
+      });
+    });
+    observer.observe(contentElement);
+    return () => observer.disconnect();
+  }, [
+    chatContentRef,
     chatScrollRef,
     requestAnimationFrameFn,
     shouldAutoScrollRef,

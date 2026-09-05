@@ -1606,3 +1606,42 @@ remains hand-written. `react-dropzone` was surveyed and rejected — its
 that would collide with the composer's existing one, for roughly forty lines of
 handlers. That is exactly the "not clearly better" case the new guidance
 describes.
+
+### Follow-up: the transcript now follows content it did not predict
+
+Reported as "we don't have autoscroll". We did — but it only reacted to content
+the workspace already tracked, and a browser probe showed exactly where that
+ran out. Streaming an answer in forty deltas stayed pinned at a distance of 0.
+Streaming the same answer with a diagram in it was pinned at 0 one hundred
+milliseconds in, and at 1229px two hundred milliseconds later: the diagram
+finished rendering, added that much height, and nothing in `autoScrollTrigger`
+changed, so no scroll ran. Growth below a reader fires no scroll event either,
+so `shouldAutoScrollRef` stayed true and the view simply never moved again.
+
+`autoScrollTrigger` is a hand-maintained list of known content sources —
+message count, streamed reply length, activity event identity. Anything that
+grows the transcript on its own schedule is invisible to it. Diagrams are the
+newest example; the artifact list arriving after a run and any image finishing
+layout have the same shape.
+
+A `ResizeObserver` on the transcript's content box replaces the guessing. It
+reacts to the height actually changing, whatever caused it, which is what a
+reader experiences. `shouldAutoScrollRef` remains the only authority on whether
+to move, so someone who scrolled up keeps their position. The write is deferred
+to the next frame — writing `scrollTop` inside the observer callback can
+re-enter it and trip the browser's resize-loop warning — and skipped entirely
+when already at the bottom, so it cannot cancel an in-flight smooth scroll or
+touch momentum.
+
+`ChatTranscript` gained one wrapper element around its content, purely so
+there is a box whose height changes; a scroll container's own box never does.
+The reserved bottom padding stays on the scroller, so the geometry is
+unchanged. The existing trigger effect is kept: it costs nothing and still
+covers changes that move the view without changing height.
+
+Verified with a regression test that fails without the fix — stranded rather
+than pinned — plus one asserting a reader parked at the top stays there while
+the diagram renders. Lint, typecheck, 365 unit tests and the production build
+pass. Full browser suite: 192 passed, 2 environment-gated skips, and the
+pre-existing file-drop overlay failure, which passed in isolation immediately
+afterward.

@@ -48,6 +48,7 @@ type ChatWorkspaceLayoutProps = {
   artifactsByRun: Record<string, ConversationArtifact[]>;
   activeRunId: string | null;
   chatScrollRef: React.RefObject<HTMLDivElement | null>;
+  chatContentRef: React.RefObject<HTMLDivElement | null>;
   composerPlaceholder: string;
   conversation: { data?: Conversation };
   conversationIsBusy: boolean;
@@ -114,6 +115,7 @@ export function ChatWorkspaceLayout({
   artifactsByRun,
   activeRunId,
   chatScrollRef,
+  chatContentRef,
   composerPlaceholder,
   conversation,
   conversationIsBusy,
@@ -283,6 +285,7 @@ export function ChatWorkspaceLayout({
               }
               replayNotice={replayNotice}
               chatScrollRef={chatScrollRef}
+              chatContentRef={chatContentRef}
               onChatScroll={onChatScroll}
               onReplayAssistantMessage={onReplayAssistantMessage}
               artifactsByRun={artifactsByRun}

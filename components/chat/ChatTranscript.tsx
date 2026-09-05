@@ -119,6 +119,7 @@ export function ChatTranscript({
   replayDisabled,
   replayNotice,
   chatScrollRef,
+  chatContentRef,
   onChatScroll,
   onReplayAssistantMessage,
   artifactsByRun,
@@ -145,6 +146,12 @@ export function ChatTranscript({
   replayDisabled: boolean;
   replayNotice: ReplayNotice | null;
   chatScrollRef: RefObject<HTMLDivElement | null>;
+  /**
+   * The content inside the scroller, so its height can be observed. A
+   * scroll container's own box never changes when its content grows, so the
+   * observer needs an element that does.
+   */
+  chatContentRef: RefObject<HTMLDivElement | null>;
   onChatScroll: () => void;
   onReplayAssistantMessage: (messageId: string) => void;
   /**
@@ -183,195 +190,200 @@ export function ChatTranscript({
       // `calc(`.
       style={{ paddingBottom: bottomInset }}
     >
-      {/*
+      {/* One wrapper around everything the scroller holds, purely so its
+          height is observable. The reserved bottom padding stays on the
+          scroller itself, so the geometry is unchanged. */}
+      <div ref={chatContentRef}>
+        {/*
         A greeting, not a blocker. The composer below is live in this state —
         sending the first message creates the conversation — so this must not
         tell the user to go find a "new conversation" button first.
       */}
-      {!activeId ? (
-        <div className="flex min-h-full items-center justify-center py-8">
-          <div className="max-w-md text-center">
-            <p className="cal-heading text-xl text-cal-ink">
-              {localization.newChatGreeting}
-            </p>
-            <p className="mt-2 text-sm leading-6 text-cal-muted">
-              {localization.newChatGreetingDescription}
-            </p>
+        {!activeId ? (
+          <div className="flex min-h-full items-center justify-center py-8">
+            <div className="max-w-md text-center">
+              <p className="cal-heading text-xl text-cal-ink">
+                {localization.newChatGreeting}
+              </p>
+              <p className="mt-2 text-sm leading-6 text-cal-muted">
+                {localization.newChatGreetingDescription}
+              </p>
+            </div>
           </div>
-        </div>
-      ) : null}
-      {messagesError ? <ErrorState error={messagesError} /> : null}
-      <div className="grid gap-3">
-        {displayedMessages.map((message) => {
-          const isAssistant = message.role === "assistant";
-          const isReplaying = replayingMessageId === message.id;
-          const showsLiveEvidence =
-            message.id === latestAssistantMessageId || isReplaying;
-          // A busy conversation renders its activity on the streaming bubble
-          // below, so the settled message must not draw the same panel twice.
-          const messageEvents =
-            conversationIsBusy && !isReplaying ? [] : visibleActivityEvents;
-          return (
-            <MessageBubble
-              key={message.id}
-              isStreaming={isReplaying}
-              roleLabel={
-                localization.roles[
-                  message.role as keyof typeof localization.roles
-                ] ?? message.role
-              }
-              content={isReplaying ? streamedReply : message.content}
-              isAssistant={
-                isAssistant && (!isReplaying || Boolean(streamedReply))
-              }
-              align={message.role === "user" ? "right" : "left"}
-              header={
-                isAssistant && showsLiveEvidence ? (
-                  <AgentProcessHeader
+        ) : null}
+        {messagesError ? <ErrorState error={messagesError} /> : null}
+        <div className="grid gap-3">
+          {displayedMessages.map((message) => {
+            const isAssistant = message.role === "assistant";
+            const isReplaying = replayingMessageId === message.id;
+            const showsLiveEvidence =
+              message.id === latestAssistantMessageId || isReplaying;
+            // A busy conversation renders its activity on the streaming bubble
+            // below, so the settled message must not draw the same panel twice.
+            const messageEvents =
+              conversationIsBusy && !isReplaying ? [] : visibleActivityEvents;
+            return (
+              <MessageBubble
+                key={message.id}
+                isStreaming={isReplaying}
+                roleLabel={
+                  localization.roles[
+                    message.role as keyof typeof localization.roles
+                  ] ?? message.role
+                }
+                content={isReplaying ? streamedReply : message.content}
+                isAssistant={
+                  isAssistant && (!isReplaying || Boolean(streamedReply))
+                }
+                align={message.role === "user" ? "right" : "left"}
+                header={
+                  isAssistant && showsLiveEvidence ? (
+                    <AgentProcessHeader
+                      localization={localization}
+                      lang={lang}
+                      events={messageEvents}
+                      citationCount={visibleCitations.length}
+                      isStreaming={isReplaying}
+                      reasoningSummaries={
+                        showsLiveEvidence ? visibleReasoningSummaries : []
+                      }
+                    />
+                  ) : null
+                }
+              >
+                {isReplaying && !streamedReply ? (
+                  <AssistantGeneratingIndicator
+                    label={localization.agentComposing}
+                  />
+                ) : null}
+                {/* Between the answer and its evidence footer: a generated
+                  file is a result of the answer, not provenance for it. */}
+                {isAssistant && activeId && !isReplaying && latestRunId ? (
+                  <ArtifactList
                     localization={localization}
-                    lang={lang}
-                    events={messageEvents}
-                    citationCount={visibleCitations.length}
-                    isStreaming={isReplaying}
-                    reasoningSummaries={
-                      showsLiveEvidence ? visibleReasoningSummaries : []
+                    conversationId={activeId}
+                    artifacts={
+                      message.id === latestAssistantMessageId
+                        ? (artifactsByRun[latestRunId] ?? [])
+                        : []
                     }
                   />
-                ) : null
+                ) : null}
+                {isAssistant ? (
+                  <EvidencePanel
+                    localization={localization}
+                    isLatestAssistantMessage={
+                      message.id === latestAssistantMessageId
+                    }
+                    isStreaming={isReplaying}
+                    runId={isReplaying ? null : latestRunId}
+                    events={messageEvents}
+                    citations={visibleCitations}
+                    consultedSources={visibleConsultedSources}
+                    documentCoverage={visibleDocumentCoverage}
+                    replayButton={
+                      <Button
+                        type="button"
+                        size="icon-lg"
+                        variant="ghost"
+                        className="min-h-11 min-w-11"
+                        onClick={() => onReplayAssistantMessage(message.id)}
+                        disabled={replayDisabled}
+                        aria-busy={isReplaying}
+                        aria-label={
+                          isReplaying
+                            ? localization.replayLoading
+                            : localization.replayAction
+                        }
+                        title={
+                          isReplaying
+                            ? localization.replayLoading
+                            : localization.replayAction
+                        }
+                      >
+                        <RotateCcw
+                          aria-hidden="true"
+                          className={cn(
+                            isReplaying ? REPLAY_ICON_PENDING_CLASS_NAME : "",
+                          )}
+                        />
+                      </Button>
+                    }
+                    copyButton={
+                      <CopyMessageButton
+                        localization={localization}
+                        // The text on screen, not the persisted record: mid-replay
+                        // the bubble shows `streamedReply`, and copying something
+                        // other than what is displayed would be a quiet lie.
+                        content={isReplaying ? streamedReply : message.content}
+                      />
+                    }
+                  />
+                ) : null}
+                {replayNotice?.messageId === message.id ? (
+                  <p
+                    className={cn(
+                      "mt-3 rounded-lg border px-3 py-2 text-xs leading-5",
+                      replayNotice.tone === "success"
+                        ? "border-cal-success/20 bg-cal-success/10 text-cal-success"
+                        : replayNotice.tone === "warning"
+                          ? "border-cal-warning/25 bg-cal-warning/10 text-cal-ink"
+                          : "border-cal-error/20 bg-cal-error/10 text-cal-error",
+                    )}
+                  >
+                    {replayNotice.message}
+                  </p>
+                ) : null}
+              </MessageBubble>
+            );
+          })}
+          {shouldRenderSeparateStreamingBubble ? (
+            <MessageBubble
+              roleLabel={localization.roles.assistant}
+              content={
+                streamedReply ||
+                (serverActiveRunIsStale ? localization.activeRunStale : "")
+              }
+              isAssistant={Boolean(streamedReply)}
+              isStreaming={isProducingOutput}
+              header={
+                <AgentProcessHeader
+                  localization={localization}
+                  lang={lang}
+                  events={visibleActivityEvents}
+                  citationCount={visibleCitations.length}
+                  isStreaming={isProducingOutput}
+                  reasoningSummaries={visibleReasoningSummaries}
+                />
               }
             >
-              {isReplaying && !streamedReply ? (
+              {shouldRenderBusyBubble &&
+              !streamedReply &&
+              !serverActiveRunIsStale ? (
                 <AssistantGeneratingIndicator
                   label={localization.agentComposing}
                 />
               ) : null}
-              {/* Between the answer and its evidence footer: a generated
-                  file is a result of the answer, not provenance for it. */}
-              {isAssistant && activeId && !isReplaying && latestRunId ? (
+              {activeId && activeRunId ? (
                 <ArtifactList
                   localization={localization}
                   conversationId={activeId}
-                  artifacts={
-                    message.id === latestAssistantMessageId
-                      ? (artifactsByRun[latestRunId] ?? [])
-                      : []
-                  }
+                  artifacts={artifactsByRun[activeRunId] ?? []}
                 />
               ) : null}
-              {isAssistant ? (
-                <EvidencePanel
-                  localization={localization}
-                  isLatestAssistantMessage={
-                    message.id === latestAssistantMessageId
-                  }
-                  isStreaming={isReplaying}
-                  runId={isReplaying ? null : latestRunId}
-                  events={messageEvents}
-                  citations={visibleCitations}
-                  consultedSources={visibleConsultedSources}
-                  documentCoverage={visibleDocumentCoverage}
-                  replayButton={
-                    <Button
-                      type="button"
-                      size="icon-lg"
-                      variant="ghost"
-                      className="min-h-11 min-w-11"
-                      onClick={() => onReplayAssistantMessage(message.id)}
-                      disabled={replayDisabled}
-                      aria-busy={isReplaying}
-                      aria-label={
-                        isReplaying
-                          ? localization.replayLoading
-                          : localization.replayAction
-                      }
-                      title={
-                        isReplaying
-                          ? localization.replayLoading
-                          : localization.replayAction
-                      }
-                    >
-                      <RotateCcw
-                        aria-hidden="true"
-                        className={cn(
-                          isReplaying ? REPLAY_ICON_PENDING_CLASS_NAME : "",
-                        )}
-                      />
-                    </Button>
-                  }
-                  copyButton={
-                    <CopyMessageButton
-                      localization={localization}
-                      // The text on screen, not the persisted record: mid-replay
-                      // the bubble shows `streamedReply`, and copying something
-                      // other than what is displayed would be a quiet lie.
-                      content={isReplaying ? streamedReply : message.content}
-                    />
-                  }
-                />
-              ) : null}
-              {replayNotice?.messageId === message.id ? (
-                <p
-                  className={cn(
-                    "mt-3 rounded-lg border px-3 py-2 text-xs leading-5",
-                    replayNotice.tone === "success"
-                      ? "border-cal-success/20 bg-cal-success/10 text-cal-success"
-                      : replayNotice.tone === "warning"
-                        ? "border-cal-warning/25 bg-cal-warning/10 text-cal-ink"
-                        : "border-cal-error/20 bg-cal-error/10 text-cal-error",
-                  )}
-                >
-                  {replayNotice.message}
-                </p>
-              ) : null}
-            </MessageBubble>
-          );
-        })}
-        {shouldRenderSeparateStreamingBubble ? (
-          <MessageBubble
-            roleLabel={localization.roles.assistant}
-            content={
-              streamedReply ||
-              (serverActiveRunIsStale ? localization.activeRunStale : "")
-            }
-            isAssistant={Boolean(streamedReply)}
-            isStreaming={isProducingOutput}
-            header={
-              <AgentProcessHeader
+              <EvidencePanel
                 localization={localization}
-                lang={lang}
-                events={visibleActivityEvents}
-                citationCount={visibleCitations.length}
+                isLatestAssistantMessage={true}
                 isStreaming={isProducingOutput}
-                reasoningSummaries={visibleReasoningSummaries}
+                runId={activeRunId}
+                events={visibleActivityEvents}
+                citations={visibleCitations}
+                consultedSources={visibleConsultedSources}
+                documentCoverage={visibleDocumentCoverage}
               />
-            }
-          >
-            {shouldRenderBusyBubble &&
-            !streamedReply &&
-            !serverActiveRunIsStale ? (
-              <AssistantGeneratingIndicator
-                label={localization.agentComposing}
-              />
-            ) : null}
-            {activeId && activeRunId ? (
-              <ArtifactList
-                localization={localization}
-                conversationId={activeId}
-                artifacts={artifactsByRun[activeRunId] ?? []}
-              />
-            ) : null}
-            <EvidencePanel
-              localization={localization}
-              isLatestAssistantMessage={true}
-              isStreaming={isProducingOutput}
-              runId={activeRunId}
-              events={visibleActivityEvents}
-              citations={visibleCitations}
-              consultedSources={visibleConsultedSources}
-              documentCoverage={visibleDocumentCoverage}
-            />
-          </MessageBubble>
-        ) : null}
+            </MessageBubble>
+          ) : null}
+        </div>
       </div>
     </div>
   );
