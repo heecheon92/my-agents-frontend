@@ -12,26 +12,30 @@ function PlainBlock({ children }: BlockProps) {
   );
 }
 
-function DiagramBlock({ children, node }: BlockProps) {
+/** The fenced source of a ```mermaid block, or null for any other code block. */
+function mermaidSource(node: BlockProps["node"]): string | null {
   const code = node?.children[0];
   if (
-    code?.type === "element" &&
-    code.tagName === "code" &&
-    Array.isArray(code.properties.className) &&
-    code.properties.className.some(
+    code?.type !== "element" ||
+    code.tagName !== "code" ||
+    !Array.isArray(code.properties.className) ||
+    !code.properties.className.some(
       (name) => String(name).toLowerCase() === "language-mermaid",
     )
   ) {
-    const source = code.children
-      .map((child) => (child.type === "text" ? child.value : ""))
-      .join("");
-    return <MermaidDiagram source={source} />;
+    return null;
   }
-  return (
-    <pre className="my-2 max-w-full overflow-x-auto rounded-lg border border-cal-hairline bg-cal-canvas p-3 text-xs leading-5 text-cal-body first:mt-0 last:mb-0">
-      {children}
-    </pre>
-  );
+  return code.children
+    .map((child) => (child.type === "text" ? child.value : ""))
+    .join("");
+}
+
+function DiagramBlock(props: BlockProps) {
+  const source = mermaidSource(props.node);
+  // Every non-diagram block falls through to the same renderer the
+  // diagram-less path uses, so a code block looks identical either way.
+  if (source === null) return <PlainBlock {...props} />;
+  return <MermaidDiagram source={source} />;
 }
 
 function safeExternalHref(href: string | undefined) {
