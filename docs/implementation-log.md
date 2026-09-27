@@ -1698,3 +1698,24 @@ after the request lands, as the backend would.
 
 Verified: lint, typecheck, 371 unit tests across 44 files, production build,
 and the full browser suite at 194 passed with 2 environment-gated skips.
+
+## 2026-09-27 — Reasoning effort copy says only what the backend does
+
+The effort hints and guide made claims the backend contract does not support.
+Low said it was "a bit slower" in exchange for searching and planning, but
+effort applies only to the final answer call: document search and source
+selection run identically at every level (backend
+`docs/product-chat-service/en/26-run-reasoning-preferences.md`, "Provider
+boundary"). Medium called itself the default, but the default is the server's
+`MY_AGENTS_OPENAI_REASONING_EFFORT` and can be configured to anything. Minimal
+promised a near-instant answer, but GPT-5.6 and GPT-6 normalize it to Low. Low
+also mentioned cost, which users never see.
+
+The rewrite in `localization/ko.json` and `localization/en.json` keeps one
+scale — faster and lighter at the bottom, slower and stronger at the top —
+and says plainly that search is unaffected and Minimal may answer as Low. The
+copy now uses `추론` instead of `검토`, which collided with `전체 문서 검토`
+and implied that the levels change how documents are read.
+
+All seven hints still fit the reserved two-line hint block at 390px (measured
+at 20–40px scroll height against the 40px block).

@@ -445,25 +445,25 @@
       "max": "Max"
     },
     "reasoningEffortHints": {
-      "none": "Replies with no review step.",
-      "minimal": "Reviews only very briefly.",
-      "low": "Reviews quickly, then replies.",
-      "medium": "The default balance of speed and review.",
-      "high": "Works through the problem in steps.",
-      "xhigh": "Reviews for a long time. Replies are slower.",
-      "max": "Reviews for as long as it can. Replies are much slower."
+      "none": "Answers right away, with no reasoning step.",
+      "minimal": "Brief reasoning. Some models answer as Low.",
+      "low": "Brief reasoning and quick answers.",
+      "medium": "Balances speed and answer quality.",
+      "high": "Reasons thoroughly. Answers take a little longer.",
+      "xhigh": "Reasons at length. Answers are noticeably slower.",
+      "max": "Reasons as long as it can. Answers are much slower."
     },
     "reasoningEffortGuideAction": "About the levels",
     "reasoningEffortGuideTitle": "Choosing a reasoning effort",
-    "reasoningEffortGuideDescription": "The same frontier model answers at every level. Effort only sets how long it reviews before replying — a lower level does not make the model less capable.",
+    "reasoningEffortGuideDescription": "The same model answers at every level. Effort only sets how much it reasons before writing the answer. Document search runs the same way at every level. Higher levels handle complex questions better but answer more slowly.",
     "reasoningEffortDetails": {
-      "none": "Skips the review step entirely, so it is the fastest. Not suited to questions needing several sources weighed together. Use it for short factual lookups and classification. If speed matters, try Low first and drop to Off only if you still need to.",
-      "minimal": "Replies almost immediately with minimal review. Good for short questions answered in a sentence.",
-      "low": "Slightly slower, but it can search and plan a few steps. The best balance of speed and cost for finding evidence in documents, drafting, and short analysis.",
-      "medium": "The most balanced point between quality and speed, which is why it is the default. Most questions needing planning or comparison across sources belong here.",
-      "high": "Use when accuracy matters more than speed. Noticeably better when evidence is scattered, sources disagree, or the answer is long and involved. Worth comparing against Medium.",
-      "xhigh": "For long-running research. Use it only when there is a lot of material to work through, and check the extra wait is worth it.",
-      "max": "For the most complex work only. Use it to retry a question that Very high could not settle."
+      "none": "Skips the reasoning step, so it answers fastest. Suited to short factual lookups and classification. Not suited to questions that need several documents weighed together.",
+      "minimal": "Reasons more briefly than Low. Models that do not support this level answer as Low. Suited to short questions answered in a sentence.",
+      "low": "Brief reasoning and quick answers. Suited to summarizing or organizing the documents it found. Also enough for drafting and light analysis.",
+      "medium": "Balances speed and answer quality. Suits most questions that compare documents or need a few steps of analysis.",
+      "high": "Use when accuracy matters more than speed. Helps when evidence is scattered or documents disagree. Answers take a little longer, so compare it with Medium before settling.",
+      "xhigh": "Use for hard questions that need long reasoning. Answers are noticeably slower, so raise it only when High was not enough.",
+      "max": "Reasons the longest, so answers are slowest. Use it to retry a question that Very high could not settle."
     },
     "reasoningEffortGuideCurrent": "Currently selected",
     "interactionTitle": "Which document should I use?",
