@@ -1,3 +1,4 @@
+export * from "./assistant-models";
 export * from "./auth";
 export * from "./capabilities";
 export * from "./common";

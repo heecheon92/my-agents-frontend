@@ -40,6 +40,25 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "capabilities.document-workspace",
   },
   {
+    // Read-only. The composer and account settings list the models a
+    // registered user may choose from; guests read it too and see it locked.
+    method: "GET",
+    pattern: /^\/capabilities\/assistant-models$/,
+    name: "capabilities.assistant-models",
+  },
+  {
+    method: "GET",
+    pattern: /^\/assistant\/preferences$/,
+    name: "assistant.preferences",
+  },
+  {
+    // The backend owns the guest check (403 permission_denied); the proxy only
+    // forwards the account's own preference, never a user ID.
+    method: "PATCH",
+    pattern: /^\/assistant\/preferences$/,
+    name: "assistant.preferences.update",
+  },
+  {
     // Unauthenticated: `/guest` needs the active limits and delivery mode
     // before anyone signs in, so the copy can state them accurately.
     method: "GET",
@@ -469,7 +488,13 @@ export function isAllowedBackendPath(
       message: defaultLocalization.errors.pathNotAllowed,
     };
   }
-  if (path === "/assistant/chat" || path.startsWith("/assistant/")) {
+  // `/assistant/*` is the legacy dev chat surface and stays closed as a
+  // prefix. The account's model preference is the one exact-path exception;
+  // anything else under the prefix, including a sub-path of it, is blocked.
+  if (
+    path === "/assistant/chat" ||
+    (path.startsWith("/assistant/") && path !== "/assistant/preferences")
+  ) {
     return {
       allowed: false,
       status: 404,

@@ -62,7 +62,12 @@ export const reasoningCapabilitiesSchema = z.object({
    * ever downgrade to the cheaper mode, never silently enable Pro.
    */
   default_mode: reasoningModeSchema.default("standard"),
-  /** The active backend env default, not a frontend constant. */
+  /**
+   * The configured model's recommended effort, not a frontend constant. The
+   * backend may normalize a requested level before the run (for example
+   * `none`/`minimal` to `low`); the run and its events report the effective
+   * value, not this list.
+   */
   default_effort: reasoningEffortSchema,
   supported_modes: z.array(reasoningModeSchema),
   supported_efforts: z.array(reasoningEffortSchema),

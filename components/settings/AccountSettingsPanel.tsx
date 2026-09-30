@@ -11,6 +11,7 @@ import {
   useUpdatePassword,
 } from "@/hooks/use-auth";
 import { useLocalization } from "@/hooks/useLocalization";
+import { AssistantModelSettingsCard } from "./AssistantModelSettingsCard";
 import { SettingsPageShell } from "./SettingsPageShell";
 
 export function AccountSettingsPanel() {
@@ -121,6 +122,10 @@ export function AccountSettingsPanel() {
         </aside>
 
         <div className="grid gap-4">
+          {/* Rendered for guests too, locked: hiding it would imply the
+              product has no model choice rather than that this session
+              cannot use it. */}
+          {user.data ? <AssistantModelSettingsCard isGuest={isGuest} /> : null}
           <form
             onSubmit={handleNicknameSubmit}
             className="cal-card rounded-xl p-5"

@@ -435,6 +435,12 @@
     "reasoningEffortLabel": "추론 강도",
     "reasoningLockedGuest": "게스트 세션은 기본 설정으로 실행됩니다.",
     "reasoningProUnsupported": "지금 연결된 모델은 Pro 추론을 지원하지 않습니다.",
+    "assistantModelLabel": "모델",
+    "assistantModelDefaultOption": "기본 모델 ({name})",
+    "assistantModelUnlistedSelection": "저장된 모델: {name}. 이 모델은 선택 목록에 없어서 다시 고를 수 없습니다.",
+    "assistantModelHint": "새 답변부터 이 모델이 답합니다. 첨부 파일을 읽는 답변은 따로 정해진 모델이 답합니다.",
+    "assistantModelUpdateError": "모델을 바꾸지 못했습니다. 잠시 후 다시 시도해 주세요.",
+    "assistantModelLockedGuest": "게스트 세션은 기본 모델로 답합니다.",
     "reasoningEffortLabels": {
       "none": "끄기",
       "minimal": "최소",
@@ -445,7 +451,7 @@
       "max": "최대"
     },
     "reasoningEffortHints": {
-      "none": "추론 없이 바로 답합니다.",
+      "none": "추론 없이 바로 답합니다. 일부 모델은 낮음으로 답합니다.",
       "minimal": "짧게 추론합니다. 모델에 따라 낮음으로 답합니다.",
       "low": "짧게 추론하고 빠르게 답합니다.",
       "medium": "속도와 답변 품질의 균형을 맞춥니다.",
@@ -457,7 +463,7 @@
     "reasoningEffortGuideTitle": "추론 강도 고르기",
     "reasoningEffortGuideDescription": "모든 강도에서 같은 모델이 답합니다. 강도는 답변을 쓰기 전에 얼마나 추론할지만 정합니다. 문서 검색은 강도와 관계없이 똑같이 진행됩니다. 강도가 높을수록 복잡한 질문에 강하지만 답이 늦어집니다.",
     "reasoningEffortDetails": {
-      "none": "추론 단계를 건너뛰어 가장 빨리 답합니다. 짧은 사실 확인이나 분류에 알맞습니다. 여러 문서를 엮어 판단해야 하는 질문에는 맞지 않습니다.",
+      "none": "추론 단계를 건너뛰어 가장 빨리 답합니다. 짧은 사실 확인이나 분류에 알맞습니다. 여러 문서를 엮어 판단해야 하는 질문에는 맞지 않습니다. 이 단계를 지원하지 않는 모델은 낮음으로 답합니다.",
       "minimal": "낮음보다 짧게 추론합니다. 이 단계를 지원하지 않는 모델에서는 낮음으로 답합니다. 한 문장으로 끝나는 짧은 질문에 알맞습니다.",
       "low": "짧게 추론하고 빠르게 답합니다. 찾은 문서를 요약하거나 정리하는 질문에 알맞습니다. 초안 작성이나 간단한 분석에도 충분합니다.",
       "medium": "속도와 답변 품질의 균형을 맞춘 단계입니다. 여러 문서를 견주거나 몇 단계로 따져 봐야 하는 질문 대부분에 알맞습니다.",
@@ -920,7 +926,7 @@
     },
     "account": {
       "title": "계정 설정",
-      "description": "표시 이름과 비밀번호를 변경합니다. 모든 변경에는 현재 비밀번호가 필요합니다.",
+      "description": "표시 이름, 비밀번호, 답변 모델을 바꿉니다. 표시 이름과 비밀번호를 바꿀 때는 현재 비밀번호가 필요합니다.",
       "summaryEyebrow": "로그인 계정",
       "loadingAccount": "계정을 불러오는 중…",
       "emailLabel": "이메일",
@@ -946,7 +952,18 @@
       "confirmPasswordLabel": "새 비밀번호 확인",
       "passwordSubmit": "비밀번호 변경",
       "passwordMismatch": "새 비밀번호와 확인 값이 일치해야 합니다.",
-      "passwordErrorTitle": "비밀번호를 변경할 수 없습니다"
+      "passwordErrorTitle": "비밀번호를 변경할 수 없습니다",
+      "modelTitle": "답변 모델",
+      "modelDescription": "새 답변에 쓸 모델을 고릅니다. 이 계정으로 로그인한 모든 기기에 적용됩니다. 첨부 파일을 읽는 답변은 따로 정해진 모델이 답합니다.",
+      "modelLegend": "모델",
+      "modelEffective": "지금 답하는 모델: {name}",
+      "modelLoadErrorTitle": "모델 정보를 불러오지 못했습니다",
+      "modelUpdateErrorTitle": "모델을 바꾸지 못했습니다",
+      "modelUnavailable": "지금 연결된 서버에서는 모델을 고를 수 없습니다.",
+      "modelSaved": "모델을 저장했습니다.",
+      "modelLockedGuest": "게스트 세션은 기본 모델로 답하며 바꿀 수 없습니다.",
+      "modelDefaultOption": "기본 모델 ({name})",
+      "modelUnlistedSelection": "저장된 모델: {name}. 이 모델은 선택 목록에 없어서 다시 고를 수 없습니다."
     },
     "experimental": {
       "title": "실험 기능 설정",

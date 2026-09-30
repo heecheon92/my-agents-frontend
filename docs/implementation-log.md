@@ -1719,3 +1719,110 @@ and implied that the levels change how documents are read.
 
 All seven hints still fit the reserved two-line hint block at 390px (measured
 at 20–40px scroll height against the 40px block).
+
+## 2026-09-30 — GPT-6.1 Sol effort normalization
+
+The backend added GPT-6.1 Sol and now normalizes requested effort per model
+before persistence and the provider call: Sol answers `none` and `minimal` as
+`low`, and the other supported models answer `minimal` as `low`. The default is
+now the configured model's recommendation (`medium` for all of them), and
+`MY_AGENTS_OPENAI_REASONING_EFFORT` is no longer an override. The capability
+contract is unchanged — seven levels, `default_effort`, `pro_supported` per
+surface — so no control logic changed.
+
+The composer still sends and stores the user's explicit level; it does not
+mirror the mapping, since the capabilities payload names no model. On top of the
+2026-09-27 copy, only `none` changed: its hint and guide detail now say some
+models answer it as Low, matching what `minimal` already said. Stale comments
+naming the removed env override were corrected. The effective run effort is
+parsed but still not displayed; see
+[the handoff note](./reasoning-controls-handoff.md).
+
+## 2026-09-30 — Assistant model selection
+
+Registered users can choose which model answers new chat runs, from the
+composer and from Settings > Account. It is an account preference owned by
+the backend (`GET`/`PATCH /assistant/preferences`), not a per-run field: the
+run request schema deliberately cannot carry `assistant_model`, and responses,
+run summaries and `run_started` parse it as nullable (legacy runs report
+`null`). Display of the per-run model is deferred.
+
+Decisions:
+
+- **One picker, two places.** `AssistantModelOptions` is a native radio group
+  shared by the composer's reasoning popover and a settings card. Radios, not a
+  menu, because a menu's roving focus fights the effort slider in the same
+  popover. "Default model (name)" saves `null`, which follows the deployment
+  default if it changes; picking the same model explicitly does not.
+- **Nothing is hardcoded.** Model IDs are an open string; options, display
+  names, and per-model reasoning defaults come from
+  `GET /capabilities/assistant-models`. Reasoning capabilities describe the
+  effective model, so a save invalidates them. The mutation stays pending
+  until that refetch settles, and send is disabled for the window so a run
+  cannot pair the new model with the old model's effort and Pro support.
+- **The catalog is the exposed models, not every supported model.**
+  `GET /capabilities/assistant-models` serves the backend's
+  `EXPOSED_ASSISTANT_MODELS` (currently three, in served order), a subset of
+  `SUPPORTED_ASSISTANT_MODELS` (six), which PATCH still accepts. Neither the
+  deployment default nor a preference saved earlier has to be exposed. `resolveAssistantModel` keeps the picker in both cases: only
+  served models become radios; an unadvertised default is shown by ID in the
+  reset option and the trigger (only catalog entries carry display names);
+  an unadvertised saved model is kept as `selectedId`, shown as a read-only
+  note, and no radio is checked — mapping it to `null` would present it as
+  the default setting. Picking a listed model or the default replaces it.
+- **Explicit efforts survive a switch.** A stored effort or Pro choice is kept;
+  `resolveReasoning` already drops Pro for a model without it. With no stored
+  effort, the new model's served default applies.
+- **Auth separation.** Login, logout and password changes already
+  `queryClient.clear()`, so preferences never leak between accounts. Guests
+  see the picker locked with a reason, in both places, and never PATCH.
+- **Scope.** Attachment turns use a separately configured document-workspace
+  model, and the hint and settings copy say so. Internal selector, embedding
+  and metadata models are unaffected and not mentioned to users.
+- **Proxy.** `/assistant/*` stays blocked as legacy chat; only the exact
+  `/assistant/preferences` path is allowlisted (GET, PATCH, CSRF-protected).
+- **Clicks show immediately, and nothing else moves.** The radios are
+  controlled by server state, so a click snapped back for one render before
+  the save started. The picker holds the clicked value locally until the save
+  settles, reverting on failure. The list is not disabled during a save and
+  the hint does not switch to a "saving" message: a local save settles in tens
+  of milliseconds, so both read as a flicker on every choice. Extra clicks are
+  ignored instead (a ref claims the save in the click handler, since `saving`
+  turns true a render later), and the group carries `aria-busy`. The settings
+  confirmation stays up through a follow-up save. A browser test records every
+  DOM change during a slowed save and fails if the list dims or the copy
+  changes.
+- **The row keeps send visible.** The trigger grows by the model name, which
+  pushed send past the form edge at 320–390px on a live check; page overflow
+  checks did not catch it because the form clips. The model/effort group is
+  now fixed-width and the knowledge-scope chip (`min-w-0`) truncates instead.
+  A browser test measures send against the form at 320 and 390px.
+- **Degrades to absent.** A 404 from either endpoint hides the composer picker
+  and shows "not offered" in settings, not an error.
+
+The schemas in `model/my-agents/assistant-models.ts` were compared with the
+backend's hosted OpenAPI document (a local isolated verification server) and
+match field for field. Model IDs are deliberately parsed as open strings where
+the spec enumerates them. The comparison found one gap, since fixed:
+`ConversationRunInterruptedResponse` also carries `assistant_model`. Run and
+replay requests have no model field, matching the frontend.
+
+Live checks through the real BFF proxy against that server: registered
+GET/PATCH/reset of the preference, out-of-catalog, missing and extra fields
+rejected with 422 `invalid_request`, the saved model pinned on the next run
+(sync response, `run_started`, run list) and reset applying to the run after,
+guest reads returning `customizable: false` and guest PATCH 403
+`permission_denied`, and `/assistant/chat` still blocked. All captured
+payloads parsed with the frontend schemas.
+
+Verified: lint, typecheck, 390 unit tests, production build, `git diff
+--check`, and 21 targeted browser tests (`e2e/assistant-model.spec.ts` and
+`e2e/reasoning-controls.spec.ts`): switching, reasoning refetch,
+explicit-effort preservation, reset to default, guest lock in chat and
+settings, settings/composer sync, legacy backend, flicker-free saving, send
+staying inside the row at 320 and 390px, and the exposed catalog with an
+unexposed default or saved model. The full browser suite last ran before the
+flicker and exposed-catalog changes: 202 passed, 2 skipped, 2 failed. The two
+failures, `document-workspace.spec.ts:269` (file drop) and
+`transcript-autoscroll.spec.ts:43`, fail identically on `develop` without
+these changes.

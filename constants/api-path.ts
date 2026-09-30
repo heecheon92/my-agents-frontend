@@ -17,6 +17,10 @@ export const API_PATH = {
   capabilities: {
     reasoning: "/capabilities/reasoning",
     documentWorkspace: "/capabilities/document-workspace",
+    assistantModels: "/capabilities/assistant-models",
+  },
+  assistant: {
+    preferences: "/assistant/preferences",
   },
   conversations: {
     root: "/conversations",

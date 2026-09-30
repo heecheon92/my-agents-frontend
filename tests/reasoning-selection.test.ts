@@ -7,6 +7,7 @@ import {
 import {
   type ReasoningCapabilities,
   reasoningCapabilitiesSchema,
+  runReasoningSchema,
 } from "@/model/my-agents";
 
 const capabilities: ReasoningCapabilities = {
@@ -49,6 +50,25 @@ describe("resolveReasoning", () => {
       false,
     );
     expect(resolved.selection).toEqual({ mode: "pro", effort: "high" });
+  });
+
+  it("sends an explicit none or minimal choice as chosen", () => {
+    // The backend normalizes these per model (GPT-6.1 Sol runs both as low;
+    // other supported models run minimal as low). Rewriting them here would
+    // guess at the model and erase the user's preference for the next model.
+    for (const effort of ["none", "minimal"] as const) {
+      const resolved = resolveReasoning(capabilities, { effort }, false);
+      expect(resolved.selection?.effort).toBe(effort);
+    }
+  });
+
+  it("offers every served stop and pro for a model that supports both", () => {
+    // GPT-6.1 Sol: the enum stays frozen at seven levels and pro is reported
+    // through the chat surface flag, not inferred from a model name.
+    const resolved = resolveReasoning(capabilities, { mode: "pro" }, false);
+    expect(resolved.efforts).toHaveLength(7);
+    expect(resolved.proSupported).toBe(true);
+    expect(resolved.selection).toEqual({ mode: "pro", effort: "medium" });
   });
 
   it("drops a stored effort the backend no longer offers", () => {
@@ -209,5 +229,18 @@ describe("reasoningCapabilitiesSchema", () => {
         chat: {},
       }),
     ).toThrow();
+  });
+});
+
+describe("runReasoningSchema", () => {
+  it("parses the effective pair when the backend normalized the request", () => {
+    // A run requested at none can report low. The run's own fields are the
+    // effective value; the composer keeps showing the user's preference.
+    expect(
+      runReasoningSchema.parse({
+        reasoning_mode: "standard",
+        reasoning_effort: "low",
+      }),
+    ).toEqual({ reasoning_mode: "standard", reasoning_effort: "low" });
   });
 });

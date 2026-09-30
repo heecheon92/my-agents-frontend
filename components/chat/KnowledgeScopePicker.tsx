@@ -75,7 +75,7 @@ export function KnowledgeScopePicker({
       aria-label={`${localization.knowledgeSourceTitle}: ${summary}`}
       title={localization.changeSourcesAction}
       className={cn(
-        "gap-1.5",
+        "min-w-0 max-w-full shrink gap-1.5",
         requiresKnowledgeBaseSelection && "border-cal-error text-cal-error",
       )}
     >

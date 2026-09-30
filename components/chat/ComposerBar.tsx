@@ -1,5 +1,5 @@
 import { ArrowUpIcon, SendHorizontalIcon } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { type ComponentProps, useEffect, useRef } from "react";
 import { inputClassName } from "@/components/Field";
 import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { ErrorState } from "@/components/Status";
@@ -69,6 +69,7 @@ export function ComposerBar({
   reasoning,
   onReasoningModeChange,
   onReasoningEffortChange,
+  assistantModel,
   knowledgeBaseMode,
   onKnowledgeBaseModeChange,
   selectedKnowledgeBaseIds,
@@ -109,6 +110,7 @@ export function ComposerBar({
   reasoning: ResolvedReasoning;
   onReasoningModeChange: (next: "standard" | "pro") => void;
   onReasoningEffortChange: (next: ReasoningEffort) => void;
+  assistantModel?: ComponentProps<typeof ReasoningControls>["model"];
   knowledgeBaseMode: KnowledgeBaseSelectionMode;
   onKnowledgeBaseModeChange: (mode: KnowledgeBaseSelectionMode) => void;
   selectedKnowledgeBaseIds: string[];
@@ -286,7 +288,7 @@ export function ComposerBar({
             composer={attachmentComposer}
             disabled={isCancelling}
           />
-          <OnboardingTarget id="chat.source-selector">
+          <OnboardingTarget id="chat.source-selector" className="min-w-0">
             <KnowledgeScopePicker
               localization={localization}
               knowledgeBaseMode={knowledgeBaseMode}
@@ -300,6 +302,9 @@ export function ComposerBar({
               disabled={isCancelling}
             />
           </OnboardingTarget>
+          {/* Fixed width: the model and effort are short values that must stay
+              readable, so at phone widths the scope chip (`min-w-0` above)
+              truncates instead and send stays inside the row. */}
           <div className="ml-auto flex shrink-0 items-center gap-1">
             {/* Renders only once the backend confirms it accepts these fields,
                 so a deployment without the reasoning migration still gets the
@@ -310,6 +315,7 @@ export function ComposerBar({
                 localization={localization}
                 onModeChange={onReasoningModeChange}
                 onEffortChange={onReasoningEffortChange}
+                model={assistantModel}
                 disabled={isCancelling}
               />
             ) : null}

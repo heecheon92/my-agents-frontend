@@ -97,6 +97,10 @@ The BFF allowlist currently covers:
 - `GET /conversations`
 - `GET /conversations/{conversation_id}`
 - `GET /capabilities/document-workspace`
+- `GET /capabilities/assistant-models`
+- `GET /assistant/preferences` and `PATCH /assistant/preferences` — the only
+  exact-path exceptions to the blocked legacy `/assistant/*` prefix; every
+  other path under it, including `/assistant/chat`, stays closed
 - `POST /conversations/{conversation_id}/attachments` (multipart, `provider_consent` required)
 - `GET /conversations/{conversation_id}/attachments`
 - `DELETE /conversations/{conversation_id}/attachments/{attachment_id}`

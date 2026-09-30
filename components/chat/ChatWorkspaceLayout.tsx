@@ -2,7 +2,7 @@
 
 import { PlusIcon } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { type ComponentProps, useEffect, useRef, useState } from "react";
 import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { Button } from "@/components/ui/button";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -100,6 +100,7 @@ type ChatWorkspaceLayoutProps = {
   reasoning: ResolvedReasoning;
   onReasoningModeChange: (next: "standard" | "pro") => void;
   onReasoningEffortChange: (next: ReasoningEffort) => void;
+  assistantModel?: ComponentProps<typeof ComposerBar>["assistantModel"];
   statusAnnouncement: string;
   streamError: unknown;
   streamedReply: string;
@@ -159,6 +160,7 @@ export function ChatWorkspaceLayout({
   reasoning,
   onReasoningModeChange,
   onReasoningEffortChange,
+  assistantModel,
   statusAnnouncement,
   streamError,
   streamedReply,
@@ -330,6 +332,7 @@ export function ChatWorkspaceLayout({
                   reasoning={reasoning}
                   onReasoningModeChange={onReasoningModeChange}
                   onReasoningEffortChange={onReasoningEffortChange}
+                  assistantModel={assistantModel}
                   knowledgeBaseMode={knowledgeBaseMode}
                   onKnowledgeBaseModeChange={onKnowledgeBaseModeChange}
                   selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}

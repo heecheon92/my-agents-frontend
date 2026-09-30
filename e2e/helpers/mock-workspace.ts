@@ -321,6 +321,23 @@ type RouteOverrides = {
   /** Serve reasoning capabilities. `false` 404s them, as a backend without the migration does. */
   reasoning?: boolean;
   /**
+   * Serve assistant model selection. Default `false` 404s both endpoints, as
+   * a backend without the feature does, so every existing spec keeps proving
+   * the composer is unchanged without it. When on, the preference is stateful
+   * and reasoning capabilities describe the effective model, as the backend's
+   * do.
+   */
+  assistantModels?: boolean;
+  /**
+   * `"exposed"` serves only the exposed models (the backend's
+   * `EXPOSED_ASSISTANT_MODELS`, a subset of the six supported IDs) with a
+   * deployment default outside them, as the backend does. Unexposed models
+   * answer at `medium` with Pro available.
+   */
+  assistantModelCatalog?: "full" | "exposed";
+  /** A preference already saved before the page loads, listed or not. */
+  savedAssistantModel?: string | null;
+  /**
    * Serve a run suspended on a pending interaction, as after a reload.
    * Omitted entirely by default so every existing spec keeps proving the
    * flag-off composer is unchanged.
@@ -378,6 +395,9 @@ export async function mockWorkspace(
     guest = false,
     empty = false,
     reasoning = true,
+    assistantModels = false,
+    assistantModelCatalog = "full",
+    savedAssistantModel = null,
     attribution = false,
     documentCoverage = false,
     reasoningSummaries = false,
@@ -690,6 +710,56 @@ export async function mockWorkspace(
                 },
               ];
 
+  const fullAssistantModelList = [
+    {
+      id: "gpt-6-luna",
+      name: "GPT-6 Luna",
+      default_reasoning_effort: "medium",
+      pro_supported: false,
+    },
+    {
+      id: "gpt-6.1-sol",
+      name: "GPT-6.1 Sol",
+      default_reasoning_effort: "high",
+      pro_supported: true,
+    },
+  ];
+  const exposedOnly = assistantModelCatalog === "exposed";
+  const assistantModelList = exposedOnly
+    ? [
+        {
+          id: "gpt-6.1-sol",
+          name: "GPT-6.1 Sol",
+          default_reasoning_effort: "high",
+          pro_supported: true,
+        },
+        {
+          id: "gpt-6-luna",
+          name: "GPT-6 Luna",
+          default_reasoning_effort: "medium",
+          pro_supported: true,
+        },
+        {
+          id: "gpt-6-astra",
+          name: "GPT-6 Astra",
+          default_reasoning_effort: "medium",
+          pro_supported: true,
+        },
+      ]
+    : fullAssistantModelList;
+  const defaultAssistantModel = exposedOnly ? "gpt-5.6-sol" : "gpt-6-luna";
+  let selectedAssistantModel: string | null = savedAssistantModel;
+  const assistantPreferences = () => ({
+    customizable: !guest,
+    default_model: defaultAssistantModel,
+    selected_model: selectedAssistantModel,
+    effective_model: selectedAssistantModel ?? defaultAssistantModel,
+  });
+  const effectiveAssistantModel = () =>
+    assistantModelList.find(
+      (model) => model.id === assistantPreferences().effective_model,
+    );
+
   await page.route("**/api/my-agents/**", async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname.replace("/api/my-agents", "");
@@ -713,7 +783,35 @@ export async function mockWorkspace(
     if (method === "DELETE" && /\/attachments\/[^/]+$/.test(path)) {
       return route.fulfill({ status: 204, body: "" });
     }
+    if (method === "PATCH" && path === "/assistant/preferences") {
+      if (!assistantModels) return json({ detail: "Not found" }, 404);
+      if (guest) {
+        return json(
+          {
+            detail: "Guests cannot change the model",
+            code: "permission_denied",
+          },
+          403,
+        );
+      }
+      const body = request.postDataJSON() as { assistant_model: string | null };
+      selectedAssistantModel = body.assistant_model;
+      return json(assistantPreferences());
+    }
     if (method !== "GET") return json({ ok: true });
+
+    if (path === "/capabilities/assistant-models") {
+      if (!assistantModels) return json({ detail: "Not found" }, 404);
+      return json({
+        customizable: !guest,
+        default_model: defaultAssistantModel,
+        models: assistantModelList,
+      });
+    }
+    if (path === "/assistant/preferences") {
+      if (!assistantModels) return json({ detail: "Not found" }, 404);
+      return json(assistantPreferences());
+    }
 
     if (path === "/capabilities/document-workspace") {
       // A backend without the document-workspace migration 404s here, and the
@@ -877,7 +975,9 @@ export async function mockWorkspace(
       return json({
         customizable: !guest,
         default_mode: "standard",
-        default_effort: "medium",
+        default_effort: assistantModels
+          ? (effectiveAssistantModel()?.default_reasoning_effort ?? "medium")
+          : "medium",
         supported_modes: ["standard", "pro"],
         supported_efforts: [
           "none",
@@ -888,7 +988,11 @@ export async function mockWorkspace(
           "xhigh",
           "max",
         ],
-        chat: { pro_supported: true },
+        chat: {
+          pro_supported: assistantModels
+            ? (effectiveAssistantModel()?.pro_supported ?? true)
+            : true,
+        },
         document_workspace: { pro_supported: true },
       });
     }

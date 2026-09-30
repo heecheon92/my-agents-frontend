@@ -10,7 +10,9 @@ import {
 } from "@/components/ui/popover";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
-import type { ReasoningEffort } from "@/model/my-agents";
+import type { AssistantModelId, ReasoningEffort } from "@/model/my-agents";
+import { AssistantModelOptions } from "./AssistantModelOptions";
+import type { ResolvedAssistantModel } from "./assistant-model-selection";
 import { ReasoningEffortGuideDialog } from "./ReasoningEffortGuideDialog";
 import type { ResolvedReasoning } from "./reasoning-selection";
 import type { ChatLocalization } from "./types";
@@ -27,6 +29,11 @@ import type { ChatLocalization } from "./types";
  * Stops come from `resolved.efforts` — the list the backend served — never from
  * a constant here, so a deployment that offers fewer levels cannot desync the
  * slider from what the API will accept.
+ *
+ * The model picker shares this popover because model and effort are one
+ * decision: switching model refetches the reasoning capabilities, which can
+ * change the recommended effort and whether Pro is offered, and the result
+ * shows up in the slider right below the choice that caused it.
  */
 export function ReasoningControls({
   resolved,
@@ -34,12 +41,19 @@ export function ReasoningControls({
   onModeChange,
   onEffortChange,
   disabled,
+  model,
 }: {
   resolved: ResolvedReasoning;
   localization: ChatLocalization;
   onModeChange: (next: "standard" | "pro") => void;
   onEffortChange: (next: ReasoningEffort) => void;
   disabled: boolean;
+  model?: {
+    resolved: ResolvedAssistantModel;
+    pending: boolean;
+    failed: boolean;
+    onChange: (next: AssistantModelId | null) => void;
+  };
 }) {
   const effortLabelId = useId();
   const [open, setOpen] = useState(false);
@@ -57,6 +71,13 @@ export function ReasoningControls({
     string
   >;
   const currentLabel = effortLabels[selection.effort] ?? selection.effort;
+  const modelName =
+    model?.resolved.available && model.resolved.effectiveModel
+      ? model.resolved.effectiveModel.name
+      : null;
+  const triggerLabel = modelName
+    ? `${localization.assistantModelLabel}: ${modelName}, ${localization.reasoningEffortLabel}: ${currentLabel}`
+    : `${localization.reasoningEffortLabel}: ${currentLabel}`;
 
   const lockReason = locked
     ? localization.reasoningLockedGuest
@@ -75,10 +96,21 @@ export function ReasoningControls({
             disabled={disabled}
             // The trigger carries the state: "추론 강도: 보통". Without the
             // concept in the name it announces as a bare adjective.
-            aria-label={`${localization.reasoningEffortLabel}: ${currentLabel}`}
-            title={localization.reasoningEffortLabel}
+            aria-label={triggerLabel}
+            title={triggerLabel}
             className="gap-1 px-2 text-cal-muted hover:text-cal-ink"
           >
+            {modelName ? (
+              <>
+                <span
+                  data-slot="assistant-model-trigger-name"
+                  className="max-w-[9rem] shrink-0 truncate text-cal-ink"
+                >
+                  {modelName}
+                </span>
+                <span aria-hidden="true">·</span>
+              </>
+            ) : null}
             {selection.mode === "pro" ? (
               <span className="font-semibold text-cal-ink">
                 {localization.reasoningProLabel}
@@ -91,6 +123,43 @@ export function ReasoningControls({
       />
       <PopoverContent align="end" className="w-72">
         <div className="grid gap-3">
+          {model?.resolved.available ? (
+            <div className="grid gap-2 border-b border-cal-hairline pb-3">
+              <AssistantModelOptions
+                resolved={model.resolved}
+                legend={localization.assistantModelLabel}
+                defaultOptionLabel={(name) =>
+                  localization.assistantModelDefaultOption.replace(
+                    "{name}",
+                    name,
+                  )
+                }
+                unlistedSelectionLabel={(name) =>
+                  localization.assistantModelUnlistedSelection.replace(
+                    "{name}",
+                    name,
+                  )
+                }
+                disabled={model.resolved.locked || disabled}
+                saving={model.pending}
+                onChange={model.onChange}
+              />
+              <p
+                aria-live="polite"
+                className={
+                  model.failed && !model.pending
+                    ? "text-xs leading-5 text-cal-error"
+                    : "text-xs leading-5 text-cal-muted"
+                }
+              >
+                {model.resolved.locked
+                  ? localization.assistantModelLockedGuest
+                  : model.failed
+                    ? localization.assistantModelUpdateError
+                    : localization.assistantModelHint}
+              </p>
+            </div>
+          ) : null}
           <div className="flex items-center justify-between gap-3">
             <label
               htmlFor={`${effortLabelId}-mode`}

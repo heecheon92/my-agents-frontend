@@ -5,6 +5,11 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
+import {
+  useAssistantModelCapabilities,
+  useAssistantPreferences,
+  useUpdateAssistantModel,
+} from "@/hooks/use-assistant-model";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useReasoningCapabilities } from "@/hooks/use-capabilities";
 import {
@@ -36,6 +41,7 @@ import {
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 import { resolveErrorMessage } from "@/utils/error-message";
+import { resolveAssistantModel } from "./chat/assistant-model-selection";
 import { shouldAbortSendAfterUpload } from "./chat/attachments/staging";
 import { useAttachmentComposer } from "./chat/attachments/useAttachmentComposer";
 import {
@@ -263,6 +269,21 @@ export function ChatWorkspace({
     () =>
       resolveReasoning(reasoningCapabilities.data, storedReasoning, isGuest),
     [reasoningCapabilities.data, storedReasoning, isGuest],
+  );
+
+  // Account-level, not per-run: the backend applies the saved choice to every
+  // new run, so the composer and settings share one server-owned value.
+  const assistantModelCapabilities = useAssistantModelCapabilities();
+  const assistantPreferences = useAssistantPreferences();
+  const updateAssistantModel = useUpdateAssistantModel();
+  const assistantModel = useMemo(
+    () =>
+      resolveAssistantModel(
+        assistantModelCapabilities.data,
+        assistantPreferences.data,
+        isGuest,
+      ),
+    [assistantModelCapabilities.data, assistantPreferences.data, isGuest],
   );
 
   function persistReasoning(next: Partial<ReasoningSelection>) {
@@ -874,13 +895,18 @@ export function ChatWorkspace({
   // No `!activeId`: with no conversation open the composer is still live, and
   // sending creates one. Only an in-flight create blocks it, so a double submit
   // cannot start two conversations.
+  // A model save is pending until the reasoning capabilities for the new model
+  // have refetched; sending in that window would pair the new model with the
+  // previous model's effort defaults and Pro support.
   const isPrimaryActionDisabled =
+    updateAssistantModel.isPending ||
     !hasActiveDraft ||
     isCancelling ||
     isCreatingConversation ||
     requiresKnowledgeBaseSelection ||
     (conversationIsBusy && Boolean(visibleQueuedMessage));
   const isSendNowDisabled =
+    updateAssistantModel.isPending ||
     !activeId ||
     (!hasActiveDraft && !visibleQueuedMessage) ||
     !isStreaming ||
@@ -1074,6 +1100,13 @@ export function ChatWorkspace({
       reasoning={reasoning}
       onReasoningModeChange={(mode) => persistReasoning({ mode })}
       onReasoningEffortChange={(effort) => persistReasoning({ effort })}
+      assistantModel={{
+        resolved: assistantModel,
+        pending: updateAssistantModel.isPending,
+        failed: updateAssistantModel.isError,
+        onChange: (next) =>
+          updateAssistantModel.mutate({ assistant_model: next }),
+      }}
       showGuestNotice={showGuestNotice}
       statusAnnouncement={statusAnnouncement}
       streamError={streamError}

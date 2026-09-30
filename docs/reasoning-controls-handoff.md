@@ -125,6 +125,23 @@ suits* rather than how hard the model is trying. An e2e assertion pins the note
 in place, because it is the sort of line a later edit would quietly drop as
 redundant. Keep that framing if you rewrite this copy.
 
+## Per-model effort normalization (2026-09-30)
+
+The backend now normalizes a requested effort per model before persistence and
+the provider call. GPT-6.1 Sol runs `none` and `minimal` as `low`; the other
+supported models run `minimal` as `low` and keep `none`. The default effort is
+the configured model's recommendation (`medium` for every supported model), and
+`MY_AGENTS_OPENAI_REASONING_EFFORT` is no longer an override.
+
+The frontend does not mirror this mapping. The capabilities payload has no
+model field and keeps all seven levels, so the composer sends the user's
+explicit choice unchanged and keeps it in storage — a later model may honor it.
+The `none` and `minimal` hints and guide text say that some models answer them
+as Low. The run and its events carry the
+effective value (`runReasoningSchema`). The UI does not display it yet, so
+nothing shows the wrong level. A requested-versus-effective indicator would
+be new UI work.
+
 ## Still open
 
 - Reasoning tokens count against the existing output ceilings, and codex

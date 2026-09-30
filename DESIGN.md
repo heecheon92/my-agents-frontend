@@ -382,8 +382,12 @@ one click behind them:
 | Control | Collapsed to | Opens |
 |---|---|---|
 | knowledge scope | chip stating the current scope | Dialog (desktop) / Drawer (mobile) |
-| reasoning | ghost trigger stating the current effort | Popover |
+| reasoning | ghost trigger stating the answer model (when the backend offers a choice) and the current effort | Popover: model radios above the effort controls |
 | send | circular icon, fixed `size-9` | — |
+
+When the row runs out of width, the knowledge-scope chip truncates first:
+model and effort are short values that must stay readable, and send never
+leaves the row.
 
 The rule is that **a collapsed trigger states its current value**. `보통 ⌄` and
 `문서 3개 ⌄` mean nothing is hidden, only moved; a trigger reading only

@@ -1,5 +1,7 @@
 import { API_PATH } from "@/constants/api-path";
 import {
+  type AssistantModelCapabilities,
+  assistantModelCapabilitiesSchema,
   type DocumentWorkspaceCapability,
   documentWorkspaceCapabilitySchema,
   type ReasoningCapabilities,
@@ -16,11 +18,23 @@ export class MyAgentsCapabilityAPI {
    *
    * Authenticated, and deliberately the only source of defaults and level
    * lists — hardcoding them here would desync the moment the backend changes
-   * `MY_AGENTS_OPENAI_REASONING_EFFORT` or its model.
+   * its configured model, whose provider recommendation sets the default.
    */
   async reasoning(): Promise<ReasoningCapabilities> {
     const value = await this.client.fetch(API_PATH.capabilities.reasoning);
     return parseWithSchema(reasoningCapabilitiesSchema, value);
+  }
+
+  /**
+   * The models a registered user may choose for chat, each with its own
+   * display name, recommended reasoning effort, and Pro support. The picker
+   * renders this list as served; nothing here hardcodes a model.
+   */
+  async assistantModels(): Promise<AssistantModelCapabilities> {
+    const value = await this.client.fetch(
+      API_PATH.capabilities.assistantModels,
+    );
+    return parseWithSchema(assistantModelCapabilitiesSchema, value);
   }
 
   /**

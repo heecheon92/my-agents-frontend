@@ -17,6 +17,14 @@ export const MyAgentsQueryKeys = {
     documentWorkspace() {
       return ["my-agents", "capabilities", "document-workspace"] as const;
     },
+    assistantModels() {
+      return ["my-agents", "capabilities", "assistant-models"] as const;
+    },
+  },
+  assistant: {
+    preferences() {
+      return ["my-agents", "assistant", "preferences"] as const;
+    },
   },
   memories: {
     settings() {

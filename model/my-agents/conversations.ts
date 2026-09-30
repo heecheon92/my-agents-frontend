@@ -20,6 +20,19 @@ export const runReasoningSchema = z.object({
   reasoning_effort: reasoningEffortSchema.optional(),
 });
 
+/**
+ * The model that answered a run, reported on responses only.
+ *
+ * Kept out of `runReasoningSchema` because that one is also merged into the
+ * run request, and the model is an account preference rather than a per-run
+ * field. `null` or absent on legacy runs recorded before model selection.
+ */
+export const runAssistantModelSchema = z.object({
+  // Plain `string` as served: this is display metadata, and a malformed value
+  // must not fail the whole run response and lose the answer with it.
+  assistant_model: z.string().nullable().optional(),
+});
+
 export const conversationSchema = z.object({
   id: z.string().min(1),
   title: z.string(),
@@ -322,7 +335,8 @@ export const conversationRunResponseSchema = z
     }),
   })
   .merge(runSourceContextSchema)
-  .merge(runReasoningSchema);
+  .merge(runReasoningSchema)
+  .merge(runAssistantModelSchema);
 
 /**
  * A run that stopped to ask the user something.
@@ -330,12 +344,14 @@ export const conversationRunResponseSchema = z
  * Served on run creation (HTTP 202), on resume, and on `GET .../runs/{run_id}`
  * after a refresh — which is what makes a pending question survive a reload.
  */
-export const conversationRunInterruptedResponseSchema = z.object({
-  status: z.literal("waiting_for_input"),
-  run_id: z.string().min(1),
-  conversation_id: z.string().min(1),
-  interaction: pendingInteractionSchema,
-});
+export const conversationRunInterruptedResponseSchema = z
+  .object({
+    status: z.literal("waiting_for_input"),
+    run_id: z.string().min(1),
+    conversation_id: z.string().min(1),
+    interaction: pendingInteractionSchema,
+  })
+  .merge(runAssistantModelSchema);
 
 /**
  * Every run outcome, as one value.
@@ -365,7 +381,8 @@ export const runStartedEventDataSchema = z
     knowledge_base_selection: knowledgeBaseSelectionSchema.optional(),
   })
   .merge(runSourceContextSchema.partial())
-  .merge(runReasoningSchema);
+  .merge(runReasoningSchema)
+  .merge(runAssistantModelSchema);
 
 export const answerDeltaEventDataSchema = z.object({
   delta: z.string(),
@@ -399,7 +416,8 @@ export const agentRunSummarySchema = z
     }),
   })
   .merge(runSourceContextSchema)
-  .merge(runReasoningSchema);
+  .merge(runReasoningSchema)
+  .merge(runAssistantModelSchema);
 
 export const agentEventSchema = z.object({
   id: z.string().min(1),
@@ -425,6 +443,7 @@ export type ConversationRunRequest = z.infer<
   typeof conversationRunRequestSchema
 >;
 export type RunReasoning = z.infer<typeof runReasoningSchema>;
+export type RunAssistantModel = z.infer<typeof runAssistantModelSchema>;
 export type ConversationRunWarning = z.infer<
   typeof conversationRunWarningSchema
 >;

@@ -435,6 +435,12 @@
     "reasoningEffortLabel": "Reasoning effort",
     "reasoningLockedGuest": "Guest sessions run with the default settings.",
     "reasoningProUnsupported": "The connected model does not support Pro reasoning.",
+    "assistantModelLabel": "Model",
+    "assistantModelDefaultOption": "Default model ({name})",
+    "assistantModelUnlistedSelection": "Saved model: {name}. It is not in the list, so it cannot be chosen again.",
+    "assistantModelHint": "New answers use this model. Answers that read attached files use a separately configured model.",
+    "assistantModelUpdateError": "Could not change the model. Try again shortly.",
+    "assistantModelLockedGuest": "Guest sessions answer with the default model.",
     "reasoningEffortLabels": {
       "none": "Off",
       "minimal": "Minimal",
@@ -445,7 +451,7 @@
       "max": "Max"
     },
     "reasoningEffortHints": {
-      "none": "Answers right away, with no reasoning step.",
+      "none": "Answers right away, with no reasoning step. Some models answer as Low.",
       "minimal": "Brief reasoning. Some models answer as Low.",
       "low": "Brief reasoning and quick answers.",
       "medium": "Balances speed and answer quality.",
@@ -457,7 +463,7 @@
     "reasoningEffortGuideTitle": "Choosing a reasoning effort",
     "reasoningEffortGuideDescription": "The same model answers at every level. Effort only sets how much it reasons before writing the answer. Document search runs the same way at every level. Higher levels handle complex questions better but answer more slowly.",
     "reasoningEffortDetails": {
-      "none": "Skips the reasoning step, so it answers fastest. Suited to short factual lookups and classification. Not suited to questions that need several documents weighed together.",
+      "none": "Skips the reasoning step, so it answers fastest. Suited to short factual lookups and classification. Not suited to questions that need several documents weighed together. Models that do not support this level answer as Low.",
       "minimal": "Reasons more briefly than Low. Models that do not support this level answer as Low. Suited to short questions answered in a sentence.",
       "low": "Brief reasoning and quick answers. Suited to summarizing or organizing the documents it found. Also enough for drafting and light analysis.",
       "medium": "Balances speed and answer quality. Suits most questions that compare documents or need a few steps of analysis.",
@@ -920,7 +926,7 @@
     },
     "account": {
       "title": "Account settings",
-      "description": "Update display metadata and password-backed account credentials. Current password is required for every account change.",
+      "description": "Change your display name, password, and answer model. Changing your display name or password requires your current password.",
       "summaryEyebrow": "Signed in as",
       "loadingAccount": "Loading account...",
       "emailLabel": "Email",
@@ -946,7 +952,18 @@
       "confirmPasswordLabel": "Confirm new password",
       "passwordSubmit": "Change password",
       "passwordMismatch": "New password and confirmation must match.",
-      "passwordErrorTitle": "Could not change password"
+      "passwordErrorTitle": "Could not change password",
+      "modelTitle": "Answer model",
+      "modelDescription": "Choose the model for new answers. It applies on every device signed in to this account. Answers that read attached files use a separately configured model.",
+      "modelLegend": "Model",
+      "modelEffective": "Answering now: {name}",
+      "modelLoadErrorTitle": "Could not load model settings",
+      "modelUpdateErrorTitle": "Could not change the model",
+      "modelUnavailable": "The connected server does not offer a model choice.",
+      "modelSaved": "Model saved.",
+      "modelLockedGuest": "Guest sessions answer with the default model and cannot change it.",
+      "modelDefaultOption": "Default model ({name})",
+      "modelUnlistedSelection": "Saved model: {name}. It is not in the list, so it cannot be chosen again."
     },
     "experimental": {
       "title": "Experimental settings",
