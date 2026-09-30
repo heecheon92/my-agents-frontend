@@ -53,6 +53,7 @@ function capability(
     ],
     consent_required: true,
     retention: "ephemeral",
+    automatic_recall_supported: false,
     ...overrides,
   };
 }

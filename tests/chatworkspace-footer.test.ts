@@ -25,7 +25,8 @@ import { MyAgentsAPIError } from "@/services/my-agents/MyAgentsAPIError";
 const baseMessage = {
   conversation_id: "conversation-1",
   content: "content",
-} satisfies Pick<Message, "conversation_id" | "content">;
+  attachments: [],
+} satisfies Pick<Message, "conversation_id" | "content" | "attachments">;
 
 describe("ChatWorkspace assistant message footer", () => {
   it("targets run evidence at the latest assistant message", () => {

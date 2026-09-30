@@ -156,6 +156,24 @@ export function hasStagedImage(
   );
 }
 
+/**
+ * A served retention period in the largest whole unit, for copy. Returns
+ * `null` without a served value, so no period is ever invented in copy.
+ */
+export function describeRetention(
+  seconds: number | undefined,
+  units: { days: string; hours: string },
+): string | null {
+  if (!seconds || seconds <= 0) return null;
+  if (seconds % 86_400 === 0) {
+    return units.days.replace("{n}", String(seconds / 86_400));
+  }
+  return units.hours.replace(
+    "{n}",
+    String(Math.max(1, Math.round(seconds / 3_600))),
+  );
+}
+
 export function combinedBytes(staged: StagedFile[]): number {
   return staged.reduce((total, item) => total + item.file.size, 0);
 }

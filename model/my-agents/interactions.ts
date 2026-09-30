@@ -74,6 +74,43 @@ export const documentSelectionInteractionSchema = z.union([
   documentSelectionInteractionV2Schema,
 ]);
 
+/**
+ * A choice among the conversation's own attachments — V2 only.
+ *
+ * Asked when a question refers to "the file" and more than one attachment
+ * could be meant. Options are the backend's list, rendered as given; the
+ * frontend adds nothing and filters nothing (see `docs/durable-interactions.md`).
+ * `original_available: false` means the original bytes have expired and the
+ * answer will draw on what the conversation retained instead.
+ */
+export const ATTACHMENT_SELECTION_MAX_CHOICES = 3;
+
+export const attachmentSelectionOptionSchema = z.object({
+  attachment_id: z.string().min(1),
+  filename: z.string(),
+  category: z.string(),
+  original_available: z.boolean(),
+  byte_size: z.number().int().nonnegative().nullish(),
+  created_at: z.string().nullish(),
+});
+
+export const attachmentSelectionInteractionSchema = z.object({
+  schema_version: z.literal(INTERACTION_SCHEMA_VERSION),
+  interaction_id: z.string().min(1),
+  type: z.literal("attachment_selection"),
+  reason_code: z.literal("ambiguous_attachment_reference"),
+  message_key: z.literal("clarification.attachment_scope.select_source"),
+  expires_at: z.string(),
+  option_count: z.number().int().min(0).max(50),
+  options: z.array(attachmentSelectionOptionSchema).max(50),
+  /**
+   * What the answer will read: the original files, or only what the
+   * conversation retained (`notes`). Kept an open string so a future value
+   * parses; the card treats only `notes` specially.
+   */
+  access: z.string().default("original"),
+});
+
 export const unsupportedInteractionSchema = z.object({
   schema_version: z.number().int(),
   interaction_id: z.string().min(1),
@@ -84,6 +121,7 @@ export const unsupportedInteractionSchema = z.object({
 export const pendingInteractionSchema = z.union([
   documentSelectionInteractionV1Schema,
   documentSelectionInteractionV2Schema,
+  attachmentSelectionInteractionSchema,
   unsupportedInteractionSchema,
 ]);
 
@@ -141,10 +179,22 @@ export const conversationRunRefineRequestV2Schema =
     text: z.string().trim().min(1).max(DOCUMENT_REFINEMENT_MAX_LENGTH),
   });
 
+export const conversationAttachmentSelectRequestV2Schema = z.object({
+  schema_version: z.literal(INTERACTION_SCHEMA_VERSION),
+  interaction_id: z.string().min(1),
+  type: z.literal("attachment_selection"),
+  kind: z.literal("select"),
+  attachment_ids: z
+    .array(z.string().min(1))
+    .min(1)
+    .max(ATTACHMENT_SELECTION_MAX_CHOICES),
+});
+
 export const conversationRunResumeRequestSchema = z.union([
   conversationRunResumeRequestV1Schema,
   conversationRunSelectRequestV2Schema,
   conversationRunRefineRequestV2Schema,
+  conversationAttachmentSelectRequestV2Schema,
 ]);
 
 export const runInterruptedActivityPayloadSchema = z.object({
@@ -180,6 +230,12 @@ export type DocumentSelectionInteractionV2 = z.infer<
 export type DocumentSelectionInteraction = z.infer<
   typeof documentSelectionInteractionSchema
 >;
+export type AttachmentSelectionOption = z.infer<
+  typeof attachmentSelectionOptionSchema
+>;
+export type AttachmentSelectionInteraction = z.infer<
+  typeof attachmentSelectionInteractionSchema
+>;
 export type UnsupportedInteraction = z.infer<
   typeof unsupportedInteractionSchema
 >;
@@ -205,6 +261,21 @@ export function isDocumentSelection(
     (interaction.schema_version === LEGACY_INTERACTION_SCHEMA_VERSION ||
       interaction.schema_version === INTERACTION_SCHEMA_VERSION) &&
     "option_count" in interaction
+  );
+}
+
+/**
+ * Type, version, and a structural field — the same three-part support decision
+ * as `isDocumentSelection`. A future version parses through the unsupported
+ * branch, which strips `options`, so it fails here and gets the fallback card.
+ */
+export function isAttachmentSelection(
+  interaction: PendingInteraction,
+): interaction is AttachmentSelectionInteraction {
+  return (
+    interaction.type === "attachment_selection" &&
+    interaction.schema_version === INTERACTION_SCHEMA_VERSION &&
+    "options" in interaction
   );
 }
 

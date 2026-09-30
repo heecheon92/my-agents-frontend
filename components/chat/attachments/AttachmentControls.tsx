@@ -7,7 +7,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { ConversationAttachment } from "@/model/my-agents";
 import type { ChatLocalization } from "../types";
-import { findFormatForFile, producesCertifiedArtifact } from "./staging";
+import {
+  describeRetention,
+  findFormatForFile,
+  producesCertifiedArtifact,
+} from "./staging";
 import type { AttachmentComposer } from "./useAttachmentComposer";
 
 /**
@@ -84,15 +88,14 @@ export function AttachmentButton({
  * on. Every other chat product shows what the current message carries and
  * nothing else, and that is the mental model people arrive with.
  *
- * The chips still persist across turns, which is the deliberate divergence: a
- * reader dissecting one spreadsheet asks six follow-ups about it, and making
- * them re-attach each time would be worse than the roster was. What changed is
- * that carrying a file forward is now a visible chip on the turn it applies to
- * rather than a checkbox they have to keep correct.
+ * A submitted file leaves the chips once the backend admits the run that sent
+ * it (`releaseSubmitted`), and the server recalls it on later turns itself, so
+ * a reader asking six follow-ups about one spreadsheet does not have to keep
+ * it attached. Until admission the chips stay: a send that fails before the
+ * backend accepts it keeps the selection for the retry.
  *
- * Carrying forward is never implicit. Each run naming an attachment re-sends
- * the file and can start a provider container, so what is included has to be
- * visible on the turn that spends it.
+ * Re-attaching explicitly is still possible from the library below. What a
+ * turn submits has to be visible on the turn that spends it.
  */
 export function AttachmentPanels({
   localization,
@@ -121,6 +124,10 @@ export function AttachmentPanels({
       composer.selectedIds.includes(attachment.id),
   );
   const hasChips = hasStaged || carriedForward.length > 0;
+  const retention = describeRetention(capability.original_file_ttl_seconds, {
+    days: copy.retentionDays,
+    hours: copy.retentionHours,
+  });
   const refusedStaged = composer.stagedFiles.flatMap((staged) => {
     const kind = composer.uploadFailures[staged.id];
     return kind && kind !== "retryable" ? [{ staged, kind }] : [];
@@ -197,6 +204,14 @@ export function AttachmentPanels({
           <p className="text-xs leading-5 text-cal-muted">
             {copy.stagedHelper}
           </p>
+          {capability.automatic_recall_supported ? (
+            <p
+              data-slot="attachment-recall-note"
+              className="mt-1 text-xs leading-5 text-cal-muted"
+            >
+              {copy.recallNote}
+            </p>
+          ) : null}
           {composer.stagedImage ? (
             <p
               data-slot="attachment-image-note"
@@ -227,7 +242,12 @@ export function AttachmentPanels({
             <span className="min-w-0">
               {copy.consentLabel.replace("{provider}", capability.provider)}
               <span className="mt-1 block text-cal-muted">
-                {copy.consentDescription}
+                {retention
+                  ? copy.consentDescriptionRetention.replace(
+                      "{duration}",
+                      retention,
+                    )
+                  : copy.consentDescription}
               </span>
             </span>
           </label>

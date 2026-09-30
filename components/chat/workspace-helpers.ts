@@ -15,7 +15,80 @@ export type RunOutcome =
   // outcome because the conversation is neither free nor producing output: the
   // queue must hold, and the partial answer must stay on screen.
   | "interrupted"
-  | "active_conflict";
+  | "active_conflict"
+  // The connection dropped before `run_started`, and reconciliation showed the
+  // backend had admitted the run anyway. The answer continues server-side and
+  // arrives through run polling; nothing may be resent.
+  | "admitted_after_disconnect"
+  // The connection dropped before `run_started`, and whether the backend
+  // admitted the run could not be established. Nothing is resent automatically.
+  | "admission_unknown";
+
+export type AdmissionVerdict = "admitted" | "not_admitted" | "unknown";
+
+/**
+ * Whether a send that lost its connection before `run_started` was admitted.
+ *
+ * Decided by the send's own `client_request_id`, never by message text: two
+ * identical questions sent close together are indistinguishable by text, and a
+ * wrong "admitted" releases files and withholds the draft for a run that
+ * belongs to another send.
+ *
+ * - A run echoing this send's ID: admitted.
+ * - No run outside the pre-send snapshot: not admitted.
+ * - New runs that all carry other IDs: other sends, so not admitted.
+ * - A new run without an ID (a legacy backend) or no snapshot to compare
+ *   against: unknown. Never guessed, never resent.
+ */
+export function decideAdmission({
+  knownRunIds,
+  runs,
+  clientRequestId,
+}: {
+  knownRunIds: ReadonlySet<string> | null;
+  runs: Array<{ run_id: string; client_request_id?: string | null }>;
+  clientRequestId: string;
+}): AdmissionVerdict {
+  if (runs.some((run) => run.client_request_id === clientRequestId)) {
+    return "admitted";
+  }
+  if (!knownRunIds) return "unknown";
+  const newRuns = runs.filter((run) => !knownRunIds.has(run.run_id));
+  if (newRuns.length === 0) return "not_admitted";
+  return newRuns.every((run) => run.client_request_id)
+    ? "not_admitted"
+    : "unknown";
+}
+
+/**
+ * A v4 UUID for `client_request_id`. `crypto.randomUUID` exists only in secure
+ * contexts, so a plain-http LAN build would lose it; `getRandomValues` does
+ * not have that restriction.
+ */
+export function newClientRequestId(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6] & 0x0f) | 0x40;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"));
+  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex
+    .slice(6, 8)
+    .join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10).join("")}`;
+}
+
+/**
+ * A failure before `run_started` that is not an HTTP answer. An HTTP error is
+ * a definite refusal — the backend responded without admitting — whereas a
+ * dropped connection or a stream that ended early says nothing either way.
+ */
+export function isAmbiguousPreAdmissionFailure(error: unknown): boolean {
+  return !(
+    error &&
+    typeof error === "object" &&
+    "status" in error &&
+    typeof (error as { status: unknown }).status === "number" &&
+    (error as { status: number }).status > 0
+  );
+}
 
 export const CHAT_BOTTOM_THRESHOLD_PX = 96;
 export const ACTIVE_RUN_STALE_NOTICE_AFTER_MS = 30_000;

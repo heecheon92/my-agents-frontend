@@ -338,7 +338,7 @@ export function useIsExpired(expiresAt: string) {
  * The remaining-time hint only. Expiry itself is announced by the card, which
  * also disables the actions — keeping both here would state it twice.
  */
-function ExpiryNotice({
+export function ExpiryNotice({
   expiresAt,
   localization,
 }: {

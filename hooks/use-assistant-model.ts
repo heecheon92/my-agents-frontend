@@ -2,7 +2,10 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
-import type { AssistantPreferencesPatchRequest } from "@/model/my-agents";
+import type {
+  AssistantPreferencesPatchRequest,
+  SummarizationPreferencesPatchRequest,
+} from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 
 /**
@@ -58,6 +61,45 @@ export function useUpdateAssistantModel() {
           queryKey: MyAgentsQueryKeys.capabilities.reasoning(),
         }),
       ]);
+    },
+  });
+}
+
+/** Summarization models on offer; 404 on a backend without compaction. */
+export function useSummarizationModelCapabilities() {
+  return useQuery({
+    queryKey: MyAgentsQueryKeys.capabilities.summarizationModels(),
+    queryFn: () => myAgentsAPI.capabilities.summarizationModels(),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+}
+
+export function useSummarizationPreferences() {
+  return useQuery({
+    queryKey: MyAgentsQueryKeys.summarization.preferences(),
+    queryFn: () => myAgentsAPI.assistant.getSummarizationPreferences(),
+    retry: false,
+  });
+}
+
+/**
+ * Saves the summarization model. Nothing else describes it — reasoning
+ * capabilities follow the answer model — so only its own query refreshes.
+ */
+export function useUpdateSummarizationModel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: SummarizationPreferencesPatchRequest) =>
+      myAgentsAPI.assistant.updateSummarizationPreferences(payload),
+    onSuccess: (preferences) => {
+      queryClient.setQueryData(
+        MyAgentsQueryKeys.summarization.preferences(),
+        preferences,
+      );
+      return queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.summarization.preferences(),
+      });
     },
   });
 }

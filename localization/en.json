@@ -245,6 +245,7 @@
     "guestPromptLimitHelper": "Guest limits apply automatically, and both queued and immediate messages count towards them.",
     "queuedAnnouncement": "Message queued to send after the current answer.",
     "queuedSentAnnouncement": "Queued message sent.",
+    "admittedAfterDisconnectAnnouncement": "The connection dropped, but your question was received. Loading the answer.",
     "queueEditAnnouncement": "Queued message moved back to the composer.",
     "queueCancelledAnnouncement": "Queued message canceled.",
     "queueAlreadyExistsAnnouncement": "A queued message already exists. Edit or cancel it first.",
@@ -266,12 +267,20 @@
         "waiting": "Waiting for confirmation"
       },
       "stages": {
+        "organizingContext": "Condensing earlier conversation",
         "planning": "Planning",
         "searchingKnowledge": "Searching sources",
         "draftingAnswer": "Drafting answer",
         "checkingCitations": "Checking citations",
         "answerReady": "Answer ready",
         "needsEvidence": "Needs evidence"
+      },
+      "compaction": {
+        "title": "Conversation summary",
+        "started": "The conversation is long, so earlier messages are being summarized.",
+        "completed": "Earlier messages were summarized and carried into this answer.",
+        "failed": "Earlier messages could not be summarized, so this answer relies on the recent conversation. Some earlier details may be missing.",
+        "interrupted": "The answer stopped while earlier messages were being summarized."
       },
       "operational": {
         "queryPlanned": "Search: {method} · Scope: {scope}",
@@ -305,6 +314,10 @@
       "removeStaged": "Remove from list",
       "consentLabel": "I agree to send this file to {provider} temporarily.",
       "consentDescription": "The file expires after the analysis. It is not added to a knowledge base and cannot be used in other conversations.",
+      "consentDescriptionRetention": "Original files are kept for {duration}, then expire. They are not added to a knowledge base and cannot be used in other conversations.",
+      "retentionDays": "{n} days",
+      "retentionHours": "{n} hours",
+      "recallNote": "Files you send are recalled automatically in later questions in this conversation when needed.",
       "consentRequired": "Agree to the transfer before sending the file.",
       "uploading": "Sending files…",
       "uploadPartialFailed": "Some files could not be sent. Try sending the remaining ones again.",
@@ -352,7 +365,8 @@
         "artifact_download_failed": "The file could not be downloaded. Try again.",
         "unsupported_media_type": "This format cannot be attached.",
         "upload_too_large": "One file is too large."
-      }
+      },
+      "messageAttachmentsLabel": "Files attached to this message"
     },
     "artifacts": {
       "title": "Generated files",
@@ -476,6 +490,16 @@
     },
     "reasoningEffortGuideCurrent": "Currently selected",
     "interactionTitle": "Which document should I use?",
+    "attachmentInteractionTitle": "Which attachment should I use?",
+    "attachmentInteractionDescription": "Several attachments match this question. Pick up to {max} and the answer will continue.",
+    "attachmentInteractionEmpty": "There are no attachments to choose from. Cancel, then attach the file again and ask.",
+    "attachmentInteractionSubmit": "Answer with these files",
+    "attachmentInteractionSelectedCount": "{count} of {max} selected",
+    "attachmentInteractionOriginalExpired": "Original expired",
+    "attachmentInteractionAttachedAt": "Attached {time}",
+    "attachmentInteractionOriginalExpiredHelper": "Files whose original has expired cannot be chosen. Attach the file again to use it.",
+    "attachmentInteractionNotesAccess": "The answer will not reread the original files; it uses only what this conversation retained.",
+    "attachmentInteractionWaitingAnnouncement": "Choose which attachment to use before the answer can continue.",
     "interactionV1Description": "Several documents match your question. Pick one and I'll continue the answer.",
     "interactionDescription": "I narrowed this to the most relevant documents. Pick one, or add a filename clue.",
     "interactionUnresolvedDescription": "I couldn't identify the document yet. Add a filename clue so I can try again.",
@@ -884,7 +908,8 @@
       "run_interaction_refinement_exhausted": "No filename refinements remain. Choose from the available document list.",
       "run_selected_document_unavailable": "That document is no longer available to you. Pick another one.",
       "run_graph_version_incompatible": "The server was updated. Reload and ask again.",
-      "langgraph_persistence_unavailable": "This feature is unavailable right now. Try again shortly."
+      "langgraph_persistence_unavailable": "This feature is unavailable right now. Try again shortly.",
+      "run_admission_unknown": "The connection dropped and we could not confirm whether your question was received. To avoid sending it twice, refresh the conversation and check before sending again."
     },
     "csrfMissing": "Session proof is missing. Please sign in again.",
     "requestFailed": "Request failed",
@@ -966,7 +991,19 @@
       "modelSaved": "Model saved.",
       "modelLockedGuest": "Guest sessions answer with the default model and cannot change it.",
       "modelDefaultOption": "Default model ({name})",
-      "modelUnlistedSelection": "Saved model: {name}. It is not in the list, so it cannot be chosen again."
+      "modelUnlistedSelection": "Saved model: {name}. It is not in the list, so it cannot be chosen again.",
+      "summarizationTitle": "Summarization model",
+      "summarizationDescription": "When a conversation gets long, earlier messages are summarized with this model and carried into later answers. Summaries are never shown.",
+      "summarizationLegend": "Summarization model",
+      "summarizationRecommendedBadge": "Recommended",
+      "summarizationRecommendation": "We strongly recommend the recommended model for summarization. Summaries repeat as a conversation grows, so a larger model adds time and cost every time.",
+      "summarizationOffRecommendation": "The current summarization model is not the recommended one. Unless you have a specific reason, switch to the recommended model.",
+      "summarizationEffective": "Summarizing now with: {name}",
+      "summarizationLoadErrorTitle": "Could not load summarization settings",
+      "summarizationUpdateErrorTitle": "Could not change the summarization model",
+      "summarizationUnavailable": "The connected server does not offer a summarization model choice.",
+      "summarizationSaved": "Summarization model saved.",
+      "summarizationLockedGuest": "Guest sessions use the default summarization model and cannot change it."
     },
     "experimental": {
       "title": "Experimental settings",

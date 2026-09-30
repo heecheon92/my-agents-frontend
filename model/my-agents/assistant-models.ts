@@ -56,3 +56,49 @@ export type AssistantPreferences = z.infer<typeof assistantPreferencesSchema>;
 export type AssistantPreferencesPatchRequest = z.infer<
   typeof assistantPreferencesPatchRequestSchema
 >;
+
+/**
+ * The model that summarizes earlier turns when a conversation is compacted.
+ *
+ * Served in the same shape as the assistant preference — the backend reuses
+ * `AssistantPreferencesResponse` for `GET/PATCH /summarization/preferences` —
+ * but the catalog entries carry only `id` and `name`, and the catalog names a
+ * `recommended_model`. The recommendation is served data, never a constant
+ * here, so the UI marks whatever the backend currently recommends.
+ */
+export const summarizationModelOptionSchema = z.object({
+  id: assistantModelIdSchema,
+  name: z.string().min(1),
+});
+
+export const summarizationModelCapabilitiesSchema = z.object({
+  customizable: z.boolean(),
+  default_model: assistantModelIdSchema,
+  /**
+   * Served with a default, so always present today; optional here so an
+   * endpoint that omits unset fields degrades to "no badge" rather than
+   * failing the whole card.
+   */
+  recommended_model: assistantModelIdSchema.optional(),
+  models: z.array(summarizationModelOptionSchema),
+});
+
+export const summarizationPreferencesSchema = assistantPreferencesSchema;
+
+export const summarizationPreferencesPatchRequestSchema = z.object({
+  /** `null` clears the saved choice and returns to the deployment default. */
+  summarization_model: assistantModelIdSchema.nullable(),
+});
+
+export type SummarizationModelOption = z.infer<
+  typeof summarizationModelOptionSchema
+>;
+export type SummarizationModelCapabilities = z.infer<
+  typeof summarizationModelCapabilitiesSchema
+>;
+export type SummarizationPreferences = z.infer<
+  typeof summarizationPreferencesSchema
+>;
+export type SummarizationPreferencesPatchRequest = z.infer<
+  typeof summarizationPreferencesPatchRequestSchema
+>;

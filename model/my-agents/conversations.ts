@@ -27,6 +27,11 @@ export const runReasoningSchema = z.object({
  * run request, and the model is an account preference rather than a per-run
  * field. `null` or absent on legacy runs recorded before model selection.
  */
+/** Echo of the request's `client_request_id`; `null` on legacy runs. */
+export const runClientRequestSchema = z.object({
+  client_request_id: z.string().nullable().optional(),
+});
+
 export const runAssistantModelSchema = z.object({
   // Plain `string` as served: this is display metadata, and a malformed value
   // must not fail the whole run response and lose the answer with it.
@@ -48,6 +53,14 @@ export const messageSchema = z.object({
   conversation_id: z.string().min(1),
   role: z.enum(["user", "assistant"]),
   content: z.string(),
+  /**
+   * Files the user explicitly attached to this message. Empty for legacy
+   * messages and guests. Automatic reuse by later runs is deliberately not
+   * listed here — the run's own `attachments` carries that.
+   *
+   * `.catch([])`: display metadata must not take the transcript down with it.
+   */
+  attachments: z.array(conversationAttachmentSchema).catch([]),
 });
 
 export const messageCreateRequestSchema = z.object({
@@ -75,6 +88,12 @@ export const conversationRunRequestSchema = z
      * constrains to that same ceiling. See `attachments/staging.ts`.
      */
     attachment_ids: z.array(z.string().min(1)).optional(),
+    /**
+     * One fresh UUID per logical send, echoed on the run summary and on
+     * `run_started`. It is how a send whose connection dropped before
+     * acknowledgement is matched to the run it did or did not create.
+     */
+    client_request_id: z.string().uuid().optional(),
   })
   .merge(runReasoningSchema);
 
@@ -382,7 +401,8 @@ export const runStartedEventDataSchema = z
   })
   .merge(runSourceContextSchema.partial())
   .merge(runReasoningSchema)
-  .merge(runAssistantModelSchema);
+  .merge(runAssistantModelSchema)
+  .merge(runClientRequestSchema);
 
 export const answerDeltaEventDataSchema = z.object({
   delta: z.string(),
@@ -417,7 +437,8 @@ export const agentRunSummarySchema = z
   })
   .merge(runSourceContextSchema)
   .merge(runReasoningSchema)
-  .merge(runAssistantModelSchema);
+  .merge(runAssistantModelSchema)
+  .merge(runClientRequestSchema);
 
 export const agentEventSchema = z.object({
   id: z.string().min(1),

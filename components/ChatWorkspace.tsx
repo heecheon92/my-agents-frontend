@@ -27,9 +27,11 @@ import { decodeRouteSegment } from "@/lib/route-segments";
 import {
   type Citation,
   type ConversationArtifact,
+  type ConversationAttachment,
   type ConversationRunResumeRequest,
   type DocumentCoverage,
   INTERACTION_SCHEMA_VERSION,
+  isAttachmentSelection,
   isDocumentSelection,
   isDocumentSelectionV2,
   isRunInterrupted,
@@ -86,6 +88,7 @@ import {
   isObservedActiveRunStale,
   isReasoningSummaryEventType,
   isWaitingForInputRunStatus,
+  newClientRequestId,
   seedLiveActivityEvents,
   showsCancelledRunNotice,
 } from "./chat/workspace-helpers";
@@ -358,6 +361,11 @@ export function ChatWorkspace({
     observedAt: observedServerActiveRun?.observedAt ?? null,
     now: activeRunClock,
   });
+  // Just-uploaded attachments, by ID, until the attachments query catches up.
+  // The optimistic message reads them so a sent file shows with its question.
+  const freshlyUploadedAttachmentsRef = useRef(
+    new Map<string, ConversationAttachment>(),
+  );
   const {
     resetImmediateState,
     resumeInteraction,
@@ -366,6 +374,17 @@ export function ChatWorkspace({
   } = useChatRunLoop({
     activeRunIdRef,
     cancelAcceptedRef,
+    onRunAdmitted: (attachmentIds) =>
+      attachmentComposer.releaseSubmitted(attachmentIds),
+    resolveAttachments: (attachmentIds) =>
+      attachmentIds.flatMap((id) => {
+        const known =
+          freshlyUploadedAttachmentsRef.current.get(id) ??
+          attachmentComposer.attachments.find(
+            (attachment) => attachment.id === id,
+          );
+        return known ? [known] : [];
+      }),
     getReasoning: () =>
       reasoning.selection
         ? {
@@ -540,6 +559,7 @@ export function ChatWorkspace({
         // Already uploaded and still available. Holding the IDs rather than
         // the files means draining the queue never re-transfers the bytes.
         attachmentIds: selectedAttachmentIds,
+        clientRequestId: newClientRequestId(),
       });
       setDraft("");
       setStatusAnnouncement(localization.queuedAnnouncement);
@@ -549,6 +569,9 @@ export function ChatWorkspace({
     const pendingDraft = draftMessage;
     const pendingSelection = activeKnowledgeBaseSelection;
     const pendingAttachmentIds = selectedAttachmentIds;
+    // Minted with the snapshot of what this send carries, before anything can
+    // fail, so every attempt at this logical send reconciles on the same ID.
+    const pendingClientRequestId = newClientRequestId();
     setDraft("");
     const conversationId = await ensureConversationId(
       deriveConversationTitle(
@@ -566,8 +589,11 @@ export function ChatWorkspace({
     // Upload only after the conversation exists: the endpoint is
     // conversation-scoped, and bare `/chat` deliberately creates nothing until
     // the first message is sent.
-    const { uploadedIds, stagedCount } =
+    const { uploadedIds, uploadedAttachments, stagedCount } =
       await attachmentComposer.uploadStagedFiles(conversationId);
+    for (const attachment of uploadedAttachments) {
+      freshlyUploadedAttachmentsRef.current.set(attachment.id, attachment);
+    }
     if (
       shouldAbortSendAfterUpload({
         stagedCount,
@@ -591,6 +617,7 @@ export function ChatWorkspace({
       // selection: the attachments query has not refetched yet, so the derived
       // selection cannot know about them.
       Array.from(new Set([...pendingAttachmentIds, ...uploadedIds])),
+      pendingClientRequestId,
     );
   }
 
@@ -644,7 +671,11 @@ export function ChatWorkspace({
     const interaction = pendingInteraction;
     const runId = activeRunId ?? serverWaitingRunId;
     if (!activeId || !interaction || !runId) return;
-    if (!isDocumentSelection(interaction)) return;
+    if (
+      !isDocumentSelection(interaction) &&
+      !isAttachmentSelection(interaction)
+    )
+      return;
     // Carry the run's stored activity into the live list before the resume
     // appends to it. After a cold load the live list is empty and this run's
     // earlier events exist only on the server; `events` is keyed to the
@@ -681,6 +712,20 @@ export function ChatWorkspace({
             document_id: documentId,
           },
     );
+  }
+
+  async function handleSelectInteractionAttachments(attachmentIds: string[]) {
+    const interaction = pendingInteraction;
+    // The card, the slot, and this handler share one support decision.
+    if (!interaction || !isAttachmentSelection(interaction)) return;
+    if (attachmentIds.length === 0) return;
+    await answerPendingInteraction({
+      schema_version: INTERACTION_SCHEMA_VERSION,
+      interaction_id: interaction.interaction_id,
+      type: "attachment_selection",
+      kind: "select",
+      attachment_ids: attachmentIds,
+    });
   }
 
   async function handleRefineInteraction(text: string) {
@@ -742,6 +787,7 @@ export function ChatWorkspace({
           content: visibleQueuedMessage.content,
           knowledgeBaseSelection: visibleQueuedMessage.knowledgeBaseSelection,
           attachmentIds: visibleQueuedMessage.attachmentIds,
+          clientRequestId: visibleQueuedMessage.clientRequestId,
         }
       : activeId && draftMessage
         ? {
@@ -749,6 +795,7 @@ export function ChatWorkspace({
             content: draftMessage,
             knowledgeBaseSelection: activeKnowledgeBaseSelection,
             attachmentIds: selectedAttachmentIds,
+            clientRequestId: newClientRequestId(),
           }
         : null;
     if (
@@ -810,6 +857,7 @@ export function ChatWorkspace({
       nextQueuedMessage.content,
       nextQueuedMessage.knowledgeBaseSelection,
       nextQueuedMessage.attachmentIds,
+      nextQueuedMessage.clientRequestId,
     );
   }
 
@@ -1086,6 +1134,7 @@ export function ChatWorkspace({
             isResuming={isStreaming || isCancellingInteraction}
             onChoose={handleChooseInteractionOption}
             onRefine={handleRefineInteraction}
+            onSelectAttachments={handleSelectInteractionAttachments}
             onCancel={handleCancelInteraction}
           />
         ) : null

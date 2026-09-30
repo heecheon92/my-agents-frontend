@@ -372,6 +372,73 @@ test.describe("temporary conversation files", () => {
     await expect(library.getByText("q3-forecast.xlsx")).toBeVisible();
   });
 
+  test("releases a submitted file once the backend admits the run", async ({
+    page,
+  }) => {
+    // The server recalls submitted files on later turns, so after admission the
+    // chip has done its job. Only admission clears it: see the next test.
+    await mockWorkspace(page, { documentWorkspace: "enabled" });
+    await page.route("**/api/my-agents/**/runs/stream", (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: "text/event-stream",
+        body: 'event: run_started\ndata: {"run_id":"run-admitted","conversation_id":"c-visual","status":"running"}\n\n',
+      }),
+    );
+    const runRequest = page.waitForRequest((request) =>
+      request.url().endsWith("/runs/stream"),
+    );
+    await page.goto(CONVERSATION_URL);
+    await dismissOnboarding(page);
+
+    const chips = page.locator('[data-slot="attachment-chips"]');
+    const library = page.locator('[data-slot="attachment-library"]');
+    await library.locator("summary").click();
+    await library.getByRole("button", { name: copy.addToTurn }).click();
+    await expect(chips.getByText("q3-forecast.xlsx")).toBeVisible();
+
+    await page.getByPlaceholder(chat.composerPlaceholder).fill("요약해 주세요");
+    await page.getByPlaceholder(chat.composerPlaceholder).press("Enter");
+    expect(
+      ((await runRequest).postDataJSON() as { attachment_ids?: string[] })
+        .attachment_ids,
+    ).toEqual(["att-1"]);
+
+    await expect(chips).toHaveCount(0);
+    // Released from the turn, not deleted: it can still be re-attached.
+    await expect(library.getByText("q3-forecast.xlsx")).toBeVisible();
+  });
+
+  test("keeps the selection when a send fails before admission", async ({
+    page,
+  }) => {
+    await mockWorkspace(page, { documentWorkspace: "enabled" });
+    await page.route("**/api/my-agents/**/runs/stream", (route) =>
+      route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({
+          detail: "unavailable",
+          code: "service_unavailable",
+        }),
+      }),
+    );
+    await page.goto(CONVERSATION_URL);
+    await dismissOnboarding(page);
+
+    const chips = page.locator('[data-slot="attachment-chips"]');
+    const library = page.locator('[data-slot="attachment-library"]');
+    await library.locator("summary").click();
+    await library.getByRole("button", { name: copy.addToTurn }).click();
+    await page.getByPlaceholder(chat.composerPlaceholder).fill("요약해 주세요");
+    await page.getByPlaceholder(chat.composerPlaceholder).press("Enter");
+
+    // No run_started ever arrived, so nothing was admitted and the file stays
+    // on the turn for the retry.
+    await expect(page.getByRole("alert").first()).toBeVisible();
+    await expect(chips.getByText("q3-forecast.xlsx")).toBeVisible();
+  });
+
   test("offers the generated file on the answer that produced it", async ({
     page,
   }) => {

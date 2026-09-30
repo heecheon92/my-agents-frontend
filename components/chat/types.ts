@@ -22,4 +22,10 @@ export type QueuedMessage = {
    * ends up asking about.
    */
   attachmentIds: string[];
+  /**
+   * One UUID per logical send, kept across a retry of the same message (a
+   * requeue after `conversation_run_already_active`), so reconciliation after
+   * a dropped connection looks for exactly this send's run.
+   */
+  clientRequestId: string;
 };

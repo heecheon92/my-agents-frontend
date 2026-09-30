@@ -1876,3 +1876,164 @@ matched by MIME type, so an extensionless `image/png` would have been staged
 and offered consent, then refused. Images are now excluded from the MIME
 fallback and rejected locally like an unsupported `.heic`; the fallback still
 applies to non-image formats.
+
+## 2026-09-30 — Conversation continuity (frontend)
+
+The frontend half of the approved continuity plan. It was built first against
+existing contracts, then completed against the backend's hosted OpenAPI
+document (a local isolated verification server, compared 2026-09-30).
+Contract answers from the backend agent are recorded where they shaped the
+code.
+
+- **Attachments are released on admission.** `run_started` is the backend's
+  first acknowledgement. `useChatRunLoop` calls `onRunAdmitted` once, at that
+  event, with the run's own attachment IDs, and the composer releases exactly
+  those. This happens only when the served `automatic_recall_supported` is
+  true: without recall, a released file would silently drop out of the next
+  turn. Failures before admission keep the selection, and a queued message's
+  snapshot is released only on its own admission.
+- **A dropped connection before `run_started` is reconciled, never resent.**
+  This uses a pre-send run-ID snapshot, then the run list plus the transcript
+  (`decideAdmission`), checked twice. Admitted means the files are released,
+  the draft is not restored, and run polling finishes the answer. Not admitted
+  is an ordinary failure. Anything else is `run_admission_unknown`, with copy
+  asking the user to refresh before resending.
+- **Context compaction is its own stage.** Its events are kept out of the
+  heuristics that map `/context/` to "searching knowledge". One detail row is
+  worded from the event type only, and a failure is non-fatal. Refresh
+  recovery comes from the persisted events. `run_model_resolved` is bookkeeping
+  and does not count as observed work.
+- **Summarization model setting.** `GET/PATCH /summarization/preferences`
+  reuses the assistant preference shape. The catalog is `{id, name}` plus a
+  served `recommended_model`, marked "권장". A note strongly recommends it, and
+  becomes a warning when the model in use differs. Guests are locked. It is
+  built on the shared `ModelPreferenceCard`/`resolveModelPreference`, and the
+  answer-model card uses the same components with unchanged behaviour.
+- **User message attachments.** `MessageResponse.attachments` is shown
+  read-only on user messages, with lapsed files marked. The field parses with
+  `.catch([])` so it cannot take the transcript down.
+- **Retention.** The consent box states the served original-file retention
+  (seven days here) and mentions recall only when it is supported. Notes are
+  parsed (`notes_retention`) and never shown.
+- **V2 `attachment_selection`.** It is registered as a second interaction type
+  with its own three-part support guard, a checkbox card allowing one to
+  three choices, and a resume request with `attachment_ids`. See
+  `docs/durable-interactions.md`.
+
+Live checks through the production BFF against the verification server, no
+file transfers: the summarization catalog, preferences, save, reset and an
+out-of-catalog 422; the workspace retention fields; a deterministic streamed
+run whose `run_started`, messages (`attachments: []`) and persisted events all
+parse with the frontend schemas; and the process panel not inventing a
+compaction stage. Guest checks were not possible live, because the server had
+guest codes on manual approval; mocked browser tests cover the guest lock.
+Compaction, `run_model_resolved`, and `attachment_selection` were not
+triggered by a short text-only run, so they are covered by schema comparison
+and mocked tests.
+
+Verified: lint, typecheck, 420 unit tests, production build, and targeted
+browser suites, including the new `e2e/continuity.spec.ts` (12 cases).
+Reconciliation and admission release were each confirmed to fail with their
+code disabled.
+
+### Follow-up: client request IDs and live checks on the second verification server
+
+- **Reconciliation keyed on `client_request_id`.** The backend added the field
+  to the run request, the run summary, and `run_started`, after the frontend
+  flagged that text matching could conflate two identical sends
+  (`docs/backend-requests.md`). Each logical send mints a v4 UUID. It uses
+  `getRandomValues`, because `randomUUID` needs a secure context. The ID is
+  carried on queued messages and kept across a requeue, and reconciliation
+  matches that exact ID. The text heuristic is gone, and a legacy run without
+  an ID stays unknown.
+- **A stream lost after admission refetches.** Live testing showed that a
+  failure after `run_started` left the local optimistic copy of the question
+  on screen, without the files the server had stored with it, until a
+  reload. Such a failure now refetches messages and runs and drops the
+  optimistic copy.
+- **New optional interaction fields.** Each `attachment_selection` option
+  shows `byte_size`, and `created_at` appears where filenames collide. `access`
+  is enforced as the backend defined it: `original` disables options whose
+  original is unavailable, while `notes` keeps every option choosable and says
+  the answer uses only what the conversation retained.
+- **A run that stops mid-compaction reads as stopped.** A cancel or failure
+  already won the headline and cleared the current stage. The compaction row,
+  still "started", now says the answer stopped mid-summary instead of that
+  summarizing is under way.
+
+Live checks against the second verification server, whose workspace uses a
+fake adapter, so no provider transfers:
+
+- A CSV plus PNG run completed. `client_request_id` was echoed on
+  `run_started` and on the run list, the user message listed both files, and
+  in the real UI the composer chips cleared on admission.
+- Naming a file recalled it on a later run.
+- Compaction triggered on the tenth run, with metadata-only payloads, and the
+  real UI rebuilt the "이전 대화 정리" step from the stored events after a
+  reload with no summary text.
+- Guests were locked, with 403 on both preference PATCHes and file features
+  ineligible.
+
+Backend findings reported to its agent: runs carrying attachments stall after
+`retrieval_completed`, with the stream ending without a terminal event and the
+run left `running`, which blocks the conversation. The backend agent traced
+it to the verification adapter reusing one provider container ID across
+conversations, which violates `document_workspaces.provider_container_id`
+uniqueness. It is not CSV-specific. The failure also exposed a backend
+recovery bug: reading the ORM run ID after the failed transaction suppressed
+the terminal failure event, which is why the stream ended with no final event.
+Both are being fixed backend-side; live file checks resume on a replacement
+adapter. All file and compaction checks here are
+stand-in evidence from a fake adapter, not real-provider fidelity. Vague
+references ("그 파일") neither recalled files nor raised `attachment_selection`.
+The stall also prevented a live `attachment_selection` check.
+
+Final live pass on the replacement verification server (mocked provider
+resources with unique IDs; stand-in evidence, not real-provider fidelity):
+
+- **Passing:** file runs complete (CSV plus PNG, and CSV-only), with
+  `client_request_id` echoed. A vague follow-up raises `attachment_selection`
+  over the stream before retrieval. Answered from the real UI card, both modes
+  complete and leave no waiting run. In `access: "original"` mode the resume
+  reattaches the chosen file. In `access: "notes"` mode (triggered by 결론/
+  논의/기억 phrasing) the card shows the notes line, and the resume completes
+  without `attachments_ready`, so the originals are not reopened.
+- **Refresh recovery, after the backend fix:** `GET /runs/{run_id}` for a
+  run waiting on `attachment_selection` used to return 500, which blocked
+  cold-load recovery. On the fixed server, reloading the page while the
+  question was waiting returned 200 and rebuilt the card, in both modes. The
+  `notes` card kept its notes line. Answering from the rebuilt card completed
+  the run with nothing left waiting, and the `notes` resume again recorded no
+  `attachments_ready`.
+
+Remaining gaps: none of this is real-provider evidence (the provider was
+mocked throughout); guest file features are verified as disabled, not
+exercised; and persisted run events still end at `answer_composed` with no
+`run_completed`, so a reloaded completed run cannot show a completed headline
+(pre-existing, reported).
+
+Final full browser suite on the complete continuity diff (after the
+`client_request_id`, `access`, and terminal-stage changes): 229 passed, 2
+skipped, 2 failed. Both failures are the confirmed baselines that fail
+identically on `develop` without this work:
+`document-workspace.spec.ts:457` (file drop anywhere on the conversation) and
+`transcript-autoscroll.spec.ts:43` (content growing after the answer settles).
+
+Follow-up: a sent question now shows its files immediately. The optimistic
+user message used to carry `attachments: []`, so the chips appeared only once
+the stored message was refetched, after the answer had started. `useChatRunLoop`
+now takes `resolveAttachments`, which maps the send's attachment IDs to records
+from the conversation's attachment list plus the files uploaded for this send.
+Upload results are kept in a ref because the attachments query has not
+refetched yet. The stored message still replaces the optimistic copy.
+Two browser tests hold the stream open and assert the chip beside the question
+for a library file and a fresh upload. Both fail without the change.
+
+Owner-reported testing: the owner tested the continuity feature manually in a
+browser and approved it. That is the owner's own report; it is not a
+format-by-format, model-by-model, or real-provider fidelity benchmark.
+Automated evidence at commit: lint, typecheck, 425 unit tests, production
+build, the full browser suite at 229 passed / 2 skipped / 2 failed (both
+confirmed baselines: `document-workspace.spec.ts:457` file drop and
+`transcript-autoscroll.spec.ts:43`), and the targeted suites after the
+optimistic-attachment follow-up.

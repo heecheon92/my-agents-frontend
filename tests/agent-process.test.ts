@@ -396,3 +396,135 @@ describe("getAgentProcessHeadline", () => {
     expect(headlineFor({})).toBeNull();
   });
 });
+
+describe("context compaction", () => {
+  const compacting = [
+    event(1, "run_started"),
+    event(2, "context_compaction_started", {
+      policy_version: 1,
+      model: "gpt-6-luna",
+      message_count: 42,
+    }),
+  ];
+
+  it("reports compaction in progress, not a knowledge search", () => {
+    // The keyword heuristics map /context/ to "searching knowledge". A
+    // compaction event must never be reported as a search that did not happen.
+    const state = getAgentProcessState({
+      events: compacting,
+      citationCount: 0,
+      isStreaming: true,
+    });
+    expect(state.stages).toEqual(["organizingContext"]);
+    expect(state.currentStage).toBe("organizingContext");
+  });
+
+  it("keeps compaction as the first stage once the answer proceeds", () => {
+    const state = getAgentProcessState({
+      events: [
+        ...compacting,
+        event(3, "context_compaction_completed", { message_count: 42 }),
+        event(4, "run_completed"),
+      ],
+      citationCount: 0,
+      isStreaming: false,
+    });
+    expect(state.stages[0]).toBe("organizingContext");
+    expect(state.stages).not.toContain("searchingKnowledge");
+    expect(state.terminal).toBe("completed");
+  });
+
+  it("treats a failed compaction as non-fatal", () => {
+    const state = getAgentProcessState({
+      events: [
+        ...compacting,
+        event(3, "context_compaction_failed", { fallback: true }),
+        event(4, "run_completed"),
+      ],
+      citationCount: 0,
+      isStreaming: false,
+    });
+    expect(state.terminal).toBe("completed");
+  });
+
+  it("describes compaction in one row, worded from the event type alone", () => {
+    const details = getAgentProcessDetails({
+      events: [
+        ...compacting,
+        event(3, "context_compaction_failed", {
+          summary: "must never be shown",
+          fallback: true,
+        }),
+      ],
+      lang: "ko",
+      localization: ko.chat as ChatLocalization,
+    });
+    const rows = details.filter(
+      (detail) => detail.phase === "organizingContext",
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].description).toBe(ko.chat.answerProcess.compaction.failed);
+    expect(JSON.stringify(details)).not.toContain("must never be shown");
+  });
+
+  it("leaves later steps as the newest message", () => {
+    const details = getAgentProcessDetails({
+      events: [
+        ...compacting,
+        event(3, "context_compaction_completed"),
+        event(4, "retrieval_completed", {
+          agent_trace: [
+            {
+              id: "candidate_scouts",
+              event_type: "candidates_retrieved",
+              status: "completed",
+              title: { ko: "검색", en: "Search" },
+              description: { ko: "후보를 찾았습니다.", en: "Found." },
+              evidence: {},
+            },
+          ],
+        }),
+      ],
+      lang: "ko",
+      localization: ko.chat as ChatLocalization,
+    });
+    expect(details.at(-1)?.description).toBe("후보를 찾았습니다.");
+    expect(details[0].phase).toBe("organizingContext");
+  });
+});
+
+describe("compaction cut short by the run ending", () => {
+  it.each([
+    ["run_cancelled", "cancelled"],
+    ["run_failed", "failed"],
+  ] as const)(
+    "lets %s override a started compaction and says it stopped",
+    (terminalEvent, terminal) => {
+      const events = [
+        event(1, "run_started"),
+        event(2, "context_compaction_started", { message_count: 20 }),
+        event(3, terminalEvent),
+      ];
+      // Even while the stream is still open, a terminal event wins: nothing
+      // may keep reporting compaction as the current, live step.
+      for (const isStreaming of [true, false]) {
+        const state = getAgentProcessState({
+          events,
+          citationCount: 0,
+          isStreaming,
+        });
+        expect(state.terminal).toBe(terminal);
+        expect(state.currentStage).toBeNull();
+      }
+      const [detail] = getAgentProcessDetails({
+        events,
+        lang: "ko",
+        localization: ko.chat as ChatLocalization,
+      });
+      expect(detail.description).toBe(
+        ko.chat.answerProcess.compaction.interrupted,
+      );
+      expect(detail.status).toBe("failed");
+    },
+  );
+});

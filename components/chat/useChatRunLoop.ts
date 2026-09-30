@@ -4,10 +4,12 @@ import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import {
   type AnswerDeltaEventData,
   type Citation,
+  type ConversationAttachment,
   type ConversationRunInterruptedResponse,
   type ConversationRunResponse,
   type ConversationRunResumeRequest,
   type DocumentCoverage,
+  isAttachmentSelection,
   isDocumentSelection,
   isDocumentSelectionV2,
   type KnowledgeBaseSelection,
@@ -21,19 +23,27 @@ import {
   type RunCancelledEventData,
 } from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
+import { MyAgentsAPIError } from "@/services/my-agents/MyAgentsAPIError";
 import type { LiveActivityEvent, QueuedMessage } from "./types";
 import {
+  type AdmissionVerdict,
   appendLiveActivityEvent,
+  decideAdmission,
+  isAmbiguousPreAdmissionFailure,
   isConversationRunAlreadyActiveError,
   type RunOutcome,
   safeBackendDetail,
   shouldRecordLiveActivityEvent,
 } from "./workspace-helpers";
 
+/** Gap before reconciliation looks again for a run recorded late. */
+const ADMISSION_RECHECK_DELAY_MS = 1500;
+
 type QueryInvalidator = {
   invalidateQueries: (options: {
     queryKey: readonly unknown[];
   }) => Promise<unknown>;
+  getQueryData: (queryKey: readonly unknown[]) => unknown;
   setQueryData: (queryKey: readonly unknown[], value: unknown) => unknown;
 };
 
@@ -53,11 +63,26 @@ type UseChatRunLoopOptions = {
     reasoning_mode: ReasoningMode;
     reasoning_effort: ReasoningEffort;
   } | null;
+  /**
+   * Called once when the backend admits a run (`run_started`), with exactly the
+   * attachment IDs that run submitted — never the composer's current selection,
+   * which may already hold a newer turn's files. Anything that fails before
+   * admission never calls it, so the selection survives for a retry.
+   */
+  onRunAdmitted?: (attachmentIds: string[]) => void;
+  /**
+   * The attachment records behind a send's IDs, for the optimistic message,
+   * so a question and its files appear together the moment it is sent rather
+   * than the files arriving once the stored message is refetched. Unknown IDs
+   * are skipped; the stored copy is still the source of truth.
+   */
+  resolveAttachments?: (attachmentIds: string[]) => ConversationAttachment[];
   localization: {
     runFailed: string;
     interactionWaitingAnnouncement: string;
     interactionRefinementWaitingAnnouncement: string;
     interactionBrowseWaitingAnnouncement: string;
+    attachmentInteractionWaitingAnnouncement: string;
     interactionResumedAnnouncement: string;
     interactionRefiningAnnouncement: string;
     queueAlreadyExistsAnnouncement: string;
@@ -66,6 +91,7 @@ type UseChatRunLoopOptions = {
     immediateStartedAnnouncement: string;
     currentAnswerStoppedAnnouncement: string;
     queuedSentAnnouncement: string;
+    admittedAfterDisconnectAnnouncement: string;
   };
   queryClient: QueryInvalidator;
   setActiveRunId: (runId: string | null) => void;
@@ -102,6 +128,8 @@ export function useChatRunLoop({
   activeRunIdRef,
   cancelAcceptedRef,
   getReasoning,
+  onRunAdmitted,
+  resolveAttachments,
   isStreamingRef,
   localization,
   pendingImmediateMessageRef,
@@ -141,11 +169,65 @@ export function useChatRunLoop({
     setIsCancelling(false);
   }
 
+  /**
+   * The conversation's run IDs before a send: the baseline reconciliation
+   * compares against. The cached list when there is one; otherwise a fetch.
+   * `null` when neither is available, which makes a later drop `unknown`
+   * rather than a guess.
+   */
+  async function snapshotRunIds(
+    conversationId: string,
+  ): Promise<Set<string> | null> {
+    const cached = queryClient.getQueryData(
+      MyAgentsQueryKeys.conversations.runs(conversationId),
+    ) as { run_id: string }[] | undefined;
+    if (cached) return new Set(cached.map((run) => run.run_id));
+    try {
+      const runs = await myAgentsAPI.conversations.runs(conversationId);
+      return new Set(runs.map((run) => run.run_id));
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Asks the server whether a send that lost its connection before
+   * `run_started` was admitted. Checked twice: the backend may record the run
+   * a moment after the connection drops, and "not admitted" is the verdict
+   * that invites a resend, so it has to survive a second look.
+   */
+  async function reconcileAdmission(
+    conversationId: string,
+    clientRequestId: string,
+    knownRunIds: Set<string> | null,
+  ): Promise<AdmissionVerdict> {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      if (attempt > 0) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, ADMISSION_RECHECK_DELAY_MS),
+        );
+      }
+      try {
+        const runs = await myAgentsAPI.conversations.runs(conversationId);
+        const verdict = decideAdmission({
+          knownRunIds,
+          runs,
+          clientRequestId,
+        });
+        if (verdict !== "not_admitted") return verdict;
+      } catch {
+        return "unknown";
+      }
+    }
+    return "not_admitted";
+  }
+
   async function runMessage(
     conversationId: string,
     message: string,
     knowledgeBaseSelection: KnowledgeBaseSelection,
     attachmentIds: string[],
+    clientRequestId: string,
   ): Promise<RunOutcome> {
     if (isStreamingRef.current) return "failed";
     isStreamingRef.current = true;
@@ -167,6 +249,7 @@ export function useChatRunLoop({
       conversation_id: conversationId,
       role: "user",
       content: message,
+      attachments: resolveAttachments?.(attachmentIds) ?? [],
     });
     let completed = false;
     let cancelled = false;
@@ -176,6 +259,8 @@ export function useChatRunLoop({
     let partialReplyPersisted = false;
     let interrupted = false;
     let interruptedRunId: string | null = null;
+    let admitted = false;
+    const knownRunIds = await snapshotRunIds(conversationId);
     try {
       for await (const streamEvent of myAgentsAPI.conversations.streamRunEvents(
         conversationId,
@@ -188,6 +273,7 @@ export function useChatRunLoop({
           ...(attachmentIds.length > 0
             ? { attachment_ids: attachmentIds }
             : {}),
+          client_request_id: clientRequestId,
           ...(getReasoning() ?? {}),
         },
       )) {
@@ -219,6 +305,10 @@ export function useChatRunLoop({
         if (streamEvent.event === "run_started") {
           const data = streamEvent.data as { run_id: string };
           setCurrentRunId(data.run_id);
+          if (!admitted) {
+            admitted = true;
+            onRunAdmitted?.(attachmentIds);
+          }
         }
         if (streamEvent.event === "run_cancelled") {
           cancelled = true;
@@ -302,6 +392,59 @@ export function useChatRunLoop({
         setStreamError(null);
         return "active_conflict";
       }
+      if (!admitted && isAmbiguousPreAdmissionFailure(error)) {
+        const verdict = await reconcileAdmission(
+          conversationId,
+          clientRequestId,
+          knownRunIds,
+        );
+        // Refresh either way: if the run did land, the transcript and the run
+        // list are what show it, and run polling carries the answer from here.
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: MyAgentsQueryKeys.conversations.messages(conversationId),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: MyAgentsQueryKeys.conversations.runs(conversationId),
+          }),
+        ]).catch(() => undefined);
+        if (verdict === "admitted") {
+          admitted = true;
+          onRunAdmitted?.(attachmentIds);
+          setOptimisticMessage(null);
+          setStreamError(null);
+          setStatusAnnouncement(
+            localization.admittedAfterDisconnectAnnouncement,
+          );
+          return "admitted_after_disconnect";
+        }
+        if (verdict === "unknown") {
+          // Localized through the shared error copy by `code`; nothing is
+          // resent, and the selection stays until the user has looked.
+          setStreamError(
+            new MyAgentsAPIError({
+              message: "run admission unknown",
+              status: 0,
+              body: { code: "run_admission_unknown" },
+            }),
+          );
+          return "admission_unknown";
+        }
+      }
+      if (admitted) {
+        // Admitted, then lost: the server stored the question (and its files)
+        // before the stream ended. Show that stored copy instead of the local
+        // optimistic one, and let the run list report what became of the run.
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: MyAgentsQueryKeys.conversations.messages(conversationId),
+          }),
+          queryClient.invalidateQueries({
+            queryKey: MyAgentsQueryKeys.conversations.runs(conversationId),
+          }),
+        ]).catch(() => undefined);
+        setOptimisticMessage(null);
+      }
       setStreamError(error);
       return "failed";
     } finally {
@@ -319,12 +462,14 @@ export function useChatRunLoop({
     message: string,
     knowledgeBaseSelection: KnowledgeBaseSelection,
     attachmentIds: string[],
+    clientRequestId: string,
   ): Promise<void> {
     const outcome = await runMessage(
       conversationId,
       message,
       knowledgeBaseSelection,
       attachmentIds,
+      clientRequestId,
     );
     if (outcome === "active_conflict") {
       if (queuedMessageRef.current?.conversationId === conversationId) {
@@ -338,12 +483,25 @@ export function useChatRunLoop({
           // The files were already uploaded and are still available; the held
           // message keeps them so a retry does not re-transfer the bytes.
           attachmentIds,
+          // The same logical send: the backend refused it, so reusing the ID
+          // cannot collide with a run it created.
+          clientRequestId,
         });
         setStatusAnnouncement(localization.queuedAnnouncement);
       }
       await queryClient.invalidateQueries({
         queryKey: MyAgentsQueryKeys.conversations.runs(conversationId),
       });
+      resetImmediateState();
+      return;
+    }
+    // A disconnect the server survived, or one that could not be verified:
+    // either way the message may already be stored, so the draft is not
+    // restored for a resend and the queue does not drain behind it.
+    if (
+      outcome === "admitted_after_disconnect" ||
+      outcome === "admission_unknown"
+    ) {
       resetImmediateState();
       return;
     }
@@ -375,6 +533,7 @@ export function useChatRunLoop({
         pendingImmediateMessage.content,
         pendingImmediateMessage.knowledgeBaseSelection,
         pendingImmediateMessage.attachmentIds,
+        pendingImmediateMessage.clientRequestId,
       );
       return;
     }
@@ -392,6 +551,7 @@ export function useChatRunLoop({
         nextQueuedMessage.content,
         nextQueuedMessage.knowledgeBaseSelection,
         nextQueuedMessage.attachmentIds,
+        nextQueuedMessage.clientRequestId,
       );
     }
   }
@@ -583,8 +743,12 @@ export function waitingInteractionAnnouncement(
     | "interactionWaitingAnnouncement"
     | "interactionRefinementWaitingAnnouncement"
     | "interactionBrowseWaitingAnnouncement"
+    | "attachmentInteractionWaitingAnnouncement"
   >,
 ) {
+  if (isAttachmentSelection(interaction)) {
+    return localization.attachmentInteractionWaitingAnnouncement;
+  }
   if (
     !isDocumentSelection(interaction) ||
     !isDocumentSelectionV2(interaction)

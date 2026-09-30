@@ -13,6 +13,7 @@ import type {
   ReasoningSummaryDisplay,
 } from "@/model/my-agents";
 import { ArtifactList } from "./attachments/ArtifactList";
+import { MessageAttachmentList } from "./attachments/MessageAttachmentList";
 import { CopyMessageButton } from "./CopyMessageButton";
 import { AgentProcessPanel, EvidencePanel } from "./EvidencePanel";
 import { MessageBubble } from "./MessageBubble";
@@ -254,6 +255,12 @@ export function ChatTranscript({
                   ) : null
                 }
               >
+                {!isAssistant ? (
+                  <MessageAttachmentList
+                    attachments={message.attachments ?? []}
+                    localization={localization}
+                  />
+                ) : null}
                 {isReplaying && !streamedReply ? (
                   <AssistantGeneratingIndicator
                     label={localization.agentComposing}

@@ -6,6 +6,8 @@ import {
   documentWorkspaceCapabilitySchema,
   type ReasoningCapabilities,
   reasoningCapabilitiesSchema,
+  type SummarizationModelCapabilities,
+  summarizationModelCapabilitiesSchema,
 } from "@/model/my-agents";
 import { myAgentsFetchClient } from "./fetch-client";
 import { parseWithSchema } from "./parser";
@@ -35,6 +37,14 @@ export class MyAgentsCapabilityAPI {
       API_PATH.capabilities.assistantModels,
     );
     return parseWithSchema(assistantModelCapabilitiesSchema, value);
+  }
+
+  /** Models offered for summarizing earlier turns, and the recommended one. */
+  async summarizationModels(): Promise<SummarizationModelCapabilities> {
+    const value = await this.client.fetch(
+      API_PATH.capabilities.summarizationModels,
+    );
+    return parseWithSchema(summarizationModelCapabilitiesSchema, value);
   }
 
   /**

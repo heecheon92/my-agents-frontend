@@ -90,6 +90,24 @@ export const documentWorkspaceCapabilitySchema = z.object({
   formats: z.array(documentFormatCapabilitySchema),
   consent_required: z.literal(true).default(true),
   retention: z.literal("ephemeral").default("ephemeral"),
+  /**
+   * How long an uploaded original is kept. Optional rather than defaulted: a
+   * backend without the field must not have a retention period invented for
+   * it in copy.
+   */
+  original_file_ttl_seconds: z.number().int().positive().optional(),
+  abandoned_upload_ttl_seconds: z.number().int().positive().optional(),
+  /**
+   * Notes derived from files are private and conversation-scoped. Parsed so
+   * the contract is visible here; never rendered, and no notes are shown.
+   */
+  notes_retention: z.literal("conversation").optional(),
+  /**
+   * Whether later turns recall submitted files by themselves. Gates releasing
+   * a file from the composer once its run is admitted: without recall, the
+   * file must stay attached or the next turn silently loses it.
+   */
+  automatic_recall_supported: z.boolean().default(false),
 });
 
 export const conversationAttachmentSchema = z.object({

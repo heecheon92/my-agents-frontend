@@ -2,10 +2,12 @@
 
 import {
   INTERACTION_SCHEMA_VERSION,
+  isAttachmentSelection,
   isDocumentSelection,
   type PendingInteraction,
 } from "@/model/my-agents";
 import type { ChatLocalization } from "../types";
+import { AttachmentSelectionCard } from "./AttachmentSelectionCard";
 import { DocumentSelectionCard } from "./DocumentSelectionCard";
 import { classifyInteraction, resolveInteractionRenderer } from "./registry";
 import { UnsupportedInteractionCard } from "./UnsupportedInteractionCard";
@@ -21,6 +23,7 @@ import { useInteractionOptions } from "./useInteractionOptions";
  */
 const INTERACTION_RENDERERS = {
   document_selection: DocumentSelectionCard,
+  attachment_selection: AttachmentSelectionCard,
 } as const;
 
 export function PendingInteractionSlot({
@@ -31,6 +34,7 @@ export function PendingInteractionSlot({
   isResuming,
   onChoose,
   onRefine,
+  onSelectAttachments,
   onCancel,
 }: {
   interaction: PendingInteraction;
@@ -40,6 +44,7 @@ export function PendingInteractionSlot({
   isResuming: boolean;
   onChoose: (documentId: string) => void;
   onRefine: (text: string) => void;
+  onSelectAttachments: (attachmentIds: string[]) => void;
   onCancel: () => void;
 }) {
   const support = classifyInteraction(
@@ -68,6 +73,21 @@ export function PendingInteractionSlot({
     interaction: documentSelection,
   });
 
+  // Same three-part support decision as the submit handler: a type this build
+  // registers is not enough, the version and shape must match too.
+  if (support.support === "supported" && isAttachmentSelection(interaction)) {
+    return (
+      <AttachmentSelectionCard
+        key={interaction.interaction_id}
+        interaction={interaction}
+        localization={localization}
+        isResuming={isResuming}
+        onSelect={onSelectAttachments}
+        onCancel={onCancel}
+      />
+    );
+  }
+
   if (support.support !== "supported" || !documentSelection) {
     return (
       <UnsupportedInteractionCard
@@ -83,7 +103,7 @@ export function PendingInteractionSlot({
   }
 
   const Renderer = resolveInteractionRenderer(
-    INTERACTION_RENDERERS,
+    { document_selection: DocumentSelectionCard },
     documentSelection.type,
     DocumentSelectionCard,
   );

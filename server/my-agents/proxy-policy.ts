@@ -59,6 +59,24 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "assistant.preferences.update",
   },
   {
+    // Read-only. The models that may summarize earlier turns during context
+    // compaction, with the served recommendation.
+    method: "GET",
+    pattern: /^\/capabilities\/summarization-models$/,
+    name: "capabilities.summarization-models",
+  },
+  {
+    method: "GET",
+    pattern: /^\/summarization\/preferences$/,
+    name: "summarization.preferences",
+  },
+  {
+    // Same shape and guest rule as the assistant preference.
+    method: "PATCH",
+    pattern: /^\/summarization\/preferences$/,
+    name: "summarization.preferences.update",
+  },
+  {
     // Unauthenticated: `/guest` needs the active limits and delivery mode
     // before anyone signs in, so the copy can state them accurately.
     method: "GET",

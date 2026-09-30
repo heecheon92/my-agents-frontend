@@ -157,6 +157,13 @@ deployment observations.
   `message_key` discriminated union at `schema_version` 1 with closed scalar
   parameters. The frontend words the sentence from those facts, so free-form
   backend prose is no longer the display path for a verified stage.
+- Optional `client_request_id` on the run request, run summary, and
+  `run_started`, used to reconcile a send whose connection dropped before
+  acknowledgement by exact ID rather than message text. The conversation
+  continuity contracts landed with it: summarization-model preferences and
+  catalog, `MessageResponse.attachments`, workspace retention fields, context
+  compaction events, `run_model_resolved`, and the V2 `attachment_selection`
+  interaction with `access`.
 
 ### Completed
 

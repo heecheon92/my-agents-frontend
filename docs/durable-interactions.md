@@ -75,6 +75,33 @@ button", and "may the queue drain" stop being three hand-rolled boolean
 combinations that disagree about a suspended run. Do not add a reducer here; a
 stored phase would be a second source of truth that can drift from the server.
 
+## V2 `attachment_selection`
+
+The second interaction type. It is asked when a question refers to "the file"
+and more than one of the conversation's attachments could be meant. The schema
+was taken from the live OpenAPI document on 2026-09-30: `PendingAttachmentSelection`
+(V2 only, up to 50 options, each `attachment_id`, `filename`, `category`,
+`original_available`), answered on the same resume endpoints with
+`ConversationAttachmentSelectRequestV2` — `kind: "select"` and one to three
+`attachment_ids`.
+
+It follows every rule below. `isAttachmentSelection` checks type, version and a
+structural field; the slot, `handleSelectInteractionAttachments`, and the
+waiting announcement all gate on it, so a V3 body falls back to the cancellable
+card. The options are the backend's list, rendered as given. The card uses
+checkboxes because the answer is a set; the fourth box is disabled rather than
+silently replacing a choice.
+
+`access` decides what an expired original means. In `original` mode, the
+default, the answer reads the files themselves, so an option with
+`original_available: false` is marked and disabled — it cannot be chosen. In
+`notes` mode the answer uses what the conversation retained, so every option
+stays choosable, an expired original included, and the card says so. The notes
+themselves are private and never shown. `byte_size` is shown per option, and
+`created_at` only where two options share a filename, since telling those
+apart is its purpose. Cancel stays reachable while resuming
+and after expiry, and the option list, not the card, is what scrolls.
+
 ## Two `run_interrupted` contracts, deliberately
 
 This is the easiest thing to get wrong.

@@ -13,6 +13,7 @@ import {
 import { useLocalization } from "@/hooks/useLocalization";
 import { AssistantModelSettingsCard } from "./AssistantModelSettingsCard";
 import { SettingsPageShell } from "./SettingsPageShell";
+import { SummarizationModelSettingsCard } from "./SummarizationModelSettingsCard";
 
 export function AccountSettingsPanel() {
   const router = useRouter();
@@ -126,6 +127,9 @@ export function AccountSettingsPanel() {
               product has no model choice rather than that this session
               cannot use it. */}
           {user.data ? <AssistantModelSettingsCard isGuest={isGuest} /> : null}
+          {user.data ? (
+            <SummarizationModelSettingsCard isGuest={isGuest} />
+          ) : null}
           <form
             onSubmit={handleNicknameSubmit}
             className="cal-card rounded-xl p-5"

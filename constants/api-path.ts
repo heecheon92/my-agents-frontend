@@ -18,9 +18,13 @@ export const API_PATH = {
     reasoning: "/capabilities/reasoning",
     documentWorkspace: "/capabilities/document-workspace",
     assistantModels: "/capabilities/assistant-models",
+    summarizationModels: "/capabilities/summarization-models",
   },
   assistant: {
     preferences: "/assistant/preferences",
+  },
+  summarization: {
+    preferences: "/summarization/preferences",
   },
   conversations: {
     root: "/conversations",

@@ -442,3 +442,27 @@ test.describe("verified operational summaries", () => {
     await expect(panel).toContainText("지식 베이스 2개를 사용했습니다.");
   });
 });
+
+for (const outcome of ["completed", "failed"] as const) {
+  test(`recovers a ${outcome} context compaction after a reload`, async ({
+    page,
+  }) => {
+    // Persisted events are the only source after a refresh. Compaction must
+    // come back as its own stage, never as a knowledge search, and a failure
+    // must not turn a completed answer into a failed one.
+    await mockWorkspace(page, { contextCompaction: outcome });
+    await page.goto(CONVERSATION_URL);
+    await dismissOnboarding(page);
+
+    const process = page.getByTestId("agent-process-panel");
+    await expect(process).toBeVisible();
+    await process.locator("summary").click();
+    await expect(
+      process.getByText(chat.answerProcess.stages.organizingContext),
+    ).toBeVisible();
+    await expect(
+      process.getByText(chat.answerProcess.compaction[outcome]),
+    ).toBeVisible();
+    await expect(process.locator('[data-terminal="failed"]')).toHaveCount(0);
+  });
+}

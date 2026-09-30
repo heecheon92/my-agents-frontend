@@ -245,6 +245,7 @@
     "guestPromptLimitHelper": "게스트 이용 제한은 자동으로 적용되며, 예약 메시지와 즉시 보낸 메시지도 제한에 포함됩니다.",
     "queuedAnnouncement": "현재 답변 뒤에 보낼 메시지를 예약했습니다.",
     "queuedSentAnnouncement": "예약 메시지를 보냈습니다.",
+    "admittedAfterDisconnectAnnouncement": "연결이 끊겼지만 질문은 전달되었습니다. 답변을 이어서 불러옵니다.",
     "queueEditAnnouncement": "예약 메시지를 입력창으로 다시 옮겼습니다.",
     "queueCancelledAnnouncement": "예약 메시지를 취소했습니다.",
     "queueAlreadyExistsAnnouncement": "이미 예약된 메시지가 있습니다. 먼저 편집하거나 취소하세요.",
@@ -266,12 +267,20 @@
         "waiting": "확인 요청 대기"
       },
       "stages": {
+        "organizingContext": "이전 대화 정리",
         "planning": "계획 세우기",
         "searchingKnowledge": "지식 검색",
         "draftingAnswer": "답변 작성",
         "checkingCitations": "인용 확인",
         "answerReady": "답변 준비 완료",
         "needsEvidence": "근거 필요"
+      },
+      "compaction": {
+        "title": "대화 요약",
+        "started": "대화가 길어져 이전 내용을 요약하고 있습니다.",
+        "completed": "이전 대화를 요약해 이 답변에 이어서 사용했습니다.",
+        "failed": "이전 대화를 요약하지 못해 최근 대화를 중심으로 답합니다. 앞부분 내용 일부는 반영되지 않았을 수 있습니다.",
+        "interrupted": "이전 대화를 요약하던 중에 답변이 멈췄습니다."
       },
       "operational": {
         "queryPlanned": "검색 방식: {method} · 문서 범위: {scope}",
@@ -305,6 +314,10 @@
       "removeStaged": "목록에서 빼기",
       "consentLabel": "이 파일을 {provider}로 잠시 보내는 데 동의합니다.",
       "consentDescription": "분석이 끝나면 파일은 만료됩니다. 지식 베이스에 추가되지 않고 다른 대화에서는 쓸 수 없습니다.",
+      "consentDescriptionRetention": "원본 파일은 {duration} 동안 보관한 뒤 만료됩니다. 지식 베이스에 추가되지 않고 다른 대화에서는 쓸 수 없습니다.",
+      "retentionDays": "{n}일",
+      "retentionHours": "{n}시간",
+      "recallNote": "보낸 파일은 이 대화의 다음 질문에서도 필요하면 자동으로 다시 참고합니다.",
       "consentRequired": "파일을 보내려면 먼저 전송에 동의하세요.",
       "uploading": "파일을 보내는 중…",
       "uploadPartialFailed": "일부 파일을 보내지 못했습니다. 남은 파일을 다시 보내 보세요.",
@@ -352,7 +365,8 @@
         "artifact_download_failed": "파일을 내려받지 못했습니다. 다시 시도하세요.",
         "unsupported_media_type": "이 형식은 첨부할 수 없습니다.",
         "upload_too_large": "파일 하나가 너무 큽니다."
-      }
+      },
+      "messageAttachmentsLabel": "이 메시지에 첨부한 파일"
     },
     "artifacts": {
       "title": "생성된 파일",
@@ -476,6 +490,16 @@
     },
     "reasoningEffortGuideCurrent": "지금 선택됨",
     "interactionTitle": "어떤 문서를 볼까요?",
+    "attachmentInteractionTitle": "어떤 첨부 파일을 볼까요?",
+    "attachmentInteractionDescription": "질문에 맞는 첨부 파일이 여러 개입니다. 최대 {max}개까지 고르면 이어서 답변합니다.",
+    "attachmentInteractionEmpty": "고를 수 있는 첨부 파일이 없습니다. 취소한 뒤 파일을 다시 첨부해 질문하세요.",
+    "attachmentInteractionSubmit": "고른 파일로 답변",
+    "attachmentInteractionSelectedCount": "{count}/{max}개 선택",
+    "attachmentInteractionOriginalExpired": "원본 만료",
+    "attachmentInteractionAttachedAt": "{time} 첨부",
+    "attachmentInteractionOriginalExpiredHelper": "원본이 만료된 파일은 고를 수 없습니다. 다시 보려면 파일을 새로 첨부하세요.",
+    "attachmentInteractionNotesAccess": "원본 파일을 다시 읽지 않고, 이 대화에 남아 있는 내용으로만 답합니다.",
+    "attachmentInteractionWaitingAnnouncement": "어떤 첨부 파일을 볼지 골라야 답변을 이어갈 수 있습니다.",
     "interactionV1Description": "질문에 맞는 문서가 여러 개입니다. 하나를 고르면 이어서 답변합니다.",
     "interactionDescription": "관련성이 높은 문서만 먼저 추렸습니다. 하나를 고르거나 파일명 단서를 더해 주세요.",
     "interactionUnresolvedDescription": "아직 문서를 찾지 못했습니다. 파일명 단서를 주면 다시 찾아보겠습니다.",
@@ -884,7 +908,8 @@
       "run_interaction_refinement_exhausted": "파일명 단서 횟수를 모두 사용했습니다. 열린 문서 목록에서 골라 주세요.",
       "run_selected_document_unavailable": "선택한 문서를 더 이상 볼 수 없습니다. 다른 문서를 골라 주세요.",
       "run_graph_version_incompatible": "서버가 업데이트됐습니다. 새로고침한 뒤 다시 질문해 주세요.",
-      "langgraph_persistence_unavailable": "지금은 이 기능을 쓸 수 없습니다. 잠시 후 다시 시도해 주세요."
+      "langgraph_persistence_unavailable": "지금은 이 기능을 쓸 수 없습니다. 잠시 후 다시 시도해 주세요.",
+      "run_admission_unknown": "연결이 끊겨 질문이 전달되었는지 확인하지 못했습니다. 같은 질문이 두 번 들어가지 않도록, 대화를 새로고침해 확인한 뒤 다시 보내세요."
     },
     "csrfMissing": "세션 증명이 없습니다. 다시 로그인해 주세요.",
     "requestFailed": "요청에 실패했습니다",
@@ -966,7 +991,19 @@
       "modelSaved": "모델을 저장했습니다.",
       "modelLockedGuest": "게스트 세션은 기본 모델로 답하며 바꿀 수 없습니다.",
       "modelDefaultOption": "기본 모델 ({name})",
-      "modelUnlistedSelection": "저장된 모델: {name}. 이 모델은 선택 목록에 없어서 다시 고를 수 없습니다."
+      "modelUnlistedSelection": "저장된 모델: {name}. 이 모델은 선택 목록에 없어서 다시 고를 수 없습니다.",
+      "summarizationTitle": "요약 모델",
+      "summarizationDescription": "대화가 길어지면 이전 대화를 이 모델로 요약해 다음 답변에 이어서 씁니다. 요약 내용은 화면에 표시하지 않습니다.",
+      "summarizationLegend": "요약 모델",
+      "summarizationRecommendedBadge": "권장",
+      "summarizationRecommendation": "요약에는 권장 모델을 쓰기를 강하게 권합니다. 요약은 대화가 길어질 때마다 반복되므로, 더 큰 모델을 고르면 그때마다 시간과 비용이 늘어납니다.",
+      "summarizationOffRecommendation": "지금 요약 모델은 권장 모델이 아닙니다. 특별한 이유가 없다면 권장 모델로 바꾸세요.",
+      "summarizationEffective": "지금 요약하는 모델: {name}",
+      "summarizationLoadErrorTitle": "요약 모델 정보를 불러오지 못했습니다",
+      "summarizationUpdateErrorTitle": "요약 모델을 바꾸지 못했습니다",
+      "summarizationUnavailable": "지금 연결된 서버에서는 요약 모델을 고를 수 없습니다.",
+      "summarizationSaved": "요약 모델을 저장했습니다.",
+      "summarizationLockedGuest": "게스트 세션은 기본 요약 모델을 쓰며 바꿀 수 없습니다."
     },
     "experimental": {
       "title": "실험 기능 설정",

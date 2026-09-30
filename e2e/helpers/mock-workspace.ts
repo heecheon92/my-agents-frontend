@@ -105,6 +105,67 @@ export const mockWaitingRun = {
   created_at: LATER,
 };
 
+/** Shaped from the served `PendingAttachmentSelection`. */
+export const mockAttachmentSelectionInteraction = {
+  schema_version: 2,
+  interaction_id: "run-waiting:attachment_selection",
+  type: "attachment_selection",
+  reason_code: "ambiguous_attachment_reference",
+  message_key: "clarification.attachment_scope.select_source",
+  expires_at: "2030-01-01T00:00:00.000Z",
+  option_count: 2,
+  options: [
+    {
+      attachment_id: "att-1",
+      filename: "q3-forecast.xlsx",
+      category: "spreadsheet",
+      original_available: true,
+    },
+    {
+      attachment_id: "att-old",
+      filename: "old-notes.csv",
+      category: "spreadsheet",
+      original_available: false,
+    },
+  ],
+};
+
+/**
+ * `access: "notes"` with two same-named uploads: every option is choosable,
+ * an expired original included, and upload time tells the twins apart.
+ */
+export const mockNotesAttachmentSelectionInteraction = {
+  ...mockAttachmentSelectionInteraction,
+  access: "notes",
+  option_count: 3,
+  options: [
+    {
+      attachment_id: "att-report-1",
+      filename: "report.pdf",
+      category: "document",
+      original_available: true,
+      byte_size: 20_480,
+      created_at: "2026-09-29T01:00:00.000Z",
+    },
+    {
+      attachment_id: "att-report-2",
+      filename: "report.pdf",
+      category: "document",
+      original_available: true,
+      byte_size: 30_720,
+      created_at: "2026-09-30T02:30:00.000Z",
+    },
+    {
+      attachment_id: "att-old",
+      filename: "old-notes.csv",
+      category: "spreadsheet",
+      original_available: false,
+      byte_size: 512,
+      created_at: "2026-09-20T00:00:00.000Z",
+    },
+  ],
+};
+
 export const mockPendingInteraction = {
   schema_version: 1,
   interaction_id: "run-waiting:document_selection",
@@ -365,6 +426,11 @@ type RouteOverrides = {
    * in, and the one the composer must degrade to silently.
    */
   documentWorkspace?: false | "enabled" | "ineligible" | "disabled";
+  /**
+   * Adds persisted context-compaction events to the completed run, as a cold
+   * load of a long conversation sees them. Payloads carry only metadata.
+   */
+  contextCompaction?: false | "completed" | "failed";
   /** Fails every attachment upload, to exercise the abandoned-send path. */
   attachmentUploadFails?: boolean;
   /**
@@ -389,7 +455,24 @@ type RouteOverrides = {
     | "many_options"
     | "unsupported_type"
     | "unsupported_version"
-    | "expired";
+    | "expired"
+    | "attachment_selection"
+    | "attachment_selection_notes";
+  /** The stored user message carries an explicitly attached file. */
+  messageAttachments?: boolean;
+  /**
+   * Whether the workspace capability reports server-side recall of submitted
+   * files. On by default: the release-on-admission behaviour depends on it.
+   */
+  automaticRecall?: boolean;
+  /**
+   * Serve the summarization-model preference. Default `false` 404s it, as a
+   * backend without compaction does. When on, the preference is stateful and
+   * the catalog recommends GPT-6 Luna.
+   */
+  summarizationModels?: boolean;
+  /** A summarization preference already saved before the page loads. */
+  savedSummarizationModel?: string | null;
 };
 
 export async function mockWorkspace(
@@ -411,6 +494,11 @@ export async function mockWorkspace(
     interaction = false,
     documentWorkspace = false,
     attachmentUploadFails = false,
+    contextCompaction = false,
+    messageAttachments = false,
+    automaticRecall = true,
+    summarizationModels = false,
+    savedSummarizationModel = null,
     attachmentRefusesAnimated = false,
   } = overrides;
   const mockAttachment = {
@@ -486,7 +574,11 @@ export async function mockWorkspace(
                         ...mockPendingInteraction,
                         expires_at: "2020-01-01T00:00:00.000Z",
                       }
-                    : mockPendingInteraction;
+                    : interaction === "attachment_selection"
+                      ? mockAttachmentSelectionInteraction
+                      : interaction === "attachment_selection_notes"
+                        ? mockNotesAttachmentSelectionInteraction
+                        : mockPendingInteraction;
   const knowledgeBases = empty ? [] : mockKnowledgeBases;
   const documents = empty ? [] : mockDocuments;
   const conversations = empty ? [] : [mockConversation];
@@ -756,6 +848,13 @@ export async function mockWorkspace(
     : fullAssistantModelList;
   const defaultAssistantModel = exposedOnly ? "gpt-5.6-sol" : "gpt-6-luna";
   let selectedAssistantModel: string | null = savedAssistantModel;
+  let selectedSummarizationModel: string | null = savedSummarizationModel;
+  const summarizationPreferences = () => ({
+    customizable: !guest,
+    default_model: "gpt-6-luna",
+    selected_model: selectedSummarizationModel,
+    effective_model: selectedSummarizationModel ?? "gpt-6-luna",
+  });
   const assistantPreferences = () => ({
     customizable: !guest,
     default_model: defaultAssistantModel,
@@ -804,6 +903,23 @@ export async function mockWorkspace(
     if (method === "DELETE" && /\/attachments\/[^/]+$/.test(path)) {
       return route.fulfill({ status: 204, body: "" });
     }
+    if (method === "PATCH" && path === "/summarization/preferences") {
+      if (!summarizationModels) return json({ detail: "Not found" }, 404);
+      if (guest) {
+        return json(
+          {
+            detail: "Guests cannot select a summarization model",
+            code: "permission_denied",
+          },
+          403,
+        );
+      }
+      const body = request.postDataJSON() as {
+        summarization_model: string | null;
+      };
+      selectedSummarizationModel = body.summarization_model;
+      return json(summarizationPreferences());
+    }
     if (method === "PATCH" && path === "/assistant/preferences") {
       if (!assistantModels) return json({ detail: "Not found" }, 404);
       if (guest) {
@@ -821,6 +937,23 @@ export async function mockWorkspace(
     }
     if (method !== "GET") return json({ ok: true });
 
+    if (path === "/capabilities/summarization-models") {
+      if (!summarizationModels) return json({ detail: "Not found" }, 404);
+      return json({
+        customizable: !guest,
+        default_model: "gpt-6-luna",
+        recommended_model: "gpt-6-luna",
+        models: [
+          { id: "gpt-6.1-sol", name: "GPT-6.1 Sol" },
+          { id: "gpt-6-luna", name: "GPT-6 Luna" },
+          { id: "gpt-6-astra", name: "GPT-6 Astra" },
+        ],
+      });
+    }
+    if (path === "/summarization/preferences") {
+      if (!summarizationModels) return json({ detail: "Not found" }, 404);
+      return json(summarizationPreferences());
+    }
     if (path === "/capabilities/assistant-models") {
       if (!assistantModels) return json({ detail: "Not found" }, 404);
       return json({
@@ -939,6 +1072,10 @@ export async function mockWorkspace(
         ],
         consent_required: true,
         retention: "ephemeral",
+        original_file_ttl_seconds: 604_800,
+        abandoned_upload_ttl_seconds: 86_400,
+        notes_retention: "conversation",
+        automatic_recall_supported: automaticRecall,
       });
     }
     if (/\/attachments$/.test(path)) {
@@ -1101,6 +1238,9 @@ export async function mockWorkspace(
                 conversation_id: mockConversation.id,
                 role: "user",
                 content: "이 계약서의 갱신 리스크를 알려 주세요.",
+                attachments: messageAttachments
+                  ? [mockAttachment, mockExpiredAttachment]
+                  : [],
               },
               {
                 id: "m-assistant",
@@ -1205,7 +1345,33 @@ export async function mockWorkspace(
       path ===
       `/conversations/${mockConversation.id}/runs/${mockRun.run_id}/events`
     ) {
-      return json(processEvents);
+      if (!contextCompaction) return json(processEvents);
+      const [first, ...rest] = processEvents;
+      return json([
+        first,
+        {
+          id: "event-compaction-started",
+          run_id: mockRun.run_id,
+          sequence: 1.1,
+          event_type: "context_compaction_started",
+          payload: {
+            policy_version: 1,
+            model: "gpt-6-luna",
+            message_count: 40,
+          },
+        },
+        {
+          id: "event-compaction-end",
+          run_id: mockRun.run_id,
+          sequence: 1.2,
+          event_type: `context_compaction_${contextCompaction}`,
+          payload:
+            contextCompaction === "failed"
+              ? { policy_version: 1, fallback: true }
+              : { policy_version: 1, message_count: 40 },
+        },
+        ...rest,
+      ]);
     }
 
     return json([]);

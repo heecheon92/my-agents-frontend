@@ -20,6 +20,14 @@ export const MyAgentsQueryKeys = {
     assistantModels() {
       return ["my-agents", "capabilities", "assistant-models"] as const;
     },
+    summarizationModels() {
+      return ["my-agents", "capabilities", "summarization-models"] as const;
+    },
+  },
+  summarization: {
+    preferences() {
+      return ["my-agents", "summarization", "preferences"] as const;
+    },
   },
   assistant: {
     preferences() {

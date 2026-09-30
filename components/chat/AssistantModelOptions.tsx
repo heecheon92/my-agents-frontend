@@ -2,8 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
-import type { AssistantModelId } from "@/model/my-agents";
-import type { ResolvedAssistantModel } from "./assistant-model-selection";
+import type { ResolvedModelPreference } from "./assistant-model-selection";
 
 /** Sentinel for the "follow the deployment default" radio; never sent. */
 const DEFAULT_VALUE = "__default__";
@@ -27,10 +26,11 @@ export function AssistantModelOptions({
   unlistedSelectionLabel,
   disabled,
   saving,
+  recommended,
   onChange,
   className,
 }: {
-  resolved: ResolvedAssistantModel;
+  resolved: ResolvedModelPreference;
   legend: string;
   /** Receives the default model's display name. */
   defaultOptionLabel: (name: string) => string;
@@ -44,7 +44,13 @@ export function AssistantModelOptions({
    * `aria-busy` tells assistive technology what is happening.
    */
   saving: boolean;
-  onChange: (next: AssistantModelId | null) => void;
+  /**
+   * The model the backend recommends, marked beside its name. Served data
+   * (`recommended_model`), never a frontend constant; ignored when the
+   * catalog does not list it, since there would be no option to mark.
+   */
+  recommended?: { id: string; label: string };
+  onChange: (next: string | null) => void;
   className?: string;
 }) {
   const name = useId();
@@ -53,7 +59,7 @@ export function AssistantModelOptions({
   // value until the save starts and a click looks ignored. Cleared once a save
   // settles, which also reverts a failed save to what the server holds.
   const [optimistic, setOptimistic] = useState<{
-    value: AssistantModelId | null;
+    value: string | null;
   } | null>(null);
   const wasSaving = useRef(false);
   // Set in the click handler itself: `saving` only turns true a render later,
@@ -77,7 +83,11 @@ export function AssistantModelOptions({
           },
         ]
       : []),
-    ...resolved.models.map((model) => ({ value: model.id, label: model.name })),
+    ...resolved.models.map((model) => ({
+      value: model.id,
+      label: model.name,
+      recommended: model.id === recommended?.id,
+    })),
   ];
 
   return (
@@ -125,6 +135,14 @@ export function AssistantModelOptions({
             className="size-4 accent-cal-primary"
           />
           <span className="min-w-0 break-words">{option.label}</span>
+          {"recommended" in option && option.recommended && recommended ? (
+            <span
+              data-slot="model-recommended-badge"
+              className="shrink-0 rounded-full border border-cal-success/25 bg-cal-success/10 px-2 py-0.5 text-xs font-semibold text-cal-success"
+            >
+              {recommended.label}
+            </span>
+          ) : null}
         </label>
       ))}
     </fieldset>

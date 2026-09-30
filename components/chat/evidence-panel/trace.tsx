@@ -13,6 +13,7 @@ import { ReasoningSummarySection } from "./ReasoningSummarySection";
 import { ShimmerText } from "./ShimmerText";
 
 export type AgentTraceStageKey =
+  | "organizingContext"
   | "planning"
   | "searchingKnowledge"
   | "draftingAnswer"
@@ -58,6 +59,7 @@ export type AgentProcessHeadline = {
 };
 
 const AGENT_TRACE_STAGE_ORDER: AgentTraceStageKey[] = [
+  "organizingContext",
   "planning",
   "searchingKnowledge",
   "draftingAnswer",
@@ -74,6 +76,39 @@ const BACKEND_TRACE_STAGE_MAP: Partial<Record<string, AgentTraceStageKey>> = {
   evidence_judge: "checkingCitations",
   assistant_graph: "draftingAnswer",
 };
+
+/**
+ * Context compaction: the backend summarizing earlier turns of a long
+ * conversation before it answers.
+ *
+ * It gets its own stage and is kept out of the keyword heuristics below on
+ * purpose. Those match `/context/` to "searching knowledge", so a compaction
+ * event would otherwise be reported as a knowledge search that never happened.
+ * Only the event type is read — never the payload, which must not surface a
+ * summary body.
+ */
+const CONTEXT_COMPACTION_EVENT =
+  /^context_compaction_(started|completed|failed)$/;
+
+export type ContextCompactionStatus = "started" | "completed" | "failed";
+
+export function isContextCompactionEvent(eventType: string): boolean {
+  return CONTEXT_COMPACTION_EVENT.test(eventType);
+}
+
+function contextCompactionStatus(
+  events: Array<AgentEvent | LiveActivityEvent>,
+): ContextCompactionStatus | null {
+  const latest = [...events]
+    .sort((left, right) => left.sequence - right.sequence)
+    .filter((event) => isContextCompactionEvent(event.event_type))
+    .at(-1);
+  if (!latest) return null;
+  return latest.event_type.replace(
+    "context_compaction_",
+    "",
+  ) as ContextCompactionStatus;
+}
 
 function collectPayloadKeys(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -104,6 +139,23 @@ function eventMatchesAny(
 }
 
 export function getAgentTraceStageKeys({
+  events,
+  citationCount,
+}: {
+  events: Array<AgentEvent | LiveActivityEvent>;
+  citationCount: number;
+}): AgentTraceStageKey[] {
+  const compaction = contextCompactionStatus(events);
+  const workStages = getWorkStageKeys({
+    events: events.filter(
+      (event) => !isContextCompactionEvent(event.event_type),
+    ),
+    citationCount,
+  });
+  return compaction ? ["organizingContext", ...workStages] : workStages;
+}
+
+function getWorkStageKeys({
   events,
   citationCount,
 }: {
@@ -225,10 +277,13 @@ export function getAgentProcessState({
     payloadHasBooleanFlag(event.payload, "insufficient_evidence"),
   );
   let stages = getAgentTraceStageKeys({ events, citationCount });
+  // Bookkeeping events say the run exists and which model it will use, not
+  // that it has done anything; counting them would show "planning" early.
   const hasObservedWork = events.some(
     (event) =>
       event.event_type !== "run_started" &&
-      event.event_type !== "user_message_stored",
+      event.event_type !== "user_message_stored" &&
+      event.event_type !== "run_model_resolved",
   );
   if (!hasObservedWork) stages = [];
   const lifecycleEvent = [...events]
@@ -260,6 +315,16 @@ export function getAgentProcessState({
   }
   if (terminal === "waitingForConfirmation" && isStreaming) {
     terminal = null;
+  }
+  // Compaction runs before the answer's own work. While it is in progress the
+  // run has not planned anything yet, so the heuristics' default "planning"
+  // stage would be a claim ahead of the facts.
+  if (
+    isStreaming &&
+    terminal === null &&
+    contextCompactionStatus(events) === "started"
+  ) {
+    stages = ["organizingContext"];
   }
 
   return {
@@ -313,10 +378,41 @@ export function getAgentProcessDetails({
 }): AgentProcessDetail[] {
   const locale = lang.toLowerCase().startsWith("ko") ? "ko" : "en";
   const details = new Map<string, AgentProcessDetail>();
+  // A compaction still "started" when the run itself ended was cut short by
+  // the cancel or failure. It must read as stopped, never as still working.
+  const runStopped = events.some((event) =>
+    /(^|_)run_(cancelled|failed|error)$/.test(event.event_type.toLowerCase()),
+  );
 
   for (const event of [...events].sort(
     (left, right) => left.sequence - right.sequence,
   )) {
+    if (isContextCompactionEvent(event.event_type)) {
+      // One row for the whole compaction, updated in place: `Map.set` on an
+      // existing key keeps its position, so later steps stay "newest" for the
+      // collapsed row. Worded here from the event type alone.
+      if (!localization) continue;
+      const status = event.event_type.replace(
+        "context_compaction_",
+        "",
+      ) as ContextCompactionStatus;
+      const interrupted = status === "started" && runStopped;
+      details.set("context_compaction", {
+        key: "context_compaction",
+        phase: "organizingContext",
+        title: localization.answerProcess.compaction.title,
+        description: interrupted
+          ? localization.answerProcess.compaction.interrupted
+          : localization.answerProcess.compaction[status],
+        status:
+          status === "completed"
+            ? "completed"
+            : status === "failed" || interrupted
+              ? "failed"
+              : "waiting",
+      });
+      continue;
+    }
     for (const step of agentTraceStepsFromPayload(event.payload)) {
       if (step.status === "skipped") continue;
       const key = `${step.id}:${step.event_type}`;

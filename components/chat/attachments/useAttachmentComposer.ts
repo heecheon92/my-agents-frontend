@@ -156,9 +156,16 @@ export function useAttachmentComposer({
     async (targetConversationId: string) => {
       const pending = stagedFiles;
       if (pending.length === 0) {
-        return { uploadedIds: [] as string[], stagedCount: 0 };
+        return {
+          uploadedIds: [] as string[],
+          uploadedAttachments: [] as ConversationAttachment[],
+          stagedCount: 0,
+        };
       }
       const uploadedIds: string[] = [];
+      // Returned whole, not just as IDs: the attachments query has not
+      // refetched yet, and the optimistic message needs names to show.
+      const uploadedAttachments: ConversationAttachment[] = [];
       const failures: StagedFile[] = [];
       const failureKinds: Record<string, UploadFailureKind> = {};
       for (const staged of pending) {
@@ -169,6 +176,7 @@ export function useAttachmentComposer({
             providerConsent: true,
           });
           uploadedIds.push(attachment.id);
+          uploadedAttachments.push(attachment);
         } catch (error) {
           failures.push(staged);
           failureKinds[staged.id] = classifyUploadFailure(
@@ -188,7 +196,7 @@ export function useAttachmentComposer({
         setSelectedIds((current) => [...current, ...uploadedIds]);
         setConsentGiven(false);
       }
-      return { uploadedIds, stagedCount: pending.length };
+      return { uploadedIds, uploadedAttachments, stagedCount: pending.length };
     },
     [capability, stagedFiles, uploadAttachment],
   );
@@ -197,6 +205,26 @@ export function useAttachmentComposer({
   const sendableAttachmentIds = useMemo(
     () => usableAttachmentIds(attachments, selectedIds),
     [attachments, selectedIds],
+  );
+
+  /**
+   * Drops the attachments a run submitted, once the backend has admitted it.
+   *
+   * Takes the run's own ID list rather than clearing the selection: a queued
+   * message carries a snapshot, and by the time it is admitted the composer
+   * may hold files chosen for a later turn. The server recalls submitted files
+   * for later turns itself, so they no longer need to ride along as chips.
+   */
+  const recallsSubmittedFiles = Boolean(capability?.automatic_recall_supported);
+  const releaseSubmitted = useCallback(
+    (attachmentIds: string[]) => {
+      // Without server-side recall the next turn only sees what it names, so
+      // releasing the chip would silently drop the file from the follow-up.
+      if (!recallsSubmittedFiles || attachmentIds.length === 0) return;
+      const submitted = new Set(attachmentIds);
+      setSelectedIds((current) => current.filter((id) => !submitted.has(id)));
+    },
+    [recallsSubmittedFiles],
   );
 
   const clearAfterSend = useCallback(() => {
@@ -226,6 +254,7 @@ export function useAttachmentComposer({
     toggleSelected,
     removeAttachment,
     uploadStagedFiles,
+    releaseSubmitted,
     clearAfterSend,
   };
 }

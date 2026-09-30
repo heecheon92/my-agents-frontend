@@ -98,6 +98,8 @@ The BFF allowlist currently covers:
 - `GET /conversations/{conversation_id}`
 - `GET /capabilities/document-workspace`
 - `GET /capabilities/assistant-models`
+- `GET /capabilities/summarization-models`
+- `GET /summarization/preferences` and `PATCH /summarization/preferences`
 - `GET /assistant/preferences` and `PATCH /assistant/preferences` — the only
   exact-path exceptions to the blocked legacy `/assistant/*` prefix; every
   other path under it, including `/assistant/chat`, stays closed
@@ -228,6 +230,40 @@ file counts, byte ceilings, retention, and the provider named in the consent
 sentence all come from `GET /capabilities/document-workspace`. The one constant
 is a clamp to the run request's `maxItems: 10`, which is defense against a
 misconfigured deployment and is never the number shown to a user.
+
+**A submitted file leaves the composer on admission, not on send.** The
+backend acknowledges a run with `run_started`, its first event. At that point
+`useChatRunLoop` calls `onRunAdmitted` with exactly the attachment IDs that run
+submitted, and the composer releases those IDs; the server recalls them on
+later turns. Anything that fails before `run_started` (an HTTP error, a
+dropped connection) leaves the selection for the retry. A queued message
+carries its own ID snapshot, so its admission releases only its files, never
+a newer turn's selection. Explicit re-attachment from the library remains.
+
+**A dropped connection before `run_started` is reconciled, never resent.**
+Such a drop is ambiguous: the backend may have stored the message and started
+the run anyway. `useChatRunLoop` snapshots the conversation's run IDs before
+sending (the cached list, or a fetch when none is cached). After a drop with no
+`run_started` and no HTTP answer, it looks up the send's own
+`client_request_id`, a fresh UUID per logical send, in the run list
+(`decideAdmission`). A run echoing that ID means admitted. No run outside the
+snapshot, or new runs that all carry other IDs, means not admitted. A new run
+without an ID, from a legacy backend, stays unknown; message text is never
+used, because identical questions from two sends are indistinguishable by
+text. It is checked twice, 1.5 s apart, because "not admitted" is the verdict
+that invites a resend. If the stream is lost *after* admission, the
+transcript and run list are refetched, so the stored message, with its files,
+replaces the local optimistic copy. Admitted: the attachments are released, the draft is not restored, and
+run polling carries the answer. Not admitted: an ordinary failure, with the
+selection kept. Anything else is `run_admission_unknown`, which tells the user to
+refresh before resending. Nothing is ever resent automatically.
+
+Releasing on admission also depends on the served `automatic_recall_supported`.
+Without server-side recall, a released file would silently drop out of the next
+turn, so the chip stays. The consent box states the served
+`original_file_ttl_seconds` and mentions recall only when it is supported.
+User messages show their explicit attachments (`MessageResponse.attachments`)
+read-only, with a lapsed file marked rather than removed.
 
 **Images are one more registry family, not a special path.** The backend
 registers them with `category: "image"`, analysis supported and
