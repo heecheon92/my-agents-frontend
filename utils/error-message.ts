@@ -41,7 +41,7 @@ function copyForCode(
  * Reads `code` off the parsed error body without changing any response model.
  * `MyAgentsAPIError` already retains the raw body.
  */
-function errorCodeOf(error: MyAgentsAPIError): string | undefined {
+export function errorCodeOf(error: MyAgentsAPIError): string | undefined {
   const body = error.body;
   if (!body || typeof body !== "object") return undefined;
   const code = (body as { code?: unknown }).code;

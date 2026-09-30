@@ -10,6 +10,15 @@ const CONVERSATION_URL = "/chat/c-visual";
 const XLSX_TYPE =
   "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
+function png(name = "chart.png") {
+  return {
+    name,
+    mimeType: "image/png",
+    // A PNG signature: enough for a staging test; the backend decodes, not us.
+    buffer: Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+  };
+}
+
 function xlsx(name = "q3-forecast.xlsx") {
   return {
     name,
@@ -153,6 +162,118 @@ test.describe("temporary conversation files", () => {
     ]);
     await expect(page.getByText(copy.editableOutput)).toBeVisible();
     await expect(page.getByText(copy.analysisOnly)).toBeVisible();
+  });
+
+  test("stages a still image as analysis only and says so", async ({
+    page,
+  }) => {
+    await mockWorkspace(page, { documentWorkspace: "enabled" });
+    await page.goto(CONVERSATION_URL);
+    await dismissOnboarding(page);
+
+    // The picker's filter comes from the served registry, images included.
+    const accept = await page
+      .locator('input[type="file"]')
+      .getAttribute("accept");
+    expect(accept).toContain(".png");
+    expect(accept).toContain("image/png");
+
+    await page.locator('input[type="file"]').setInputFiles(png());
+    const chips = page.locator('[data-slot="attachment-chips"]');
+    await expect(chips.getByText("chart.png")).toBeVisible();
+    // No image output exists, so the badge must not promise a download.
+    await expect(chips.getByText(copy.analysisOnly)).toBeVisible();
+    await expect(
+      page.locator('[data-slot="attachment-image-note"]'),
+    ).toHaveText(copy.imageStillOnly);
+  });
+
+  test("names an image the server refuses instead of suggesting a retry", async ({
+    page,
+  }) => {
+    // A 415 on an animated or malformed image is a verdict on the file.
+    // "Try again" would loop forever, so the reason has to be specific.
+    await mockWorkspace(page, {
+      documentWorkspace: "enabled",
+      attachmentRefusesAnimated: true,
+    });
+    let runStarted = false;
+    await page.route("**/api/my-agents/**/runs/stream", async (route) => {
+      runStarted = true;
+      return route.fallback();
+    });
+    await page.goto(CONVERSATION_URL);
+    await dismissOnboarding(page);
+
+    await page.locator('input[type="file"]').setInputFiles({
+      name: "animated.gif",
+      mimeType: "image/gif",
+      buffer: Buffer.from("GIF89a"),
+    });
+    await page.getByRole("checkbox", { name: /동의/ }).check();
+    await page.getByPlaceholder(chat.composerPlaceholder).fill("설명해 주세요");
+    await page.getByPlaceholder(chat.composerPlaceholder).press("Enter");
+
+    await expect(page.getByText(copy.uploadAllFailed).first()).toBeVisible();
+    expect(runStarted).toBe(false);
+    await expect(page.locator('[data-slot="attachment-refusals"]')).toHaveText(
+      copy.uploadRefusedImage.replace("{filename}", "animated.gif"),
+    );
+    await expect(page.getByText(copy.uploadPartialFailed)).toHaveCount(0);
+
+    // Removing the refused file clears its reason with it.
+    await page
+      .locator('[data-slot="attachment-chips"]')
+      .getByRole("button", { name: `${copy.removeStaged}: animated.gif` })
+      .click();
+    await expect(page.locator('[data-slot="attachment-refusals"]')).toHaveCount(
+      0,
+    );
+  });
+
+  test("sends an image and a document together under one consent", async ({
+    page,
+  }) => {
+    await mockWorkspace(page, { documentWorkspace: "enabled" });
+    const uploads: string[] = [];
+    await page.route("**/api/my-agents/**/attachments", async (route) => {
+      if (route.request().method() === "POST") {
+        uploads.push(
+          route.request().postDataBuffer()?.toString("latin1") ?? "",
+        );
+      }
+      return route.fallback();
+    });
+    const runRequest = page.waitForRequest(
+      (request) =>
+        request.method() === "POST" && /\/runs(\/stream)?$/.test(request.url()),
+    );
+    await page.goto(CONVERSATION_URL);
+    await dismissOnboarding(page);
+
+    await page
+      .locator('input[type="file"]')
+      .setInputFiles([png(), xlsx("budget.xlsx")]);
+    const chips = page.locator('[data-slot="attachment-chips"]');
+    await expect(chips.getByText("chart.png")).toBeVisible();
+    await expect(chips.getByText("budget.xlsx")).toBeVisible();
+
+    await page.getByRole("checkbox", { name: /동의/ }).check();
+    await page.getByPlaceholder(chat.composerPlaceholder).fill("비교해 주세요");
+    await page.getByPlaceholder(chat.composerPlaceholder).press("Enter");
+
+    const body = (await runRequest).postDataJSON() as {
+      attachment_ids?: string[];
+    };
+    expect(body.attachment_ids?.length).toBeGreaterThan(0);
+    // One consent covered both transfers, and each carried it.
+    expect(uploads).toHaveLength(2);
+    for (const upload of uploads) {
+      expect(upload).toMatch(/name="provider_consent"\s+true/);
+    }
+    expect(
+      uploads.some((upload) => upload.includes('filename="chart.png"')),
+    ).toBe(true);
   });
 
   test("keeps the prompt and the files when every upload fails", async ({

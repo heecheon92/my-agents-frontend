@@ -228,3 +228,18 @@ file counts, byte ceilings, retention, and the provider named in the consent
 sentence all come from `GET /capabilities/document-workspace`. The one constant
 is a clamp to the run request's `maxItems: 10`, which is defense against a
 misconfigured deployment and is never the number shown to a user.
+
+**Images are one more registry family, not a special path.** The backend
+registers them with `category: "image"`, analysis supported and
+`artifact_status: "unavailable"`, so the picker filter, drop validation, the
+analysis-only badge, and the combined file-count and byte limits apply to them
+exactly as to documents; mixed image and document turns share one consent.
+One difference: an image must carry a supported extension. The backend
+resolves image formats by extension only, so `findFormatForFile` skips images
+in its MIME fallback and an extensionless image is rejected before consent. The
+frontend cannot tell a still image from an animated one without decoding it,
+so the backend's 415 `unsupported_attachment_type` is the check. That refusal
+is a verdict on the file, not a transport failure: `classifyUploadFailure`
+separates it from retryable errors, and the composer names each refused file
+with its reason instead of the generic "try again" line. The image-specific
+wording keys off the served `category`, never an extension list.

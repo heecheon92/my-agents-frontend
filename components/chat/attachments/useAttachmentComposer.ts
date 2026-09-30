@@ -8,12 +8,18 @@ import {
   useUploadAttachment,
 } from "@/hooks/use-document-workspace";
 import type { ConversationAttachment } from "@/model/my-agents";
+import { isMyAgentsAPIError } from "@/services/my-agents/MyAgentsAPIError";
+import { errorCodeOf } from "@/utils/error-message";
 import {
+  classifyUploadFailure,
   combinedBytes,
+  findFormatForFile,
+  hasStagedImage,
   isDocumentWorkspaceUsable,
   resolveMaxFilesPerRun,
   type StagedFile,
   type StagedFileRejection,
+  type UploadFailureKind,
   usableAttachmentIds,
   validateStagedFile,
 } from "./staging";
@@ -50,6 +56,14 @@ export function useAttachmentComposer({
   const [consentGiven, setConsentGiven] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [uploadFailed, setUploadFailed] = useState(false);
+  /**
+   * Why each still-staged file failed its last upload, keyed by staged ID.
+   * Kept past the send that produced it: a refused file stays staged, and the
+   * reason has to stay next to it until the user removes or replaces it.
+   */
+  const [uploadFailures, setUploadFailures] = useState<
+    Record<string, UploadFailureKind>
+  >({});
   /**
    * Rows whose delete is in flight. Kept here rather than derived from the
    * mutation so several deletes can be pending at once, and so the row stays
@@ -95,6 +109,10 @@ export function useAttachmentComposer({
     setStagedFiles((current) =>
       current.filter((staged) => staged.id !== stagedId),
     );
+    setUploadFailures((current) => {
+      const { [stagedId]: _removed, ...rest } = current;
+      return rest;
+    });
   }, []);
 
   const toggleSelected = useCallback((attachmentId: string) => {
@@ -142,6 +160,7 @@ export function useAttachmentComposer({
       }
       const uploadedIds: string[] = [];
       const failures: StagedFile[] = [];
+      const failureKinds: Record<string, UploadFailureKind> = {};
       for (const staged of pending) {
         try {
           const attachment = await uploadAttachment.mutateAsync({
@@ -150,19 +169,28 @@ export function useAttachmentComposer({
             providerConsent: true,
           });
           uploadedIds.push(attachment.id);
-        } catch {
+        } catch (error) {
           failures.push(staged);
+          failureKinds[staged.id] = classifyUploadFailure(
+            isMyAgentsAPIError(error) ? errorCodeOf(error) : undefined,
+            capability ? findFormatForFile(capability, staged.file) : undefined,
+          );
         }
       }
       setStagedFiles(failures);
-      setUploadFailed(failures.length > 0);
+      setUploadFailures(failureKinds);
+      // The generic "try again" line is only for failures a retry can fix;
+      // refused files carry their own reason instead.
+      setUploadFailed(
+        Object.values(failureKinds).some((kind) => kind === "retryable"),
+      );
       if (uploadedIds.length > 0) {
         setSelectedIds((current) => [...current, ...uploadedIds]);
         setConsentGiven(false);
       }
       return { uploadedIds, stagedCount: pending.length };
     },
-    [stagedFiles, uploadAttachment],
+    [capability, stagedFiles, uploadAttachment],
   );
 
   /** Selection narrowed to what the server still reports as available. */
@@ -186,6 +214,8 @@ export function useAttachmentComposer({
     rejection,
     consentGiven,
     uploadFailed,
+    uploadFailures,
+    stagedImage: capability ? hasStagedImage(capability, stagedFiles) : false,
     deletingIds,
     selectedIds,
     sendableAttachmentIds,

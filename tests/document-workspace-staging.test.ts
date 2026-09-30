@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  classifyUploadFailure,
   combinedBytes,
   findFormatForFile,
+  hasStagedImage,
   isDocumentWorkspaceUsable,
   producesCertifiedArtifact,
   resolveMaxFilesPerRun,
@@ -295,5 +297,128 @@ describe("usableAttachmentIds", () => {
       { id: "two", status: "available" },
     ];
     expect(usableAttachmentIds(many, ["two", "one"])).toEqual(["two", "one"]);
+  });
+});
+
+/** The image family as the backend registers it: analysis only, no output. */
+const imageFormats: DocumentWorkspaceCapability["formats"] = [
+  [".jpg", "image/jpeg"],
+  [".jpeg", "image/jpeg"],
+  [".png", "image/png"],
+  [".webp", "image/webp"],
+  [".gif", "image/gif"],
+].map(([extension, mime]) => ({
+  extension,
+  category: "image",
+  mime_types: [mime],
+  analysis_supported: true,
+  artifact_status: "unavailable" as const,
+}));
+
+describe("image attachments", () => {
+  const withImages = capability({
+    formats: [...capability().formats, ...imageFormats],
+  });
+
+  it("accepts every registered image extension, case-insensitively", () => {
+    for (const name of ["a.jpg", "b.JPEG", "c.png", "d.webp", "e.GIF"]) {
+      expect(
+        validateStagedFile({
+          file: file(name, 10),
+          capability: withImages,
+          staged: [],
+        }),
+      ).toBeNull();
+    }
+  });
+
+  it("rejects an image without a supported extension, before consent", () => {
+    // The backend resolves image formats from the filename extension only, so
+    // an extensionless image staged by MIME would be refused after consent.
+    for (const item of [
+      file("clipboard", 10, "image/png"),
+      file("photo.bin", 10, "image/jpeg"),
+      file("scan.heic", 10, "image/png"),
+    ]) {
+      expect(findFormatForFile(withImages, item), item.name).toBeUndefined();
+      expect(
+        validateStagedFile({ file: item, capability: withImages, staged: [] }),
+        item.name,
+      ).toBe("unsupported_attachment_type");
+    }
+  });
+
+  it("keeps the MIME fallback for non-image formats", () => {
+    expect(
+      findFormatForFile(withImages, file("notes", 10, "text/plain"))?.extension,
+    ).toBe("txt");
+  });
+
+  it("rejects an image family the registry does not list", () => {
+    expect(
+      validateStagedFile({
+        file: file("photo.heic", 10, "image/heic"),
+        capability: withImages,
+        staged: [],
+      }),
+    ).toBe("unsupported_attachment_type");
+  });
+
+  it("never offers a downloadable result for an image", () => {
+    expect(
+      producesCertifiedArtifact(
+        findFormatForFile(withImages, file("a.png", 1)),
+      ),
+    ).toBe(false);
+  });
+
+  it("stages an image alongside a document under the same limits", () => {
+    const staged = stagedOf(file("chart.png", 400));
+    expect(
+      validateStagedFile({
+        file: file("q3.xlsx", 400),
+        capability: withImages,
+        staged,
+      }),
+    ).toBeNull();
+    expect(hasStagedImage(withImages, staged)).toBe(true);
+    expect(hasStagedImage(withImages, stagedOf(file("q3.xlsx", 1)))).toBe(
+      false,
+    );
+    // The combined ceiling counts images and documents together.
+    expect(
+      validateStagedFile({
+        file: file("q3.xlsx", 700),
+        capability: withImages,
+        staged,
+      }),
+    ).toBe("attachment_combined_too_large");
+  });
+});
+
+describe("classifyUploadFailure", () => {
+  const png = imageFormats[2];
+  const xlsxFormat = capability().formats[0];
+
+  it("names a refused image, so the copy can explain animation or damage", () => {
+    expect(classifyUploadFailure("unsupported_attachment_type", png)).toBe(
+      "image_refused",
+    );
+  });
+
+  it("names a refused non-image file", () => {
+    expect(
+      classifyUploadFailure("unsupported_attachment_type", xlsxFormat),
+    ).toBe("file_refused");
+    expect(classifyUploadFailure("unsupported_media_type", undefined)).toBe(
+      "file_refused",
+    );
+  });
+
+  it("keeps transport and provider failures retryable", () => {
+    expect(classifyUploadFailure("attachment_upload_failed", png)).toBe(
+      "retryable",
+    );
+    expect(classifyUploadFailure(undefined, png)).toBe("retryable");
   });
 });

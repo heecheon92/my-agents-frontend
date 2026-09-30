@@ -121,6 +121,10 @@ export function AttachmentPanels({
       composer.selectedIds.includes(attachment.id),
   );
   const hasChips = hasStaged || carriedForward.length > 0;
+  const refusedStaged = composer.stagedFiles.flatMap((staged) => {
+    const kind = composer.uploadFailures[staged.id];
+    return kind && kind !== "retryable" ? [{ staged, kind }] : [];
+  });
 
   return (
     <div data-slot="attachment-panels" className="min-w-0">
@@ -164,6 +168,27 @@ export function AttachmentPanels({
           ))}
         </ul>
       ) : null}
+      {refusedStaged.length > 0 ? (
+        // One line per refused file, named, because a refusal is permanent:
+        // unlike a transport failure, sending the same bytes again cannot work.
+        <ul
+          role="alert"
+          data-slot="attachment-refusals"
+          className="mb-2 grid gap-1 text-xs leading-5 text-cal-error"
+        >
+          {refusedStaged.map(({ staged, kind }) => (
+            <li
+              key={staged.id}
+              className="break-words [overflow-wrap:anywhere]"
+            >
+              {(kind === "image_refused"
+                ? copy.uploadRefusedImage
+                : copy.uploadRefusedFile
+              ).replace("{filename}", staged.file.name)}
+            </li>
+          ))}
+        </ul>
+      ) : null}
       {hasStaged ? (
         <div
           data-slot="attachment-consent"
@@ -172,6 +197,14 @@ export function AttachmentPanels({
           <p className="text-xs leading-5 text-cal-muted">
             {copy.stagedHelper}
           </p>
+          {composer.stagedImage ? (
+            <p
+              data-slot="attachment-image-note"
+              className="mt-1 text-xs leading-5 text-cal-muted"
+            >
+              {copy.imageStillOnly}
+            </p>
+          ) : null}
           {/*
             Per send and never pre-checked. The provider name comes from the
             served capability rather than a literal, so the sentence names

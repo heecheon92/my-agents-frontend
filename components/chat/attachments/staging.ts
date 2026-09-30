@@ -78,6 +78,11 @@ function extensionOf(filename: string): string {
  * assumed one form would silently reject every file the day that changed.
  * The MIME fallback covers a file whose name lost its extension — the browser
  * still reports a type.
+ *
+ * Images never take the fallback. The backend resolves an image's format from
+ * its filename extension only and refuses one without a supported extension,
+ * so staging an extensionless image by MIME would ask for consent to a
+ * transfer that is then refused. Rejecting it here matches the backend.
  */
 export function findFormatForFile(
   capability: DocumentWorkspaceCapability,
@@ -91,8 +96,12 @@ export function findFormatForFile(
 
   const contentType = file.type.trim().toLowerCase();
   if (!contentType) return undefined;
-  return capability.formats.find((format) =>
-    format.mime_types.some((mime) => mime.trim().toLowerCase() === contentType),
+  return capability.formats.find(
+    (format) =>
+      format.category !== "image" &&
+      format.mime_types.some(
+        (mime) => mime.trim().toLowerCase() === contentType,
+      ),
   );
 }
 
@@ -109,6 +118,42 @@ export function producesCertifiedArtifact(
   format: DocumentFormatCapability | undefined,
 ): boolean {
   return format?.artifact_status === "certified";
+}
+
+/**
+ * Why an upload the backend refused should or should not be retried.
+ *
+ * `retryable` covers transport and provider failures, where sending the same
+ * bytes again can work. A 415 `unsupported_attachment_type` is a verdict on
+ * the file itself — for an image, most often that it is animated or does not
+ * decode as its extension claims — so advising a retry would loop forever.
+ *
+ * The image branch reads the served registry's category rather than an
+ * extension list, so it follows whatever the backend classifies as an image.
+ */
+export type UploadFailureKind = "retryable" | "file_refused" | "image_refused";
+
+const REFUSED_FILE_CODES = new Set([
+  "unsupported_attachment_type",
+  "unsupported_media_type",
+]);
+
+export function classifyUploadFailure(
+  code: string | undefined,
+  format: DocumentFormatCapability | undefined,
+): UploadFailureKind {
+  if (!code || !REFUSED_FILE_CODES.has(code)) return "retryable";
+  return format?.category === "image" ? "image_refused" : "file_refused";
+}
+
+/** Whether any staged file is an image, per the served registry. */
+export function hasStagedImage(
+  capability: DocumentWorkspaceCapability,
+  staged: StagedFile[],
+): boolean {
+  return staged.some(
+    (item) => findFormatForFile(capability, item.file)?.category === "image",
+  );
 }
 
 export function combinedBytes(staged: StagedFile[]): number {

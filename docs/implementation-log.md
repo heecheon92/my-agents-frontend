@@ -1826,3 +1826,53 @@ flicker and exposed-catalog changes: 202 passed, 2 skipped, 2 failed. The two
 failures, `document-workspace.spec.ts:269` (file drop) and
 `transcript-autoscroll.spec.ts:43`, fail identically on `develop` without
 these changes.
+
+## 2026-09-30 — Image attachments in the document workspace
+
+The backend added images to the temporary-attachment registry
+(`category: "image"`, analysis only, `artifact_status: "unavailable"`) and
+refuses animated or malformed images with 415 `unsupported_attachment_type`.
+No schema change was needed: the picker `accept` list, drop and picker
+validation, the analysis-only badge, limits, consent, and guest handling all
+read the served registry and applied to images unchanged.
+
+The gap was error handling. `uploadStagedFiles` discarded every upload error
+and showed one line telling the user to retry, which for a refused animated GIF
+would loop forever. Failures are now classified per staged file
+(`classifyUploadFailure`): a refused image or file gets a named, specific
+reason under the chips, and the generic retry line appears only for failures a
+retry can fix. When an image is staged, the consent box says only still images
+are analyzed. Both key off the served `category`, not extensions, and the copy
+names no formats. `errorCodeOf` is now exported from `utils/error-message.ts`
+for this.
+
+Verified: typecheck, 30 staging unit tests (image extensions case-insensitive,
+extensionless images rejected, unlisted family rejected, no certified output,
+mixed image and document under shared limits, failure classification), and
+`e2e/document-workspace.spec.ts` with three new cases (still image staged as
+analysis only with the note, a refused animated image named with no retry
+advice and no run started, image plus document uploaded under one consent in
+one run). The file's existing drop test (`:390` after these additions) still
+fails as on `develop` without these changes, so the image drop path is covered
+by unit validation rather than a browser test.
+
+Compared with the backend's served OpenAPI document on a local verification
+server: `DocumentFormatCapability`, `DocumentWorkspaceCapabilityResponse`,
+`ConversationAttachmentResponse`, and the upload body (`file`,
+`provider_consent`) match the frontend schemas unchanged. Live refusal checks
+through the production BFF, with no file reaching the provider: the served
+registry lists `.jpg`, `.jpeg`, `.png`, `.webp`, and `.gif` as `image`, one
+MIME each and `unavailable`; missing consent is 422, explicit `false` is 400
+`document_provider_consent_required`; random bytes named `.png`, a PNG named
+`.jpg`, and a two-frame GIF are each 415 `unsupported_attachment_type`, and
+nothing was stored; a guest capability is `eligible: false` and a guest upload
+is 403 `guest_document_workspace_forbidden`. The captured payloads parse with
+the frontend schemas, every refusal classifies as `image_refused`, and both
+consent and guest codes have localized copy.
+
+The live comparison found one mismatch, since fixed: the backend resolves an
+image's format from its filename extension only, but `findFormatForFile` also
+matched by MIME type, so an extensionless `image/png` would have been staged
+and offered consent, then refused. Images are now excluded from the MIME
+fallback and rejected locally like an unsupported `.heic`; the fallback still
+applies to non-image formats.

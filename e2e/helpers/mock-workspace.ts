@@ -367,6 +367,12 @@ type RouteOverrides = {
   documentWorkspace?: false | "enabled" | "ineligible" | "disabled";
   /** Fails every attachment upload, to exercise the abandoned-send path. */
   attachmentUploadFails?: boolean;
+  /**
+   * Refuses any upload whose filename contains "animated" with 415
+   * `unsupported_attachment_type`, as the backend does for an animated or
+   * malformed image — a verdict on the file, not a transport failure.
+   */
+  attachmentRefusesAnimated?: boolean;
   processState?:
     | "completed"
     | "failed"
@@ -405,6 +411,7 @@ export async function mockWorkspace(
     interaction = false,
     documentWorkspace = false,
     attachmentUploadFails = false,
+    attachmentRefusesAnimated = false,
   } = overrides;
   const mockAttachment = {
     id: "att-1",
@@ -778,6 +785,20 @@ export async function mockWorkspace(
           502,
         );
       }
+      if (
+        attachmentRefusesAnimated &&
+        /filename="[^"]*animated[^"]*"/.test(
+          request.postDataBuffer()?.toString("latin1") ?? "",
+        )
+      ) {
+        return json(
+          {
+            detail: "Animated images are not supported",
+            code: "unsupported_attachment_type",
+          },
+          415,
+        );
+      }
       return json(mockAttachment, 201);
     }
     if (method === "DELETE" && /\/attachments\/[^/]+$/.test(path)) {
@@ -901,6 +922,20 @@ export async function mockWorkspace(
             analysis_supported: true,
             artifact_status: "unavailable",
           },
+          // Images are analysis-only: the backend certifies no image output.
+          ...[
+            [".jpg", "image/jpeg"],
+            [".jpeg", "image/jpeg"],
+            [".png", "image/png"],
+            [".webp", "image/webp"],
+            [".gif", "image/gif"],
+          ].map(([extension, mime]) => ({
+            extension,
+            category: "image",
+            mime_types: [mime],
+            analysis_supported: true,
+            artifact_status: "unavailable",
+          })),
         ],
         consent_required: true,
         retention: "ephemeral",
