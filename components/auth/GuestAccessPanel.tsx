@@ -173,6 +173,15 @@ export function GuestAccessPanel() {
                   )}
                   {sentCopy ? ` ${sentCopy}` : ""}
                 </p>
+                {/* The backend answers "accepted" whether or not it sends a
+                    code — an ended trial, a registered address, and a
+                    throttled resend all look identical, by design, so the
+                    response cannot be used to probe who has an account. The
+                    copy above therefore must not read as a delivery receipt;
+                    this says so without naming which case applies. */}
+                <p className="mt-2 leading-6 text-cal-body">
+                  {localization.guestNoEmailNotice}
+                </p>
               </output>
             ) : null}
           </section>
@@ -187,6 +196,13 @@ export function GuestAccessPanel() {
             </h2>
             <p className="text-sm leading-6 text-cal-muted">
               {localization.guestCodeDescription}
+            </p>
+            {/* One trial per email: a second code during an active trial signs
+                back into the same guest account — possibly with a new session —
+                keeping its original expiry and usage. Said here so "request a
+                new code" is not read as a way to reset the limits. */}
+            <p className="text-sm leading-6 text-cal-muted">
+              {localization.guestReloginNotice}
             </p>
             {guestCodeLogin.error ? (
               <ErrorState

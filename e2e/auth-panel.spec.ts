@@ -166,6 +166,13 @@ test.describe("auth pages", () => {
         ),
       ),
     ).toBeVisible();
+    // "accepted" is the same answer for an ended trial, a registered address,
+    // and a throttled resend, so the confirmation must not read as a delivery
+    // receipt. The notice says a code may not arrive, without saying why.
+    await expect(page.getByText(ko.auth.guestNoEmailNotice)).toBeVisible();
+    // One trial per email: a new code signs back into the same guest account,
+    // keeping its original expiry and usage; it does not reset them.
+    await expect(page.getByText(ko.auth.guestReloginNotice)).toBeVisible();
     expect(guestRequestBody).toEqual({ email: "reviewer@example.com" });
     expect(guestLoginCalls).toBe(0);
 

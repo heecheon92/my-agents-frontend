@@ -2037,3 +2037,48 @@ build, the full browser suite at 229 passed / 2 skipped / 2 failed (both
 confirmed baselines: `document-workspace.spec.ts:457` file drop and
 `transcript-autoscroll.spec.ts:43`), and the targeted suites after the
 optimistic-attachment follow-up.
+
+## 2026-10-03 — Guest copy matches one trial per email
+
+The backend (`2eab212`, migration `0039`) now grants one guest trial per
+normalized email. A second code during an active trial signs back into the same
+guest account without renewing its expiry or quotas. An ended trial cannot be
+restarted publicly, and registered addresses are ineligible.
+`POST /auth/guest/request` answers `{"status":"accepted"}` in every one of those
+cases, and for throttled resends, so acceptance is not proof that an email was
+sent. Source: the backend's `docs/product-chat-service/40-guest-trial-abuse-protection.md`.
+
+Several strings became untrue under that contract:
+
+- `errors.byCode.guest_access_expired` told the user to request a new code.
+  The same address now receives nothing, so it says the guest access has ended
+  and points to creating an account.
+- The page description, the email hint, and both delivery lines promised a
+  code would be sent. They now say a code goes out if the address is eligible,
+  and the page states the one-per-email rule.
+- `guestLimitsSummary` read as a fresh window per session. It now counts the
+  hours from when guest access first starts.
+- New `guestNoEmailNotice`, shown with the "request received" confirmation,
+  says an email may not arrive and lists the cases generically. It never says
+  which case applied, so the page cannot be used to probe who has an account.
+- New `guestReloginNotice` under the code step says a new code signs back
+  into the same guest account (the session itself may be new) and keeps the
+  original expiry and the usage so far.
+
+The new policy fields (`trial_policy`, `active_trial_relogin_supported`,
+`code_resend_cooldown_seconds`, `code_email_daily_limit`) are not read yet. The
+copy stays true without them, because re-login is a constant in the backend and
+the cooldown and daily limit are described without numbers. Showing those
+numbers needs a model update from the hosted OpenAPI document, per the repo rule.
+The existing `guestPolicySchema` is a non-strict object, so the extra fields are
+dropped without error.
+
+`e2e/auth-panel.spec.ts` now asserts that both notices appear next to the
+generic accepted confirmation.
+
+Verified: lint, typecheck, 425 unit tests (including the copy rules), the
+production build, and the full browser suite at 233 passed with 2
+environment-gated skips. `transcript-autoscroll.spec.ts:43` passed in this run
+after failing earlier the same day, so it is intermittent rather than a fixed
+baseline failure. The guest page was also checked at 390px with a policy
+response that carries the new fields.
