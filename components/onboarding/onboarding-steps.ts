@@ -13,6 +13,14 @@ export type OnboardingStep = {
   path: string;
   targetId: string;
   mobileTargetId?: string;
+  /**
+   * Tried in order when the primary target is absent or not rendered. The
+   * evidence steps point at the agent-process panel, which only exists once a
+   * conversation has an answer — and the tour lands on a fresh `/chat`, so on
+   * a first run that step always waited four seconds and then apologised that
+   * it could not find anything. The greeting is on screen in exactly that case.
+   */
+  fallbackTargetIds?: readonly string[];
   titleKey: string;
   bodyKey: string;
   waitTimeoutMs?: number;
@@ -23,8 +31,12 @@ export const onboardingSteps = [
     id: "guest-limits",
     flow: "guest",
     path: "/chat",
-    targetId: "service.guest-session-card",
-    mobileTargetId: "service.guest-session-mobile",
+    // The banner states the limits; the session card in the sidebar does not.
+    targetId: "chat.guest-notice",
+    fallbackTargetIds: [
+      "service.guest-session-card",
+      "service.guest-session-mobile",
+    ],
     titleKey: "guestLimitsTitle",
     bodyKey: "guestLimitsBody",
   },
@@ -57,6 +69,7 @@ export const onboardingSteps = [
     flow: "guest",
     path: "/chat",
     targetId: "chat.agent-process",
+    fallbackTargetIds: ["chat.empty-state"],
     titleKey: "guestEvidenceTitle",
     bodyKey: "guestEvidenceBody",
   },
@@ -65,6 +78,7 @@ export const onboardingSteps = [
     flow: "new-user",
     path: "/knowledge",
     targetId: "documents.knowledge-destination",
+    mobileTargetId: "documents.browse-source-spaces",
     titleKey: "newKnowledgeSpaceTitle",
     bodyKey: "newKnowledgeSpaceBody",
   },
@@ -105,6 +119,7 @@ export const onboardingSteps = [
     flow: "new-user",
     path: "/chat",
     targetId: "chat.agent-process",
+    fallbackTargetIds: ["chat.empty-state"],
     titleKey: "newReviewEvidenceTitle",
     bodyKey: "newReviewEvidenceBody",
   },

@@ -143,6 +143,9 @@ test("guest users can start and complete the guided tour", async ({ page }) => {
   ]) {
     await page.getByRole("button", { name: ko.onboarding.next }).click();
     await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    // Including the evidence step on a fresh conversation, which used to fall
+    // back to "could not find this item" after a four-second wait.
+    await expect(page.getByText(ko.onboarding.targetFallback)).toHaveCount(0);
   }
 
   await expect(page).toHaveURL(/\/chat$/);

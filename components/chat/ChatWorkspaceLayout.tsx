@@ -204,14 +204,18 @@ export function ChatWorkspaceLayout({
       {/* Outside the grid: inside it, this banner competed for the fixed
           height and pushed the transcript around unpredictably. */}
       {showGuestNotice ? (
-        <div className="shrink-0 rounded-control border border-cal-warning/25 bg-cal-warning/10 px-3 py-2.5 text-sm text-cal-body">
-          <p className="font-semibold leading-5 text-cal-ink">
-            {localization.guestNoticeTitle}
-          </p>
-          <p className="mt-0.5 leading-5">
-            {localization.guestNoticeDescription}
-          </p>
-        </div>
+        // The guest tour's limits step points here: this banner is where the
+        // limits are stated and where reaching one is announced.
+        <OnboardingTarget id="chat.guest-notice" className="shrink-0">
+          <div className="rounded-control border border-cal-warning/25 bg-cal-warning/10 px-3 py-2.5 text-sm text-cal-body">
+            <p className="font-semibold leading-5 text-cal-ink">
+              {localization.guestNoticeTitle}
+            </p>
+            <p className="mt-0.5 leading-5">
+              {localization.guestNoticeDescription}
+            </p>
+          </div>
+        </OnboardingTarget>
       ) : null}
 
       <div className="grid min-h-0 flex-1">

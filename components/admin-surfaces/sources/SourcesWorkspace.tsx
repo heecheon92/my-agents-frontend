@@ -171,15 +171,21 @@ export function SourcesWorkspace({
               ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
+              {/* Compact screens reach the knowledge-base tree through this
+                  button, so it is where the tour's first step points there. */}
+              <OnboardingTarget
+                id="documents.browse-source-spaces"
                 className="lg:hidden"
-                onClick={onOpenSourceSpaceBrowser}
               >
-                <ListTreeIcon />
-                {localization.documents.browseSourceSpacesAction}
-              </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onOpenSourceSpaceBrowser}
+                >
+                  <ListTreeIcon />
+                  {localization.documents.browseSourceSpacesAction}
+                </Button>
+              </OnboardingTarget>
               {/* No create button here: the source-space tree in the left pane
                   already carries a `+` wired to the same `onCreateSourceSpace`,
                   and two entry points for one action in the same view read as

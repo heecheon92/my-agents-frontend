@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { isRenderedTarget } from "./onboarding-placement";
 import {
   DEFAULT_ONBOARDING_WAIT_TIMEOUT_MS,
   getStepByIndex,
@@ -67,11 +68,16 @@ export function useOnboardingRouteStep(identityBucket?: string) {
     ? getStepByIndex(activeFlow, activeStepIndex)
     : undefined;
   const stepKey = step ? `${step.flow}:${step.id}:${activeStepIndex}` : null;
-  const targetId =
+  const primaryTargetId =
     usesMobileTargets && step?.mobileTargetId
       ? step.mobileTargetId
       : step?.targetId;
-  const targetElement = targetId ? targets[targetId] : undefined;
+  const candidateIds = primaryTargetId
+    ? [primaryTargetId, ...(step?.fallbackTargetIds ?? [])]
+    : [];
+  const targetElement = candidateIds
+    .map((id) => targets[id])
+    .find((element) => isRenderedTarget(element));
   const isActive = status === "active" && Boolean(step);
   const shouldFallback = Boolean(
     isActive && stepKey && timedOutStepKey === stepKey && !targetElement,
@@ -133,9 +139,12 @@ export function useOnboardingRouteStep(identityBucket?: string) {
     const prefersReducedMotion = window.matchMedia(
       "(prefers-reduced-motion: reduce)",
     ).matches;
+    // `nearest`, not `center`: centering a tall target such as the
+    // knowledge-base tree scrolled the page heading out of view even though
+    // the target was already fully on screen.
     targetElement.scrollIntoView({
       behavior: prefersReducedMotion ? "auto" : "smooth",
-      block: "center",
+      block: "nearest",
     });
   }, [isActive, targetElement]);
 

@@ -123,6 +123,23 @@ async function mockNewUserWorkspace(page: import("@playwright/test").Page) {
   });
 }
 
+async function cardOverlapsSpotlight(page: import("@playwright/test").Page) {
+  return page.evaluate(() => {
+    const overlay = document.querySelector('[data-onboarding-overlay="true"]');
+    const card = overlay?.querySelector('[role="dialog"]');
+    const ring = overlay?.querySelector('[data-onboarding-spotlight="true"]');
+    if (!card || !ring) return false;
+    const a = card.getBoundingClientRect();
+    const b = ring.getBoundingClientRect();
+    return (
+      a.left < b.right &&
+      b.left < a.right &&
+      a.top < b.bottom &&
+      b.top < a.bottom
+    );
+  });
+}
+
 test("authenticated users can complete the normal workflow tour", async ({
   page,
 }) => {
@@ -141,6 +158,13 @@ test("authenticated users can complete the normal workflow tour", async ({
     ko.onboarding.steps.newReviewEvidenceTitle,
   ]) {
     await expect(page.getByRole("heading", { name: title })).toBeVisible();
+    // Every step must find something real to point at. The evidence step used
+    // to wait four seconds on a fresh `/chat` and then apologise instead.
+    await expect(page.getByText(ko.onboarding.targetFallback)).toHaveCount(0);
+    // And the card must not cover what it is pointing at — it used to sit in
+    // a fixed corner on top of the composer. Polled, because the spotlight
+    // glides from the previous target for a moment.
+    await expect.poll(() => cardOverlapsSpotlight(page)).toBe(false);
     const isLast = title === ko.onboarding.steps.newReviewEvidenceTitle;
     await page
       .getByRole("button", {
@@ -155,6 +179,53 @@ test("authenticated users can complete the normal workflow tour", async ({
   expect(persisted).toContain('"completed":true');
   expect(persisted).not.toContain("new-user@example.com");
   expect(persisted).not.toContain("new-user-tour");
+});
+
+test("on a phone the first step points at the knowledge-base browser button", async ({
+  page,
+}) => {
+  // The knowledge-base tree lives in a sidebar hidden below `lg`. Its anchor
+  // measured 0×0, and the spotlight's minimum size drew a ring in the top-left
+  // corner around the menu button, which has nothing to do with the step.
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockNewUserWorkspace(page);
+  await page.goto("/chat");
+  await page.getByRole("button", { name: ko.onboarding.start }).click();
+  await expect(
+    page.getByRole("heading", {
+      name: ko.onboarding.steps.newKnowledgeSpaceTitle,
+    }),
+  ).toBeVisible();
+
+  await expect(
+    page.locator('[data-onboarding-spotlight="true"]'),
+  ).toBeVisible();
+  // Read both boxes in one snapshot and poll: the spotlight eases into place
+  // and follows the page while it scrolls the target into view. A CSS query,
+  // not a role query, because the app behind the tour is `aria-hidden` while
+  // it is open, which role queries correctly skip.
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const ring = document
+          .querySelector('[data-onboarding-spotlight="true"]')
+          ?.getBoundingClientRect();
+        const button = document
+          .querySelector(
+            '[data-onboarding-target="documents.browse-source-spaces"] button',
+          )
+          ?.getBoundingClientRect();
+        if (!ring || !button || button.width === 0) return false;
+        return (
+          ring.left <= button.left &&
+          ring.top <= button.top &&
+          ring.right >= button.right &&
+          ring.bottom >= button.bottom
+        );
+      }),
+    )
+    .toBe(true);
+  await expect.poll(() => cardOverlapsSpotlight(page)).toBe(false);
 });
 
 test("authenticated tour respects user navigation away before completion", async ({

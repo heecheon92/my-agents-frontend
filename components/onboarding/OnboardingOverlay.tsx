@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { useLocalization } from "@/hooks/useLocalization";
 import { cn } from "@/lib/utils";
+import {
+  type CardPlacement,
+  placeOnboardingCard,
+  type Size,
+} from "./onboarding-placement";
 import { useOnboardingStore } from "./onboarding-store";
 import { useOnboardingRouteStep } from "./useOnboardingRouteStep";
 
@@ -43,6 +48,8 @@ export function OnboardingOverlay({
   const { steps, step, targetElement, shouldFallback, isTargetPending } =
     useOnboardingRouteStep(identityBucket);
   const [targetRect, setTargetRect] = useState<TargetRect | null>(null);
+  const [viewport, setViewport] = useState<Size | null>(null);
+  const [cardSize, setCardSize] = useState<Size | null>(null);
   const [mounted, setMounted] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   const previousFocusRef = useRef<HTMLElement | null>(null);
@@ -59,6 +66,15 @@ export function OnboardingOverlay({
     return () => previousFocusRef.current?.focus?.();
   }, [isOpen]);
 
+  // The card is keyed by step so each one animates in, which also means the
+  // button that advanced the tour unmounts. Move focus to the new card so
+  // keyboard and screen-reader users land on the step that just opened.
+  const stepId = step?.id;
+  useEffect(() => {
+    if (!isOpen || !stepId) return;
+    cardRef.current?.focus();
+  }, [isOpen, stepId]);
+
   useEffect(() => {
     if (!isOpen) return;
     let animationFrameId: number | null = null;
@@ -67,9 +83,11 @@ export function OnboardingOverlay({
       animationFrameId = window.requestAnimationFrame(() => {
         animationFrameId = null;
         setTargetRect(measure(targetElement));
+        setViewport({ width: window.innerWidth, height: window.innerHeight });
       });
     };
     setTargetRect(measure(targetElement));
+    setViewport({ width: window.innerWidth, height: window.innerHeight });
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
     const observer =
@@ -84,6 +102,22 @@ export function OnboardingOverlay({
       observer?.disconnect();
     };
   }, [isOpen, targetElement]);
+
+  // Measured before paint so the card never flashes at a provisional spot.
+  // Observed as well, because copy length differs per step and per language.
+  useLayoutEffect(() => {
+    // `stepId` is read so the effect reruns per step: the card is keyed by
+    // step, so each step mounts a new element to observe.
+    const card = cardRef.current;
+    if (!isOpen || !stepId || !card) return;
+    const read = () =>
+      setCardSize({ width: card.offsetWidth, height: card.offsetHeight });
+    read();
+    const observer =
+      typeof ResizeObserver === "undefined" ? null : new ResizeObserver(read);
+    observer?.observe(card);
+    return () => observer?.disconnect();
+  }, [isOpen, stepId]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -150,6 +184,11 @@ export function OnboardingOverlay({
     };
   }, [shouldFallback, targetRect]);
 
+  const placement = useMemo<CardPlacement | null>(() => {
+    if (!spotlightStyle || !viewport || !cardSize) return null;
+    return placeOnboardingCard(spotlightStyle, viewport, cardSize);
+  }, [cardSize, spotlightStyle, viewport]);
+
   if (!mounted || !isOpen || !step) return null;
 
   const stepsCopy = localization.steps as Record<string, string>;
@@ -162,24 +201,52 @@ export function OnboardingOverlay({
       aria-live="polite"
       data-onboarding-overlay="true"
     >
-      <div className="absolute inset-0 bg-black/45" />
       {spotlightStyle ? (
+        // The ring's own shadow is the only dimming layer. A separate
+        // full-screen scrim used to sit underneath it as well, so the
+        // highlighted control was darkened like everything else and the
+        // "spotlight" was only an outline.
         <div
-          className="pointer-events-none absolute rounded-2xl border-2 border-white bg-white/10 shadow-[0_0_0_9999px_rgb(0_0_0/0.45)] transition-all motion-reduce:transition-none"
+          data-onboarding-spotlight="true"
+          className="pointer-events-none absolute rounded-2xl border-2 border-white shadow-[0_0_0_9999px_rgb(0_0_0/0.5)] transition-[top,left,width,height] duration-[var(--duration-panel)] ease-[var(--ease-standard)]"
           style={spotlightStyle}
         />
-      ) : null}
-      <div className="absolute inset-0 grid place-items-center p-4 sm:p-6">
+      ) : (
+        <div className="absolute inset-0 bg-black/50" />
+      )}
+      <div
+        className={cn(
+          "absolute inset-0 p-4 sm:p-6",
+          !spotlightStyle && "grid place-items-center",
+        )}
+      >
         <div
+          key={step.id}
           ref={cardRef}
           role="dialog"
           aria-modal="true"
           aria-labelledby="onboarding-title"
           aria-describedby="onboarding-body"
           tabIndex={-1}
+          style={
+            placement?.mode === "float"
+              ? { top: placement.top, left: placement.left }
+              : undefined
+          }
           className={cn(
             "cal-card w-full max-w-sm rounded-2xl p-4 shadow-2xl outline-none",
-            spotlightStyle && "sm:absolute sm:right-8 sm:bottom-8",
+            "animate-in fade-in zoom-in-95 duration-[var(--duration-panel)]",
+            spotlightStyle && "absolute",
+            // Hidden only for the single layout pass before the card's own
+            // size is known; placement needs it.
+            spotlightStyle && !placement && "invisible",
+            placement?.mode === "dock" && "inset-x-4 w-auto max-w-none",
+            placement?.mode === "dock" &&
+              placement.edge === "top" &&
+              "top-[calc(env(safe-area-inset-top)+1rem)]",
+            placement?.mode === "dock" &&
+              placement.edge === "bottom" &&
+              "bottom-[calc(env(safe-area-inset-bottom)+1rem)]",
           )}
         >
           <p className="cal-label">{localization.eyebrow}</p>

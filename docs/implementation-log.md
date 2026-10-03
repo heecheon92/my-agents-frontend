@@ -2082,3 +2082,59 @@ environment-gated skips. `transcript-autoscroll.spec.ts:43` passed in this run
 after failing earlier the same day, so it is intermittent rather than a fixed
 baseline failure. The guest page was also checked at 390px with a policy
 response that carries the new fields.
+
+## 2026-10-03 — Onboarding tour: real spotlight, placement, and anchors
+
+Walking both tours at 1440×900 and 390×844 turned up four problems, each
+visible in screenshots:
+
+- **The spotlight did not light anything.** A full-screen 45% scrim sat
+  under the spotlight ring, whose own shadow darkened the rest of the page a
+  second time. The highlighted control was as dark as its surroundings, and
+  only the white outline set it apart. The ring's shadow is now the only
+  dimming layer; the full scrim is used only when there is no target.
+- **The card covered its own target.** It was pinned to the bottom-right
+  corner on every step, on top of the composer (the target of two steps) and
+  its send button. `onboarding-placement.ts` now places the card below the
+  target, else above, else beside it, and uses a corner only when the target
+  fills the screen. Below `sm` the card docks to the edge farther from the
+  target.
+- **The evidence step always failed.** Both tours end by pointing at the
+  agent-process panel, which exists only once a conversation has an answer,
+  but the tour lands on a fresh `/chat`. Every run waited about 4.3 seconds
+  on a blank screen, then showed "could not find this item". Steps can now
+  list `fallbackTargetIds`. The evidence steps fall back to the chat greeting,
+  whose description already says answers come with their source documents.
+- **On phones, step 1 ringed the menu button.** The knowledge-base tree is in
+  a sidebar that is `display: none` below `lg`. Its registered anchor measured
+  0×0 at the origin, and the spotlight's 48px minimum drew a ring around the
+  menu button. Hidden targets are now skipped (`isRenderedTarget`), and the
+  step's phone anchor is the "목록 보기" button that opens the same tree.
+
+Smaller changes:
+
+- The guest limits step pointed at the sidebar session card, which does not
+  mention limits. It now points at the in-chat "게스트 이용 제한" banner.
+- Each step's card fades and scales in (`--duration-panel`), and the spotlight
+  glides between targets with the standard easing. The global reduced-motion
+  block collapses both. Because the card now remounts per step, focus moves to
+  each new card instead of falling to the page body.
+- The target is scrolled into view with `block: "nearest"`; `center` pushed
+  the knowledge page heading off screen for a target that was already visible.
+
+Copy: the upload step now lists Word (.docx), which the uploader accepts. The
+guest limits step drops "체험" (the guide forbids framing guest access as a
+trial) and states the one-trial-per-email rule. The ask step says the answer
+appears as it is written, without "스트리밍". The unused
+`newSourceDestinationTitle` and `newSourceDestinationBody` keys were removed.
+
+No scenes were added. Each tour already covers its loop in 5–6 steps, and the
+newer composer controls (model, reasoning, attachments) depend on deployment or
+account eligibility. A step for them would have to be conditional, and the
+rule above gives every step something that is visible at each width.
+
+Tests: `tests/onboarding-placement.test.ts` covers the placement rules and
+hidden-target rejection. The new-user browser test asserts that no step falls
+back and that the card never overlaps its spotlight. A phone-width test asserts
+that the first step's spotlight surrounds "목록 보기". The guest test asserts
+that no step falls back.

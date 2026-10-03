@@ -520,8 +520,16 @@ Screenshots land in `test-results/visual-evidence/<label>/` (gitignored).
 
 **Standing checklist when touching chat, the shell, or any list route:** grep
 `OnboardingTarget id=` in every file you changed and confirm each target is
-mounted and visible at all three widths. A target inside a closed Sheet
-spotlights nothing, and the tour fails silently.
+mounted and visible at all three widths. A target that is hidden, such as one
+inside a closed Sheet or a `hidden lg:flex` sidebar, is skipped. The step then
+uses its `mobileTargetId` or `fallbackTargetIds`, and only if none of those is
+visible does it show the unhighlighted fallback card after a four-second wait.
+Give every step a target that is visible at each width.
+
+The tour card is placed next to its target (below, above, or beside it) and
+docks to the farther screen edge below `sm`, so it never covers what it points
+at. The spotlight's own shadow is the only dimming layer, which keeps the
+target at full brightness.
 
 ---
 

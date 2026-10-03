@@ -205,14 +205,19 @@ export function ChatTranscript({
       */}
         {!activeId ? (
           <div className="flex min-h-full items-center justify-center py-8">
-            <div className="max-w-md text-center">
-              <p className="cal-heading text-xl text-cal-ink">
-                {localization.newChatGreeting}
-              </p>
-              <p className="mt-2 text-sm leading-6 text-cal-muted">
-                {localization.newChatGreetingDescription}
-              </p>
-            </div>
+            {/* The tour's evidence step anchors here when there is no answer
+                yet: the description already says answers come with their
+                source documents, which is what that step explains. */}
+            <OnboardingTarget id="chat.empty-state" className="max-w-md">
+              <div className="text-center">
+                <p className="cal-heading text-xl text-cal-ink">
+                  {localization.newChatGreeting}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-cal-muted">
+                  {localization.newChatGreetingDescription}
+                </p>
+              </div>
+            </OnboardingTarget>
           </div>
         ) : null}
         {messagesError ? <ErrorState error={messagesError} /> : null}
