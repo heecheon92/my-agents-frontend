@@ -2138,3 +2138,27 @@ hidden-target rejection. The new-user browser test asserts that no step falls
 back and that the card never overlaps its spotlight. A phone-width test asserts
 that the first step's spotlight surrounds "목록 보기". The guest test asserts
 that no step falls back.
+
+## 2026-10-17 — Vendored the owner's agent skills
+
+Copied 29 skills from the owner's dotfiles registry (`heecheon92/dotfiles` at
+`3e6e15e`, `home/.agents/skills/`) into the flat project layout under
+`.agents/skills/`: the handmade `frontend-patterns` and `react-ui-ux`, Jakub
+Krehel's 13 interface skills (`jakubkrehel/skills@d574cc8`), and Emil Kowalski's
+14 design/animation skills (`emilkowalski/skills@e8a175d`). The copies are
+byte-identical to the dotfiles sources, apart from `.DS_Store` files, which were
+left out. Copying was chosen over `npx skills add`, because running the skills CLI
+downloads a package and the dotfiles copies are already reviewed and pinned.
+
+`skills-lock.json` gained the 27 external entries, copied unchanged from dotfiles'
+`home/skills-lock.json`. The handmade pair has no lock entry, because dotfiles owns
+it. `AGENTS.md` now lists the sets and the rules for using them here: repo docs
+take precedence, library suggestions still need approval, skills that are
+explicit-only stay that way, temporary preview routes get cleaned up, and the
+vendored skills outrank `responsive-design`, `shadcn`, and `wire-dialog-sheet-ui`
+when they conflict (owner decision).
+`animate-expo` and `write-swift` were copied with their collection, but they do
+not apply to this web codebase.
+
+Validation: `diff -rq` against each source directory reported no differences;
+`skills-lock.json` parses and passes Biome; no application code changed.

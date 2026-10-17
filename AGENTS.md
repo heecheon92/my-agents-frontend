@@ -114,6 +114,26 @@ Read the relevant repo-local guide before modifying code in that area:
 - `docs/verification-runbook.md` for validation commands and evidence expectations.
 - `docs/durable-interactions.md` before touching `components/chat/interactions/`, `components/chat/run-state.ts`, or `model/my-agents/interactions.ts`.
 
+## Project agent skills
+
+Skills live flat under `.agents/skills/<name>/`. Besides `responsive-design`, `shadcn`, and `wire-dialog-sheet-ui`, the repo vendors these sets from the owner's dotfiles registry (`heecheon92/dotfiles`, `home/.agents/skills/`):
+
+| Set | Skills | Provenance |
+| --- | --- | --- |
+| Owner's Next.js/React patterns (handmade) | `frontend-patterns`, `react-ui-ux` | Owned in dotfiles `handmade/nextjs-react/`; not in `skills-lock.json` |
+| Jakub Krehel interface skills | `better-interface`, `better-accessibility`, `better-colors`, `better-layout`, `better-typography`, `better-ui`, `better-writing`, `break`, `build-design`, `explain-interface`, `interface-review`, `state-machine`, `variant` | `jakubkrehel/skills`, commit-pinned in `skills-lock.json` |
+| Emil Kowalski design/animation skills | `emil-design-eng`, `animate`, `animate-expo`, `animation-vocabulary`, `apple-design`, `ask-sonner`, `break-ui`, `find-animation-opportunities`, `improve-animations`, `mobile-native`, `pick-ui-library`, `prototype`, `review-animations`, `write-swift` | `emilkowalski/skills`, commit-pinned in `skills-lock.json` |
+
+Rules for using them here:
+
+- Vendored skills outrank the older repo-local skills. Where a skill in the table conflicts with `responsive-design`, `shadcn`, or `wire-dialog-sheet-ui`, follow the vendored skill.
+- Repo docs still win over every skill. `AGENTS.md`, `DESIGN.md`, `docs/korean-copy-guide.md`, and the other guides above override any generic advice in a skill; the skills adapt to this project's contracts, not the reverse.
+- A skill's library suggestion is not installation approval. The "Adding UI/UX libraries" rule still applies to anything `pick-ui-library`, `animate`, or another skill recommends.
+- Respect invocation metadata. `break`, `state-machine`, `variant`, `prototype`, `pick-ui-library`, and others marked `disable-model-invocation` run only when the user names them. A skill suggesting a sibling does not bypass this.
+- Skills that create temporary preview routes (`break`, `state-machine`, `variant`, `prototype`) must remove them before the task is reported complete.
+- `animate-expo` and `write-swift` target React Native and Swift, so they do not apply to this web codebase.
+- Update these copies from dotfiles, not by editing them here. Replace whole skill directories and keep each external skill's `LICENSE`. External lock entries are copied from dotfiles' `home/skills-lock.json`; do not hand-edit hashes.
+
 ## Durable interaction invariants
 
 A run can suspend mid-answer to ask the user something and resume when answered.
