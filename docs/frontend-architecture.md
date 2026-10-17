@@ -115,6 +115,14 @@ The BFF allowlist currently covers:
 - `POST /conversations/{conversation_id}/runs/stream`
 - `GET /conversations/{conversation_id}/runs/{run_id}`
 - `GET /conversations/{conversation_id}/runs/{run_id}/events`
+- Durable answers, used only when the run is durable (see below):
+  `POST /conversations/{conversation_id}/runs/async`,
+  `POST /conversations/{conversation_id}/runs/{run_id}/resume/async`,
+  `POST /conversations/{conversation_id}/messages/{message_id}/replay/async`,
+  `GET /conversations/{conversation_id}/runs/{run_id}/output`, and the GET
+  listener `GET /conversations/{conversation_id}/runs/{run_id}/stream`. The
+  listener is the only route with a forwarded query (`after`, a non-negative
+  integer) and a forwarded `Last-Event-ID`
 - `POST /groups`
 - `GET /groups`
 - `GET /groups/{group_id}`
@@ -279,3 +287,76 @@ is a verdict on the file, not a transport failure: `classifyUploadFailure`
 separates it from retryable errors, and the composer names each refused file
 with its reason instead of the generic "try again" line. The image-specific
 wording keys off the served `category`, never an extension list.
+
+## Durable answers
+
+Durable answers are opt-in per deployment (owner decision, 2026-10-17: a
+deployment may not want a separate paid worker service). `GET /health` reports
+`frontend_config.durable_runs` as `{enabled, ready}`:
+
+- `enabled` is the operator's `MY_AGENTS_DURABLE_RUNS_ENABLED` flag. When it is
+  true, new answers (`runs/async`) and regenerations (`replay/async`) are
+  admitted as server-owned work. The page only watches that work, so closing
+  the tab, losing the connection, or reloading never stops the answer. Only
+  Stop (the in-flight send-now action) cancels it.
+- When `enabled` is false or absent, new answers and regenerations use the
+  exact legacy routes (`runs/stream`, synchronous `replay`).
+- `ready` is `enabled` plus a fresh worker heartbeat. It is information only.
+  With `enabled` true and no worker, admission answers
+  `503 durable_runs_unavailable`; the composer shows that copy and never falls
+  back to a legacy route.
+- **Where it is on.** The flag is off by default and stays off on the Render
+  deployment, which runs no separate worker service. It is turned on for
+  local testing, with the backend's independent worker running. The frontend
+  needs no configuration either way; it follows health.
+
+```mermaid
+sequenceDiagram
+    participant UI as ChatWorkspace
+    participant BFF as Next BFF
+    participant API as Backend
+    UI->>BFF: POST runs/async (client_request_id)
+    BFF->>API: admit (CSRF)
+    API-->>UI: 202 receipt {run_id, status}
+    loop until a terminal or phase-ending event
+        UI->>BFF: GET runs/{rid}/stream?after=cursor
+        BFF->>API: listener (after, Last-Event-ID)
+        API-->>UI: SSE frames with id = delivery cursor
+    end
+    Note over UI: closed without a terminal event: reconnect from the last id
+    Note over UI: reload or second tab: GET runs/{rid}/output, then listen after its cursor
+```
+
+- **One event handler for both paths.** `useChatRunLoop` swaps only the event
+  source. `durableAnswerEvents` admits, follows, and adds three synthetic
+  events (`durable:admitted`, `durable:snapshot`, `durable:reconnecting`) that
+  never reach the activity timeline. A durable `run_failed` is recorded on the
+  timeline like the legacy one, then raised by its stable code.
+- **The cursor rules live in `components/chat/durable-run.ts`.**
+  `followDurableRun` is pure and unit-tested. A snapshot replaces the view,
+  frames at or below the cursor are dropped, and a terminal or phase-ending
+  frame always closes, even a repeated one. A `410` refetches the snapshot, any
+  other 4xx (and `durable_runs_unavailable`) is final, and a frame that fails
+  its schema fails at once. Only transport failures reconnect, and six
+  reconnects in a row that deliver nothing give up with `durable_stream_lost`.
+- **Per-run routing, independent of the flag.** `execution_mode` on the run
+  list decides whether an existing run is joined and how it resumes. A durable
+  run is still joined and resumed durably after the flag is turned off, and a
+  legacy waiting run always resumes on its legacy stream. An absent mode means
+  an older backend, whose runs are all legacy, so nothing is probed. A `404`
+  from `/output` means "no projection" and ends quietly, without a replacement
+  run.
+- **Joining.** `ChatWorkspace` calls `attachToRun` for an active durable run
+  this page is not watching. Switching conversations or unmounting aborts the
+  listener, which detaches and never cancels.
+- **Regeneration** keeps its result-only UI and follows the new run to its end
+  with `awaitDurableCompletion`.
+
+Contract and acceptance cases: `docs/backend-requests.md`. Models:
+`model/my-agents/durable-runs.ts`, checked against the served OpenAPI.
+
+Tests: `e2e/durable-runs.spec.ts` mocks the durable protocol directly, so its
+assertions see the app's real request paths. It covers the flag on, off, and
+absent for both new answers and regeneration, `enabled` with no ready worker,
+and recovery and resume with the flag off. Every other spec runs with no flag,
+so it exercises the legacy routes against its existing fixtures.

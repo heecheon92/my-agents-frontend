@@ -85,6 +85,12 @@ Never regress these rules:
 - No-body mutations such as logout and KB-scoped document ingest still need `Content-Type: application/json` so the BFF JSON mutation policy passes.
 - Unknown paths, unsupported methods, and `/assistant/chat` product usage must not forward to the backend.
 - Cross-site `Origin`, invalid `Referer`, and `Sec-Fetch-Site: cross-site` mutation attempts must be rejected before forwarding.
+- The BFF forwards no query string by default; `buildBackendPath` rebuilds the
+  path from its segments. The single exception is the durable listener
+  (`GET .../runs/{run_id}/stream`). For it, `forwardedQueryString` forwards
+  `after` only when it is a non-negative integer, and drops every other
+  parameter. `forwardedLastEventId` forwards `Last-Event-ID` under the same
+  rule. Add any new query forwarding there, per route, never as a passthrough.
 - The BFF may forward locale headers only from the safe allowlist:
   `Accept-Language`, `X-My-Agents-Language`, and `X-My-Agents-Locale`.
   If the UI later adds an explicit locale switcher, send `X-My-Agents-Language`
@@ -94,6 +100,7 @@ Never regress these rules:
 Regression tests that protect this:
 
 - `tests/proxy-policy.test.ts`
+- `tests/durable-run-contract.test.ts`
 - `tests/auth-model.test.ts`
 - `tests/fetch-client.test.ts`
 

@@ -67,6 +67,7 @@ from a failing response alone.
 | `components/chat/interactions/*Card.tsx` | The document choice and the fallback |
 | `components/chat/interactions/useInteractionOptions.ts` | Page accumulation |
 | BFF allowlist + `isStreamPath` | Paths, including `resume/stream` |
+| `components/chat/durable-run.ts` | Durable runs: a waiting run resumes through `resume/async` |
 
 `run-state.ts` holds **no state**. The phase is derived on every render from
 streaming, the pending interaction, and the server run list — the existing
@@ -252,6 +253,19 @@ valve. Bounding the card instead would scroll the one control that must never
 become unreachable. `e2e/durable-source-choice.spec.ts` asserts both halves — the
 card starting at or below the panel top at two viewports, and the list being the
 element that overflows.
+
+## Durable runs
+
+When a run is durable (`execution_mode: "durable"`), its question survives a
+reload the same way, plus one more source: `/output` returns the snapshot with
+`interaction`. Resume goes through `POST .../resume/async` with a fresh
+`client_request_id` per answer. The backend rejects the legacy resume stream
+for a durable run with `409 run_execution_mode_mismatch`, so the route follows
+the run's own mode, never the opt-in flag. A durable waiting run resumes
+durably even after the flag is turned off, and a legacy waiting run always
+resumes on its legacy stream. The invariants above are unchanged:
+a waiting snapshot or a `run_interrupted` frame stops automatic reconnect, and
+only a successful resume subscribes again, continuing the same cursor.
 
 ## Rollout
 

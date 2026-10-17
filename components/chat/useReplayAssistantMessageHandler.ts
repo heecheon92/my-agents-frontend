@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useReplayAssistantMessage } from "@/hooks/use-conversations";
 import type { ConversationRunResponse } from "@/model/my-agents";
 import { isMyAgentsAPIError } from "@/services/my-agents/MyAgentsAPIError";
+import { errorCodeOf, resolveErrorMessage } from "@/utils/error-message";
 import type { Localization } from "@/utils/localization";
 
 type ReplayNotice = {
@@ -17,6 +18,10 @@ type UseReplayAssistantMessageHandlerOptions = {
   conversationIsBusy: boolean;
   isCancelling: boolean;
   localization: Localization["chat"];
+  /** For coded durable failures, which are named by the shared copy table. */
+  errorLocalization?: Localization;
+  /** Read per regeneration: whether to admit it as a durable run. */
+  isDurableEnabled?: () => boolean;
   setStatusAnnouncement: (message: string) => void;
   onReplayStart?: () => void;
   onReplayResult: (result: ConversationRunResponse) => void;
@@ -28,12 +33,17 @@ export function useReplayAssistantMessageHandler({
   conversationIsBusy,
   isCancelling,
   localization,
+  errorLocalization,
+  isDurableEnabled,
   setStatusAnnouncement,
   onReplayStart,
   onReplayResult,
   onReplayError,
 }: UseReplayAssistantMessageHandlerOptions) {
-  const replayAssistantMessage = useReplayAssistantMessage(activeId);
+  const replayAssistantMessage = useReplayAssistantMessage(
+    activeId,
+    isDurableEnabled,
+  );
   const [replayingMessageId, setReplayingMessageId] = useState<string | null>(
     null,
   );
@@ -56,6 +66,12 @@ export function useReplayAssistantMessageHandler({
 
     try {
       const replayResult = await replayAssistantMessage.mutateAsync(messageId);
+      if (!replayResult) {
+        // The regenerated answer stopped to ask something. The run list
+        // surfaces the question; there is no result to report yet.
+        onReplayError?.();
+        return;
+      }
       onReplayResult(replayResult);
       const hasUnavailableSources = replayResult.warnings.some(
         (warning) => warning.code === "regeneration_sources_unavailable",
@@ -75,8 +91,21 @@ export function useReplayAssistantMessageHandler({
     } catch (error) {
       onReplayError?.();
       const isConflict = isMyAgentsAPIError(error) && error.status === 409;
-      const message =
-        error instanceof Error
+      // A coded durable failure is named from the copy table, never from its
+      // message, which is internal text. Any other path is unchanged.
+      const durableCode =
+        isDurableEnabled?.() &&
+        isMyAgentsAPIError(error) &&
+        error.status !== 409
+          ? errorCodeOf(error)
+          : undefined;
+      const message = durableCode
+        ? resolveErrorMessage(
+            error,
+            errorLocalization,
+            localization.replayFailed,
+          )
+        : error instanceof Error
           ? error.message
           : isConflict
             ? localization.replayConflict

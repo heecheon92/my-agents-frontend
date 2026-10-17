@@ -169,6 +169,22 @@ git -C ../my-agents status --short
 
 Expected result: no output, unless the user already had unrelated backend changes.
 
+## Durable answers (opt-in, local only)
+
+Durable answers are off by default and off on the Render deployment. To
+exercise them locally:
+
+1. Start the backend with `MY_AGENTS_DURABLE_RUNS_ENABLED=true` and its
+   independent answer worker. See the backend repository for the commands.
+2. Confirm `GET /health` reports `frontend_config.durable_runs` as
+   `{"enabled": true, "ready": true}`. `ready: false` with `enabled: true`
+   means no worker heartbeat: sends then show `durable_runs_unavailable`.
+3. Run the frontend with `--hostname localhost` and browse via `localhost`.
+   A server bound to `127.0.0.1` but browsed via `localhost` loops on Fast
+   Refresh full reloads, and the BFF origin check rejects `127.0.0.1`.
+4. Send, reload mid-answer, and confirm the partial answer comes back and
+   completes once. The mocked cases live in `e2e/durable-runs.spec.ts`.
+
 ## Common failures
 
 | Symptom | Likely cause | Where to look |
@@ -178,6 +194,8 @@ Expected result: no output, unless the user already had unrelated backend change
 | Product chat calls `/assistant/chat` | Wrong endpoint family | `services/my-agents/`, `components/ChatWorkspace.tsx` |
 | Cross-site mutation is forwarded | BFF policy regression | `server/my-agents/proxy-policy.ts`, `tests/proxy-policy.test.ts` |
 | UI claims unavailable backend features | Fake data or stale docs | Hosted OpenAPI document, `docs/backend-requests.md`, relevant component copy |
+| Stuck on "세션을 복원하는 중…", page keeps reloading | Dev server bound to `127.0.0.1`, browsed via `localhost` | Start with `--hostname localhost` |
+| Send shows "지금은 답변을 시작할 수 없습니다" | Durable flag on, no worker heartbeat | Backend `/health` `durable_runs.ready`; start the worker |
 
 ## Final report checklist
 

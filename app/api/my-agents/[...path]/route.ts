@@ -17,6 +17,8 @@ import {
 } from "@/server/my-agents/cookies";
 import {
   buildBackendPath,
+  forwardedLastEventId,
+  forwardedQueryString,
   isAllowedBackendPath,
   isCsrfExemptPath,
   isMutation,
@@ -47,7 +49,10 @@ export function isStreamPath(path: string) {
   return (
     /^\/conversations\/[^/]+\/runs\/stream$/.test(path) ||
     /^\/conversations\/[^/]+\/runs\/[^/]+\/resume\/stream$/.test(path) ||
-    /^\/conversations\/[^/]+\/messages\/[^/]+\/replay\/stream$/.test(path)
+    /^\/conversations\/[^/]+\/messages\/[^/]+\/replay\/stream$/.test(path) ||
+    // The durable listener. GET-only on the allowlist; the method is checked
+    // there, so a path test is enough here.
+    /^\/conversations\/[^/]+\/runs\/[^/]+\/stream$/.test(path)
   );
 }
 
@@ -116,6 +121,12 @@ async function proxy(request: NextRequest, context: RouteContext) {
   }
   const cookie = request.headers.get("cookie");
   if (cookie) headers.set("cookie", cookie);
+  const lastEventId = forwardedLastEventId(
+    request.method,
+    backendPath,
+    request.headers,
+  );
+  if (lastEventId) headers.set("last-event-id", lastEventId);
   if (
     csrfToken &&
     isMutation(request.method) &&
@@ -125,12 +136,20 @@ async function proxy(request: NextRequest, context: RouteContext) {
   }
 
   const hasBody = isMutation(request.method) && request.method !== "GET";
-  const backendResponse = await fetch(`${BACKEND_URL}${backendPath}`, {
-    method: request.method,
-    headers,
-    body: hasBody ? await request.arrayBuffer() : undefined,
-    cache: "no-store",
-  });
+  const backendQuery = forwardedQueryString(
+    request.method,
+    backendPath,
+    request.nextUrl.searchParams,
+  );
+  const backendResponse = await fetch(
+    `${BACKEND_URL}${backendPath}${backendQuery}`,
+    {
+      method: request.method,
+      headers,
+      body: hasBody ? await request.arrayBuffer() : undefined,
+      cache: "no-store",
+    },
+  );
 
   if (isStreamPath(backendPath) && backendResponse.ok) {
     return new NextResponse(backendResponse.body, {

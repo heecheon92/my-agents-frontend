@@ -28,6 +28,16 @@ export const runReasoningSchema = z.object({
  * field. `null` or absent on legacy runs recorded before model selection.
  */
 /** Echo of the request's `client_request_id`; `null` on legacy runs. */
+/**
+ * How a run executes. Optional because an older backend omits it; absent means
+ * "unknown", and only then does the client fall back to the health gate.
+ * Unrecognized values degrade to unknown rather than failing the run list.
+ */
+export const runExecutionModeSchema = z
+  .enum(["durable", "legacy"])
+  .optional()
+  .catch(undefined);
+
 export const runClientRequestSchema = z.object({
   client_request_id: z.string().nullable().optional(),
 });
@@ -369,6 +379,7 @@ export const conversationRunInterruptedResponseSchema = z
     run_id: z.string().min(1),
     conversation_id: z.string().min(1),
     interaction: pendingInteractionSchema,
+    execution_mode: runExecutionModeSchema,
   })
   .merge(runAssistantModelSchema);
 
@@ -434,6 +445,7 @@ export const agentRunSummarySchema = z
       mode: "all",
       knowledge_base_ids: [],
     }),
+    execution_mode: runExecutionModeSchema,
   })
   .merge(runSourceContextSchema)
   .merge(runReasoningSchema)

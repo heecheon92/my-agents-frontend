@@ -213,6 +213,39 @@ export const BFF_ALLOWLIST: Rule[] = [
     pattern: new RegExp(`^/conversations/${uuidLike}/runs/${uuidLike}/events$`),
     name: "events.list",
   },
+  // Durable runs. Admission, resume, and regeneration return JSON receipts and
+  // are ordinary CSRF-protected mutations; only the GET listener is a stream.
+  {
+    method: "POST",
+    pattern: new RegExp(`^/conversations/${uuidLike}/runs/async$`),
+    name: "runs.async",
+  },
+  {
+    method: "POST",
+    pattern: new RegExp(
+      `^/conversations/${uuidLike}/runs/${uuidLike}/resume/async$`,
+    ),
+    name: "runs.resume.async",
+  },
+  {
+    method: "POST",
+    pattern: new RegExp(
+      `^/conversations/${uuidLike}/messages/${uuidLike}/replay/async$`,
+    ),
+    name: "messages.replay.async",
+  },
+  {
+    method: "GET",
+    pattern: new RegExp(`^/conversations/${uuidLike}/runs/${uuidLike}/output$`),
+    name: "runs.output",
+  },
+  {
+    // Must also be listed in `isStreamPath` in the route handler, and its
+    // cursor is forwarded only through `forwardedQueryString` below.
+    method: "GET",
+    pattern: new RegExp(`^/conversations/${uuidLike}/runs/${uuidLike}/stream$`),
+    name: "runs.subscription",
+  },
   {
     // Multipart upload of a temporary conversation file. Already covered by
     // `isAllowedMutationContentType`, which accepts `multipart/form-data`, and
@@ -469,6 +502,49 @@ export const BFF_ALLOWLIST: Rule[] = [
     name: "documents.extraction-run.detail",
   },
 ];
+
+/** The durable listener: the one route whose query and cursor are forwarded. */
+const DURABLE_SUBSCRIPTION_PATH = new RegExp(
+  `^/conversations/${uuidLike}/runs/${uuidLike}/stream$`,
+);
+
+/** A delivery cursor: a non-negative integer, bounded so it stays exact. */
+const DELIVERY_CURSOR = /^\d{1,15}$/;
+
+export function isDurableSubscriptionPath(method: string, path: string) {
+  return method === "GET" && DURABLE_SUBSCRIPTION_PATH.test(path);
+}
+
+/**
+ * The query string to send upstream, rebuilt rather than copied.
+ *
+ * The proxy forwards no query by default: `buildBackendPath` rebuilds the path
+ * from its segments. The durable listener is the exception, and only for its
+ * cursor. `after` is forwarded when it is a non-negative integer and dropped
+ * otherwise; every other parameter is dropped. Dropping a bad cursor rather
+ * than passing it on is safe, because a missing cursor means `0` and every
+ * frame the client has already applied is skipped by its delivery id.
+ */
+export function forwardedQueryString(
+  method: string,
+  path: string,
+  searchParams: URLSearchParams,
+) {
+  if (!isDurableSubscriptionPath(method, path)) return "";
+  const after = searchParams.get("after");
+  return after !== null && DELIVERY_CURSOR.test(after) ? `?after=${after}` : "";
+}
+
+/** `Last-Event-ID` for the durable listener, under the same rule as `after`. */
+export function forwardedLastEventId(
+  method: string,
+  path: string,
+  headers: Headers,
+) {
+  if (!isDurableSubscriptionPath(method, path)) return null;
+  const value = headers.get("last-event-id");
+  return value !== null && DELIVERY_CURSOR.test(value) ? value : null;
+}
 
 export function buildBackendPath(pathParts: string[]) {
   const safeParts = pathParts

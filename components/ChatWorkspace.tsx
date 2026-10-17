@@ -11,7 +11,10 @@ import {
   useUpdateAssistantModel,
 } from "@/hooks/use-assistant-model";
 import { useCurrentUser } from "@/hooks/use-auth";
-import { useReasoningCapabilities } from "@/hooks/use-capabilities";
+import {
+  useDurableRunsEnabled,
+  useReasoningCapabilities,
+} from "@/hooks/use-capabilities";
 import {
   useConversation,
   useCreateConversation,
@@ -174,6 +177,22 @@ export function ChatWorkspace({
     isWaitingForInputRunStatus(run.status),
   );
   const serverWaitingRunId = serverWaitingRun?.run_id ?? null;
+  /**
+   * Server-owned answers, opt-in. The flag selects the route for NEW answers
+   * and regenerations; an existing run is followed by its own
+   * `execution_mode`, so turning the flag off cannot strand an answer that is
+   * still being written. An unreported mode means an older backend, whose runs
+   * are all legacy, so nothing is probed.
+   */
+  const durableRunsEnabled = useDurableRunsEnabled();
+  const durableCursorsRef = useRef(new Map<string, number>());
+  const durableFollowedRunIdsRef = useRef(new Set<string>());
+  const durableAbortRef = useRef<AbortController | null>(null);
+  /** Read at call time, from handlers and effects — never during render. */
+  function durableRunMode(runId: string) {
+    if (durableCursorsRef.current.has(runId)) return "durable" as const;
+    return sortedRuns.find((run) => run.run_id === runId)?.execution_mode;
+  }
   const latestTerminalRun =
     serverActiveRun || serverWaitingRun ? undefined : sortedRuns[0];
   const latestCompletedRunId =
@@ -355,23 +374,38 @@ export function ChatWorkspace({
   });
   const conversationIsBusy = blocksNewRun(runPhase);
   const showsStopButton = showsStopControl(runPhase);
-  const serverActiveRunIsStale = isObservedActiveRunStale({
-    activeRunId: serverActiveRunId,
-    observedRunId: observedServerActiveRun?.runId ?? null,
-    observedAt: observedServerActiveRun?.observedAt ?? null,
-    now: activeRunClock,
-  });
+  // A durable run this page is following is not stale for being long: its
+  // listener reconnects on its own and says so. The staleness clock is for a
+  // run nothing here is watching.
+  const isFollowingDurableRun =
+    isStreaming && serverActiveRun?.execution_mode === "durable";
+  const serverActiveRunIsStale =
+    !isFollowingDurableRun &&
+    isObservedActiveRunStale({
+      activeRunId: serverActiveRunId,
+      observedRunId: observedServerActiveRun?.runId ?? null,
+      observedAt: observedServerActiveRun?.observedAt ?? null,
+      now: activeRunClock,
+    });
   // Just-uploaded attachments, by ID, until the attachments query catches up.
   // The optimistic message reads them so a sent file shows with its question.
   const freshlyUploadedAttachmentsRef = useRef(
     new Map<string, ConversationAttachment>(),
   );
   const {
+    attachToRun,
     resetImmediateState,
     resumeInteraction,
     runMessageAndContinue,
     setQueuedMessage,
   } = useChatRunLoop({
+    durable: {
+      isEnabled: () => durableRunsEnabled,
+      runMode: durableRunMode,
+      cursorsRef: durableCursorsRef,
+      followedRunIdsRef: durableFollowedRunIdsRef,
+      abortRef: durableAbortRef,
+    },
     activeRunIdRef,
     cancelAcceptedRef,
     onRunAdmitted: (attachmentIds) =>
@@ -426,6 +460,8 @@ export function ChatWorkspace({
     conversationIsBusy,
     isCancelling,
     localization,
+    errorLocalization: fullLocalization,
+    isDurableEnabled: () => durableRunsEnabled,
     setStatusAnnouncement,
     onReplayStart: () =>
       setLatestReasoningSummaries((current) => {
@@ -664,6 +700,70 @@ export function ChatWorkspace({
     if (runs.isFetching) return;
     setPendingInteraction(null);
   }, [serverWaitingRunId, isStreaming, runs.isFetching]);
+
+  /**
+   * Joins a durable answer that is being written but that this page is not
+   * watching: after a reload, from a second tab, or on returning to the
+   * conversation. Reads only; nothing is re-sent or re-run.
+   *
+   * Keyed on the active run. A run this page already followed is not joined
+   * again — after a give-up that is the user's call, by reloading — but a
+   * detach (conversation switch) forgets the run so a return re-joins it.
+   */
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the trigger is server truth (the active run) and the local streaming flag; `attachToRun` and the mode reader are recreated every render.
+  useEffect(() => {
+    if (!activeId || !serverActiveRunId || isStreaming) return;
+    if (durableRunMode(serverActiveRunId) !== "durable") return;
+    if (durableFollowedRunIdsRef.current.has(serverActiveRunId)) return;
+    void attachToRun(activeId, serverActiveRunId);
+  }, [activeId, serverActiveRunId, isStreaming]);
+
+  /**
+   * A stopped durable answer keeps what the user already read. Nothing was
+   * written to the transcript, so after a reload the partial text exists only
+   * in the run's output. It is shown beside the cancelled notice, never as an
+   * answer, and only while it is the conversation's latest run.
+   */
+  const [stoppedPartialReply, setStoppedPartialReply] = useState<{
+    conversationId: string;
+    runId: string;
+    text: string;
+  } | null>(null);
+  const latestCancelledDurableRunId =
+    latestTerminalRun?.status === "cancelled" &&
+    latestTerminalRun.execution_mode === "durable"
+      ? latestTerminalRun.run_id
+      : null;
+  useEffect(() => {
+    if (!activeId || !latestCancelledDurableRunId) return;
+    let ignore = false;
+    myAgentsAPI.conversations
+      .runOutput(activeId, latestCancelledDurableRunId)
+      .then((snapshot) => {
+        if (ignore || !snapshot.partial_reply) return;
+        setStoppedPartialReply({
+          conversationId: activeId,
+          runId: latestCancelledDurableRunId,
+          text: snapshot.partial_reply,
+        });
+      })
+      // No projection, or it was pruned: the cancelled notice alone remains.
+      .catch(() => undefined);
+    return () => {
+      ignore = true;
+    };
+  }, [activeId, latestCancelledDurableRunId]);
+  const visibleStoppedPartialReply =
+    stoppedPartialReply &&
+    stoppedPartialReply.conversationId === activeId &&
+    stoppedPartialReply.runId === latestCancelledDurableRunId
+      ? stoppedPartialReply.text
+      : "";
+
+  /** Detaches the durable listener on unmount. The run keeps going. */
+  useEffect(() => {
+    return () => durableAbortRef.current?.abort();
+  }, []);
 
   async function answerPendingInteraction(
     payload: ConversationRunResumeRequest,
@@ -1030,6 +1130,9 @@ export function ChatWorkspace({
      */
     if (previous === undefined) return;
 
+    // Stop watching the previous conversation's durable answer. Detaching
+    // never cancels it; returning re-joins it from the run list.
+    durableAbortRef.current?.abort();
     setStreamError(null);
     setReplayNotice(null);
     setLiveActivityEvents([]);
@@ -1159,7 +1262,7 @@ export function ChatWorkspace({
       showGuestNotice={showGuestNotice}
       statusAnnouncement={statusAnnouncement}
       streamError={streamError}
-      streamedReply={streamedReply}
+      streamedReply={streamedReply || visibleStoppedPartialReply}
       visibleCitations={visibleCitations}
       visibleConsultedSources={visibleConsultedSources}
       visibleDocumentCoverage={visibleDocumentCoverage}

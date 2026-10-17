@@ -2198,3 +2198,137 @@ build of 20 routes, with a Node 26 `DEP0205` `module.register()` deprecation
 warning emitted during the build; Playwright 233 passed, 2 skipped, 1 failed.
 The failure is the known `conversation-list.spec.ts:188` fade test (5/5 in
 isolation), which was already recorded as failing identically before this change.
+
+## 2026-10-17 — Durable (server-owned) answers, frontend
+
+Implements the frontend half of the contract in `docs/backend-requests.md`
+("recoverable server-owned answer generation"). Backend Codex implemented the
+backend half in `../my-agents`. Coordination ran over Herdr, and no backend
+file was touched from here.
+
+With `frontend_config.durable_runs.enabled` on, a new answer is admitted with
+`POST runs/async` and watched through the GET listener. Leaving or reloading
+the page detaches the viewer and never stops the answer; only Stop (send now)
+cancels it. With the gate off or absent, every request is the legacy one.
+
+- **Run loop.** `useChatRunLoop` now consumes either source through one shared
+  handler (`consumeAnswerEvents` / `finishAnswerStream`). Durable-only state
+  arrives as three synthetic events. `attachToRun` joins an active durable run
+  after a reload, from a second tab, or on returning to a conversation.
+  Resume goes through `resume/async`. Regeneration goes through
+  `replay/async` plus `awaitDurableCompletion` and keeps its result-only UI.
+- **Cursor rules** live in `components/chat/durable-run.ts` (`followDurableRun`,
+  pure and unit-tested).
+- **Per-run routing.** `execution_mode` on the run list and the waiting detail
+  decides whether a run is joined and how it resumes; the gate decides only
+  new admissions. This was requested from the backend during implementation,
+  and it closed the case where turning the gate off would strand an answer
+  that was admitted earlier.
+- **BFF.** Adds the five durable routes to the allowlist, the listener to
+  `isStreamPath`, and the proxy's first query forwarding: an integer `after`
+  only, plus `Last-Event-ID`, and only for the listener.
+- **Models.** `model/my-agents/durable-runs.ts` and `execution_mode`, diffed
+  against the backend's served OpenAPI (local server, 22 listener
+  `x-sse-events`). Snapshot defaults, optional terminal statuses, and the new
+  codes `worker_lost`, `run_request_id_conflict`,
+  `run_output_cursor_expired`, `invalid_stream_cursor`,
+  `durable_runs_unavailable`, and `run_execution_mode_mismatch` have Korean
+  and English copy.
+- **Stopped answers.** A stopped durable answer's partial text stays on screen
+  beside the cancelled notice. After a reload it is restored from `/output`.
+- `queued` now counts as an active run status.
+
+Found along the way, not fixed (separate scope): the BFF forwards no query
+string for any other route, so the interaction-options `?cursor=` page request
+reaches the backend without its cursor.
+
+A dev-environment pitfall cost one investigation. A dev server started with
+`--hostname 127.0.0.1` but browsed via `localhost` loops on Fast Refresh full
+reloads, because Next 16's dev-origin check treats the HMR client as
+cross-origin. Every in-flight request, including `/auth/me`, is aborted, so the
+app sits on "세션을 복원하는 중…". Use `--hostname localhost`, as the Playwright
+config does. 127.0.0.1 is also rejected by the BFF origin check.
+
+Validation (Next 16.4.1):
+- Biome clean (310 files) and `tsc --noEmit` clean.
+- Vitest: 463/463, including 30 new tests in `tests/durable-run.test.ts` and
+  `tests/durable-run-contract.test.ts`.
+- Production build passes: 20 routes. Node 26 printed its `DEP0205`
+  deprecation warning.
+- Playwright, full mocked suite: 239 passed, 2 skipped, 1 failed. This
+  includes the 6 cases in `e2e/durable-runs.spec.ts`. The failure is the known
+  `conversation-list.spec.ts:188`; `transcript-autoscroll.spec.ts:43` passed in
+  this run but remains intermittent.
+- Real BFF against the backend's final local process (`:8011`): a 22-check
+  smoke passed. It covered login and session, admission, same-key dedupe,
+  `run_request_id_conflict`, detaching while the worker continues, replay
+  ordering, `after`/`Last-Event-ID`, cursor errors, `execution_mode`, and Stop.
+- A real-browser walkthrough also passed: UI login, then send, then reload
+  mid-answer. The page restored the session, read `/output`, joined at
+  `stream?after=2`, and ended with exactly one stored answer and no
+  re-admission. Backend Codex reproduced the login, send, and reload flow
+  independently with its own browser tooling.
+
+Not yet verified: any hosted environment. A hosted release still needs the
+deployed OpenAPI diffed against `model/my-agents/durable-runs.ts`, and the
+backend's worker observed as ready (`durable_runs.ready: true`). The
+enablement flag this entry assumed was removed later the same day; see the
+next entry.
+
+## 2026-10-17 — Durable answers by default, no feature flag
+
+Owner decision: the `durable_runs.enabled` flag is removed, and the new flow
+applies everywhere. Every new answer (`runs/async`) and every regeneration
+(`replay/async`) is durable, whatever health says. `GET /health` now serves
+`frontend_config.durable_runs.ready`, which reports worker availability and is
+not a switch. With no worker ready, admission answers
+`503 durable_runs_unavailable`; the frontend shows that copy, does not retry
+it, and never falls back to a legacy route. Resume still follows each run's
+`execution_mode`, so a legacy waiting run resumes on its legacy stream. An
+absent mode is treated as legacy because the backend always serializes the
+field, so nothing is probed. `useDurableRunsEnabled` and
+`durableRunsEnabledFromHealth` are gone.
+
+Two corrections found while testing:
+
+- A durable `run_failed` is now recorded on the activity timeline before it is
+  raised, as the legacy one always was.
+- A frame that fails its schema (a malformed terminal payload) now fails the
+  follow at once. Only transport failures reconnect; before this change, such
+  a frame replayed until the give-up limit, about 16 s of spinning. A fixture
+  with an invalid `handled_by` exposed it.
+
+Tests:
+
+- `e2e/durable-runs.spec.ts` runs with the legacy shim off and grew to 9
+  cases. New cases cover: no worker ready (one admission, zero legacy
+  requests, safe copy); health without readiness still durable; regeneration
+  through `replay/async` with zero synchronous replays; and a durable waiting
+  run resuming through `resume/async` at the snapshot cursor.
+- The other specs keep their legacy fixtures through `installLegacyAnswerShim`.
+
+The user's own `next dev` on :3000 was left running. Because Next 16 allows one
+dev server per project, these e2e runs used a production build
+(`next start --hostname localhost --port 3100`).
+
+## 2026-10-17 — Durable answers back to opt-in (final)
+
+Owner decision, superseding the previous entry: durable answers are opt-in
+again, because a deployment may not want an additional paid worker service.
+`GET /health` serves `frontend_config.durable_runs = {enabled, ready}`.
+`enabled` is the operator flag (`MY_AGENTS_DURABLE_RUNS_ENABLED`, default
+false). `ready` is `enabled` plus a fresh worker heartbeat.
+
+- **Flag on:** new answers (`runs/async`) and regenerations (`replay/async`)
+  are durable. With no worker ready, a send shows `durable_runs_unavailable`,
+  is not retried, and has no legacy fallback.
+- **Flag off or absent:** new answers and regenerations use the exact legacy
+  routes.
+- **Existing runs:** recovery and resume follow `execution_mode`, independent
+  of the flag. The tests exercise this with the flag off or absent.
+- **Kept from the previous round:** the durable failure is recorded on the
+  timeline, and a malformed frame fails at once.
+- **Removed:** the legacy-fixture shim in `e2e/helpers/mock-workspace.ts`,
+  along with the two spec assertions it required. Those three files are back
+  to their committed state, because with no flag in the default mock, every
+  existing spec runs the legacy routes again.

@@ -6,6 +6,8 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { awaitDurableCompletion } from "@/components/chat/durable-run";
+import { newClientRequestId } from "@/components/chat/workspace-helpers";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
 import type {
   Conversation,
@@ -159,16 +161,50 @@ export function invalidateConversationReplayState(
   });
 }
 
-export function useReplayAssistantMessage(conversationId?: string) {
+/**
+ * Regenerates an answer.
+ *
+ * `isDurableEnabled` is read per regeneration. When it is true the work is
+ * admitted as a durable run and followed to its end, so leaving the page
+ * cannot lose it; the result is the same completed response the synchronous
+ * route returns, or `null` when the regenerated answer stopped to ask the user
+ * something. There is no fallback between the two: with the flag on and no
+ * worker ready, admission fails with a coded error.
+ */
+export function useReplayAssistantMessage(
+  conversationId?: string,
+  isDurableEnabled: () => boolean = () => false,
+) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (messageId: string) =>
-      myAgentsAPI.conversations.replayMessage(conversationId ?? "", messageId),
+    mutationFn: (messageId: string) => {
+      const id = conversationId ?? "";
+      if (!isDurableEnabled()) {
+        return myAgentsAPI.conversations.replayMessage(id, messageId);
+      }
+      // One key per regeneration, kept across retries of this same request.
+      const clientRequestId = newClientRequestId();
+      return awaitDurableCompletion({
+        api: myAgentsAPI.conversations,
+        conversationId: id,
+        admit: () =>
+          myAgentsAPI.conversations.replayMessageAsync(id, messageId, {
+            client_request_id: clientRequestId,
+          }),
+      });
+    },
     onError: () => {
       if (!conversationId) return;
       invalidateConversationReplayState(queryClient, conversationId);
     },
     onSuccess: (data) => {
+      if (!data) {
+        // Waiting on a question: the run list carries it from here.
+        if (conversationId) {
+          invalidateConversationReplayState(queryClient, conversationId);
+        }
+        return;
+      }
       invalidateConversationReplayState(queryClient, data.conversation_id);
       queryClient.invalidateQueries({
         queryKey: MyAgentsQueryKeys.conversations.run(

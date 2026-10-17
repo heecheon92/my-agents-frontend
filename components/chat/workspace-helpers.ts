@@ -22,7 +22,10 @@ export type RunOutcome =
   | "admitted_after_disconnect"
   // The connection dropped before `run_started`, and whether the backend
   // admitted the run could not be established. Nothing is resent automatically.
-  | "admission_unknown";
+  | "admission_unknown"
+  // A durable answer this page stopped watching (the conversation changed, or
+  // the run has no durable projection). The run itself is unaffected.
+  | "detached";
 
 export type AdmissionVerdict = "admitted" | "not_admitted" | "unknown";
 
@@ -149,7 +152,9 @@ export const WAITING_FOR_INPUT_STATUS = "waiting_for_input";
  * staleness clock against a run that is legitimately idle for hours.
  */
 export function isActiveAgentRunStatus(status: string) {
-  return status === "running" || status === "cancelling";
+  // `queued` is a durable run admitted but not yet claimed by a worker. It
+  // holds the conversation and can be stopped, exactly like a running one.
+  return status === "queued" || status === "running" || status === "cancelling";
 }
 
 export function isWaitingForInputRunStatus(status: string) {

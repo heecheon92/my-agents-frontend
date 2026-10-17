@@ -37,21 +37,28 @@ export async function* streamServerSentEvents(
   const decoder = new TextDecoder();
   let buffer = "";
 
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
 
-    buffer += decoder.decode(value, { stream: true });
-    const blocks = buffer.split(/\r?\n\r?\n/);
-    buffer = blocks.pop() ?? "";
+      buffer += decoder.decode(value, { stream: true });
+      const blocks = buffer.split(/\r?\n\r?\n/);
+      buffer = blocks.pop() ?? "";
 
-    for (const block of blocks) {
-      const event = parseEventBlock(block);
-      if (event) yield event;
+      for (const block of blocks) {
+        const event = parseEventBlock(block);
+        if (event) yield event;
+      }
     }
-  }
 
-  buffer += decoder.decode();
-  const finalEvent = parseEventBlock(buffer.trim());
-  if (finalEvent) yield finalEvent;
+    buffer += decoder.decode();
+    const finalEvent = parseEventBlock(buffer.trim());
+    if (finalEvent) yield finalEvent;
+  } finally {
+    // A consumer that stops early — a durable listener that saw its terminal
+    // event — must release the connection rather than leave it open until the
+    // server closes it. A no-op once the body has been read to the end.
+    await reader.cancel().catch(() => undefined);
+  }
 }

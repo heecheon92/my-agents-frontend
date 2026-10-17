@@ -20,18 +20,26 @@ import {
   conversationRunResumeRequestSchema,
   conversationSchema,
   type DocumentSelectionOptionsPage,
+  type DurableRunCancelledEventData,
+  type DurableRunFailedEventData,
   documentSelectionOptionsPageSchema,
+  durableRunCancelledEventDataSchema,
+  durableRunFailedEventDataSchema,
   type Message,
   type MessageCreateRequest,
   messageSchema,
   type ReasoningSummaryDeltaEventData,
+  type RunAdmissionReceipt,
   type RunCancelledEventData,
   type RunCancelResponse,
+  type RunOutputSnapshot,
   type RunResumedActivityPayload,
   type RunStartedEventData,
   reasoningSummaryDeltaEventDataSchema,
+  runAdmissionReceiptSchema,
   runCancelledEventDataSchema,
   runCancelResponseSchema,
+  runOutputSnapshotSchema,
   runResumedActivityPayloadSchema,
   runStartedEventDataSchema,
 } from "@/model/my-agents";
@@ -123,6 +131,84 @@ function parseConversationRunStreamEvent({
     };
   }
   return { event, data: parsedData };
+}
+
+/**
+ * One frame from the durable listener (`GET .../runs/{rid}/stream`).
+ *
+ * The event names are the legacy ones, but two terminal payloads are the
+ * listener's own: `run_failed` carries a stable `code`, and `run_cancelled`
+ * always reports that no answer was persisted. `data` is `null` when a terminal
+ * payload does not parse, so the caller still learns the run ended.
+ *
+ * `deliveryId` is the SSE `id` line: the run's monotonic delivery cursor. It
+ * never appears inside `data`. `null` only when the line is missing or not a
+ * non-negative integer, in which case the frame cannot move the cursor.
+ */
+export type DurableRunStreamEvent = {
+  deliveryId: number | null;
+} & (
+  | { event: "run_failed"; data: DurableRunFailedEventData | null }
+  | { event: "run_cancelled"; data: DurableRunCancelledEventData | null }
+  | Exclude<
+      ConversationRunStreamEvent,
+      { event: "run_failed" } | { event: "run_cancelled" }
+    >
+);
+
+export function parseDeliveryId(id: string | undefined): number | null {
+  if (id === undefined || !/^\d{1,15}$/.test(id)) return null;
+  return Number(id);
+}
+
+function parseDurableRunStreamEvent(event: {
+  event: string;
+  data: string;
+  id?: string;
+}): DurableRunStreamEvent {
+  const deliveryId = parseDeliveryId(event.id);
+  if (event.event === "run_failed") {
+    const parsed = durableRunFailedEventDataSchema.safeParse(
+      parseStreamEventData(event.data),
+    );
+    return {
+      deliveryId,
+      event: "run_failed",
+      data: parsed.success ? parsed.data : null,
+    };
+  }
+  if (event.event === "run_cancelled") {
+    const parsed = durableRunCancelledEventDataSchema.safeParse(
+      parseStreamEventData(event.data),
+    );
+    return {
+      deliveryId,
+      event: "run_cancelled",
+      data: parsed.success ? parsed.data : null,
+    };
+  }
+  // The terminal events carry the answer and the question, so a malformed one
+  // is a contract failure and is thrown. Every other frame is display
+  // metadata: one that does not parse is kept raw rather than ending a
+  // server-owned answer that is still being written.
+  if (event.event === "run_completed" || event.event === "run_interrupted") {
+    return {
+      deliveryId,
+      ...parseConversationRunStreamEvent(event),
+    } as DurableRunStreamEvent;
+  }
+  try {
+    return {
+      deliveryId,
+      ...parseConversationRunStreamEvent(event),
+    } as DurableRunStreamEvent;
+  } catch {
+    return {
+      deliveryId,
+      event: event.event,
+      data: parseStreamEventData(event.data),
+    } as DurableRunStreamEvent;
+  }
 }
 
 export class MyAgentsConversationAPI {
@@ -334,6 +420,108 @@ export class MyAgentsConversationAPI {
     const response = await this.streamRun(conversationId, payload);
     for await (const event of streamServerSentEvents(response)) {
       yield parseConversationRunStreamEvent(event);
+    }
+  }
+
+  /**
+   * Admits a durable run. The server commits the prompt, the run, and a queued
+   * job together and answers `202`; the answer is produced by a worker, not by
+   * this request. Idempotent on `client_request_id`: repeating the same send
+   * returns the same run with its current status, so a retry is always safe.
+   */
+  async admitRun(
+    conversationId: string,
+    payload: ConversationRunRequest & { client_request_id: string },
+  ): Promise<RunAdmissionReceipt> {
+    return parseWithSchema(
+      runAdmissionReceiptSchema,
+      await this.client.fetch(
+        API_PATH.conversations.runsAsync(conversationId),
+        {
+          method: "POST",
+          body: payload,
+        },
+      ),
+    );
+  }
+
+  /** Durable resume. Continues the same run, so its cursor keeps counting. */
+  async resumeRunAsync(
+    conversationId: string,
+    runId: string,
+    payload: {
+      client_request_id: string;
+      answer: ConversationRunResumeRequest;
+    },
+  ): Promise<RunAdmissionReceipt> {
+    return parseWithSchema(
+      runAdmissionReceiptSchema,
+      await this.client.fetch(
+        API_PATH.conversations.resumeRunAsync(conversationId, runId),
+        {
+          method: "POST",
+          body: {
+            client_request_id: payload.client_request_id,
+            answer: conversationRunResumeRequestSchema.parse(payload.answer),
+          },
+        },
+      ),
+    );
+  }
+
+  /** Durable regeneration. Creates a new run, which has its own cursor. */
+  async replayMessageAsync(
+    conversationId: string,
+    messageId: string,
+    /** `request` omitted means the server's defaults, as the sync route. */
+    payload: { client_request_id: string; request?: Record<string, unknown> },
+  ): Promise<RunAdmissionReceipt> {
+    return parseWithSchema(
+      runAdmissionReceiptSchema,
+      await this.client.fetch(
+        API_PATH.conversations.replayMessageAsync(conversationId, messageId),
+        {
+          method: "POST",
+          body: payload,
+        },
+      ),
+    );
+  }
+
+  /** One consistent read of a run's committed output, for any status. */
+  async runOutput(
+    conversationId: string,
+    runId: string,
+  ): Promise<RunOutputSnapshot> {
+    return parseWithSchema(
+      runOutputSnapshotSchema,
+      await this.client.fetch(
+        API_PATH.conversations.runOutput(conversationId, runId),
+      ),
+    );
+  }
+
+  /**
+   * Listens to a durable run from just after `after`.
+   *
+   * Read-only: closing it, aborting it, or losing the connection detaches this
+   * viewer and never cancels the run. Only `cancelRun` stops one.
+   */
+  async *subscribeRunEvents(
+    conversationId: string,
+    runId: string,
+    { after, signal }: { after: number; signal?: AbortSignal },
+  ): AsyncGenerator<DurableRunStreamEvent> {
+    const response = await this.client.fetchResponse(
+      `${API_PATH.conversations.runSubscription(conversationId, runId)}?after=${after}`,
+      {
+        method: "GET",
+        headers: { Accept: TEXT_EVENT_STREAM_CONTENT_TYPE },
+        signal,
+      },
+    );
+    for await (const event of streamServerSentEvents(response)) {
+      yield parseDurableRunStreamEvent(event);
     }
   }
 

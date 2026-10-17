@@ -71,6 +71,23 @@ export const API_PATH = {
     runEvents(conversationId: string, runId: string) {
       return `${this.run(conversationId, runId)}/events`;
     },
+    // Durable runs. Admission returns a JSON receipt; the work runs on a server
+    // worker, and `runOutput` plus `runSubscription` are read-only views of it.
+    runsAsync(conversationId: string) {
+      return `${this.runs(conversationId)}/async`;
+    },
+    resumeRunAsync(conversationId: string, runId: string) {
+      return `${this.resumeRun(conversationId, runId)}/async`;
+    },
+    replayMessageAsync(conversationId: string, messageId: string) {
+      return `${this.replayMessage(conversationId, messageId)}/async`;
+    },
+    runOutput(conversationId: string, runId: string) {
+      return `${this.run(conversationId, runId)}/output`;
+    },
+    runSubscription(conversationId: string, runId: string) {
+      return `${this.run(conversationId, runId)}/stream`;
+    },
     attachments(conversationId: string) {
       return `${this.detail(conversationId)}/attachments`;
     },

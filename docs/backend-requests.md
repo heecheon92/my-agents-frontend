@@ -46,6 +46,262 @@ Frontend workaround:
 
 ## Current requests
 
+### Active: recoverable server-owned answer generation
+
+Status: **implemented on both sides, verified against a local backend; not
+deployed.** The contract below was frozen on 2026-10-17. Both sides then
+implemented it. The frontend was verified against the backend's locally
+served OpenAPI and its running worker; see `docs/implementation-log.md`.
+Hosted verification and enablement are still open. The original freeze note
+follows.
+
+Original status: **agreed contract, in contract freeze; not implemented, not served.**
+Frontend Claude and Backend Codex agreed this on 2026-10-17, at the owner's
+request to work on the feature together. Implementation follows this contract
+once it is frozen. Commits, pushes, merges, and deployments each need separate
+owner authorization.
+
+Frontend API models are generated from the backend's served OpenAPI. During
+development, a local backend server serving it is enough (see `AGENTS.md`), and
+mocked frontend work can start against the frozen contract before then.
+Enabling the feature in production waits for the deployed OpenAPI plus the
+capability and readiness gates. This entry is
+never a source for generated models.
+
+The matching backend plan is `../my-agents/docs/plan/durable-answer-generation.md`
+(backend-owned, read-only from this repo).
+
+Priority: Next. The owner asked for the feature.
+
+Frontend need: an answer keeps generating after the browser disconnects. A
+refresh or restart shows the saved partial answer and keeps receiving the rest.
+
+Current backend behavior: the normal, resume, and replay stream handlers run
+the generation inside the request. When the BFF loses the browser, it closes
+the upstream connection, and those paths treat that as cancellation. Run detail
+covers only completed and waiting runs.
+
+Current frontend behavior:
+- The BFF allowlists only the three POST streams in `isStreamPath`. It drops
+  query strings and does not forward `Last-Event-ID`.
+- `useChatRunLoop` reconciles a drop before admission by `client_request_id`
+  and never resends.
+- After admission, a drop only refreshes data and shows an error. Nothing
+  reattaches to the running answer.
+
+Requested backend contract (additive; the existing sync and stream APIs stay
+backward compatible):
+
+- **Opt-in flag (final, owner decision 2026-10-17).** `GET /health` serves
+  `frontend_config.durable_runs` as `{enabled, ready}`, both required.
+  `enabled` is the operator flag `MY_AGENTS_DURABLE_RUNS_ENABLED`, default
+  `false`. `ready` is `enabled` plus a fresh worker heartbeat. With `enabled`
+  true, new answers and regenerations are durable. With no worker ready,
+  admission returns `503 durable_runs_unavailable`, and there is never a
+  silent legacy fallback. With `enabled` false or absent, they use the exact
+  legacy routes. Existing runs are recovered and resumed by `execution_mode`,
+  independent of the flag. (The flag was briefly removed earlier the same day
+  and then restored.) Intended use: off on the Render deployment, which runs
+  no separate worker service; on for local testing.
+- **Admission:** `POST /conversations/{cid}/runs/async`.
+  - Takes the existing run request body; `client_request_id` is required.
+  - Atomically queues durable work and returns `202 {run_id, conversation_id,
+    status, client_request_id}`.
+  - The idempotency key is scoped per authenticated user and operation kind.
+    The same key with the same normalized payload and scope returns `202` with
+    the same ids and the run's CURRENT status (not the original `queued`),
+    whatever the run's state.
+  - The same key with a different payload, scope, or conversation returns `409
+    run_request_id_conflict`. The database decides between concurrent retries.
+  - A new request while another run is active keeps the existing `409
+    conversation_run_already_active`.
+- **Snapshot:** `GET /conversations/{cid}/runs/{rid}/output` returns an atomic
+  recovery snapshot with these fields:
+  - `schema_version`: `1`.
+  - `run_id`, `conversation_id`, `client_request_id`, `status`, `cursor`.
+  - `partial_reply`: the aggregate of committed `answer_delta` text for the
+    same logical run across all phases. Interaction prompts stay in
+    `interaction` and are never concatenated into it. A replayed provider
+    prefix is never appended twice. The final canonical `result` replaces it.
+  - `reasoning_summaries`.
+  - `activity_events`: replayable, display-safe envelopes `{id, event, data}`,
+    where `id` is the delivery cursor. They never contain hidden reasoning or
+    raw provider errors.
+  - `interaction`: the same open union as the run list.
+  - `result`: the existing completion payload when the run is complete.
+  - `error`: `null` or `{code: string, detail: string}`, where `detail` is
+    safe, allowlisted text.
+
+  The backend persists the output projection and the cursor together, and keeps
+  a separate, bounded delivery ledger. It does not expand the audit-event enum.
+- **Listener:** `GET /conversations/{cid}/runs/{rid}/stream`.
+  - An authorized SSE subscription only; it never starts or cancels work.
+  - Emits the existing event names with their own route-specific
+    `x-sse-events` schemas, plus an SSE `id` that is a monotonically increasing
+    delivery cursor, independent of `answer_delta.sequence`.
+  - `run_failed` on this route is a new payload, `{run_id, conversation_id,
+    status: "failed", code, detail}`, and `worker_lost` is one of its stable
+    codes. These fields are not added to the existing `AgentEventModel` audit
+    payloads or the legacy stream schemas, so the frontend parses this route
+    with its own event schemas.
+  - `run_completed` carries the full existing `ConversationRunResponse`
+    (reply, citations, `consulted_sources`, coverage, summaries, artifacts).
+    It is identical to `snapshot.result` and is sent only after the commit. No
+    refetch is required.
+  - `run_cancelled` is `{run_id, conversation_id, status: "cancelled",
+    partial_reply_persisted: false}`. The flag means no completed assistant
+    message was written to the transcript. A bounded partial projection may
+    remain in `/output`, but it is never a completion.
+  - `run_interrupted` carries the full existing
+    `ConversationRunInterruptedResponse` (`run_id`, `conversation_id`, the
+    waiting status, `assistant_model`, and the semantic interaction), not the
+    smaller audit-event payload.
+  - Every delivery cursor is the SSE `id` line. None of them appears inside the
+    JSON data.
+  - The cursor arrives as `?after=N` or as `Last-Event-ID`. Both are
+    non-negative integers; absent means `0`. If both are sent and disagree, the
+    response is `400 invalid_stream_cursor`.
+  - A malformed cursor, or one ahead of the run's output, also returns `400
+    invalid_stream_cursor`. An expired cursor returns `410
+    run_output_cursor_expired`; the client refetches the snapshot and
+    reconnects.
+  - A subscription to a run that has already ended replays the events after the
+    cursor, emits the terminal event, and closes. If the client has already
+    seen the terminal event, the server may send it again as an idempotent
+    close signal; it never repeats transcript text.
+  - Heartbeat comments are sent about every 15 seconds.
+  - Several subscribers may watch one run.
+  - Only `POST .../cancel` stops a run, including a queued one.
+- **Status:** the run list includes durable runs in every status, with their
+  `client_request_id`. The statuses are `queued`, `running`,
+  `waiting_for_input`, `cancelling`, `completed`, `failed`, and `cancelled`. A
+  lost worker ends the run as a failure with the stable code `worker_lost`. It
+  never stalls silently or pretends the model call continued. The existing
+  detail contract for completed and waiting runs is unchanged; the run list
+  plus `/output` cover every status.
+- **Resume and replay:**
+  - Resume: `POST /conversations/{cid}/runs/{rid}/resume/async`, with body
+    `{client_request_id: UUID, answer: <existing semantic resume request>}`. It
+    continues the same run. Delivery ids stay globally monotonic and the cursor
+    never resets. A retry with the same key returns the original receipt with
+    the current status, even after completion. A different key against a stale
+    interaction stays `409` under the existing contract.
+  - Replay: `POST /conversations/{cid}/messages/{mid}/replay/async`, with body
+    `{client_request_id: UUID, request: <existing ConversationReplayRequest>}`.
+    It creates a new run and is the explicit "regenerate" action.
+  - Both return the same receipt as admission and use the same `/output` and
+    `/stream` listeners. Operation keys are scoped per user and operation kind,
+    and the same key with a different payload is rejected. The legacy paths
+    that cancel on disconnect are never used for a durable run.
+- **`run_interrupted`:** ends the subscription phase, not the run. A
+  subscription to a `waiting_for_input` run emits or repeats the durable
+  `run_interrupted` control event and closes. Only an explicit successful resume
+  starts a new subscription. Terminal and control states are idempotent even
+  when their delivery id was already acknowledged, and they never add duplicate
+  text.
+- **Commit ordering:** the final message and citations are committed before the
+  terminal event is delivered.
+- **Terminology:**
+  - "Reconnect" (이어 보기) means reattaching to the same run's output.
+  - "Regenerate" (다시 생성) means a new run.
+  - "Stop" (중지) means cancel.
+
+Frontend rules once the contract is served:
+
+- The snapshot replaces client state. The stream then appends only ids greater
+  than `cursor`; a repeated id is dropped. When the run is complete, the
+  canonical `result` wins over the streamed text.
+- A terminal event still ends the subscription when its id is at or below the
+  cursor. Its content is not re-applied, but it is honored as the close signal.
+  Dropping it as a duplicate would turn the server's idempotent close into a
+  reconnect loop. A snapshot whose status is already terminal needs no
+  subscription at all.
+- A `waiting_for_input` snapshot, or a `run_interrupted` event, stops automatic
+  reconnect and renders the interaction. Only a successful resume subscribes
+  again.
+- `run_completed` is applied directly as the canonical result, with no refetch.
+- On `run_cancelled`, the partial text the user already read stays on screen.
+  It is labelled as stopped, never presented as a completed answer, and the
+  existing cancelled-run notice still applies. After a reload, a partial
+  projection in `/output` gets the same treatment when present; when it is
+  absent, only the notice shows.
+- A stream that closes without a terminal or phase-ending event triggers a
+  reconnect with the last id. This is the normal path, because Vercel function
+  limits will cut long streams.
+- The BFF adds the GET listener to the allowlist and `isStreamPath`, forwards
+  only an integer `after` query parameter, and forwards `Last-Event-ID`.
+  `POST .../runs/async`, `.../resume/async`, and `.../replay/async` are
+  allowlisted as CSRF-protected mutations. They return JSON receipts, so they
+  are not stream paths.
+- `worker_lost`, `run_request_id_conflict`, `run_output_cursor_expired`,
+  `invalid_stream_cursor`, and unknown codes map to safe Korean copy. Raw errors
+  are never shown.
+- The interaction invariants in `docs/durable-interactions.md` still hold. The
+  `snapshot.interaction` field rebuilds a pending question on a cold load, and
+  an unknown type or version still renders a card that can cancel.
+
+Frontend acceptance cases:
+
+- Unit tests:
+  - The BFF allows the GET listener, forwards only a non-negative integer
+    `after`, drops other query parameters, forwards `Last-Event-ID`, and never
+    buffers the stream.
+  - The parser tracks the cursor, and ids at or below it are dropped.
+  - The snapshot merged with the remaining stream equals one continuous stream.
+  - A subscription after the run ended yields the terminal event and stops.
+  - `410` refetches the snapshot and reconnects. `400` and `409` surface safe
+    copy without a retry loop.
+  - A repeated admission with the same `client_request_id` resolves to the same
+    run.
+  - With the flag on and no worker ready, a send shows
+    `durable_runs_unavailable` copy, is not retried, and never reaches a
+    legacy route. With the flag off or absent, a send and a regeneration use
+    the legacy routes and never touch `runs/async` or `replay/async`.
+  - A repeated terminal event at or below the cursor closes the subscription
+    without a reconnect and without duplicate text.
+  - A `waiting_for_input` snapshot and a `run_interrupted` event both stop
+    reconnect. Resume re-subscribes after the same cursor.
+  - The durable `run_failed` payload parses with its route schema, and
+    `worker_lost` maps to safe copy.
+- End-to-end tests (mocked backend):
+  - A reload mid-answer shows the partial answer and keeps streaming.
+  - A dropped connection reattaches with no duplicate text.
+  - Stop stays stopped after a reload.
+  - Reopening after completion shows the final answer and its citations.
+  - A suspended interaction is rebuilt on a cold load, and resume continues the
+    same cursor.
+  - Two tabs on one run both receive the full output.
+  - A `worker_lost` run shows its failure state instead of spinning.
+- Joint tests (real BFF against a local backend, before any hosted release):
+  - Closing the browser subscription mid-generation still produces exactly one
+    saved answer.
+  - Killing the worker produces a safe `worker_lost` failure, never a duplicate
+    provider call.
+  - New failures are reported separately from the existing
+    `conversation-list.spec.ts:188` failure and the intermittent
+    `transcript-autoscroll.spec.ts:43` failure.
+
+Resolved during contract review (2026-10-17):
+
+1. `run_interrupted` ends the subscription phase: see the `run_interrupted`
+   bullet above.
+2. `partial_reply` accumulates across phases: see the snapshot fields.
+3. `error` and the durable `run_failed` shapes are fixed above. The exact
+   schemas freeze with the OpenAPI publication.
+4. A repeated admission returns the current status with `202`.
+5. The async resume and replay routes, bodies, and receipts are fixed above.
+6. The durable `run_completed`, `run_cancelled`, and `run_interrupted` payloads
+   are fixed above. With that, the coordination contract is aligned.
+
+Remaining backend decisions, none of which block the frontend contract:
+
+1. **Retention bounds:** the frame retention period, byte limits, and terminal
+   replay retention. The frontend's only dependency is that `410` always
+   leaves a recoverable snapshot.
+2. **Worker readiness:** resolved. `durable_runs.ready` reports availability,
+   and admission refuses with `503 durable_runs_unavailable` when the flag is
+   on and no worker is ready.
+
 ### Proposed: a way to continue without choosing a document
 
 Priority: Later — the priority is a frontend assessment, not an owner decision.
