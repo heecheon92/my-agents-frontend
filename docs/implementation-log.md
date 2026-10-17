@@ -2162,3 +2162,39 @@ not apply to this web codebase.
 
 Validation: `diff -rq` against each source directory reported no differences;
 `skills-lock.json` parses and passes Biome; no application code changed.
+
+## 2026-10-17 — Next.js 16.4.1 security update
+
+Upgraded `next` from 16.2.6 to 16.4.1 for the
+[October 14 out-of-band security update](https://nextjs.org/blog/nextjs-security-update-october-14-2026):
+two critical RCEs (`use cache` functions returning typed arrays,
+GHSA-673q-mjm6-r5xr; Image Optimization with SVG through `sharp`, CVE-2026-96889)
+and a high-severity Server Actions DoS (GHSA-p3m5-59mp-jv5r). The lockfile now
+resolves `sharp@0.35.5`, the advisory's minimum. Direct exposure was low: no
+`use cache`, no Server Actions and no `next/image` here, but `/_next/image` is
+served regardless and the advisory gives no workaround for the first issue.
+
+`react`/`react-dom` stay at 19.2.4. The upstream React advisories
+(GHSA-xqc2-xf4c-x3h3, GHSA-h3gv-c5rc-p453) name only `react-server-dom-*`, which
+Next vendors; nothing in this lockfile depends on those packages directly.
+16.4.2 was available but contains only Turbopack and docs fixes, so the pin stays
+on the advisory's version. The 16.3 codemods only adopt opt-in features (Cache
+Components, Partial Prefetching) and were not needed. `next dev` 16.4.1 rewrote
+the generated `nextjs-agent-rules` block at the top of `AGENTS.md`; that block is
+framework-owned and kept as written.
+
+The first full Playwright run failed two tests that pass on 16.2.6. The file-drop
+test passed 3/3 on a 16.2.6 worktree but failed 2/3 on 16.4.1, and the
+transcript autoscroll test failed 1/3 and 3/3. Cause: `dismissOnboarding` checked
+the onboarding card once, instantly. On 16.4.1 that check often ran before the
+client had mounted, so it skipped the dismissal and the test dispatched a
+synthetic `dragenter` at a panel whose React handlers were not attached yet.
+The helper now waits up to 5s for the card. After the change, the drop test
+passed 3/3 and the autoscroll test passed 2/3, which matches its existing flake
+rate on 16.2.6. The full suite took 4.0 min, up from 3.7 min.
+
+Validation on 16.4.1: Biome and `tsc --noEmit` clean; Vitest 433/433; production
+build of 20 routes, with a Node 26 `DEP0205` `module.register()` deprecation
+warning emitted during the build; Playwright 233 passed, 2 skipped, 1 failed.
+The failure is the known `conversation-list.spec.ts:188` fade test (5/5 in
+isolation), which was already recorded as failing identically before this change.

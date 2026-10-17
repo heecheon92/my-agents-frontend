@@ -1399,7 +1399,16 @@ export async function hideDevIndicators(page: Page) {
 
 export async function dismissOnboarding(page: Page) {
   const notNow = page.getByRole("button", { name: ko.onboarding.notNow });
-  if (await notNow.isVisible().catch(() => false)) {
+  // Waits rather than checking once: the card mounts on the client, and an
+  // instant check can run before hydration, skip the dismissal, and hand the
+  // test a page whose handlers are not attached yet. Next 16.4 made that race
+  // common enough to fail the file-drop test most runs.
+  if (
+    await notNow
+      .waitFor({ state: "visible", timeout: 5_000 })
+      .then(() => true)
+      .catch(() => false)
+  ) {
     await notNow.click();
     await notNow.waitFor({ state: "hidden" });
   }
