@@ -98,3 +98,19 @@ export function resolveErrorMessage(
   // collapsed to generic copy. The raw message is never user-facing.
   return localization.status.defaultErrorDescription;
 }
+
+/**
+ * The text for a failed extraction run: its stable `error_code` localized when
+ * the copy table knows it, otherwise the run's served `error` exactly as
+ * before. Never parses `error` itself.
+ */
+export function extractionRunErrorMessage(
+  run: { error?: string | null; error_code?: string | null },
+  localization: Localization = defaultLocalization,
+): string | undefined {
+  return (
+    copyForCode(run.error_code ?? undefined, localization.errors) ??
+    run.error ??
+    undefined
+  );
+}

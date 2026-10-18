@@ -449,6 +449,45 @@ export const BFF_ALLOWLIST: Rule[] = [
     ),
     name: "knowledge-bases.documents.extraction-run.detail",
   },
+  // Direct upload to private storage. The signed PUT itself goes from the
+  // browser straight to storage and never through this proxy.
+  {
+    method: "POST",
+    pattern: new RegExp(`^/knowledge-bases/${uuidLike}/documents/uploads$`),
+    name: "knowledge-bases.documents.uploads.initiate",
+  },
+  {
+    method: "POST",
+    pattern: new RegExp(
+      `^/knowledge-bases/${uuidLike}/documents/uploads/${uuidLike}/refresh$`,
+    ),
+    name: "knowledge-bases.documents.uploads.refresh",
+  },
+  {
+    method: "POST",
+    pattern: new RegExp(
+      `^/knowledge-bases/${uuidLike}/documents/uploads/${uuidLike}/complete$`,
+    ),
+    name: "knowledge-bases.documents.uploads.complete",
+  },
+  {
+    method: "DELETE",
+    pattern: new RegExp(
+      `^/knowledge-bases/${uuidLike}/documents/uploads/${uuidLike}$`,
+    ),
+    name: "knowledge-bases.documents.uploads.abort",
+  },
+  {
+    // Returns a signed download URL as JSON; the file never crosses the BFF.
+    method: "GET",
+    pattern: new RegExp(`^/documents/${uuidLike}/original$`),
+    name: "documents.original",
+  },
+  {
+    method: "POST",
+    pattern: new RegExp(`^/documents/${uuidLike}/reprocess$`),
+    name: "documents.reprocess",
+  },
   { method: "POST", pattern: /^\/documents$/, name: "documents.create" },
   {
     method: "POST",

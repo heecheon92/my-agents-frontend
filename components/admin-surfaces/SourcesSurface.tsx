@@ -14,6 +14,7 @@ import {
   type KnowledgeBaseCreationScope,
 } from "@/components/knowledge-base-create";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
+import { useAssistantPreferences } from "@/hooks/use-assistant-model";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useGroups } from "@/hooks/use-groups";
 import {
@@ -76,6 +77,7 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     queryFn: () => myAgentsAPI.health(),
     staleTime: HEALTH_CONFIG_STALE_TIME_MS,
   });
+  const assistantPreferences = useAssistantPreferences();
   const [documentDestination, setDocumentDestination] =
     useState<DocumentDestination>("personal");
   const [selectedKnowledgeBaseId, setSelectedKnowledgeBaseId] =
@@ -272,6 +274,8 @@ export function SourcesSurface({ initialSourceId }: SourcesSurfaceProps = {}) {
     effectiveDocumentDestination,
     hasActiveKnowledgeBase,
     health: health.data,
+    isGuest: Boolean(currentUser.data?.is_guest),
+    defaultIngestionMode: assistantPreferences.data?.document_ingestion_mode ?? "standard",
     localization,
     publishDocumentToTeam,
     queryClient,

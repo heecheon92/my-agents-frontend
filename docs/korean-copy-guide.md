@@ -110,6 +110,11 @@ allow-by-default.
 | needs attention (failed) | `확인 필요` | `실패`, `오류` — for per-item states where the user can retry |
 | answer needs attention | `답변 확인 필요` | `실행 실패`, `답변 실패` — primary answer surface; the advanced activity event may still use `실행 실패` |
 | answer cancelled | `답변 취소됨` | `실행 취소됨` — primary answer surface; the advanced activity event keeps its existing label |
+| preparation mode: plain extraction | `기본` | `표준`, `일반 처리` |
+| preparation mode: OpenAI formatting cleanup | `AI 정리` | `AI 처리`, `AI 요약` — it does not summarize, and `요약` would say it does |
+| how a document's content was prepared (provenance) | `준비 기록` | `처리 정보`, `처리 이력` — `처리 정보` collides with the advanced-disclosure term |
+| the uploaded file itself, kept privately | `원본 파일` (`원본`) | `원문`, `소스 파일` |
+| prepare again from the kept original | `원본으로 다시 준비` | `재처리`, `다시 처리` |
 | model-authored approach explanation | 답변 과정 안에 눈에 보이는 제목 없이 표시. 화면에 보이지 않는 이름은 `AI 설명` | `AI 작업 과정 요약`, `사고 과정`, `추론 과정`, `생각` — these over-explain a familiar pattern, collide with `답변 과정`/`작업 내역`, or imply private reasoning |
 
 **One concept, one term.** Before this guide, the same disclosure was labelled

@@ -155,6 +155,12 @@ The BFF allowlist currently covers:
 - `DELETE /documents/{document_id}`
 - `POST /documents/{document_id}/ingest`
 - `GET /documents/{document_id}/extraction-runs`
+- Document originals: `POST /knowledge-bases/{knowledge_base_id}/documents/uploads`,
+  `POST .../uploads/{upload_id}/refresh`, `POST .../uploads/{upload_id}/complete`,
+  `DELETE .../uploads/{upload_id}`, `GET /documents/{document_id}/original`
+  (returns a signed link as JSON), and `POST /documents/{document_id}/reprocess`.
+  The signed PUT and GET go from the browser straight to storage, never
+  through the BFF
 
 ## Invitation signup flow
 
@@ -360,3 +366,62 @@ assertions see the app's real request paths. It covers the flag on, off, and
 absent for both new answers and regeneration, `enabled` with no ready worker,
 and recovery and resume with the flag off. Every other spec runs with no flag,
 so it exercises the legacy routes against its existing fixtures.
+
+## Document originals and preparation
+
+Documents can keep their uploaded file privately in object storage (R2), be
+prepared in `standard` or `ai_assisted` mode, and be prepared again from that
+original. Health serves the policy as `frontend_config.documents`:
+`direct_uploads`, `max_upload_bytes` (direct), `multipart_max_bytes` (through
+the BFF, under the host's request-body limit), `allowed_extensions`, and
+`ai_assisted_ingestion`. Every field is optional on the client; an older
+backend falls back to multipart with today's limit.
+
+```mermaid
+sequenceDiagram
+    participant UI as Upload queue
+    participant BFF as Next BFF
+    participant API as Backend
+    participant R2 as Private storage
+    UI->>UI: SHA-256 of the file (crypto.subtle)
+    UI->>BFF: POST /knowledge-bases/{kb}/documents/uploads
+    BFF->>API: initiate (CSRF)
+    API-->>UI: 201 receipt {upload_id, url, headers}
+    UI->>R2: PUT url with the signed headers only (no cookies)
+    Note over UI,R2: 400/403: POST .../refresh once, then PUT again
+    UI->>BFF: POST .../uploads/{id}/complete
+    API-->>UI: 201 {document, extraction_run}
+    UI->>BFF: poll the returned run (no second ingest)
+```
+
+- **The route is chosen up front.** `useSourceUploadQueue` uploads directly
+  when health serves `direct_uploads`, the user is not a guest, and the page
+  can compute SHA-256 (a secure context). Otherwise it uses multipart through
+  the BFF with an optional `ingestion_mode` form field. A failed PUT is
+  reported, never retried through the other route.
+- **Signed URLs are credentials.** `services/my-agents/direct-upload.ts` uses
+  each for one request, with only the signed headers and
+  `withCredentials = false`. A download follows its link once through a
+  detached anchor; neither link is stored, rendered, or logged.
+- **Processing mode.** Account defaults live on `/assistant/preferences`
+  (`document_ingestion_mode`, `document_retrieval_priority`), saved one field
+  per PATCH so a change never overwrites another. Upload and reprocess send a
+  mode only when the user picks one here; otherwise the backend applies the
+  saved default. Guests are fixed to `standard` and `automatic`, and
+  `ai_assisted` is disabled when health says it is unavailable.
+- **Prepare again.** `POST /documents/{id}/reprocess` starts from the retained
+  original; `ingest` still re-indexes the active text. Both actions live in the
+  existing preparation dialog (`SourceOriginalActions`), unavailable with a
+  reason when `original_retained` is false, which is every legacy document.
+- **Preparation record.** `SourceProvenance` in the preview's advanced tab shows
+  the mode, model, prepared time, section count, and localized warning codes.
+  Hashes and the processor version sit under a disclosure.
+- **Run failures** show `extraction_run.error_code` through `errors.byCode`,
+  falling back to the legacy `error` text.
+- **Retrieval priority.** With `on_request`, the composer says documents are
+  searched only when asked, unless the send is already scoped to chosen
+  sources.
+
+Tests: `tests/document-originals.test.ts`, `e2e/document-originals.spec.ts`
+(storage mocked as a separate origin, so the specs can assert no cookie or CSRF
+header reaches it).

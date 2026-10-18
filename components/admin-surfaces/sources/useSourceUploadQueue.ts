@@ -1,18 +1,36 @@
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
-import type { ExtractionRun, HealthResponse } from "@/model/my-agents";
-import { documentUploadConcurrencyFromHealth } from "@/model/my-agents";
+import { useLocalization } from "@/hooks/useLocalization";
+import type {
+  DocumentIngestionMode,
+  ExtractionRun,
+  HealthResponse,
+} from "@/model/my-agents";
+import {
+  documentUploadConcurrencyFromHealth,
+  documentUploadPolicyFromHealth,
+} from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
+import {
+  canComputeUploadDigest,
+  completeDocumentUpload,
+  DirectUploadCompletionError,
+  uploadDocumentDirect,
+} from "@/services/my-agents/direct-upload";
+import { isMyAgentsAPIError } from "@/services/my-agents/MyAgentsAPIError";
+import {
+  extractionRunErrorMessage,
+  resolveErrorMessage,
+} from "@/utils/error-message";
 import type { DocumentDestination } from "../shared";
-import { formatFileSize, safeErrorMessage, wait } from "../shared";
+import { formatFileSize, wait } from "../shared";
 import type { UploadQueueItem, UploadQueueStatus } from "../UploadQueueRow";
 import { isUploadQueueItemBusy } from "../UploadQueueRow";
 import {
   buildLocalUploadId,
   EXTRACTION_POLL_INTERVAL_MS,
   isSupportedUploadFile,
-  MAX_UPLOAD_BYTES,
   TERMINAL_EXTRACTION_STATUSES,
   titleFromFileName,
 } from "./upload-config";
@@ -59,6 +77,10 @@ type UseSourceUploadQueueOptions = {
   effectiveDocumentDestination: DocumentDestination;
   hasActiveKnowledgeBase: boolean;
   health?: HealthResponse;
+  /** Guests upload through the multipart route, always in `standard` mode. */
+  isGuest: boolean;
+  /** The account's saved mode, which this dialog starts from. */
+  defaultIngestionMode: DocumentIngestionMode;
   localization: SourceUploadLocalization;
   publishDocumentToTeam: PublishDocumentToTeam;
   queryClient: QueryInvalidator;
@@ -73,11 +95,42 @@ export function useSourceUploadQueue({
   effectiveDocumentDestination,
   hasActiveKnowledgeBase,
   health,
+  isGuest,
+  defaultIngestionMode,
   localization,
   publishDocumentToTeam,
   queryClient,
   setSelectedDocumentId,
 }: UseSourceUploadQueueOptions) {
+  const { localization: fullLocalization } = useLocalization(
+    (state) => state.localization,
+  );
+  const uploadPolicy = documentUploadPolicyFromHealth(health);
+  /**
+   * The route is decided up front, never after a failure: direct to storage
+   * when the backend serves it, the account may use it, and this page can
+   * compute the required SHA-256; otherwise multipart through the BFF.
+   */
+  const usesDirectUpload =
+    uploadPolicy.directUploads && !isGuest && canComputeUploadDigest();
+  const maxUploadBytes = usesDirectUpload
+    ? uploadPolicy.directMaxBytes
+    : uploadPolicy.multipartMaxBytes;
+  const canChooseAiAssisted = uploadPolicy.aiAssistedIngestion && !isGuest;
+  /** `null` until the user changes it here: the saved default then applies. */
+  const [ingestionModeChoice, setIngestionModeChoice] =
+    useState<DocumentIngestionMode | null>(null);
+  const ingestionMode: DocumentIngestionMode = isGuest
+    ? "standard"
+    : ingestionModeChoice === "ai_assisted" && !canChooseAiAssisted
+      ? "standard"
+      : (ingestionModeChoice ??
+        (defaultIngestionMode === "ai_assisted" && !canChooseAiAssisted
+          ? "standard"
+          : defaultIngestionMode));
+  /** Sent only when chosen here; omitted, the backend applies the default. */
+  const requestedIngestionMode =
+    isGuest || ingestionModeChoice === null ? undefined : ingestionMode;
   const [uploadQueue, setUploadQueue] = useState<UploadQueueItem[]>([]);
   const [isProcessingQueue, setIsProcessingQueue] = useState(false);
   const [uploadAnnouncement, setUploadAnnouncement] = useState("");
@@ -146,16 +199,26 @@ export function useSourceUploadQueue({
     );
   }
   function validateUploadFile(file: File) {
-    if (!isSupportedUploadFile(file)) {
+    if (!isSupportedUploadFile(file, uploadPolicy.allowedExtensions)) {
       return localization.documents.unsupportedFileError;
     }
-    if (file.size > MAX_UPLOAD_BYTES) {
+    if (file.size > maxUploadBytes) {
       return localization.documents.fileTooLargeError.replace(
         "{maxSize}",
-        formatFileSize(MAX_UPLOAD_BYTES),
+        formatFileSize(maxUploadBytes),
       );
     }
     return undefined;
+  }
+  /** API detail and unexpected exceptions are never user-facing copy. */
+  function uploadErrorMessage(error: unknown) {
+    return resolveErrorMessage(
+      error,
+      fullLocalization,
+      isMyAgentsAPIError(error)
+        ? undefined
+        : localization.documents.uploadFailed,
+    );
   }
   function addFilesToUploadQueue(selectedFiles: File[]) {
     if (selectedFiles.length === 0) return;
@@ -292,7 +355,7 @@ export function useSourceUploadQueue({
           // through and let the row decide how to present them.
           progressPercent: run.progress_percent,
           stage: run.stage ?? undefined,
-          error: run.error ?? undefined,
+          error: extractionRunErrorMessage(run, fullLocalization),
         });
       }
       if (TERMINAL_EXTRACTION_STATUSES.has(run.status)) break;
@@ -309,7 +372,7 @@ export function useSourceUploadQueue({
       });
       return;
     }
-    if (!item.documentId) {
+    if (!item.documentId && !item.pendingUpload) {
       const validationError = validateUploadFile(item.file);
       if (validationError) {
         updateQueueItem(item.localId, {
@@ -322,32 +385,66 @@ export function useSourceUploadQueue({
     }
     try {
       let documentId = item.documentId;
+      /** A run the upload already started; only a direct upload returns one. */
+      let startedRun: ExtractionRun | null = null;
       if (!documentId) {
         updateQueueItem(item.localId, {
           status: "uploading",
-          progressPercent: 10,
+          // Multipart has no byte progress; a direct upload reports real bytes.
+          progressPercent: usesDirectUpload || item.pendingUpload ? 0 : 10,
+          hasByteProgress: usesDirectUpload && !item.pendingUpload,
           error: undefined,
         });
         const uploadKnowledgeBaseId =
-          effectiveDocumentDestination === "team"
+          item.pendingUpload?.knowledgeBaseId ??
+          (effectiveDocumentDestination === "team"
             ? (await myAgentsAPI.knowledgeBases.ensureTeamUploadStaging()).id
-            : directWriteKnowledgeBaseId;
+            : directWriteKnowledgeBaseId);
         if (!uploadKnowledgeBaseId) {
           throw new Error(localization.documents.knowledgeBaseRequired);
         }
-        const uploaded = await myAgentsAPI.documents.uploadToKnowledgeBase(
-          uploadKnowledgeBaseId,
-          {
-            title: item.title.trim() || titleFromFileName(item.file.name),
-            file: item.file,
-          },
-        );
+        const title = item.title.trim() || titleFromFileName(item.file.name);
+        let uploaded: { id: string };
+        if (item.pendingUpload || usesDirectUpload) {
+          const completed = item.pendingUpload
+            ? await completeDocumentUpload({
+                api: myAgentsAPI.documents,
+                ...item.pendingUpload,
+              })
+            : await uploadDocumentDirect({
+                api: myAgentsAPI.documents,
+                knowledgeBaseId: uploadKnowledgeBaseId,
+                file: item.file,
+                title,
+                ingestionMode: requestedIngestionMode,
+                onProgress: (fraction) =>
+                  updateQueueItem(item.localId, {
+                    progressPercent: Math.round(fraction * 100),
+                  }),
+              });
+          uploaded = completed.document;
+          startedRun = completed.extraction_run;
+        } else {
+          uploaded = await myAgentsAPI.documents.uploadToKnowledgeBase(
+            uploadKnowledgeBaseId,
+            {
+              title,
+              file: item.file,
+              ...(requestedIngestionMode
+                ? { ingestion_mode: requestedIngestionMode }
+                : {}),
+            },
+          );
+        }
         documentId = uploaded.id;
         if (effectiveDocumentDestination !== "team") {
           setSelectedDocumentId(uploaded.id);
         }
         updateQueueItem(item.localId, {
           documentId: uploaded.id,
+          knowledgeBaseId: uploadKnowledgeBaseId,
+          pendingUpload: undefined,
+          extractionRunId: startedRun?.id,
           status: "uploaded",
           progressPercent: 0,
         });
@@ -383,7 +480,10 @@ export function useSourceUploadQueue({
         );
         return;
       }
-      const ingestionKnowledgeBaseId = directWriteKnowledgeBaseId;
+      const ingestionKnowledgeBaseId =
+        item.knowledgeBaseId ??
+        item.pendingUpload?.knowledgeBaseId ??
+        directWriteKnowledgeBaseId;
       if (!ingestionKnowledgeBaseId) {
         throw new Error(localization.documents.knowledgeBaseRequired);
       }
@@ -392,10 +492,20 @@ export function useSourceUploadQueue({
         progressPercent: 0,
         error: undefined,
       });
-      const run = await myAgentsAPI.documents.ingestAsyncInKnowledgeBase(
-        ingestionKnowledgeBaseId,
-        documentId,
-      );
+      // A direct upload's completion already started processing; starting a
+      // second run would only be refused as already in progress.
+      const run =
+        startedRun ??
+        (item.extractionRunId
+          ? await myAgentsAPI.documents.extractionRunInKnowledgeBase(
+              ingestionKnowledgeBaseId,
+              documentId,
+              item.extractionRunId,
+            )
+          : await myAgentsAPI.documents.ingestAsyncInKnowledgeBase(
+              ingestionKnowledgeBaseId,
+              documentId,
+            ));
       updateQueueItem(item.localId, {
         extractionRunId: run.id,
         status: run.status === "pending" ? "queued" : "ingesting",
@@ -427,7 +537,13 @@ export function useSourceUploadQueue({
       }
       updateQueueItem(item.localId, {
         status: "failed",
-        error: completedRun?.error ?? localization.documents.uploadFailed,
+        // A confirmed failed run can be re-ingested. A failed read instead
+        // keeps its run id in the catch path and resumes polling on retry.
+        extractionRunId: undefined,
+        error:
+          (completedRun &&
+            extractionRunErrorMessage(completedRun, fullLocalization)) ??
+          localization.documents.uploadFailed,
         progressPercent: 0,
       });
       announceUploadOutcome(
@@ -441,7 +557,15 @@ export function useSourceUploadQueue({
     } catch (error) {
       updateQueueItem(item.localId, {
         status: "failed",
-        error: safeErrorMessage(error, localization.documents.uploadFailed),
+        error: uploadErrorMessage(error),
+        ...(error instanceof DirectUploadCompletionError
+          ? {
+              pendingUpload: {
+                knowledgeBaseId: error.knowledgeBaseId,
+                uploadId: error.uploadId,
+              },
+            }
+          : {}),
       });
       announceUploadOutcome(
         localization.documents.uploadFailedAnnouncement.replace(
@@ -488,7 +612,13 @@ export function useSourceUploadQueue({
   }
   return {
     activeIngestionDocumentIds,
+    canChooseAiAssisted,
     failedQueueCount,
+    ingestionMode,
+    isGuest,
+    maxUploadBytes,
+    setIngestionMode: setIngestionModeChoice,
+    usesDirectUpload,
     handleFileSelection,
     handleProcessUploadQueue,
     handleQueueTitleChange,

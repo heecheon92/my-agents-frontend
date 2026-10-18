@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { documentIngestionModeSchema } from "./assistant-models";
 
 export const knowledgeBaseScopeSchema = z.enum(["personal", "group", "system"]);
 export const knowledgeBasePurposeSchema = z.enum([
@@ -40,6 +41,78 @@ export const documentSchema = z.object({
   source_sha256: z.string().nullable().optional(),
   source_page_count: z.number().nullable().optional(),
   parser_name: z.string().nullable().optional(),
+  /** How the active content was produced. Legacy documents report `standard`. */
+  ingestion_mode: documentIngestionModeSchema.catch("standard"),
+  /**
+   * Whether the uploaded file itself is kept. `false` for every legacy
+   * document: recoverability is never inferred, so download and reprocess
+   * stay unavailable for them.
+   */
+  original_retained: z.boolean().catch(false),
+  /** Display metadata; a shape this build cannot read degrades to `null`. */
+  processing_provenance: z
+    .lazy(() => documentProcessingProvenanceSchema)
+    .nullable()
+    .optional()
+    .catch(null),
+  processed_at: z.string().nullable().optional(),
+});
+
+/**
+ * How the active content was produced. `warnings` are stable codes, mapped to
+ * localized copy; an unknown one gets generic copy rather than being shown raw.
+ */
+export const documentProcessingProvenanceSchema = z.object({
+  schema_version: z.number().int().default(1),
+  mode: documentIngestionModeSchema,
+  provider: z.string(),
+  model: z.string().nullable().optional(),
+  version: z.string(),
+  input_sha256: z.string(),
+  output_sha256: z.string(),
+  section_count: z.number().int().min(0),
+  warnings: z.array(z.string()).default([]),
+});
+
+/** `POST /knowledge-bases/{kb}/documents/uploads`. */
+export const documentUploadInitiateRequestSchema = z.object({
+  title: z.string().min(1).max(200),
+  filename: z.string().min(1).max(255),
+  content_type: z.string().min(1).max(120),
+  byte_size: z.number().int().min(1),
+  sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  ingestion_mode: documentIngestionModeSchema.nullable().optional(),
+});
+
+/**
+ * A signed, short-lived instruction to PUT the file to private storage. The
+ * URL is a credential: it is used for one request and never logged, stored,
+ * or rendered.
+ */
+export const documentUploadReceiptSchema = z.object({
+  upload_id: z.string().min(1),
+  method: z.literal("PUT").default("PUT"),
+  url: z.string().min(1),
+  headers: z.record(z.string(), z.string()),
+  expires_at: z.string(),
+  max_bytes: z.number().int().positive().optional(),
+});
+
+/** `DocumentUploadCompleted`. The run is `null` for a staged group upload. */
+export const documentUploadCompletedSchema = z.object({
+  document: z.lazy(() => documentSchema),
+  extraction_run: z.lazy(() => extractionRunSchema).nullable(),
+});
+
+/** A signed, short-lived download of the original file. Same rules as above. */
+export const documentOriginalDownloadSchema = z.object({
+  url: z.string().min(1),
+  expires_at: z.string(),
+  filename: z.string(),
+});
+
+export const documentReprocessRequestSchema = z.object({
+  ingestion_mode: documentIngestionModeSchema.nullable().optional(),
 });
 
 export const documentCreateRequestSchema = z.object({
@@ -72,6 +145,8 @@ export type DocumentUploadRequest = {
   file: File;
   group_id?: string | null;
   knowledge_base_id?: string | null;
+  /** Omitted means the user's saved default. */
+  ingestion_mode?: z.infer<typeof documentIngestionModeSchema>;
 };
 
 export const documentPermissionPatchRequestSchema = z.object({
@@ -120,6 +195,11 @@ export const extractionRunSchema = z.object({
   entity_count: z.number(),
   relationship_count: z.number(),
   error: z.string().nullable().optional(),
+  /**
+   * Stable code for a failure, localized by `errors.byCode`. Additive and
+   * nullable; when absent the legacy `error` text is shown as before.
+   */
+  error_code: z.string().nullable().optional(),
   started_at: z.string().nullable().optional(),
   completed_at: z.string().nullable().optional(),
 });
@@ -171,3 +251,19 @@ export type ExtractionRunStatus = z.infer<typeof extractionRunStatusSchema>;
 export type ExtractionRunStage = z.infer<typeof extractionRunStageSchema>;
 export type ExtractionRun = z.infer<typeof extractionRunSchema>;
 export type Citation = z.infer<typeof citationSchema>;
+export type DocumentProcessingProvenance = z.infer<
+  typeof documentProcessingProvenanceSchema
+>;
+export type DocumentUploadInitiateRequest = z.infer<
+  typeof documentUploadInitiateRequestSchema
+>;
+export type DocumentUploadReceipt = z.infer<typeof documentUploadReceiptSchema>;
+export type DocumentUploadCompleted = z.infer<
+  typeof documentUploadCompletedSchema
+>;
+export type DocumentOriginalDownload = z.infer<
+  typeof documentOriginalDownloadSchema
+>;
+export type DocumentReprocessRequest = z.infer<
+  typeof documentReprocessRequestSchema
+>;

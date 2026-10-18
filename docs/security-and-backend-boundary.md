@@ -85,6 +85,12 @@ Never regress these rules:
 - No-body mutations such as logout and KB-scoped document ingest still need `Content-Type: application/json` so the BFF JSON mutation policy passes.
 - Unknown paths, unsupported methods, and `/assistant/chat` product usage must not forward to the backend.
 - Cross-site `Origin`, invalid `Referer`, and `Sec-Fetch-Site: cross-site` mutation attempts must be rejected before forwarding.
+- Signed storage URLs (direct-upload PUT, original-download GET) are
+  credentials. The browser uses each for exactly one request, straight to
+  storage and never through the BFF, with only the signed headers: no cookies
+  (`withCredentials = false`), no CSRF header. They are never stored in state
+  or browser storage, rendered, put in the address bar, or logged. The BFF
+  only relays the JSON that carries them.
 - The BFF forwards no query string by default; `buildBackendPath` rebuilds the
   path from its segments. The single exception is the durable listener
   (`GET .../runs/{run_id}/stream`). For it, `forwardedQueryString` forwards

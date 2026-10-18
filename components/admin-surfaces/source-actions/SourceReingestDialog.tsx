@@ -11,6 +11,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { SourceIngestionHistory } from "./SourceIngestionHistory";
+import { SourceOriginalActions } from "./SourceOriginalActions";
 import type {
   SourceActionsLocalization,
   SourceDocumentContext,
@@ -90,6 +91,18 @@ export function SourceReingestDialog({
           </Button>
           {ingest.error ? <ErrorState error={ingest.error} /> : null}
         </div>
+
+        {activeDocument ? (
+          <SourceOriginalActions
+            document={activeDocument}
+            knowledgeBaseId={displayKnowledgeBaseId}
+            busy={activeDocumentHasIngestion || ingest.isPending}
+            copy={{
+              ...localization.documents,
+              ingestionLoading: localization.documents.ingestionLoading,
+            }}
+          />
+        ) : null}
 
         <details className="rounded-2xl border border-cal-hairline bg-km-surface p-4">
           <summary className="cursor-pointer font-semibold text-cal-ink">

@@ -1,5 +1,7 @@
 import { EmptyState, ErrorState, Pill } from "@/components/Status";
+import { useLocalization } from "@/hooks/useLocalization";
 import { cn } from "@/lib/utils";
+import { extractionRunErrorMessage } from "@/utils/error-message";
 import {
   describeExtractionStage,
   extractionRunTone,
@@ -19,6 +21,9 @@ export function SourceIngestionHistory({
   extractionRuns,
   localization,
 }: SourceIngestionHistoryProps) {
+  const { localization: fullLocalization } = useLocalization(
+    (state) => state.localization,
+  );
   if (extractionRuns.isLoading) {
     return <InlineLoadingIndicator label={localization.common.loading} />;
   }
@@ -67,8 +72,10 @@ export function SourceIngestionHistory({
               {describeExtractionStage(run.stage, localization)}
             </p>
           ) : null}
-          {run.error ? (
-            <p className="mt-1 text-xs text-cal-error">{run.error}</p>
+          {run.error || run.error_code ? (
+            <p className="mt-1 text-xs text-cal-error">
+              {extractionRunErrorMessage(run, fullLocalization)}
+            </p>
           ) : null}
         </div>
       ))}

@@ -2,11 +2,21 @@ import { API_PATH } from "@/constants/api-path";
 import {
   type Document,
   type DocumentCreateRequest,
+  type DocumentOriginalDownload,
   type DocumentPermission,
   type DocumentPermissionPatchRequest,
+  type DocumentReprocessRequest,
+  type DocumentUploadCompleted,
+  type DocumentUploadInitiateRequest,
+  type DocumentUploadReceipt,
   type DocumentUploadRequest,
+  documentOriginalDownloadSchema,
   documentPermissionSchema,
+  documentReprocessRequestSchema,
   documentSchema,
+  documentUploadCompletedSchema,
+  documentUploadInitiateRequestSchema,
+  documentUploadReceiptSchema,
   type ExtractionRun,
   extractionRunSchema,
   type KnowledgeBaseDocumentCreateRequest,
@@ -22,6 +32,10 @@ function buildDocumentUploadFormData(
   formData.set("title", payload.title);
   formData.set("file", payload.file);
   if (payload.group_id) formData.set("group_id", payload.group_id);
+  // Omitted, not defaulted: the backend then applies the user's saved mode.
+  if (payload.ingestion_mode) {
+    formData.set("ingestion_mode", payload.ingestion_mode);
+  }
   return formData;
 }
 
@@ -228,6 +242,99 @@ export class MyAgentsDocumentAPI {
           runId,
         ),
       ),
+    );
+  }
+
+  /**
+   * Starts a direct upload. The receipt carries a signed URL that is a
+   * credential: hand it to `putDirectUpload` and nothing else.
+   */
+  async initiateUpload(
+    knowledgeBaseId: string,
+    payload: DocumentUploadInitiateRequest,
+  ): Promise<DocumentUploadReceipt> {
+    return parseWithSchema(
+      documentUploadReceiptSchema,
+      await this.client.fetch(
+        API_PATH.knowledgeBases.documentUploads(knowledgeBaseId),
+        {
+          method: "POST",
+          body: documentUploadInitiateRequestSchema.parse(payload),
+        },
+      ),
+    );
+  }
+
+  /** A fresh signed URL for the same upload, after a PUT was refused. */
+  async refreshUpload(
+    knowledgeBaseId: string,
+    uploadId: string,
+  ): Promise<DocumentUploadReceipt> {
+    return parseWithSchema(
+      documentUploadReceiptSchema,
+      await this.client.fetch(
+        API_PATH.knowledgeBases.documentUploadRefresh(
+          knowledgeBaseId,
+          uploadId,
+        ),
+        { method: "POST" },
+      ),
+    );
+  }
+
+  /**
+   * Turns the stored object into a document. Idempotent: repeating it returns
+   * the same document and run. The run is `null` for a staged group upload.
+   */
+  async completeUpload(
+    knowledgeBaseId: string,
+    uploadId: string,
+  ): Promise<DocumentUploadCompleted> {
+    return parseWithSchema(
+      documentUploadCompletedSchema,
+      await this.client.fetch(
+        API_PATH.knowledgeBases.documentUploadComplete(
+          knowledgeBaseId,
+          uploadId,
+        ),
+        { method: "POST" },
+      ),
+    );
+  }
+
+  /** Abandons a pending upload. Never deletes a completed document. */
+  async abortUpload(knowledgeBaseId: string, uploadId: string): Promise<void> {
+    await this.client.fetch(
+      API_PATH.knowledgeBases.documentUpload(knowledgeBaseId, uploadId),
+      { method: "DELETE" },
+    );
+  }
+
+  /** A signed, short-lived link to the retained original file. */
+  async originalDownload(
+    documentId: string,
+  ): Promise<DocumentOriginalDownload> {
+    return parseWithSchema(
+      documentOriginalDownloadSchema,
+      await this.client.fetch(API_PATH.documents.original(documentId)),
+    );
+  }
+
+  /**
+   * Processes the retained original again. Unlike `ingest`, which re-indexes
+   * the active text, this starts from the file; the previous active content is
+   * kept if it fails.
+   */
+  async reprocess(
+    documentId: string,
+    payload: DocumentReprocessRequest = {},
+  ): Promise<ExtractionRun> {
+    return parseWithSchema(
+      extractionRunSchema,
+      await this.client.fetch(API_PATH.documents.reprocess(documentId), {
+        method: "POST",
+        body: documentReprocessRequestSchema.parse(payload),
+      }),
     );
   }
 }

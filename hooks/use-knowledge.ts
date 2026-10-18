@@ -11,6 +11,7 @@ import type {
   Document,
   DocumentCreateRequest,
   DocumentPermissionPatchRequest,
+  DocumentReprocessRequest,
   DocumentUploadRequest,
   ExtractionRun,
   KnowledgeBase,
@@ -461,6 +462,39 @@ export function useIngestKnowledgeBaseDocumentAsync(
     onSuccess: () => {
       if (knowledgeBaseId && documentId) {
         queryClient.invalidateQueries({
+          queryKey: MyAgentsQueryKeys.knowledgeBases.extractionRuns(
+            knowledgeBaseId,
+            documentId,
+          ),
+        });
+      }
+    },
+  });
+}
+
+/**
+ * Prepares a document again from its retained original. Distinct from ingest,
+ * which re-indexes the active text; on failure the backend keeps the previous
+ * content, so nothing here clears it optimistically.
+ */
+export function useReprocessDocument(
+  knowledgeBaseId?: string,
+  documentId?: string,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: DocumentReprocessRequest) =>
+      myAgentsAPI.documents.reprocess(documentId ?? "", payload),
+    // Only the run lists change now: the document itself is rewritten when the
+    // new run finishes, and the run polling refreshes it then. Not awaited,
+    // so the action is free again as soon as the run is accepted.
+    onSuccess: () => {
+      if (!documentId) return;
+      void queryClient.invalidateQueries({
+        queryKey: MyAgentsQueryKeys.documents.extractionRuns(documentId),
+      });
+      if (knowledgeBaseId) {
+        void queryClient.invalidateQueries({
           queryKey: MyAgentsQueryKeys.knowledgeBases.extractionRuns(
             knowledgeBaseId,
             documentId,

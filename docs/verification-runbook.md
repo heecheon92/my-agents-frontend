@@ -185,6 +185,21 @@ exercise them locally:
 4. Send, reload mid-answer, and confirm the partial answer comes back and
    completes once. The mocked cases live in `e2e/durable-runs.spec.ts`.
 
+## Document originals (local)
+
+Direct uploads need the backend's storage configured and bucket CORS that
+allows the exact frontend origin (`http://localhost:3000` or `:3100`). Health
+then reports `frontend_config.documents.direct_uploads: true`.
+
+1. Upload a file from 지식 베이스: the queue shows real byte progress, then
+   preparation. In DevTools, the PUT goes to the storage host with no
+   `Cookie` and no `X-CSRF-Token`.
+2. Open the row's preparation dialog: 원본 내려받기 saves the file with its
+   original name, and 원본으로 다시 준비 starts a run.
+3. The preview's 상세 정보 tab shows the 준비 기록.
+4. With `direct_uploads: false`, the same upload goes through multipart and
+   honours `multipart_max_bytes`.
+
 ## Common failures
 
 | Symptom | Likely cause | Where to look |
@@ -195,6 +210,7 @@ exercise them locally:
 | Cross-site mutation is forwarded | BFF policy regression | `server/my-agents/proxy-policy.ts`, `tests/proxy-policy.test.ts` |
 | UI claims unavailable backend features | Fake data or stale docs | Hosted OpenAPI document, `docs/backend-requests.md`, relevant component copy |
 | Stuck on "세션을 복원하는 중…", page keeps reloading | Dev server bound to `127.0.0.1`, browsed via `localhost` | Start with `--hostname localhost` |
+| Direct upload fails with "파일을 저장소로 보내지 못했습니다" | Storage CORS does not allow this exact origin, or the signed URL expired | Bucket CORS rules; backend storage config |
 | Send shows "지금은 답변을 시작할 수 없습니다" | Durable flag on, no worker heartbeat | Backend `/health` `durable_runs.ready`; start the worker |
 
 ## Final report checklist

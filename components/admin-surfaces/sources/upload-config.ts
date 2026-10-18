@@ -21,7 +21,6 @@ export const UPLOAD_ACCEPT = [
   ".docx",
 ].join(",");
 
-export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
 export const EXTRACTION_POLL_INTERVAL_MS = 1000;
 export const TERMINAL_EXTRACTION_STATUSES = new Set(["completed", "failed"]);
 
@@ -53,12 +52,20 @@ export function titleFromFileName(fileName: string) {
   return baseName.trim() || fileName;
 }
 
-export function isSupportedUploadFile(file: File) {
+/**
+ * Whether a file may be uploaded. `servedExtensions` is the backend's list
+ * (lower-case, with the dot); when it is served, it is the only authority on
+ * extensions, and the built-in content-type match still applies alongside it.
+ */
+export function isSupportedUploadFile(
+  file: File,
+  servedExtensions: string[] | null = null,
+) {
   const extension = fileExtension(file.name);
   if (extension === ".doc") return false;
+  const extensions = servedExtensions
+    ? new Set(servedExtensions)
+    : SUPPORTED_UPLOAD_EXTENSIONS;
 
-  return (
-    SUPPORTED_UPLOAD_EXTENSIONS.has(extension) ||
-    SUPPORTED_UPLOAD_TYPES.has(file.type)
-  );
+  return extensions.has(extension) || SUPPORTED_UPLOAD_TYPES.has(file.type);
 }

@@ -4,6 +4,7 @@ import { Field, inputClassName } from "@/components/Field";
 import { OnboardingTarget } from "@/components/onboarding/OnboardingTarget";
 import { Pill } from "@/components/Status";
 import { Button } from "@/components/ui/button";
+import { ChoiceGroup } from "@/components/ui/choice-group";
 import {
   Dialog,
   DialogContent,
@@ -13,13 +14,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import type { DocumentIngestionMode } from "@/model/my-agents";
 import type { Localization } from "@/utils/localization";
 import { formatFileSize } from "../shared";
 import type { UploadQueueItem, UploadQueueStatus } from "../UploadQueueRow";
 import { UploadQueueRow, uploadStatusTone } from "../UploadQueueRow";
-import { MAX_UPLOAD_BYTES, UPLOAD_ACCEPT } from "./upload-config";
+import { UPLOAD_ACCEPT } from "./upload-config";
 
 type UploadDialogProps = {
+  canChooseAiAssisted: boolean;
   failedQueueCount: number;
   handleFileSelection: (event: React.ChangeEvent<HTMLInputElement>) => void;
   handleProcessUploadQueue: () => void;
@@ -31,19 +34,24 @@ type UploadDialogProps = {
   handleUploadDragOver: (event: React.DragEvent<HTMLFieldSetElement>) => void;
   handleUploadDrop: (event: React.DragEvent<HTMLFieldSetElement>) => void;
   hasActiveKnowledgeBase: boolean;
+  ingestionMode: DocumentIngestionMode;
+  isGuest: boolean;
   isProcessingQueue: boolean;
   isUploadDropActive: boolean;
   localization: Localization["admin"];
+  maxUploadBytes: number;
   onOpenChange: (open: boolean) => void;
   open: boolean;
   pendingQueueCount: number;
   queueStatusCounts: Record<UploadQueueStatus, number>;
   queueSummary: string;
+  setIngestionMode: (mode: DocumentIngestionMode) => void;
   uploadAnnouncement: string;
   uploadQueue: UploadQueueItem[];
 };
 
 export function UploadDialog({
+  canChooseAiAssisted,
   failedQueueCount,
   handleFileSelection,
   handleProcessUploadQueue,
@@ -55,14 +63,18 @@ export function UploadDialog({
   handleUploadDragOver,
   handleUploadDrop,
   hasActiveKnowledgeBase,
+  ingestionMode,
+  isGuest,
   isProcessingQueue,
   isUploadDropActive,
   localization,
+  maxUploadBytes,
   onOpenChange,
   open,
   pendingQueueCount,
   queueStatusCounts,
   queueSummary,
+  setIngestionMode,
   uploadAnnouncement,
   uploadQueue,
 }: UploadDialogProps) {
@@ -109,7 +121,7 @@ export function UploadDialog({
                 label={localization.documents.fileLabel}
                 hint={localization.documents.multiFileUploadHint.replace(
                   "{maxSize}",
-                  formatFileSize(MAX_UPLOAD_BYTES),
+                  formatFileSize(maxUploadBytes),
                 )}
               >
                 <input
@@ -123,6 +135,32 @@ export function UploadDialog({
               </Field>
             </fieldset>
           </OnboardingTarget>
+          {/* Guests always prepare in the standard mode, so there is nothing to
+              choose. The choice applies to the whole batch about to start. */}
+          {isGuest ? null : (
+            <ChoiceGroup
+              slot="upload-ingestion-mode"
+              legend={localization.documents.ingestionModeLegend}
+              value={ingestionMode}
+              onChange={setIngestionMode}
+              disabled={isProcessingQueue}
+              options={[
+                {
+                  value: "standard",
+                  label: localization.documents.ingestionModeLabels.standard,
+                },
+                {
+                  value: "ai_assisted",
+                  label: localization.documents.ingestionModeLabels.ai_assisted,
+                  disabled: !canChooseAiAssisted,
+                },
+              ]}
+            >
+              <p className="px-2 text-xs leading-5 text-cal-muted">
+                {localization.documents.aiAssistedDisclosure}
+              </p>
+            </ChoiceGroup>
+          )}
           <p className="sr-only" aria-live="polite">
             {uploadAnnouncement}
           </p>

@@ -1,4 +1,38 @@
 import type { Document, ExtractionRun } from "@/model/my-agents";
+import type { Localization } from "@/utils/localization";
+
+/** The original-file and preparation-record copy the action dialogs render. */
+type SourceOriginalCopy = Pick<
+  Localization["admin"]["documents"],
+  | "downloadOriginalAction"
+  | "downloadOriginalUnavailable"
+  | "downloadOriginalErrorTitle"
+  | "reprocessTitle"
+  | "reprocessDescription"
+  | "reprocessAction"
+  | "reprocessUnavailable"
+  | "reprocessStartedAnnouncement"
+  | "reprocessErrorTitle"
+  | "ingestionModeLegend"
+  | "ingestionModeLabels"
+  | "aiAssistedDisclosure"
+  | "provenanceTitle"
+  | "provenanceMode"
+  | "provenanceModel"
+  | "provenanceProcessedAt"
+  | "provenanceSections"
+  | "provenanceOriginal"
+  | "provenanceOriginalRetained"
+  | "provenanceOriginalNotRetained"
+  | "provenanceWarnings"
+  | "provenanceNone"
+  | "provenanceAdvanced"
+  | "provenanceVersion"
+  | "provenanceInputHash"
+  | "provenanceOutputHash"
+  | "provenanceWarningLabels"
+  | "provenanceWarningUnknown"
+>;
 
 export type SourceActionDialogType = "preview" | "share" | "ingest" | "delete";
 
@@ -59,7 +93,7 @@ export type SourceActionsLocalization = {
     wordSource: string;
     textSource: string;
     pagesLabel: string;
-  };
+  } & SourceOriginalCopy;
   groups: { roles: Record<string, string> };
 };
 

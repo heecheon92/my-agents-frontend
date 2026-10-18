@@ -13,9 +13,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { useKnowledgeBaseDocumentPreview } from "@/hooks/use-knowledge";
+import { useLocalization } from "@/hooks/useLocalization";
 import { cn } from "@/lib/utils";
 import { documentMeta, InlineLoadingIndicator } from "../shared";
 import { SourceIngestionHistory } from "./SourceIngestionHistory";
+import { SourceProvenance } from "./SourceProvenance";
 import type {
   SourceActionsLocalization,
   SourceDocumentContext,
@@ -41,6 +43,7 @@ export function SourcePreviewDialog({
   open,
 }: SourcePreviewDialogProps) {
   const [activeTab, setActiveTab] = useState<SourcePreviewTab>("preview");
+  const { lang } = useLocalization((state) => state.lang);
   const tabRootId = useId();
   const preview = useKnowledgeBaseDocumentPreview(
     displayKnowledgeBaseId,
@@ -160,6 +163,15 @@ export function SourcePreviewDialog({
               hidden={activeTab !== "advanced"}
               className="rounded-xl border border-cal-hairline bg-km-surface p-4"
             >
+              {activeDocument ? (
+                <div className="mb-4 border-b border-cal-hairline pb-4">
+                  <SourceProvenance
+                    document={activeDocument}
+                    copy={localization.documents}
+                    lang={lang}
+                  />
+                </div>
+              ) : null}
               <h3 className="text-sm font-semibold text-cal-ink">
                 {localization.documents.extractionRuns}
               </h3>

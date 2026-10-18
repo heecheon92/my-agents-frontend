@@ -1,3 +1,33 @@
+## 2026-10-18 — Private document originals and document preferences
+
+Registered users can choose document retrieval priority and a default preparation mode in Account
+settings. Uploads offer a per-file-flow mode choice with an explicit OpenAI disclosure. Source actions
+can download a retained original, prepare it again with a selected mode, and inspect the preparation
+record. Older documents without originals keep their existing text-based re-index action.
+
+Contracts were generated from the locally served backend OpenAPI. When the backend supports direct
+uploads, the browser computes SHA-256 and sends bytes to a short-lived private R2 URL with real upload
+progress. The BFF carries authenticated JSON admission/completion calls; it never forwards application
+cookies or CSRF credentials to R2. Multipart is selected before admission for guests, unsupported
+browser crypto, or disabled direct uploads. A failed direct PUT never silently switches transports.
+
+Completion is idempotent: one automatic retry handles a lost response, and a later manual Retry keeps
+the same upload and destination. Polling retries follow the existing extraction run. Queue titles lock
+once completion is uncertain. Uncoded API failures use localized status copy rather than raw server
+text. No frontend dependencies were added; the existing component stack and native radio semantics
+support the new controls.
+
+Verification: Biome (317 files), TypeScript, the production build, and all 493 unit tests passed.
+The originals browser suite passed all 11 cases, including four completion/polling recovery scenarios.
+The full browser suite passed 256 tests with two skips and the previously documented
+`conversation-list.spec.ts:188` failure. A real-browser walkthrough against the production build,
+backend, and private R2 passed: persisted settings, concurrent small Markdown and 4.8 MB text uploads,
+original download hashes, preparation record, and document cleanup. It recorded no page errors or
+5xx responses, and R2 requests carried no application cookies or CSRF headers. The backend concurrent
+API probe also passed after SQLite WAL and bounded plain-text chunk grouping fixes. Existing Node
+DEP0205 and color-environment warnings remain. Changes are organized into feature commits; production rollout
+has not been performed.
+
 ## 2026-09-05 — Package installation requires direct user approval
 
 The owner replaced the September 2 blanket UI-library approval. Agents should

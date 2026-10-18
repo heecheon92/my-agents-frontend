@@ -46,6 +46,46 @@ Frontend workaround:
 
 ## Current requests
 
+### Active: private document originals, preparation modes, retrieval priority
+
+Status: implemented on both sides and verified against an isolated local
+backend and the real development bucket; not deployed. Agreed with Backend
+Codex on 2026-10-18; frontend models were checked against the served OpenAPI.
+
+Contract the frontend consumes:
+
+- `GET/PATCH /assistant/preferences` gains `document_retrieval_priority`
+  (`always` | `automatic` | `on_request`) and `document_ingestion_mode`
+  (`standard` | `ai_assisted`). PATCH fields are optional with no schema
+  default; omitted fields are preserved; explicit `null` is `422`. Guests read
+  `automatic` and `standard` and cannot change them.
+- `on_request` searches documents when the send is scoped to chosen sources
+  or the question explicitly asks for documents; an explicit "no documents"
+  instruction wins.
+- Health `frontend_config.documents` serves `direct_uploads`,
+  `max_upload_bytes`, `multipart_max_bytes`, `allowed_extensions`,
+  `ai_assisted_ingestion`. Direct uploads are off for previews and guests.
+- `POST /knowledge-bases/{kb}/documents/uploads` (initiate, `201` receipt with
+  a signed PUT), `.../refresh`, `.../complete` (`201`, idempotent,
+  `{document, extraction_run | null}`), `DELETE .../uploads/{id}` (`204`).
+  Multipart routes accept an optional `ingestion_mode`.
+- `GET /documents/{id}/original` returns `{url, expires_at, filename}`; the
+  signed GET sets a UTF-8 `filename*`.
+- `POST /documents/{id}/reprocess {ingestion_mode?}` returns `202` with a run.
+  It is never retried automatically.
+- Documents gain `ingestion_mode`, `original_retained` (false for every legacy
+  document), `processing_provenance` (warnings are stable codes), and
+  `processed_at`. Runs gain `error_code`.
+- Codes with copy: `storage_unavailable`, `storage_quota_exceeded`,
+  `upload_expired`, `upload_in_progress`, `upload_integrity_mismatch`,
+  `upload_not_ready`, `upload_too_large`, `original_unavailable`,
+  `reprocess_in_progress`, `document_processing_*`,
+  `document_changed_during_processing`, and the client-side
+  `direct_upload_failed`.
+
+Remaining: hosted bucket CORS for the exact deployed frontend origins, and a
+hosted verification pass.
+
 ### Active: recoverable server-owned answer generation
 
 Status: **implemented on both sides, verified against a local backend; not

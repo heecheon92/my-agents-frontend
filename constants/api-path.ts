@@ -158,6 +158,20 @@ export const API_PATH = {
     uploadDocument(knowledgeBaseId: string) {
       return `${this.documents(knowledgeBaseId)}/upload`;
     },
+    // Direct upload to private storage: initiate returns a signed PUT, and
+    // complete turns the stored object into a document.
+    documentUploads(knowledgeBaseId: string) {
+      return `${this.documents(knowledgeBaseId)}/uploads`;
+    },
+    documentUpload(knowledgeBaseId: string, uploadId: string) {
+      return `${this.documentUploads(knowledgeBaseId)}/${uploadId}`;
+    },
+    documentUploadRefresh(knowledgeBaseId: string, uploadId: string) {
+      return `${this.documentUpload(knowledgeBaseId, uploadId)}/refresh`;
+    },
+    documentUploadComplete(knowledgeBaseId: string, uploadId: string) {
+      return `${this.documentUpload(knowledgeBaseId, uploadId)}/complete`;
+    },
     document(knowledgeBaseId: string, documentId: string) {
       return `${this.documents(knowledgeBaseId)}/${documentId}`;
     },
@@ -191,6 +205,12 @@ export const API_PATH = {
     },
     ingestAsync(documentId: string) {
       return `${this.ingest(documentId)}/async`;
+    },
+    original(documentId: string) {
+      return `${this.detail(documentId)}/original`;
+    },
+    reprocess(documentId: string) {
+      return `${this.detail(documentId)}/reprocess`;
     },
     extractionRuns(documentId: string) {
       return `${this.detail(documentId)}/extraction-runs`;

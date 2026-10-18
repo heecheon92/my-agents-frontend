@@ -28,11 +28,20 @@ export type UploadQueueItem = {
   status: UploadQueueStatus;
   progressPercent: number;
   /**
+   * The upload reports real bytes (a direct upload). Multipart never does: its
+   * `progressPercent` while uploading is a placeholder, not a measurement.
+   */
+  hasByteProgress?: boolean;
+  /**
    * Backend extraction stage. Carried alongside the percentage because it is
    * what disambiguates 0%: `queued` means waiting for a worker, which reads
    * very differently from a bar stuck at zero.
    */
   stage?: string;
+  /** Original destination, retained for retries even if the view changes. */
+  knowledgeBaseId?: string;
+  /** An ambiguous completion retries this identity, never the signed URL. */
+  pendingUpload?: { knowledgeBaseId: string; uploadId: string };
   documentId?: string;
   extractionRunId?: string;
   error?: string;
@@ -61,13 +70,35 @@ export type UploadProgress = { label: string; percent: number | null };
  * relative cost, which is why the number beats a plain step counter.
  */
 export function resolveUploadProgress(
-  item: Pick<UploadQueueItem, "status" | "stage" | "progressPercent">,
+  item: Pick<
+    UploadQueueItem,
+    "status" | "stage" | "progressPercent" | "hasByteProgress"
+  >,
   localization: {
     progressWaitingForWorker: string;
     progressStageLabel: string;
+    progressUploadingLabel?: string;
     stages: Record<string, string>;
   },
 ): UploadProgress | null {
+  // Real bytes, from a direct upload. Multipart has no byte progress, so it
+  // keeps the plain status label rather than inventing a number.
+  if (
+    item.status === "uploading" &&
+    item.hasByteProgress &&
+    localization.progressUploadingLabel
+  ) {
+    const percent = Math.round(
+      Math.min(Math.max(item.progressPercent, 0), 100),
+    );
+    return {
+      label: localization.progressUploadingLabel.replace(
+        "{percent}",
+        String(percent),
+      ),
+      percent,
+    };
+  }
   if (item.status !== "ingesting") return null;
 
   const stageLabel = describeExtractionStage(item.stage, {
@@ -113,6 +144,7 @@ export function UploadQueueRow({
     ingestionLoading: string;
     progressWaitingForWorker: string;
     progressStageLabel: string;
+    progressUploadingLabel: string;
     stages: Record<string, string>;
   };
   onTitleChange: (localId: string, title: string) => void;
@@ -120,7 +152,10 @@ export function UploadQueueRow({
   onRetry: (localId: string) => void;
   disabled: boolean;
 }) {
-  const canEdit = !disabled && ["selected", "failed"].includes(item.status);
+  const canEdit =
+    !disabled &&
+    !item.pendingUpload &&
+    ["selected", "failed"].includes(item.status);
   const isBusy = isUploadQueueItemBusy(item.status);
 
   const progress = resolveUploadProgress(item, localization);
