@@ -2,6 +2,13 @@
 
 This project has two important boundaries: browser-to-frontend BFF security, and frontend-to-backend repository ownership.
 
+
+Assistant SVG fences use detached XML validation and reconstruction into a bounded static subset,
+then an inert image blob. Scripts, external resources, embedded HTML, stylesheets, animation and
+recursive resources fall back to source. No raw SVG is mounted as application DOM. The shared
+renderer catalog does not grant actions or backend authority; future AG-UI/A2UI integrations remain
+validated boundary adapters. See [rich-response rendering](./rich-response-rendering.md).
+
 ## Backend repository boundary
 
 Assistant Mermaid fences are an explicitly bounded rendering surface. They use strict site-owned

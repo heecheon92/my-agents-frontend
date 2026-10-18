@@ -197,6 +197,12 @@
     "defaultErrorDescription": "Please try again."
   },
   "chat": {
+    "svg": {
+      "label": "SVG image",
+      "loading": "Preparing image.",
+      "error": "The image could not be displayed. View its source.",
+      "source": "SVG source"
+    },
     "diagram": {
       "label": "Diagram",
       "loading": "Preparing diagram.",

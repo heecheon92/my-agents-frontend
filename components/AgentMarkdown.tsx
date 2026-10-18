@@ -1,6 +1,6 @@
 import type { ComponentPropsWithoutRef } from "react";
 import ReactMarkdown, { type ExtraProps } from "react-markdown";
-import { MermaidDiagram } from "@/components/ui/mermaid-diagram";
+import { AgentDiagram, DIAGRAM_FORMATS } from "@/components/ui/agent-diagram";
 
 type BlockProps = ComponentPropsWithoutRef<"pre"> & ExtraProps;
 
@@ -12,15 +12,18 @@ function PlainBlock({ children }: BlockProps) {
   );
 }
 
-/** The fenced source of a ```mermaid block, or null for any other code block. */
-function mermaidSource(node: BlockProps["node"]): string | null {
+/** Explicit fenced image languages only; raw HTML and source previews stay inert. */
+function diagramSource(
+  node: BlockProps["node"],
+  language: string,
+): string | null {
   const code = node?.children[0];
   if (
     code?.type !== "element" ||
     code.tagName !== "code" ||
     !Array.isArray(code.properties.className) ||
     !code.properties.className.some(
-      (name) => String(name).toLowerCase() === "language-mermaid",
+      (name) => String(name).toLowerCase() === `language-${language}`,
     )
   ) {
     return null;
@@ -31,11 +34,12 @@ function mermaidSource(node: BlockProps["node"]): string | null {
 }
 
 function DiagramBlock(props: BlockProps) {
-  const source = mermaidSource(props.node);
-  // Every non-diagram block falls through to the same renderer the
-  // diagram-less path uses, so a code block looks identical either way.
-  if (source === null) return <PlainBlock {...props} />;
-  return <MermaidDiagram source={source} />;
+  for (const format of DIAGRAM_FORMATS) {
+    const source = diagramSource(props.node, format);
+    if (source !== null)
+      return <AgentDiagram format={format} source={source} />;
+  }
+  return <PlainBlock {...props} />;
 }
 
 function safeExternalHref(href: string | undefined) {

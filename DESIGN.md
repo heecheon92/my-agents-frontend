@@ -202,6 +202,11 @@ knowing before touching it:
 with the theme. There are currently zero in the app, and
 `e2e/theme.spec.ts` will catch reintroductions by measuring real contrast.
 
+Authored SVG previews use `--km-artwork-canvas`, explicitly white in both themes. This is an
+image canvas, not application chrome: preserving original colors and SVG's default black fill
+avoids making transparent drawings illegible in dark mode. The surrounding frame, source,
+and status text continue to use theme-aware tokens. Do not recolor generated artwork.
+
 ### Typography
 
 **Pretendard**, self-hosted from `public/fonts/pretendard/` under SIL OFL 1.1,

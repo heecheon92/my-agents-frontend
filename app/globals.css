@@ -49,6 +49,7 @@
   --color-km-hairline-soft: var(--km-hairline-soft);
   --color-km-canvas: var(--km-canvas);
   --color-km-surface: var(--km-surface);
+  --color-km-artwork-canvas: var(--km-artwork-canvas);
   --color-km-surface-muted: var(--km-surface-muted);
   --color-km-surface-strong: var(--km-surface-strong);
   --color-km-surface-dark: var(--km-surface-dark);
@@ -176,6 +177,7 @@
   --km-select-chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M5.5 7.5L10 12L14.5 7.5' stroke='%2369716c' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
 
   --km-canvas: #fbfaf7;
+  --km-artwork-canvas: #ffffff;
   --km-surface: #ffffff;
   --km-surface-muted: #f1f0eb;
   --km-surface-strong: #e3e0d8;
@@ -291,6 +293,7 @@
  */
 .dark {
   --km-canvas: #131311;
+  --km-artwork-canvas: #ffffff;
   --km-surface: #1c1b19;
   --km-surface-muted: #24231f;
   --km-surface-strong: #302e2a;

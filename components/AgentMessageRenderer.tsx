@@ -1,3 +1,4 @@
+import type { DiagramFormat } from "@/components/ui/agent-diagram";
 import { AgentMarkdown } from "./AgentMarkdown";
 
 export type AgentArtifact =
@@ -6,7 +7,7 @@ export type AgentArtifact =
   | {
       type: "diagram";
       source: string;
-      format: "mermaid" | "svg";
+      format: DiagramFormat;
       caption?: string;
     }
   | { type: "table"; columns: string[]; rows: unknown[][]; caption?: string }

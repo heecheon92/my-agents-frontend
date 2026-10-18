@@ -86,3 +86,7 @@ Prefer small, reviewable slices:
 - One documentation update per behavior/setup change.
 
 For broad work, update `docs/implementation-log.md` as a living checklist while working.
+
+Assistant image rendering enters through `components/ui/agent-diagram.tsx`. Mermaid and static SVG
+share this typed presentation seam; see [rich-response rendering](./rich-response-rendering.md).
+Keep future AG-UI transport and A2UI catalog adapters separate from run and interaction ownership.

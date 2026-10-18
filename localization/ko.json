@@ -197,6 +197,12 @@
     "defaultErrorDescription": "다시 시도해 주세요."
   },
   "chat": {
+    "svg": {
+      "label": "SVG 이미지",
+      "loading": "이미지를 준비하고 있습니다.",
+      "error": "이미지를 표시하지 못했습니다. 원문을 확인하세요.",
+      "source": "SVG 원문"
+    },
     "diagram": {
       "label": "다이어그램",
       "loading": "다이어그램을 준비하고 있습니다.",

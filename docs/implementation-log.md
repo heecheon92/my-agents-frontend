@@ -2362,3 +2362,36 @@ false). `ready` is `enabled` plus a fresh worker heartbeat.
   along with the two spec assertions it required. Those three files are back
   to their committed state, because with no flag in the default mock, every
   existing spec runs the legacy routes again.
+
+## 2026-10-18 — Static SVG and the shared diagram renderer
+
+Implemented and verified locally; production deployment is not verified. The owner confirmed
+SVG rendering in their running app and subsequently reported a positive experience. Completed `svg` fences now render validated static images alongside
+Mermaid; streaming/source-preview/copy behavior stays consistent with existing Markdown.
+
+Chosen approach: browser XML parsing plus a closed static element/attribute/resource policy,
+reconstruction in a detached SVG document, and an inert image blob. No package was installed.
+A broad HTML/SVG sanitizer or executable preview framework would expose a larger surface than this
+static-image milestone needs. Unsupported constructs remain source rather than being silently
+rewritten into a potentially different illustration. The separate Mermaid policy remains intact.
+
+The owner's broader goal is richer explanatory responses. Both diagram formats now use
+`components/ui/agent-diagram.tsx`, a typed presentation entry point independent of transport.
+The existing backend AG-UI/A2UI boundary decisions guide the documented extension path: future
+AG-UI event adapters and A2UI catalog adapters reuse local renderers without taking over Product DB,
+run lifecycle, permissions, or semantic interactions. No protocol integration is claimed.
+
+SVG preserves authored colors on a deliberately constant artwork canvas; wide drawings scroll
+locally on mobile so their labels stay legible. Keyboard source disclosure, title-based alternative
+text, failure fallback, and blob cleanup are included. Native layout remains synchronous and bounded;
+actual explanation correctness and screen-reader quality still require human evaluation.
+
+Verification on final code: full unit suite **499/499**; Biome and TypeScript clean; production
+build passed (20 routes). Full mocked Playwright suite: **260 passed, 2 skipped, 1 failed**;
+all **7 SVG/Mermaid cases passed**. The failure is the pre-existing
+`conversation-list.spec.ts:188` focus/fade assertion; transcript-autoscroll passed. Build/browser
+runs printed existing Node DEP0205 and color-environment warnings. Desktop and mobile dark-mode
+SVG screenshots were inspected; wide drawings remain readable through local keyboard scrolling.
+The temporary test config and isolated :3100 server were removed/stopped; the user's :3000/:8000
+services were not stopped. Publication is scoped to frontend `develop`; no manual deployment. See
+[rendering contract](./rich-response-rendering.md).
