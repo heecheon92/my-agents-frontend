@@ -24,6 +24,26 @@ export const healthResponseSchema = z.object({
       documents: z
         .object({
           upload_concurrency: z.number().int().min(1).max(20),
+          /**
+           * The upload policy, read from the served `HealthFrontendDocumentConfig`.
+           * Every field is optional here so an older backend falls back to the
+           * multipart route and today's limits, never to a direct upload.
+           */
+          direct_uploads: z.boolean().optional().catch(undefined),
+          max_upload_bytes: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .catch(undefined),
+          multipart_max_bytes: z
+            .number()
+            .int()
+            .positive()
+            .optional()
+            .catch(undefined),
+          allowed_extensions: z.array(z.string()).optional().catch(undefined),
+          ai_assisted_ingestion: z.boolean().optional().catch(undefined),
         })
         .optional(),
       /**
@@ -65,4 +85,44 @@ export function durableRunsEnabledFromHealth(
   health: HealthResponse | undefined,
 ) {
   return health?.frontend_config?.durable_runs?.enabled === true;
+}
+
+/** Today's limit, used only when the backend does not serve one. */
+export const FALLBACK_MULTIPART_MAX_BYTES = 5 * 1024 * 1024;
+
+export type DocumentUploadPolicy = {
+  /** Upload straight to private storage with a signed URL. */
+  directUploads: boolean;
+  /** The ceiling for a direct upload. */
+  directMaxBytes: number;
+  /** The ceiling through the BFF, which sits under the host's body limit. */
+  multipartMaxBytes: number;
+  /** Lower-case extensions with the dot, or `null` for the built-in list. */
+  allowedExtensions: string[] | null;
+  /** Whether `ai_assisted` processing can be chosen at all. */
+  aiAssistedIngestion: boolean;
+};
+
+/**
+ * The upload policy the backend serves, with conservative fallbacks: no direct
+ * upload, no AI-assisted processing, and the multipart limit the frontend has
+ * always enforced.
+ */
+export function documentUploadPolicyFromHealth(
+  health: HealthResponse | undefined,
+): DocumentUploadPolicy {
+  const documents = health?.frontend_config?.documents;
+  const multipartMaxBytes =
+    documents?.multipart_max_bytes ?? FALLBACK_MULTIPART_MAX_BYTES;
+  return {
+    directUploads: documents?.direct_uploads === true,
+    directMaxBytes: documents?.max_upload_bytes ?? multipartMaxBytes,
+    multipartMaxBytes,
+    allowedExtensions:
+      documents?.allowed_extensions?.map((extension) => {
+        const lower = extension.toLowerCase();
+        return lower.startsWith(".") ? lower : `.${lower}`;
+      }) ?? null,
+    aiAssistedIngestion: documents?.ai_assisted_ingestion === true,
+  };
 }

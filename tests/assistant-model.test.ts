@@ -63,6 +63,8 @@ const preferences: AssistantPreferences = {
   default_model: "gpt-6-luna",
   selected_model: null,
   effective_model: "gpt-6-luna",
+  document_retrieval_priority: "automatic",
+  document_ingestion_mode: "standard",
 };
 
 describe("resolveAssistantModel", () => {

@@ -76,6 +76,7 @@ export function ComposerBar({
   knowledgeBasesLoading,
   knowledgeBasesError,
   requiresKnowledgeBaseSelection,
+  showsRetrievalOnRequestHint = false,
   onToggleKnowledgeBase,
   attachmentComposer,
 }: {
@@ -117,6 +118,11 @@ export function ComposerBar({
   knowledgeBasesLoading: boolean;
   knowledgeBasesError: unknown;
   requiresKnowledgeBaseSelection: boolean;
+  /**
+   * The account searches documents only on request, and this send is not
+   * scoped to chosen sources — so an answer without citations is expected.
+   */
+  showsRetrievalOnRequestHint?: boolean;
   onToggleKnowledgeBase: (knowledgeBaseId: string) => void;
   /**
    * Temporary conversation files. The composer renders whatever this reports
@@ -361,6 +367,14 @@ export function ComposerBar({
       {requiresKnowledgeBaseSelection ? (
         <p className="mt-2 text-xs leading-5 text-cal-error">
           {localization.knowledgeSourceRequired}
+        </p>
+      ) : null}
+      {showsRetrievalOnRequestHint && !conversationIsBusy ? (
+        <p
+          data-slot="retrieval-on-request-hint"
+          className="mt-2 text-xs leading-5 text-cal-muted"
+        >
+          {localization.retrievalOnRequestHint}
         </p>
       ) : null}
       {conversationIsBusy ? (

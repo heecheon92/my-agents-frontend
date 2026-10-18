@@ -117,7 +117,13 @@ export type ResolvedAssistantModel =
 
 export function resolveAssistantModel(
   capabilities: AssistantModelCapabilities | undefined,
-  preferences: AssistantPreferences | undefined,
+  // Only the model fields: document preferences do not affect the model.
+  preferences:
+    | Pick<
+        AssistantPreferences,
+        "customizable" | "default_model" | "selected_model" | "effective_model"
+      >
+    | undefined,
   isGuest: boolean,
 ): ResolvedAssistantModel {
   return resolveModelPreference(capabilities, preferences, isGuest);

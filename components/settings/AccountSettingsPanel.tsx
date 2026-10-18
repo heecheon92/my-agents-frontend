@@ -12,6 +12,7 @@ import {
 } from "@/hooks/use-auth";
 import { useLocalization } from "@/hooks/useLocalization";
 import { AssistantModelSettingsCard } from "./AssistantModelSettingsCard";
+import { DocumentPreferencesCard } from "./DocumentPreferencesCard";
 import { SettingsPageShell } from "./SettingsPageShell";
 import { SummarizationModelSettingsCard } from "./SummarizationModelSettingsCard";
 
@@ -130,6 +131,7 @@ export function AccountSettingsPanel() {
           {user.data ? (
             <SummarizationModelSettingsCard isGuest={isGuest} />
           ) : null}
+          {user.data ? <DocumentPreferencesCard isGuest={isGuest} /> : null}
           <form
             onSubmit={handleNicknameSubmit}
             className="cal-card rounded-xl p-5"

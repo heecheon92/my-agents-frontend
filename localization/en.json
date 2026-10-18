@@ -541,7 +541,8 @@
     "interactionBrowseWaitingAnnouncement": "Browse the available documents to continue the answer.",
     "interactionUnitMinutes": "{n} min",
     "interactionUnitHours": "{n} hr",
-    "interactionUnitDays": "{n} days"
+    "interactionUnitDays": "{n} days",
+    "retrievalOnRequestHint": "Documents are searched only when asked. Pick sources or mention documents in your question."
   },
   "admin": {
     "common": {
@@ -1012,7 +1013,29 @@
       "summarizationUpdateErrorTitle": "Could not change the summarization model",
       "summarizationUnavailable": "The connected server does not offer a summarization model choice.",
       "summarizationSaved": "Summarization model saved.",
-      "summarizationLockedGuest": "Guest sessions use the default summarization model and cannot change it."
+      "summarizationLockedGuest": "Guest sessions use the default summarization model and cannot change it.",
+      "documentsTitle": "How your documents are used",
+      "documentsDescription": "Choose when answers search your documents and how new documents are prepared.",
+      "retrievalLegend": "Searching your documents in answers",
+      "retrievalAlways": "Always",
+      "retrievalAlwaysDescription": "Every question searches your documents first.",
+      "retrievalAutomatic": "Automatically when needed",
+      "retrievalAutomaticDescription": "Searches when a question needs your documents.",
+      "retrievalOnRequest": "Only when asked",
+      "retrievalOnRequestDescription": "Searches only when you pick sources or mention documents in your question.",
+      "retrievalRecommendedBadge": "Recommended",
+      "ingestionLegend": "Preparing new documents",
+      "ingestionStandard": "Standard",
+      "ingestionStandardDescription": "Extracts the document's text as it is.",
+      "ingestionAiAssisted": "AI cleanup",
+      "ingestionAiAssistedDescription": "Sends the extracted text to OpenAI to clean up its formatting. Nothing is summarized.",
+      "ingestionAiAssistedCost": "Preparation takes longer and uses paid model calls.",
+      "ingestionAiUnavailable": "AI cleanup is not available right now.",
+      "documentsLockedGuest": "Guests cannot change document settings. The defaults apply.",
+      "documentsSaved": "Document settings saved.",
+      "documentsLoadErrorTitle": "Could not load document settings.",
+      "documentsUpdateErrorTitle": "Could not save document settings.",
+      "documentsLoading": "Loading…"
     },
     "experimental": {
       "title": "Experimental settings",

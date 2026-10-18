@@ -65,6 +65,29 @@ export function useUpdateAssistantModel() {
   });
 }
 
+/**
+ * Saves one document preference. Sends only that field: the backend keeps
+ * every omitted preference, so a change here cannot overwrite a model choice
+ * or the other document setting made elsewhere.
+ */
+export function useUpdateDocumentPreferences() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (
+      payload: Pick<
+        AssistantPreferencesPatchRequest,
+        "document_retrieval_priority" | "document_ingestion_mode"
+      >,
+    ) => myAgentsAPI.assistant.updatePreferences(payload),
+    onSuccess: (preferences) => {
+      queryClient.setQueryData(
+        MyAgentsQueryKeys.assistant.preferences(),
+        preferences,
+      );
+    },
+  });
+}
+
 /** Summarization models on offer; 404 on a backend without compaction. */
 export function useSummarizationModelCapabilities() {
   return useQuery({

@@ -360,6 +360,12 @@ export function ChatWorkspace({
     knowledgeBaseMode,
     selectedKnowledgeBaseIds,
   });
+  // "Only when asked": a send with chosen sources is itself the request, so
+  // the hint shows only while the scope is every document.
+  const showsRetrievalOnRequestHint =
+    !isGuest &&
+    knowledgeBaseMode === "all" &&
+    assistantPreferences.data?.document_retrieval_priority === "on_request";
   const requiresKnowledgeBaseSelection =
     knowledgeBaseMode === "selected" && selectedKnowledgeBaseIds.length === 0;
   // One derived phase, three decisions. A pending question holds the
@@ -1246,6 +1252,7 @@ export function ChatWorkspace({
       replayNotice={replayNotice}
       replayingMessageId={replayingMessageId}
       requiresKnowledgeBaseSelection={requiresKnowledgeBaseSelection}
+      showsRetrievalOnRequestHint={showsRetrievalOnRequestHint}
       selectedKnowledgeBaseIds={selectedKnowledgeBaseIds}
       sendNowHelper={sendNowHelper}
       serverActiveRunIsStale={serverActiveRunIsStale}

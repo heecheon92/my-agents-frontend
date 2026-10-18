@@ -33,7 +33,8 @@ export const assistantModelCapabilitiesSchema = z.object({
   models: z.array(assistantModelOptionSchema),
 });
 
-export const assistantPreferencesSchema = z.object({
+/** The model choice both preference endpoints share. */
+const modelPreferencesSchema = z.object({
   customizable: z.boolean(),
   default_model: assistantModelIdSchema,
   /** `null` means "follow the deployment default", not "no model". */
@@ -42,9 +43,47 @@ export const assistantPreferencesSchema = z.object({
   effective_model: assistantModelIdSchema,
 });
 
+/**
+ * When an answer searches the user's documents.
+ *
+ * `on_request` searches only when the user selects sources in the composer or
+ * explicitly asks for documents in the question; an explicit "do not use
+ * documents" instruction still wins.
+ */
+export const documentRetrievalPrioritySchema = z.enum([
+  "always",
+  "automatic",
+  "on_request",
+]);
+
+/**
+ * How an uploaded document is processed. `ai_assisted` sends the extracted
+ * text to OpenAI to clean up its formatting (no summarization); choosing it is
+ * the user's consent, so the UI always shows that disclosure next to it.
+ */
+export const documentIngestionModeSchema = z.enum(["standard", "ai_assisted"]);
+
+/**
+ * `GET/PATCH /assistant/preferences`, read from the served OpenAPI
+ * (`AssistantPreferencesResponse`). The document fields are served with
+ * defaults and degrade to them, so an older backend still parses.
+ */
+export const assistantPreferencesSchema = modelPreferencesSchema.extend({
+  document_retrieval_priority:
+    documentRetrievalPrioritySchema.catch("automatic"),
+  document_ingestion_mode: documentIngestionModeSchema.catch("standard"),
+});
+
+/**
+ * Sends only what changed: an omitted field keeps its saved value. Never
+ * include a field just to fill the object — a stale value would overwrite a
+ * newer choice made in another tab.
+ */
 export const assistantPreferencesPatchRequestSchema = z.object({
   /** `null` clears the saved choice and returns to the deployment default. */
-  assistant_model: assistantModelIdSchema.nullable(),
+  assistant_model: assistantModelIdSchema.nullable().optional(),
+  document_retrieval_priority: documentRetrievalPrioritySchema.optional(),
+  document_ingestion_mode: documentIngestionModeSchema.optional(),
 });
 
 export type AssistantModelId = z.infer<typeof assistantModelIdSchema>;
@@ -53,6 +92,10 @@ export type AssistantModelCapabilities = z.infer<
   typeof assistantModelCapabilitiesSchema
 >;
 export type AssistantPreferences = z.infer<typeof assistantPreferencesSchema>;
+export type DocumentRetrievalPriority = z.infer<
+  typeof documentRetrievalPrioritySchema
+>;
+export type DocumentIngestionMode = z.infer<typeof documentIngestionModeSchema>;
 export type AssistantPreferencesPatchRequest = z.infer<
   typeof assistantPreferencesPatchRequestSchema
 >;
@@ -83,7 +126,7 @@ export const summarizationModelCapabilitiesSchema = z.object({
   models: z.array(summarizationModelOptionSchema),
 });
 
-export const summarizationPreferencesSchema = assistantPreferencesSchema;
+export const summarizationPreferencesSchema = modelPreferencesSchema;
 
 export const summarizationPreferencesPatchRequestSchema = z.object({
   /** `null` clears the saved choice and returns to the deployment default. */

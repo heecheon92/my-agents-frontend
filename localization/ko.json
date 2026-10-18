@@ -541,7 +541,8 @@
     "interactionBrowseWaitingAnnouncement": "답변을 이어가려면 전체 문서에서 골라 주세요.",
     "interactionUnitMinutes": "{n}분",
     "interactionUnitHours": "{n}시간",
-    "interactionUnitDays": "{n}일"
+    "interactionUnitDays": "{n}일",
+    "retrievalOnRequestHint": "지금은 요청할 때만 문서를 찾습니다. 출처를 고르거나 질문에서 문서를 언급하세요."
   },
   "admin": {
     "common": {
@@ -1012,7 +1013,29 @@
       "summarizationUpdateErrorTitle": "요약 모델을 바꾸지 못했습니다",
       "summarizationUnavailable": "지금 연결된 서버에서는 요약 모델을 고를 수 없습니다.",
       "summarizationSaved": "요약 모델을 저장했습니다.",
-      "summarizationLockedGuest": "게스트 세션은 기본 요약 모델을 쓰며 바꿀 수 없습니다."
+      "summarizationLockedGuest": "게스트 세션은 기본 요약 모델을 쓰며 바꿀 수 없습니다.",
+      "documentsTitle": "문서 사용 방식",
+      "documentsDescription": "답변에서 내 문서를 언제 찾을지, 새 문서를 어떻게 준비할지 정합니다.",
+      "retrievalLegend": "답변에서 내 문서 찾기",
+      "retrievalAlways": "항상 찾기",
+      "retrievalAlwaysDescription": "모든 질문에서 내 문서를 먼저 찾습니다.",
+      "retrievalAutomatic": "필요할 때 자동으로",
+      "retrievalAutomaticDescription": "질문에 문서가 필요하다고 판단할 때 찾습니다.",
+      "retrievalOnRequest": "요청할 때만",
+      "retrievalOnRequestDescription": "출처를 고르거나 질문에서 문서를 언급할 때만 찾습니다.",
+      "retrievalRecommendedBadge": "추천",
+      "ingestionLegend": "새 문서 준비 방식",
+      "ingestionStandard": "기본",
+      "ingestionStandardDescription": "문서의 텍스트를 그대로 꺼내 준비합니다.",
+      "ingestionAiAssisted": "AI 정리",
+      "ingestionAiAssistedDescription": "꺼낸 텍스트를 OpenAI로 보내 서식을 정리합니다. 내용은 요약하지 않습니다.",
+      "ingestionAiAssistedCost": "준비 시간이 더 걸리고 모델 사용 비용이 듭니다.",
+      "ingestionAiUnavailable": "지금은 AI 정리를 쓸 수 없습니다.",
+      "documentsLockedGuest": "게스트는 문서 설정을 바꿀 수 없습니다. 기본값이 적용됩니다.",
+      "documentsSaved": "문서 설정을 저장했습니다.",
+      "documentsLoadErrorTitle": "문서 설정을 불러오지 못했습니다.",
+      "documentsUpdateErrorTitle": "문서 설정을 저장하지 못했습니다.",
+      "documentsLoading": "불러오는 중…"
     },
     "experimental": {
       "title": "실험 기능 설정",

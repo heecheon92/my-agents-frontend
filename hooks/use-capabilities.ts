@@ -2,7 +2,10 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { MyAgentsQueryKeys } from "@/constants/query-keys";
-import { durableRunsEnabledFromHealth } from "@/model/my-agents";
+import {
+  documentUploadPolicyFromHealth,
+  durableRunsEnabledFromHealth,
+} from "@/model/my-agents";
 import { myAgentsAPI } from "@/services/my-agents";
 
 /**
@@ -39,4 +42,18 @@ export function useDurableRunsEnabled() {
     staleTime: 60 * 1000,
   });
   return durableRunsEnabledFromHealth(health.data);
+}
+
+/**
+ * The document upload policy health serves: direct uploads, both size limits,
+ * allowed extensions, and whether AI-assisted preparation exists at all.
+ * Conservative while loading or absent — see `documentUploadPolicyFromHealth`.
+ */
+export function useDocumentUploadPolicy() {
+  const health = useQuery({
+    queryKey: MyAgentsQueryKeys.health(),
+    queryFn: () => myAgentsAPI.health(),
+    staleTime: 60 * 1000,
+  });
+  return documentUploadPolicyFromHealth(health.data);
 }

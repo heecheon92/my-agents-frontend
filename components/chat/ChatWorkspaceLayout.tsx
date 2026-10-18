@@ -93,6 +93,7 @@ type ChatWorkspaceLayoutProps = {
   } | null;
   replayingMessageId: string | null;
   requiresKnowledgeBaseSelection: boolean;
+  showsRetrievalOnRequestHint?: boolean;
   selectedKnowledgeBaseIds: string[];
   sendNowHelper: string;
   serverActiveRunIsStale: boolean;
@@ -153,6 +154,7 @@ export function ChatWorkspaceLayout({
   replayNotice,
   replayingMessageId,
   requiresKnowledgeBaseSelection,
+  showsRetrievalOnRequestHint,
   selectedKnowledgeBaseIds,
   sendNowHelper,
   serverActiveRunIsStale,
@@ -345,6 +347,7 @@ export function ChatWorkspaceLayout({
                   requiresKnowledgeBaseSelection={
                     requiresKnowledgeBaseSelection
                   }
+                  showsRetrievalOnRequestHint={showsRetrievalOnRequestHint}
                   onToggleKnowledgeBase={onToggleKnowledgeBase}
                   streamError={streamError}
                   statusAnnouncement={statusAnnouncement}
