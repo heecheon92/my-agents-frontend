@@ -23,23 +23,25 @@ const capabilities: AssistantModelCapabilities = {
       pro_supported: false,
     },
     {
-      id: "gpt-6.1-sol",
-      name: "GPT-6.1 Sol",
+      id: "gpt-6.2-sol",
+      name: "GPT-6.2 Sol",
       default_reasoning_effort: "high",
       pro_supported: true,
     },
   ],
 };
 
-// The exposed catalog: the three models offered as choices, none of them
-// the default. The backend still accepts all six supported IDs.
+// The served catalog: the three supported models in picker order, with the
+// code default among them. Retired IDs are rejected on PATCH but can still
+// arrive as an env-override default or on historical runs, and a saved ID
+// outside the catalog is handled defensively, so the tests below keep a few on purpose.
 const exposedCatalog: AssistantModelCapabilities = {
   customizable: true,
-  default_model: "gpt-5.6-sol",
+  default_model: "gpt-6.2-sol",
   models: [
     {
-      id: "gpt-6.1-sol",
-      name: "GPT-6.1 Sol",
+      id: "gpt-6.2-sol",
+      name: "GPT-6.2 Sol",
       default_reasoning_effort: "medium",
       pro_supported: true,
     },
@@ -50,8 +52,8 @@ const exposedCatalog: AssistantModelCapabilities = {
       pro_supported: true,
     },
     {
-      id: "gpt-6-astra",
-      name: "GPT-6 Astra",
+      id: "gpt-6.2-astra",
+      name: "GPT-6.2 Astra",
       default_reasoning_effort: "medium",
       pro_supported: true,
     },
@@ -91,13 +93,13 @@ describe("resolveAssistantModel", () => {
       capabilities,
       {
         ...preferences,
-        selected_model: "gpt-6.1-sol",
-        effective_model: "gpt-6.1-sol",
+        selected_model: "gpt-6.2-sol",
+        effective_model: "gpt-6.2-sol",
       },
       false,
     );
-    expect(resolved.selectedId).toBe("gpt-6.1-sol");
-    expect(resolved.effectiveModel?.name).toBe("GPT-6.1 Sol");
+    expect(resolved.selectedId).toBe("gpt-6.2-sol");
+    expect(resolved.effectiveModel?.name).toBe("GPT-6.2 Sol");
   });
 
   it("offers exactly the served list, whatever its length", () => {
@@ -118,7 +120,7 @@ describe("resolveAssistantModel", () => {
     const resolved = resolveAssistantModel(extended, preferences, false);
     expect(resolved.models.map((model) => model.id)).toEqual([
       "gpt-6-luna",
-      "gpt-6.1-sol",
+      "gpt-6.2-sol",
       "future-model",
     ]);
   });
@@ -148,7 +150,8 @@ describe("resolveAssistantModel", () => {
 
   it("keeps the picker when the deployment default is not advertised", () => {
     // The catalog lists what a user may choose, not every model the backend
-    // runs: the default can sit outside it, and it still answers.
+    // runs: an env override can pin the default to a retired model outside
+    // it, and that model still answers.
     const resolved = resolveAssistantModel(
       exposedCatalog,
       {
@@ -171,9 +174,9 @@ describe("resolveAssistantModel", () => {
     expect(resolved.effectiveModel?.listed).toBe(false);
     // Only the served choices are options; the default is not added to them.
     expect(resolved.models.map((model) => model.id)).toEqual([
-      "gpt-6.1-sol",
+      "gpt-6.2-sol",
       "gpt-6-luna",
-      "gpt-6-astra",
+      "gpt-6.2-astra",
     ]);
   });
 
@@ -182,7 +185,8 @@ describe("resolveAssistantModel", () => {
       exposedCatalog,
       {
         customizable: true,
-        default_model: "gpt-5.6-sol",
+        default_model: "gpt-6.2-sol",
+        // Defensive: any saved ID the catalog no longer lists.
         selected_model: "gpt-5.6-luna",
         effective_model: "gpt-5.6-luna",
       },
@@ -206,16 +210,16 @@ describe("resolveAssistantModel", () => {
       exposedCatalog,
       {
         customizable: true,
-        default_model: "gpt-5.6-sol",
-        selected_model: "gpt-6-astra",
-        effective_model: "gpt-6-astra",
+        default_model: "gpt-6.2-sol",
+        selected_model: "gpt-6.2-astra",
+        effective_model: "gpt-6.2-astra",
       },
       false,
     );
     expect(resolved.unlistedSelection).toBeNull();
     expect(resolved.effectiveModel).toEqual({
-      id: "gpt-6-astra",
-      name: "GPT-6 Astra",
+      id: "gpt-6.2-astra",
+      name: "GPT-6.2 Astra",
       listed: true,
     });
   });
@@ -242,14 +246,14 @@ describe("MyAgentsAssistantAPI", () => {
     });
 
     await api.getPreferences();
-    await api.updatePreferences({ assistant_model: "gpt-6.1-sol" });
+    await api.updatePreferences({ assistant_model: "gpt-6.2-sol" });
     await api.updatePreferences({ assistant_model: null });
 
     expect(calls).toEqual([
       { path: "/assistant/preferences", init: undefined },
       {
         path: "/assistant/preferences",
-        init: { method: "PATCH", body: { assistant_model: "gpt-6.1-sol" } },
+        init: { method: "PATCH", body: { assistant_model: "gpt-6.2-sol" } },
       },
       // `null` is sent, not omitted: it is the reset-to-default instruction.
       {
@@ -271,7 +275,7 @@ describe("assistant model schemas", () => {
     // an override the backend does not offer.
     const parsed = conversationRunRequestSchema.parse({
       message: "hello",
-      assistant_model: "gpt-6.1-sol",
+      assistant_model: "gpt-6.2-sol",
     });
     expect("assistant_model" in parsed).toBe(false);
   });
@@ -281,9 +285,21 @@ describe("assistant model schemas", () => {
       run_id: "run-1",
       conversation_id: "c-1",
       status: "running",
+      assistant_model: "gpt-6.2-sol",
+    });
+    expect(started.assistant_model).toBe("gpt-6.2-sol");
+
+    // A historical run keeps the retired model it ran on. The ID stays an
+    // open string, so retiring a model never breaks old run history.
+    const historical = agentRunSummarySchema.parse({
+      run_id: "run-old",
+      conversation_id: "c-1",
+      status: "completed",
+      route_label: null,
+      created_at: "2026-10-01T00:00:00Z",
       assistant_model: "gpt-6.1-sol",
     });
-    expect(started.assistant_model).toBe("gpt-6.1-sol");
+    expect(historical.assistant_model).toBe("gpt-6.1-sol");
 
     const legacy = agentRunSummarySchema.parse({
       run_id: "run-0",
@@ -298,8 +314,8 @@ describe("assistant model schemas", () => {
     // A suspended run reports its pinned model too; resume reuses it.
     const interrupted = conversationRunInterruptedResponseSchema
       .pick({ assistant_model: true })
-      .parse({ assistant_model: "gpt-6-astra" });
-    expect(interrupted.assistant_model).toBe("gpt-6-astra");
+      .parse({ assistant_model: "gpt-6.2-astra" });
+    expect(interrupted.assistant_model).toBe("gpt-6.2-astra");
   });
 });
 

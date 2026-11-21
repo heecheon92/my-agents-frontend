@@ -390,12 +390,16 @@ type RouteOverrides = {
    */
   assistantModels?: boolean;
   /**
-   * `"exposed"` serves only the exposed models (the backend's
-   * `EXPOSED_ASSISTANT_MODELS`, a subset of the six supported IDs) with a
-   * deployment default outside them, as the backend does. Unexposed models
-   * answer at `medium` with Pro available.
+   * `"exposed"` serves the backend's current three-model catalog in its
+   * picker order, with the code default `gpt-6.2-sol`. Models outside the
+   * catalog answer at `medium` with Pro available.
    */
   assistantModelCatalog?: "full" | "exposed";
+  /**
+   * Overrides the `"exposed"` deployment default, as a deployment env
+   * override can — including to a retired ID the catalog no longer lists.
+   */
+  deploymentDefaultModel?: string;
   /** A preference already saved before the page loads, listed or not. */
   savedAssistantModel?: string | null;
   /**
@@ -487,6 +491,7 @@ export async function mockWorkspace(
     assistantModels = false,
     assistantModelCatalog = "full",
     savedAssistantModel = null,
+    deploymentDefaultModel,
     attribution = false,
     documentCoverage = false,
     reasoningSummaries = false,
@@ -817,8 +822,8 @@ export async function mockWorkspace(
       pro_supported: false,
     },
     {
-      id: "gpt-6.1-sol",
-      name: "GPT-6.1 Sol",
+      id: "gpt-6.2-sol",
+      name: "GPT-6.2 Sol",
       default_reasoning_effort: "high",
       pro_supported: true,
     },
@@ -827,8 +832,8 @@ export async function mockWorkspace(
   const assistantModelList = exposedOnly
     ? [
         {
-          id: "gpt-6.1-sol",
-          name: "GPT-6.1 Sol",
+          id: "gpt-6.2-sol",
+          name: "GPT-6.2 Sol",
           default_reasoning_effort: "high",
           pro_supported: true,
         },
@@ -839,14 +844,16 @@ export async function mockWorkspace(
           pro_supported: true,
         },
         {
-          id: "gpt-6-astra",
-          name: "GPT-6 Astra",
+          id: "gpt-6.2-astra",
+          name: "GPT-6.2 Astra",
           default_reasoning_effort: "medium",
           pro_supported: true,
         },
       ]
     : fullAssistantModelList;
-  const defaultAssistantModel = exposedOnly ? "gpt-5.6-sol" : "gpt-6-luna";
+  const defaultAssistantModel = exposedOnly
+    ? (deploymentDefaultModel ?? "gpt-6.2-sol")
+    : "gpt-6-luna";
   let selectedAssistantModel: string | null = savedAssistantModel;
   let selectedSummarizationModel: string | null = savedSummarizationModel;
   const summarizationPreferences = () => ({
@@ -944,9 +951,9 @@ export async function mockWorkspace(
         default_model: "gpt-6-luna",
         recommended_model: "gpt-6-luna",
         models: [
-          { id: "gpt-6.1-sol", name: "GPT-6.1 Sol" },
+          { id: "gpt-6.2-sol", name: "GPT-6.2 Sol" },
           { id: "gpt-6-luna", name: "GPT-6 Luna" },
-          { id: "gpt-6-astra", name: "GPT-6 Astra" },
+          { id: "gpt-6.2-astra", name: "GPT-6.2 Astra" },
         ],
       });
     }

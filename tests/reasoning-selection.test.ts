@@ -53,9 +53,10 @@ describe("resolveReasoning", () => {
   });
 
   it("sends an explicit none or minimal choice as chosen", () => {
-    // The backend normalizes these per model (GPT-6.1 Sol runs both as low;
-    // other supported models run minimal as low). Rewriting them here would
-    // guess at the model and erase the user's preference for the next model.
+    // The backend normalizes these per model (GPT-6.2 Sol and GPT-6.2 Astra
+    // run both as low; other supported models run minimal as low). Rewriting
+    // them here would guess at the model and erase the user's preference for
+    // the next model.
     for (const effort of ["none", "minimal"] as const) {
       const resolved = resolveReasoning(capabilities, { effort }, false);
       expect(resolved.selection?.effort).toBe(effort);
@@ -63,7 +64,7 @@ describe("resolveReasoning", () => {
   });
 
   it("offers every served stop and pro for a model that supports both", () => {
-    // GPT-6.1 Sol: the enum stays frozen at seven levels and pro is reported
+    // GPT-6.2 Sol: the enum stays frozen at seven levels and pro is reported
     // through the chat surface flag, not inferred from a model name.
     const resolved = resolveReasoning(capabilities, { mode: "pro" }, false);
     expect(resolved.efforts).toHaveLength(7);
@@ -188,8 +189,8 @@ describe("reasoningCapabilitiesSchema", () => {
     // query and silently strips the composer's reasoning controls.
     const parsed = reasoningCapabilitiesSchema.parse({
       ...payloadWithoutModel,
-      chat: { model: "gpt-5.6-sol", pro_supported: true },
-      document_workspace: { model: "gpt-5.6-sol", pro_supported: false },
+      chat: { model: "gpt-6.2-sol", pro_supported: true },
+      document_workspace: { model: "gpt-6.2-sol", pro_supported: false },
     });
     expect(parsed.chat.pro_supported).toBe(true);
     expect("model" in parsed.chat).toBe(false);

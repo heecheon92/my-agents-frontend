@@ -128,8 +128,8 @@ redundant. Keep that framing if you rewrite this copy.
 ## Per-model effort normalization (2026-09-30)
 
 The backend now normalizes a requested effort per model before persistence and
-the provider call. GPT-6.1 Sol runs `none` and `minimal` as `low`; the other
-supported models run `minimal` as `low` and keep `none`. The default effort is
+the provider call. GPT-6.2 Sol and GPT-6.2 Astra run `none` and `minimal` as
+`low`; the other supported models run `minimal` as `low` and keep `none`. The default effort is
 the configured model's recommendation (`medium` for every supported model), and
 `MY_AGENTS_OPENAI_REASONING_EFFORT` is no longer an override.
 

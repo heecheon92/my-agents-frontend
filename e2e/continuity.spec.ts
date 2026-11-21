@@ -173,9 +173,9 @@ test.describe("summarization model settings", () => {
         request.method() === "PATCH" &&
         request.url().endsWith("/summarization/preferences"),
     );
-    await card.getByRole("radio", { name: "GPT-6.1 Sol" }).click();
+    await card.getByRole("radio", { name: "GPT-6.2 Sol" }).click();
     expect((await patch).postDataJSON()).toEqual({
-      summarization_model: "gpt-6.1-sol",
+      summarization_model: "gpt-6.2-sol",
     });
     await expect(
       card.locator('[data-slot="summarization-recommendation"]'),
@@ -187,7 +187,7 @@ test.describe("summarization model settings", () => {
     await page.goto("/settings/account");
     const card = page.locator('[data-slot="summarization-model-settings"]');
     await expect(
-      card.getByRole("radio", { name: "GPT-6.1 Sol" }),
+      card.getByRole("radio", { name: "GPT-6.2 Sol" }),
     ).toBeDisabled();
     await expect(
       card.getByText(account.summarizationLockedGuest),

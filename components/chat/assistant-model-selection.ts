@@ -31,9 +31,10 @@ export type ModelPreferencesLike = {
  * offers it as a choice.
  *
  * The catalog serves the *exposed* models — the ones a user may choose — not
- * every model the backend supports (backend `EXPOSED_ASSISTANT_MODELS` is a
- * subset of `SUPPORTED_ASSISTANT_MODELS`). The deployment default, and a
- * preference saved earlier, can both be supported but unexposed. Those are
+ * every model the backend can report (backend `EXPOSED_ASSISTANT_MODELS` may
+ * be a subset of `SUPPORTED_ASSISTANT_MODELS`, and historical runs keep
+ * retired IDs). An env-override deployment default, and a preference saved
+ * before a model was retired, can both sit outside the catalog. Those are
  * still the truth about which model answers, so they are shown — read-only,
  * by ID, since only catalog entries carry a display name — and never offered
  * as a radio option.

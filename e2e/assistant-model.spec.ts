@@ -61,19 +61,19 @@ test.describe("assistant model selection", () => {
     ).toBeChecked();
 
     const patch = waitForModelPatch(page);
-    await modelRadio(page, "GPT-6.1 Sol").check();
+    await modelRadio(page, "GPT-6.2 Sol").check();
     expect((await patch).postDataJSON()).toEqual({
-      assistant_model: "gpt-6.1-sol",
+      assistant_model: "gpt-6.2-sol",
     });
 
-    await expect(modelRadio(page, "GPT-6.1 Sol")).toBeChecked();
+    await expect(modelRadio(page, "GPT-6.2 Sol")).toBeChecked();
     await expect(pro).toBeEnabled();
     // No stored effort, so the new model's served recommendation applies —
     // the frontend holds no default of its own.
     await expect(
       page.getByText(chat.reasoningEffortLabels.high).first(),
     ).toBeVisible();
-    await expect(reasoningTrigger(page)).toContainText("GPT-6.1 Sol");
+    await expect(reasoningTrigger(page)).toContainText("GPT-6.2 Sol");
   });
 
   test("saves without dimming the list or swapping copy", async ({ page }) => {
@@ -115,11 +115,11 @@ test.describe("assistant model selection", () => {
       snapshot();
     });
 
-    await modelRadio(page, "GPT-6.1 Sol").click();
+    await modelRadio(page, "GPT-6.2 Sol").click();
     // A second choice mid-save is ignored rather than racing the first.
     await modelRadio(page, "GPT-6 Luna", true).click({ force: true });
-    await expect(modelRadio(page, "GPT-6.1 Sol")).toBeChecked();
-    await expect(reasoningTrigger(page)).toContainText("GPT-6.1 Sol");
+    await expect(modelRadio(page, "GPT-6.2 Sol")).toBeChecked();
+    await expect(reasoningTrigger(page)).toContainText("GPT-6.2 Sol");
     await expect(pro(page)).toBeEnabled();
 
     const frames = await page.evaluate(
@@ -132,9 +132,12 @@ test.describe("assistant model selection", () => {
   test("offers only the served catalog when the default is not advertised", async ({
     page,
   }) => {
+    // An env override can pin the deployment default to a retired model the
+    // catalog no longer lists; it still answers, so it must still render.
     await mockWorkspace(page, {
       assistantModels: true,
       assistantModelCatalog: "exposed",
+      deploymentDefaultModel: "gpt-5.6-sol",
     });
     await page.goto("/chat");
     // The unadvertised default still answers, so the trigger names it, by ID.
@@ -158,11 +161,11 @@ test.describe("assistant model selection", () => {
     ).toHaveCount(0);
 
     const patch = waitForModelPatch(page);
-    await modelRadio(page, "GPT-6 Astra").click();
+    await modelRadio(page, "GPT-6.2 Astra").click();
     expect((await patch).postDataJSON()).toEqual({
-      assistant_model: "gpt-6-astra",
+      assistant_model: "gpt-6.2-astra",
     });
-    await expect(reasoningTrigger(page)).toContainText("GPT-6 Astra");
+    await expect(reasoningTrigger(page)).toContainText("GPT-6.2 Astra");
   });
 
   test("keeps an unadvertised saved model without calling it the default", async ({
@@ -171,6 +174,8 @@ test.describe("assistant model selection", () => {
     await mockWorkspace(page, {
       assistantModels: true,
       assistantModelCatalog: "exposed",
+      // Defensive: migration 0044 rewrites retired saved IDs, but the UI
+      // must still handle any saved ID the catalog no longer lists.
       savedAssistantModel: "gpt-5.6-luna",
     });
     await page.goto("/chat");
@@ -191,10 +196,10 @@ test.describe("assistant model selection", () => {
     const patch = waitForModelPatch(page);
     await modelRadio(
       page,
-      chat.assistantModelDefaultOption.replace("{name}", "gpt-5.6-sol"),
+      chat.assistantModelDefaultOption.replace("{name}", "GPT-6.2 Sol"),
     ).click();
     expect((await patch).postDataJSON()).toEqual({ assistant_model: null });
-    await expect(reasoningTrigger(page)).toContainText("gpt-5.6-sol");
+    await expect(reasoningTrigger(page)).toContainText("GPT-6.2 Sol");
     await expect(
       page.locator('[data-slot="assistant-model-unlisted"]'),
     ).toHaveCount(0);
@@ -203,7 +208,7 @@ test.describe("assistant model selection", () => {
     await expect(
       page
         .locator('[data-slot="assistant-model-settings"]')
-        .getByText(account.modelEffective.replace("{name}", "gpt-5.6-sol")),
+        .getByText(account.modelEffective.replace("{name}", "GPT-6.2 Sol")),
     ).toBeVisible();
   });
 
@@ -235,7 +240,7 @@ test.describe("assistant model selection", () => {
     await page.goto("/chat");
     await openControls(page);
 
-    await modelRadio(page, "GPT-6.1 Sol").check();
+    await modelRadio(page, "GPT-6.2 Sol").check();
     await expect(pro(page)).toBeEnabled();
     await expect(reasoningTrigger(page)).toContainText(
       chat.reasoningEffortLabels.none,
@@ -246,7 +251,7 @@ test.describe("assistant model selection", () => {
     await mockWorkspace(page, { assistantModels: true });
     await page.goto("/chat");
     await openControls(page);
-    await modelRadio(page, "GPT-6.1 Sol").check();
+    await modelRadio(page, "GPT-6.2 Sol").check();
     await expect(pro(page)).toBeEnabled();
 
     const patch = waitForModelPatch(page);
@@ -272,7 +277,7 @@ test.describe("assistant model selection", () => {
     await page.goto("/chat");
     await openControls(page);
 
-    await expect(modelRadio(page, "GPT-6.1 Sol")).toBeDisabled();
+    await expect(modelRadio(page, "GPT-6.2 Sol")).toBeDisabled();
     await expect(page.getByText(chat.assistantModelLockedGuest)).toBeVisible();
     expect(patched).toBe(false);
   });
@@ -286,15 +291,15 @@ test.describe("assistant model selection", () => {
       card.getByRole("heading", { name: account.modelTitle }),
     ).toBeVisible();
     const patch = waitForModelPatch(page);
-    await card.getByRole("radio", { name: "GPT-6.1 Sol" }).check();
+    await card.getByRole("radio", { name: "GPT-6.2 Sol" }).check();
     await patch;
     await expect(card.getByText(account.modelSaved)).toBeVisible();
     await expect(
-      card.getByText(account.modelEffective.replace("{name}", "GPT-6.1 Sol")),
+      card.getByText(account.modelEffective.replace("{name}", "GPT-6.2 Sol")),
     ).toBeVisible();
 
     await page.goto("/chat");
-    await expect(reasoningTrigger(page)).toContainText("GPT-6.1 Sol");
+    await expect(reasoningTrigger(page)).toContainText("GPT-6.2 Sol");
   });
 
   test("shows a locked settings card to a guest", async ({ page }) => {
@@ -302,7 +307,7 @@ test.describe("assistant model selection", () => {
     await page.goto("/settings/account");
     const card = page.locator('[data-slot="assistant-model-settings"]');
     await expect(
-      card.getByRole("radio", { name: "GPT-6.1 Sol" }),
+      card.getByRole("radio", { name: "GPT-6.2 Sol" }),
     ).toBeDisabled();
     await expect(card.getByText(account.modelLockedGuest)).toBeVisible();
   });
@@ -330,8 +335,8 @@ test.describe("assistant model selection", () => {
       await page.setViewportSize({ width, height: 844 });
       await page.goto("/chat");
       await openControls(page);
-      await modelRadio(page, "GPT-6.1 Sol").click();
-      await expect(reasoningTrigger(page)).toContainText("GPT-6.1 Sol");
+      await modelRadio(page, "GPT-6.2 Sol").click();
+      await expect(reasoningTrigger(page)).toContainText("GPT-6.2 Sol");
       await page.keyboard.press("Escape");
       await page.getByRole("textbox").first().fill("hi");
       const form = await page.locator("form").last().boundingBox();
@@ -346,7 +351,7 @@ test.describe("assistant model selection", () => {
       expect(trigger.x + trigger.width).toBeLessThanOrEqual(send.x);
       await expect(
         page.locator('[data-slot="assistant-model-trigger-name"]'),
-      ).toHaveText("GPT-6.1 Sol");
+      ).toHaveText("GPT-6.2 Sol");
     }
   });
 

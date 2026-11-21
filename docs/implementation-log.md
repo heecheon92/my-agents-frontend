@@ -2395,3 +2395,24 @@ SVG screenshots were inspected; wide drawings remain readable through local keyb
 The temporary test config and isolated :3100 server were removed/stopped; the user's :3000/:8000
 services were not stopped. Publication is scoped to frontend `develop`; no manual deployment. See
 [rendering contract](./rich-response-rendering.md).
+
+## 2026-11-21 — Model catalog moved to GPT-6.2 Sol / GPT-6 Luna / GPT-6.2 Astra
+
+The backend (uncommitted on `../my-agents` `develop` at the time) retired `gpt-5.6-luna`,
+`gpt-5.6-sol`, `gpt-6-sol`, `gpt-6.1-sol`, and `gpt-6-astra`. `PATCH /assistant/preferences` and
+`PATCH /summarization/preferences` now reject them with 422, and migration `20261121_0044` rewrites
+saved choices. Both model catalogs now serve exactly `gpt-6.2-sol`, `gpt-6-luna`, and `gpt-6.2-astra`,
+in that order, and the code default is `gpt-6.2-sol`. Endpoint paths and response shapes did not change.
+
+No shipped frontend code changed behavior: model IDs are an open string (`assistantModelIdSchema`),
+labels come from the served catalog, and IDs outside the catalog render read-only by ID. There is no
+generated model-ID enum, so no OpenAPI fetch was needed. Fixtures, mocks, and tests now use the
+current IDs, and `GPT-6.2 Sol/Astra` replace `GPT-6.1 Sol` in the reasoning-normalization notes.
+Retired IDs remain only where a test proves they still render: an env-override default, a
+historical run's `assistant_model`, and a defensive saved choice the catalog no longer lists. The e2e mock gained
+`deploymentDefaultModel` for the override case.
+
+Verification: Biome and TypeScript clean; unit suite **499/499**; Playwright `assistant-model`,
+`continuity`, and `document-originals` specs **43/43** (the full suite was not rerun); production
+build passed. Next.js 16.4.1 reported a known security vulnerability and aborted the first build and
+first Playwright web-server start; both passed on retry. No upgrade was run.

@@ -226,9 +226,9 @@ describe("summarization model preference", () => {
     default_model: "gpt-6-luna",
     recommended_model: "gpt-6-luna",
     models: [
-      { id: "gpt-6.1-sol", name: "GPT-6.1 Sol" },
+      { id: "gpt-6.2-sol", name: "GPT-6.2 Sol" },
       { id: "gpt-6-luna", name: "GPT-6 Luna" },
-      { id: "gpt-6-astra", name: "GPT-6 Astra" },
+      { id: "gpt-6.2-astra", name: "GPT-6.2 Astra" },
     ],
   });
 
@@ -238,13 +238,13 @@ describe("summarization model preference", () => {
       summarizationPreferencesSchema.parse({
         customizable: true,
         default_model: "gpt-6-luna",
-        selected_model: "gpt-6.1-sol",
-        effective_model: "gpt-6.1-sol",
+        selected_model: "gpt-6.2-sol",
+        effective_model: "gpt-6.2-sol",
       }),
       false,
     );
     expect(resolved.available).toBe(true);
-    expect(resolved.effectiveModel?.name).toBe("GPT-6.1 Sol");
+    expect(resolved.effectiveModel?.name).toBe("GPT-6.2 Sol");
     expect(catalog.recommended_model).toBe("gpt-6-luna");
   });
 
