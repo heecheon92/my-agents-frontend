@@ -2,3 +2,14 @@ allowBuilds:
   msw: true
   sharp: true
   unrs-resolver: false
+
+# Security floor: shadcn's ts-morph chain caps minimatch at ^10, and no 10.x
+# release fixes the globparts-amplification DoS advisory (see
+# docs/implementation-log.md, 2026-11-21). Remove once shadcn's ts-morph range
+# reaches minimatch ^11.
+overrides:
+  "@ts-morph/common>minimatch": ^11.0.1
+  # mermaid 12 allows katex ^0.18, which resolves to the deprecated 0.18.11
+  # ("accidentally published with breaking changes"). 0.18.10 already has the
+  # prototype-pollution fix (>=0.18.2). Remove once mermaid's range reaches 0.19.
+  "mermaid>katex": 0.18.10

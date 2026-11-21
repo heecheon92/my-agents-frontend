@@ -23,6 +23,10 @@ export function renderMermaid(
       htmlLabels: false,
       maxTextSize: 10_000,
       maxEdges: 200,
+      // mermaid 12 defaults flowcharts, state and class diagrams to a new
+      // layout and look; keep the established classic rendering.
+      layout: "dagre",
+      look: "classic",
       theme: "base",
       themeVariables: {
         darkMode: document.documentElement.classList.contains("dark"),

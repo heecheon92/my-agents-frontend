@@ -2416,3 +2416,71 @@ Verification: Biome and TypeScript clean; unit suite **499/499**; Playwright `as
 `continuity`, and `document-originals` specs **43/43** (the full suite was not rerun); production
 build passed. Next.js 16.4.1 reported a known security vulnerability and aborted the first build and
 first Playwright web-server start; both passed on retry. No upgrade was run.
+
+## 2026-11-21 — Next.js 16.4.6 security update
+
+Upgraded `next` from 16.4.1 to 16.4.6 (pinned exactly, latest stable). Only `next`, `@next/env`, and the
+`@next/swc-*` binaries changed in the lockfile; `react` and `react-dom` stay at 19.2.4. 16.4.1 was inside
+the `<=16.4.4` range of seven Next.js advisories, all fixed in 16.4.5+: root-param information
+disclosure and cache leaks in `use cache`, cross-user cache disclosure/poisoning, fallback-shell cache
+poisoning, an image-optimization SVG rejection bypass, HttpOnly cookie exposure through an internal
+response header, and cross-client response injection in self-hosted deployments. 16.4.1 also made
+`next dev`/`next build` abort once with a security nudge; 16.4.6 builds without it.
+
+`pnpm audit` before → after: 14 low / 61 moderate / 30 high / 1 critical → 14 / 54 / 30 / 1. Still open under
+`next` are transitive build-time packages pinned through its dependency tree (`browserslist`,
+`@babel/core` via `styled-jsx`, `baseline-browser-mapping`, `source-map-js` via `postcss`). Most other
+findings come through `shadcn` (its MCP SDK, hono, express, fast-uri), `vitest`/`vite`, `mermaid`
+(dompurify, katex), `@tailwindcss/postcss`, and `zod`; they were left for a separate decision.
+
+Validation on 16.4.6: Biome and `tsc --noEmit` clean; Vitest 499/499; production build passed; full
+Playwright suite 260 passed, 2 skipped, 1 failed — the same pre-existing
+`conversation-list.spec.ts:188` focus/fade assertion recorded on 16.4.1.
+
+## 2026-11-21 — Dependency security pass
+
+Follow-up to the Next.js 16.4.6 update, at the owner's request to fix the remaining audit findings.
+`pnpm audit`: 14 low / 54 moderate / 30 high / 1 critical → **no known vulnerabilities**.
+
+Direct changes, and nothing else at the top level (every other direct dependency resolves to the
+same version as before):
+
+- `zod` ^4.6.7 (memory exhaustion on oversized constrained collections).
+- `vitest` ^4.1.12 and `vite` ^8.3.8. vite was only vitest's auto-installed peer, and pnpm would not
+  move an auto-installed peer off 8.0.13; declaring the peer is the supported fix and adds no new
+  package to the tree.
+- `shadcn` ^4.23.0 (its MCP SDK, hono, express, fast-uri, qs, proxy-addr chain).
+- `tailwindcss` and `@tailwindcss/postcss` ^4.3.5 (postcss, nanoid).
+- `mermaid` 11.17.2 → **12.3.0** (still pinned exactly), the only line that allows a patched `katex`.
+  mermaid 12 re-lays out and recolours flowchart, state and class diagrams by default, so
+  `mermaid-engine.ts` now sets `layout: "dagre"` and `look: "classic"` beside the existing `base`
+  theme. Element screenshots against mermaid 11: sequence, ER and class diagrams are pixel-size
+  identical; flowchart and state diagrams keep the classic look but draw roomier nodes (wider boxes,
+  a larger decision diamond). mermaid 12 targets ES2024 / Safari 17.4+; on an older browser the
+  dynamic import fails into the existing "could not display the diagram" fallback with source.
+
+In-range lockfile refresh, one package at a time: `browserslist`, `@babel/core`,
+`baseline-browser-mapping`, `source-map-js`, `ip-address`.
+
+`pnpm-workspace.yaml` overrides, each with its removal condition:
+
+- `@ts-morph/common>minimatch: ^11.0.1` — shadcn's `ts-morph@26` chain caps minimatch at ^10, and no
+  10.x fixes the globparts DoS. ts-morph include/exclude globbing verified on minimatch 11.
+- `mermaid>katex: 0.18.10` — mermaid 12 allows `katex ^0.18`, which resolves to 0.18.11, deprecated as
+  "accidentally published with breaking changes". 0.18.10 already carries the fix (>=0.18.2).
+
+pnpm pitfalls hit here, worth knowing next time:
+
+- `pnpm update <names>` re-resolved **every** direct dependency to its newest in-range version and
+  rewrote their `package.json` specifiers (e.g. `@base-ui/react` 1.4.1 → 1.9.0, `@playwright/test`
+  1.60 → 1.65, which then had no installed browsers). The lockfile was rebuilt from `HEAD` with
+  targeted `pnpm add` calls and single-package `pnpm update <transitive>` calls, checking the
+  importer versions after each step. Compare importer versions against `HEAD` after any update.
+- pnpm 11's optimistic repeat install skips re-resolution after a workspace-config-only change
+  (such as `overrides`); use `pnpm install --config.optimistic-repeat-install=false`.
+
+Validation: frozen install clean, no peer issues, `pnpm audit` clean; Biome and `tsc --noEmit` clean;
+Vitest 499/499; production build passed; full Playwright 260 passed, 2 skipped, 1 failed — the known
+`conversation-list.spec.ts:188` focus/fade assertion. The intermittent
+`transcript-autoscroll.spec.ts:43` passed in this run; earlier in the day it failed 3/5 on the
+updated tree and 5/5 on a clean `HEAD` worktree, so it is pre-existing.
